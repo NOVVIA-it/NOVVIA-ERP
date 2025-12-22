@@ -522,6 +522,93 @@
                 </Grid>
             </TabItem>
 
+            <!-- MSV3 Log -->
+            <TabItem Header="MSV3 Log">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="200"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Toolbar -->
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="MSV3 Kommunikations-Log" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                        <Button x:Name="btnLogAktualisieren" Content="Aktualisieren" Margin="20,0,0,0" Click="LogAktualisieren_Click"/>
+                        <Button x:Name="btnLogLeeren" Content="Log leeren" Margin="10,0,0,0" Background="#D13438" Foreground="White" Click="LogLeeren_Click"/>
+                        <TextBlock x:Name="txtLogAnzahl" Text="" Margin="20,0,0,0" VerticalAlignment="Center" Foreground="Gray"/>
+                    </StackPanel>
+
+                    <!-- Log DataGrid -->
+                    <DataGrid x:Name="dgMSV3Log" Grid.Row="1" Margin="0,10,0,0" AutoGenerateColumns="False" IsReadOnly="True"
+                              GridLinesVisibility="Horizontal" SelectionChanged="MSV3Log_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Zeitpunkt" Binding="{Binding ZeitpunktText}" Width="140"/>
+                            <DataGridTextColumn Header="Lieferant" Binding="{Binding LieferantName}" Width="150"/>
+                            <DataGridTextColumn Header="Aktion" Binding="{Binding CAktion}" Width="120"/>
+                            <DataGridTemplateColumn Header="Status" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding StatusText}"
+                                                   Foreground="{Binding StatusFarbe}" FontWeight="SemiBold"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="HTTP" Binding="{Binding NHttpStatus}" Width="50"/>
+                            <DataGridTextColumn Header="BestellSupportId" Binding="{Binding CBestellSupportId}" Width="120"/>
+                            <DataGridTextColumn Header="MSV3-Auftrag" Binding="{Binding CMSV3AuftragsId}" Width="100"/>
+                            <DataGridTextColumn Header="Dauer" Binding="{Binding DauerText}" Width="60"/>
+                            <DataGridTextColumn Header="Fehler" Binding="{Binding CFehler}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Detail Header -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,5">
+                        <TextBlock x:Name="txtLogDetailHeader" Text="Request / Response XML" FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <!-- Detail Panel: Request + Response -->
+                    <Grid Grid.Row="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Request -->
+                        <Border Grid.Column="0" BorderBrush="#ddd" BorderThickness="1" CornerRadius="4">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="📤 Request" FontWeight="SemiBold" Margin="5" Foreground="#0078D4"/>
+                                <TextBox x:Name="txtLogRequest" Grid.Row="1" IsReadOnly="True"
+                                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                         FontFamily="Consolas" FontSize="11" TextWrapping="NoWrap"
+                                         Background="#f8f8f8" BorderThickness="0"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Response -->
+                        <Border Grid.Column="2" BorderBrush="#ddd" BorderThickness="1" CornerRadius="4">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="📥 Response" FontWeight="SemiBold" Margin="5" Foreground="#107C10"/>
+                                <TextBox x:Name="txtLogResponse" Grid.Row="1" IsReadOnly="True"
+                                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                         FontFamily="Consolas" FontSize="11" TextWrapping="NoWrap"
+                                         Background="#f8f8f8" BorderThickness="0"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
         </TabControl>
     </Grid>
 </UserControl>

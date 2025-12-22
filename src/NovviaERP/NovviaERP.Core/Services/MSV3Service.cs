@@ -955,7 +955,8 @@ namespace NovviaERP.Core.Services
                     SELECT TOP (@Max)
                         l.kMSV3Log, l.kMSV3Lieferant, l.kLieferantenBestellung, l.cAktion,
                         l.nHttpStatus, l.nErfolg, l.cFehler, l.cMSV3AuftragsId, l.cBestellSupportId,
-                        l.nDauerMs, l.dZeitpunkt, l.kBenutzer, lf.cFirma AS LieferantName
+                        l.nDauerMs, l.dZeitpunkt, l.kBenutzer, lf.cFirma AS LieferantName,
+                        l.cRequestXML AS CRequestXml, l.cResponseXML AS CResponseXml
                     FROM NOVVIA.MSV3Log l
                     LEFT JOIN NOVVIA.MSV3Lieferant m ON l.kMSV3Lieferant = m.kMSV3Lieferant
                     LEFT JOIN tLieferant lf ON m.kLieferant = lf.kLieferant
@@ -969,6 +970,38 @@ namespace NovviaERP.Core.Services
             catch
             {
                 return Enumerable.Empty<MSV3LogEintrag>();
+            }
+        }
+
+        /// <summary>
+        /// MSV3-Log leeren (alle Einträge löschen)
+        /// </summary>
+        public async Task<int> ClearMSV3LogAsync()
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                return await conn.ExecuteAsync("DELETE FROM NOVVIA.MSV3Log");
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Anzahl der Log-Einträge
+        /// </summary>
+        public async Task<int> GetMSV3LogCountAsync()
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                return await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM NOVVIA.MSV3Log");
+            }
+            catch
+            {
+                return 0;
             }
         }
 
@@ -1857,9 +1890,12 @@ namespace NovviaERP.Core.Services
         public DateTime DZeitpunkt { get; set; }
         public int? KBenutzer { get; set; }
         public string? LieferantName { get; set; }
+        public string? CRequestXml { get; set; }
+        public string? CResponseXml { get; set; }
 
         // Formatierte Anzeige
-        public string StatusText => NErfolg ? "OK" : "Fehler";
+        public string StatusText => NErfolg ? "✅ OK" : "❌ Fehler";
+        public string StatusFarbe => NErfolg ? "Green" : "Red";
         public string ZeitpunktText => DZeitpunkt.ToString("dd.MM.yyyy HH:mm:ss");
         public string DauerText => NDauerMs.HasValue ? $"{NDauerMs}ms" : "-";
     }

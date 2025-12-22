@@ -1480,6 +1480,111 @@ namespace NovviaERP.WPF.Views
 
         #endregion
 
+        #region MSV3 Log
+
+        private async void LogAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                btnLogAktualisieren.IsEnabled = false;
+                btnLogAktualisieren.Content = "Laden...";
+
+                var logs = await _msv3Service.GetMSV3LogAsync(maxEintraege: 500);
+                dgMSV3Log.ItemsSource = logs;
+
+                var anzahl = logs.Count();
+                txtLogAnzahl.Text = $"{anzahl} Einträge";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Laden des Logs: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                btnLogAktualisieren.IsEnabled = true;
+                btnLogAktualisieren.Content = "Aktualisieren";
+            }
+        }
+
+        private async void LogLeeren_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var anzahl = await _msv3Service.GetMSV3LogCountAsync();
+
+                if (anzahl == 0)
+                {
+                    MessageBox.Show("Das Log ist bereits leer.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var antwort = MessageBox.Show(
+                    $"Möchten Sie wirklich {anzahl} Log-Einträge löschen?\n\nDieser Vorgang kann nicht rückgängig gemacht werden.",
+                    "Log leeren",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (antwort != MessageBoxResult.Yes)
+                    return;
+
+                btnLogLeeren.IsEnabled = false;
+                btnLogLeeren.Content = "Lösche...";
+
+                var geloescht = await _msv3Service.ClearMSV3LogAsync();
+
+                dgMSV3Log.ItemsSource = null;
+                txtLogAnzahl.Text = "0 Einträge";
+
+                MessageBox.Show($"{geloescht} Log-Einträge wurden gelöscht.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Leeren des Logs: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                btnLogLeeren.IsEnabled = true;
+                btnLogLeeren.Content = "Log leeren";
+            }
+        }
+
+        private void MSV3Log_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (dgMSV3Log.SelectedItem is MSV3LogEintrag log)
+            {
+                txtLogRequest.Text = FormatXml(log.CRequestXml) ?? "(kein Request)";
+                txtLogResponse.Text = FormatXml(log.CResponseXml) ?? "(keine Response)";
+                txtLogDetailHeader.Text = $"📋 {log.CAktion} - {log.ZeitpunktText} - {log.LieferantName}";
+            }
+            else
+            {
+                txtLogRequest.Text = "";
+                txtLogResponse.Text = "";
+                txtLogDetailHeader.Text = "Request / Response XML";
+            }
+        }
+
+        /// <summary>
+        /// Formatiert XML für bessere Lesbarkeit (einfache Einrückung)
+        /// </summary>
+        private static string? FormatXml(string? xml)
+        {
+            if (string.IsNullOrWhiteSpace(xml)) return null;
+
+            try
+            {
+                var doc = System.Xml.Linq.XDocument.Parse(xml);
+                return doc.ToString();
+            }
+            catch
+            {
+                // Falls kein valides XML, Original zurückgeben
+                return xml;
+            }
+        }
+
+        #endregion
+
         #region Helpers
 
         /// <summary>
