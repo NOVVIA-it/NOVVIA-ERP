@@ -1,0 +1,419 @@
+<Page x:Class="NovviaERP.WPF.Views.LieferantenPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Einkauf" Background="#f0f2f5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Einkauf / Lieferanten" FontSize="28" FontWeight="Bold"/>
+
+        <TabControl Grid.Row="1" Margin="0,15,0,0">
+
+            <!-- Lieferanten -->
+            <TabItem Header="📦 Lieferanten">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="350"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Toolbar -->
+                    <StackPanel Orientation="Horizontal" Grid.ColumnSpan="2">
+                        <TextBox x:Name="txtLieferantSuche" Width="250" VerticalContentAlignment="Center" Tag="Suche..."/>
+                        <Button Content="🔍 Suchen" Margin="10,0,0,0" Click="LieferantSuchen_Click"/>
+                        <CheckBox x:Name="chkNurMSV3" Content="Nur MSV3" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                        <Button Content="➕ Neuer Lieferant" Margin="20,0,0,0" Background="#0078D4" Foreground="White" Click="NeuerLieferant_Click"/>
+                    </StackPanel>
+
+                    <!-- Lieferanten-Grid -->
+                    <DataGrid x:Name="dgLieferanten" Grid.Row="1" Margin="0,10,10,0" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionChanged="Lieferant_SelectionChanged" MouseDoubleClick="Lieferant_DoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Nr" Binding="{Binding CLiefNr}" Width="80"/>
+                            <DataGridTextColumn Header="Firma" Binding="{Binding CFirma}" Width="*"/>
+                            <DataGridTextColumn Header="Ort" Binding="{Binding COrt}" Width="100"/>
+                            <DataGridTemplateColumn Header="MSV3" Width="55">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding NHatMSV3, Converter={StaticResource BoolToYesNo}}"
+                                                   Foreground="{Binding NHatMSV3, Converter={StaticResource BoolToColor}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Best." Binding="{Binding NOffeneBestellungen}" Width="50"/>
+                            <DataGridTextColumn Header="RE" Binding="{Binding NOffeneRechnungen}" Width="40"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Lieferant Details + MSV3 Konfiguration -->
+                    <Border x:Name="pnlLieferantDetail" Grid.Row="1" Grid.Column="1" Style="{StaticResource CardStyle}"
+                            Margin="0,10,0,0" Visibility="Collapsed">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock x:Name="txtLiefFirma" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="txtLiefNr" Foreground="Gray" Margin="0,5,0,0"/>
+                                <Separator Margin="0,10"/>
+
+                                <!-- Kontaktdaten -->
+                                <TextBlock Text="Kontakt" FontWeight="SemiBold" Margin="0,5,0,5"/>
+                                <TextBlock x:Name="txtLiefAdresse" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="txtLiefTel" Margin="0,3,0,0"/>
+                                <TextBlock x:Name="txtLiefEmail" Margin="0,3,0,0"/>
+                                <Separator Margin="0,10"/>
+
+                                <!-- MSV3 Konfiguration -->
+                                <StackPanel x:Name="pnlMSV3Config">
+                                    <TextBlock Text="MSV3 Konfiguration" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="URL:" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtLiefMSV3Url" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                        <TextBlock Text="Benutzer:" Grid.Row="1" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtLiefMSV3Benutzer" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                        <TextBlock Text="Passwort:" Grid.Row="2" VerticalAlignment="Center"/>
+                                        <PasswordBox x:Name="txtLiefMSV3Passwort" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                        <TextBlock Text="Kundennr:" Grid.Row="3" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtLiefMSV3Kundennr" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                        <TextBlock Text="Filiale:" Grid.Row="4" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtLiefMSV3Filiale" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Text="001"/>
+
+                                        <TextBlock Text="Version:" Grid.Row="5" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cboLiefMSV3Version" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" Width="80" HorizontalAlignment="Left">
+                                            <ComboBoxItem Content="1" Tag="1"/>
+                                            <ComboBoxItem Content="2" Tag="2" IsSelected="True"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Aktiv:" Grid.Row="6" VerticalAlignment="Center"/>
+                                        <CheckBox x:Name="chkLiefMSV3Aktiv" Grid.Row="6" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                        <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,10,0,0">
+                                            <Button Content="🔗 Testen" Click="LieferantMSV3Test_Click" Width="70"/>
+                                            <Button Content="💾 Speichern" Margin="10,0,0,0" Background="#0078D4" Foreground="White"
+                                                    Click="LieferantMSV3Speichern_Click" Width="90"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+
+                                <Separator Margin="0,15"/>
+
+                                <!-- Eigene Felder -->
+                                <StackPanel x:Name="pnlEigeneFelder">
+                                    <TextBlock Text="Eigene Felder" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                    <TextBlock x:Name="txtKeineEigenenFelder" Text="Keine eigenen Felder definiert."
+                                               Foreground="#888" FontSize="11"/>
+                                    <StackPanel x:Name="pnlEigeneFelderControls"/>
+                                    <Button Content="💾 Eigene Felder speichern" Click="EigeneFelderSpeichern_Click"
+                                            Margin="0,10,0,0" HorizontalAlignment="Left" Padding="10,5"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Bestellungen -->
+            <TabItem Header="📋 Bestellungen">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="200"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Toolbar -->
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox x:Name="cboBestellStatus" Width="150" SelectedIndex="0" SelectionChanged="BestellStatus_Changed">
+                            <ComboBoxItem Content="Alle Status"/>
+                            <ComboBoxItem Content="Offen" Tag="0"/>
+                            <ComboBoxItem Content="Freigegeben" Tag="5"/>
+                            <ComboBoxItem Content="In Bearbeitung" Tag="20"/>
+                            <ComboBoxItem Content="Teilgeliefert" Tag="30"/>
+                            <ComboBoxItem Content="Abgeschlossen" Tag="500"/>
+                        </ComboBox>
+                        <Button Content="🔄 Aktualisieren" Margin="10,0,0,0" Click="BestellungenLaden_Click"/>
+                        <Button Content="➕ Neue Bestellung" Margin="20,0,0,0" Background="#0078D4" Foreground="White" Click="NeueBestellung_Click"/>
+                        <Button x:Name="btnMSV3Bestand" Content="📊 MSV3 Bestand abfragen" Margin="10,0,0,0" Background="#5C2D91" Foreground="White"
+                                IsEnabled="False" Click="MSV3BestandAbfragen_Click"/>
+                        <Button x:Name="btnMSV3Senden" Content="📡 MSV3 Bestellen" Margin="10,0,0,0" Background="#107C10" Foreground="White"
+                                IsEnabled="False" Click="MSV3Senden_Click"/>
+                    </StackPanel>
+
+                    <!-- Bestellungen-Grid -->
+                    <DataGrid x:Name="dgBestellungen" Grid.Row="1" Margin="0,10,0,0" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionChanged="Bestellung_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Bestellnr" Binding="{Binding CEigeneBestellnummer}" Width="120"/>
+                            <DataGridTextColumn Header="Lieferant" Binding="{Binding LieferantName}" Width="*"/>
+                            <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=d}" Width="100"/>
+                            <DataGridTextColumn Header="Lieferdatum" Binding="{Binding DLieferdatum, StringFormat=d}" Width="100"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding NStatus, Converter={StaticResource StatusConverter}}" Width="100"/>
+                            <DataGridTextColumn Header="Positionen" Binding="{Binding AnzahlPositionen}" Width="80"/>
+                            <DataGridTextColumn Header="Summe" Binding="{Binding Summe, StringFormat=C}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Positionen -->
+                    <Border Grid.Row="2" Style="{StaticResource CardStyle}" Margin="0,10,0,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Positionen" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="txtMSV3Status" Margin="20,0,0,0" FontStyle="Italic" Foreground="Gray" VerticalAlignment="Center"/>
+                                <TextBlock Text="Min.MHD für alle:" Margin="30,0,5,0" VerticalAlignment="Center" Foreground="Gray"/>
+                                <DatePicker x:Name="dpGlobalMinMHD" Width="110" VerticalAlignment="Center"/>
+                                <Button Content="Übernehmen" Margin="5,0,0,0" Padding="8,2" Click="GlobalMinMHD_Click"/>
+                            </StackPanel>
+                            <DataGrid x:Name="dgBestellPositionen" Grid.Row="1" Margin="0,5,0,0" AutoGenerateColumns="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="PZN" Binding="{Binding CPZN}" Width="80" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="ArtNr" Binding="{Binding CArtNr}" Width="80" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Artikel" Binding="{Binding ArtikelName}" Width="*" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Menge" Binding="{Binding FMenge}" Width="55" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="EK" Binding="{Binding FEKNetto, StringFormat=C}" Width="65" IsReadOnly="True"/>
+                                    <DataGridTemplateColumn Header="Min.MHD" Width="100">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding MinMHD, StringFormat=d}" VerticalAlignment="Center"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <DatePicker SelectedDate="{Binding MinMHD, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Bestand" Binding="{Binding MSV3Bestand}" Width="60" IsReadOnly="True">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding MSV3Verfuegbar}" Value="True">
+                                                        <Setter Property="Foreground" Value="Green"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding MSV3Verfuegbar}" Value="False">
+                                                        <Setter Property="Foreground" Value="Red"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="MHD" Binding="{Binding MSV3MHDText}" Width="80" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding MSV3StatusText}" Width="85" IsReadOnly="True"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Einkaufsliste -->
+            <TabItem Header="🛒 Einkaufsliste">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Toolbar -->
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox x:Name="cboEinkaufLieferant" Width="250" DisplayMemberPath="CFirma" SelectedValuePath="KLieferant"
+                                  SelectionChanged="EinkaufLieferant_Changed"/>
+                        <Button Content="🔄 Aktualisieren" Margin="10,0,0,0" Click="EinkaufslisteLaden_Click"/>
+                    </StackPanel>
+
+                    <!-- Einkaufsliste-Grid -->
+                    <DataGrid x:Name="dgEinkaufsliste" Grid.Row="1" Margin="0,10,0,0" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Extended">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Binding="{Binding IsSelected, Mode=TwoWay}" Width="30"/>
+                            <DataGridTextColumn Header="ArtNr" Binding="{Binding CArtNr}" Width="100"/>
+                            <DataGridTextColumn Header="Artikel" Binding="{Binding ArtikelName}" Width="*"/>
+                            <DataGridTextColumn Header="PZN" Binding="{Binding CPZN}" Width="90"/>
+                            <DataGridTextColumn Header="Menge" Binding="{Binding FAnzahl}" Width="70"/>
+                            <DataGridTextColumn Header="Lieferant" Binding="{Binding LieferantName}" Width="150"/>
+                            <DataGridTextColumn Header="EK" Binding="{Binding FEKNettoLieferant, StringFormat=C}" Width="80"/>
+                            <DataGridTextColumn Header="AEP" Binding="{Binding FAEP, StringFormat=C}" Width="80"/>
+                            <DataGridTemplateColumn Header="Rx" Width="40">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="Rx" Foreground="Red" Visibility="{Binding NRezeptpflicht, Converter={StaticResource BoolToVis}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="MSV3" Width="50">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="✓" Foreground="Green" Visibility="{Binding NMSV3Verfuegbar, Converter={StaticResource BoolToVis}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Aktionen -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="✓ Alle auswählen" Click="AlleAuswaehlen_Click"/>
+                        <Button Content="📡 MSV3 Verfügbarkeit" Margin="10,0,0,0" Click="MSV3Verfuegbarkeit_Click"/>
+                        <Button Content="📋 Bestellung erstellen" Margin="10,0,0,0" Background="#0078D4" Foreground="White" Click="AusListeBestellen_Click"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Eingangsrechnungen -->
+            <TabItem Header="📄 Eingangsrechnungen">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Toolbar -->
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox x:Name="cboERStatus" Width="150" SelectedIndex="0" SelectionChanged="ERStatus_Changed">
+                            <ComboBoxItem Content="Alle"/>
+                            <ComboBoxItem Content="Offen" Tag="0"/>
+                            <ComboBoxItem Content="Geprüft"/>
+                            <ComboBoxItem Content="Freigegeben"/>
+                            <ComboBoxItem Content="Bezahlt"/>
+                        </ComboBox>
+                        <Button Content="🔄 Aktualisieren" Margin="10,0,0,0" Click="EingangsrechnungenLaden_Click"/>
+                        <Button x:Name="btnERPruefen" Content="✓ Prüfen" Margin="20,0,0,0" IsEnabled="False" Click="ERPruefen_Click"/>
+                        <Button x:Name="btnERFreigeben" Content="✓ Freigeben" Margin="10,0,0,0" Background="#107C10" Foreground="White"
+                                IsEnabled="False" Click="ERFreigeben_Click"/>
+                    </StackPanel>
+
+                    <!-- Eingangsrechnungen-Grid -->
+                    <DataGrid x:Name="dgEingangsrechnungen" Grid.Row="1" Margin="0,10,0,0" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionChanged="ER_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Rechnungsnr" Binding="{Binding CFremdbelegnummer}" Width="120"/>
+                            <DataGridTextColumn Header="Eigene Nr" Binding="{Binding CEigeneRechnungsnummer}" Width="100"/>
+                            <DataGridTextColumn Header="Lieferant" Binding="{Binding LieferantName}" Width="*"/>
+                            <DataGridTextColumn Header="Belegdatum" Binding="{Binding DBelegdatum, StringFormat=d}" Width="100"/>
+                            <DataGridTextColumn Header="Zahlungsziel" Binding="{Binding DZahlungsziel, StringFormat=d}" Width="100"/>
+                            <DataGridTextColumn Header="Skonto bis" Binding="{Binding DSkontoFrist, StringFormat=d}" Width="100"/>
+                            <DataGridTemplateColumn Header="Geprüft" Width="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="✓" Foreground="Green" Visibility="{Binding NGeprueft, Converter={StaticResource BoolToVis}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Freigeg." Width="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="✓" Foreground="Blue" Visibility="{Binding NFreigegeben, Converter={StaticResource BoolToVis}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- ABdata Import -->
+            <TabItem Header="💊 ABdata">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="200"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Import -->
+                    <Border Style="{StaticResource CardStyle}">
+                        <StackPanel>
+                            <TextBlock Text="ABdata Artikelstamm importieren" FontWeight="Bold" FontSize="14"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <TextBox x:Name="txtABdataDatei" Width="400" IsReadOnly="True"/>
+                                <Button Content="📂 Datei wählen" Margin="10,0,0,0" Click="ABdataDateiWaehlen_Click"/>
+                                <Button Content="▶ Import starten" Margin="10,0,0,0" Background="#107C10" Foreground="White" Click="ABdataImport_Click"/>
+                                <Button Content="🔗 Auto-Mapping" Margin="20,0,0,0" Click="ABdataAutoMapping_Click"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Suche -->
+                    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,10,0,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="ABdata-Artikel suchen:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtABdataSuche" Width="300" Margin="10,0,0,0"/>
+                                <Button Content="🔍 Suchen" Margin="10,0,0,0" Click="ABdataSuchen_Click"/>
+                            </StackPanel>
+                            <DataGrid x:Name="dgABdataArtikel" Grid.Row="1" Margin="0,10,0,0" AutoGenerateColumns="False" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="PZN" Binding="{Binding PZN}" Width="90"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                                    <DataGridTextColumn Header="Hersteller" Binding="{Binding Hersteller}" Width="150"/>
+                                    <DataGridTextColumn Header="AEP" Binding="{Binding AEP, StringFormat=C}" Width="80"/>
+                                    <DataGridTextColumn Header="AVP" Binding="{Binding AVP, StringFormat=C}" Width="80"/>
+                                    <DataGridTextColumn Header="Darreichung" Binding="{Binding Darreichungsform}" Width="100"/>
+                                    <DataGridTemplateColumn Header="Rx" Width="40">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="Rx" Foreground="Red" Visibility="{Binding Rezeptpflicht, Converter={StaticResource BoolToVis}}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </Border>
+
+                    <!-- Import-Historie -->
+                    <Border Grid.Row="2" Style="{StaticResource CardStyle}" Margin="0,10,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Import-Historie" FontWeight="Bold"/>
+                            <DataGrid x:Name="dgABdataImportLog" Height="140" Margin="0,5,0,0" AutoGenerateColumns="False" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Datum" Binding="{Binding ImportStart, StringFormat=g}" Width="150"/>
+                                    <DataGridTextColumn Header="Datei" Binding="{Binding Dateiname}" Width="200"/>
+                                    <DataGridTextColumn Header="Gesamt" Binding="{Binding AnzahlGesamt}" Width="80"/>
+                                    <DataGridTextColumn Header="Neu" Binding="{Binding AnzahlNeu}" Width="70"/>
+                                    <DataGridTextColumn Header="Aktualisiert" Binding="{Binding AnzahlAktualisiert}" Width="90"/>
+                                    <DataGridTextColumn Header="Fehler" Binding="{Binding AnzahlFehler}" Width="70"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+    </Grid>
+</Page>

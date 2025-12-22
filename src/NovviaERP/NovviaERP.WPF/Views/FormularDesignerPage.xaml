@@ -1,0 +1,243 @@
+<Page x:Class="NovviaERP.WPF.Views.FormularDesignerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Formular-Designer">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="280"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Linke Spalte: Formular-Liste & Elemente -->
+        <Grid Grid.Column="0" Background="#F5F5F5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="200"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Formulare -->
+            <TextBlock Text="Formulare" FontWeight="Bold" Margin="10"/>
+            <ListBox Grid.Row="1" x:Name="FormularListe" Margin="10,0" 
+                     SelectedItem="{Binding SelectedFormular}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Icon}" Width="25"/>
+                            <TextBlock Text="{Binding Name}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- Verfügbare Elemente -->
+            <TextBlock Grid.Row="2" Text="Elemente" FontWeight="Bold" Margin="10"/>
+            <ListBox Grid.Row="3" x:Name="ElementeListe" Margin="10,0,10,10"
+                     PreviewMouseLeftButtonDown="ElementeListe_PreviewMouseLeftButtonDown">
+                <ListBoxItem Tag="TextBlock">📝 Text</ListBoxItem>
+                <ListBoxItem Tag="TextBox">✏️ Eingabefeld</ListBoxItem>
+                <ListBoxItem Tag="Image">🖼️ Bild / Logo</ListBoxItem>
+                <ListBoxItem Tag="Barcode">⬛ Barcode</ListBoxItem>
+                <ListBoxItem Tag="QRCode">⬜ QR-Code</ListBoxItem>
+                <ListBoxItem Tag="Table">📊 Tabelle</ListBoxItem>
+                <ListBoxItem Tag="Line">➖ Linie</ListBoxItem>
+                <ListBoxItem Tag="Rectangle">▢ Rechteck</ListBoxItem>
+                <ListBoxItem Tag="DataField">🔗 Datenfeld</ListBoxItem>
+                <ListBoxItem Tag="PageNumber">📄 Seitennummer</ListBoxItem>
+                <ListBoxItem Tag="Date">📅 Datum</ListBoxItem>
+            </ListBox>
+        </Grid>
+
+        <!-- Mitte: Formular-Canvas -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Toolbar -->
+            <ToolBar Grid.Row="0">
+                <Button Content="📄 Neu" Command="{Binding NeuesFormularCommand}" ToolTip="Neues Formular"/>
+                <Button Content="💾 Speichern" Command="{Binding SpeichernCommand}" ToolTip="Speichern"/>
+                <Button Content="📂 Laden" Command="{Binding LadenCommand}" ToolTip="Laden"/>
+                <Separator/>
+                <Button Content="↩️" Command="{Binding UndoCommand}" ToolTip="Rückgängig"/>
+                <Button Content="↪️" Command="{Binding RedoCommand}" ToolTip="Wiederholen"/>
+                <Separator/>
+                <Button Content="🔍 Vorschau" Command="{Binding VorschauCommand}" ToolTip="Vorschau"/>
+                <Button Content="🖨️ Drucken" Command="{Binding DruckenCommand}" ToolTip="Test-Druck"/>
+                <Separator/>
+                <ComboBox Width="100" SelectedItem="{Binding Zoom}">
+                    <ComboBoxItem Content="50%"/>
+                    <ComboBoxItem Content="75%"/>
+                    <ComboBoxItem Content="100%" IsSelected="True"/>
+                    <ComboBoxItem Content="125%"/>
+                    <ComboBoxItem Content="150%"/>
+                </ComboBox>
+                <Separator/>
+                <TextBlock Text="Format:" VerticalAlignment="Center" Margin="5,0"/>
+                <ComboBox Width="120" SelectedItem="{Binding PapierFormat}">
+                    <ComboBoxItem Content="A4 Hochformat"/>
+                    <ComboBoxItem Content="A4 Querformat"/>
+                    <ComboBoxItem Content="A5 Hochformat"/>
+                    <ComboBoxItem Content="100x150 (Etikett)"/>
+                    <ComboBoxItem Content="62x29 (Klein)"/>
+                </ComboBox>
+            </ToolBar>
+
+            <!-- Designer Canvas -->
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Border BorderBrush="#CCC" BorderThickness="1" Margin="20" HorizontalAlignment="Center"
+                        Width="{Binding CanvasWidth}" Height="{Binding CanvasHeight}">
+                    <Canvas x:Name="DesignerCanvas" Background="White" 
+                            AllowDrop="True" Drop="DesignerCanvas_Drop"
+                            MouseLeftButtonDown="DesignerCanvas_MouseDown"
+                            MouseMove="DesignerCanvas_MouseMove"
+                            MouseLeftButtonUp="DesignerCanvas_MouseUp">
+                        <!-- Dynamisch gefüllte Elemente -->
+                    </Canvas>
+                </Border>
+            </ScrollViewer>
+
+            <!-- Statusleiste -->
+            <StatusBar Grid.Row="2">
+                <TextBlock Text="{Binding StatusText}"/>
+                <Separator/>
+                <TextBlock Text="{Binding MousePosition}"/>
+            </StatusBar>
+        </Grid>
+
+        <!-- Rechte Spalte: Eigenschaften -->
+        <Grid Grid.Column="2" Background="#FAFAFA">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="150"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="Eigenschaften" FontWeight="Bold" Margin="10"/>
+            
+            <ScrollViewer Grid.Row="1" Margin="10,0">
+                <StackPanel x:Name="EigenschaftenPanel">
+                    <!-- Element-Typ -->
+                    <TextBlock Text="Element" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding SelectedElement.ElementTyp}" Foreground="Gray"/>
+                    
+                    <!-- Position -->
+                    <TextBlock Text="Position" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="X:" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedElement.X, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                            <TextBlock Text="Y:" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedElement.Y, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Größe -->
+                    <TextBlock Text="Größe" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Breite:" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedElement.Width, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                            <TextBlock Text="Höhe:" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedElement.Height, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Text / Inhalt -->
+                    <TextBlock Text="Inhalt" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                    <TextBox Text="{Binding SelectedElement.Text, UpdateSourceTrigger=PropertyChanged}" 
+                             AcceptsReturn="True" Height="60" TextWrapping="Wrap"/>
+
+                    <!-- Datenfeld-Binding -->
+                    <TextBlock Text="Datenfeld" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                    <ComboBox ItemsSource="{Binding VerfuegbareFelder}" 
+                              SelectedItem="{Binding SelectedElement.DataBinding}"/>
+
+                    <!-- Schrift -->
+                    <TextBlock Text="Schrift" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                    <ComboBox ItemsSource="{Binding Schriftarten}" 
+                              SelectedItem="{Binding SelectedElement.FontFamily}"/>
+                    <Grid Margin="0,5,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding SelectedElement.FontSize}"/>
+                        <ToggleButton Grid.Column="1" Content="B" FontWeight="Bold" Width="30" 
+                                      IsChecked="{Binding SelectedElement.IsBold}"/>
+                        <ToggleButton Grid.Column="2" Content="I" FontStyle="Italic" Width="30"
+                                      IsChecked="{Binding SelectedElement.IsItalic}"/>
+                        <ToggleButton Grid.Column="3" Content="U" Width="30"
+                                      IsChecked="{Binding SelectedElement.IsUnderline}"/>
+                    </Grid>
+
+                    <!-- Farben -->
+                    <TextBlock Text="Farben" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Vordergrund:" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedElement.Foreground}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                            <TextBlock Text="Hintergrund:" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedElement.Background}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Rahmen -->
+                    <TextBlock Text="Rahmen" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Stärke:" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedElement.BorderThickness}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                            <TextBlock Text="Farbe:" FontSize="11"/>
+                            <TextBox Text="{Binding SelectedElement.BorderColor}"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Datenfelder -->
+            <TextBlock Grid.Row="2" Text="Verfügbare Datenfelder" FontWeight="Bold" Margin="10"/>
+            <ListBox Grid.Row="3" x:Name="DatenfelderListe" Margin="10,0,10,10"
+                     ItemsSource="{Binding VerfuegbareFelder}"
+                     PreviewMouseLeftButtonDown="DatenfelderListe_PreviewMouseLeftButtonDown">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" FontSize="11"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+    </Grid>
+</Page>

@@ -1,0 +1,104 @@
+<Window x:Class="NovviaERP.WPF.Views.AusgabeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Ausgabe" Height="550" Width="600"
+        WindowStartupLocation="CenterOwner" Background="#F5F5F5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock x:Name="txtTitel" Text="📄 Dokument ausgeben" FontSize="20" FontWeight="Light"/>
+            <TextBlock x:Name="txtDokumentInfo" Text="" Foreground="#666"/>
+        </StackPanel>
+        
+        <!-- Optionen -->
+        <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="20">
+            <StackPanel>
+                <!-- Vorschau -->
+                <CheckBox x:Name="chkVorschau" Content="👁️ Vorschau anzeigen" IsChecked="True" Margin="0,0,0,20" FontSize="14"/>
+                
+                <!-- Drucken -->
+                <Border BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="0,0,0,15" Margin="0,0,0,15">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <CheckBox x:Name="chkDrucken" Content="🖨️ Drucken" FontSize="14" VerticalAlignment="Top"/>
+                        <StackPanel Grid.Column="1" Margin="20,0,0,0">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Drucker:" Width="80" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="cbDrucker" Width="250"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Kopien:" Width="80" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtKopien" Width="60" Text="1"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                
+                <!-- Speichern -->
+                <Border BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="0,0,0,15" Margin="0,0,0,15">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <CheckBox x:Name="chkSpeichern" Content="💾 Speichern" FontSize="14" VerticalAlignment="Top"/>
+                        <StackPanel Grid.Column="1" Margin="20,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="txtSpeicherPfad" Width="280" IsReadOnly="True"/>
+                                <Button Content="..." Width="30" Margin="5,0,0,0" Click="BtnPfadWaehlen_Click"/>
+                            </StackPanel>
+                            <CheckBox x:Name="chkArchivieren" Content="Im System archivieren" IsChecked="True" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                
+                <!-- E-Mail -->
+                <Border Padding="0,0,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <CheckBox x:Name="chkEmail" Content="📧 Per E-Mail senden" FontSize="14" VerticalAlignment="Top"/>
+                        <StackPanel Grid.Column="1" Margin="20,0,0,0">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Empfänger:" Width="80" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtEmpfaenger" Width="280"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Vorlage:" Width="80" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="cbEmailVorlage" Width="280"/>
+                            </StackPanel>
+                            <CheckBox x:Name="chkEmailVorschau" Content="E-Mail vor dem Senden anzeigen" IsChecked="True"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </Border>
+        
+        <!-- Buttons -->
+        <Grid Grid.Row="2" Margin="0,20,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBlock x:Name="txtStatus" VerticalAlignment="Center" Foreground="#666"/>
+            
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="Abbrechen" Width="100" Height="35" IsCancel="True" Margin="0,0,10,0"/>
+                <Button Content="Ausführen" Width="120" Height="35" Click="BtnAusfuehren_Click"
+                        Style="{StaticResource PrimaryButton}"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

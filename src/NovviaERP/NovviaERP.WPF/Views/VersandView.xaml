@@ -1,0 +1,6 @@
+<UserControl x:Class="NovviaERP.WPF.Views.VersandView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="White">
+    <TextBlock Text="Versand (wird geladen...)" FontSize="24" Margin="50"/>
+</UserControl>

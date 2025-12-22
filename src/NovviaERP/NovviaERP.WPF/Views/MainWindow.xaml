@@ -1,0 +1,106 @@
+<Window x:Class="NovviaERP.WPF.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="NOVVIA ERP" Height="800" Width="1400"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized"
+        Background="#F0F0F0">
+
+    <Window.Resources>
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#CCC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#3E3E42"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Top Bar -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#0078D4" Padding="15,10">
+            <Grid>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="NOVVIA ERP" FontSize="20" FontWeight="Light" Foreground="White"/>
+                    <TextBlock Text=" | " Foreground="#80FFFFFF" FontSize="20" Margin="10,0"/>
+                    <TextBlock x:Name="txtMandant" Text="Mandant" FontSize="16" Foreground="White"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock x:Name="txtBenutzer" Text="Benutzer" Foreground="White"
+                               VerticalAlignment="Center" Margin="0,0,15,0"/>
+                    <Button Content="Abmelden" Background="Transparent" Foreground="White"
+                            BorderThickness="0" Padding="10,5" Cursor="Hand"
+                            Click="BtnAbmelden_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Sidebar Navigation -->
+        <Border Grid.Row="1" Grid.Column="0" Background="#2D2D30">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,10">
+                    <TextBlock Text="STAMMDATEN" Foreground="#888" FontSize="10" Margin="15,10,0,5"/>
+                    <Button Style="{StaticResource NavButton}" Content="Kunden" Click="NavKunden_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="Artikel" Click="NavArtikel_Click"/>
+
+                    <TextBlock Text="VERKAUF" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <Button Style="{StaticResource NavButton}" Content="Auftraege" Click="NavBestellungen_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="Rechnungen" Click="NavRechnungen_Click"/>
+
+                    <TextBlock Text="EINKAUF" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <Button Style="{StaticResource NavButton}" Content="Lieferanten" Click="NavLieferanten_Click"/>
+
+                    <TextBlock Text="LOGISTIK" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <Button Style="{StaticResource NavButton}" Content="Lager" Click="NavLager_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="Versand" Click="NavVersand_Click"/>
+
+                    <TextBlock Text="TOOLS" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <Button Style="{StaticResource NavButton}" Content="Import" Click="NavImport_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="Eigene Felder" Click="NavEigeneFelder_Click"/>
+
+                    <TextBlock Text="SYSTEM" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <Button Style="{StaticResource NavButton}" Content="Einstellungen" Click="NavEinstellungen_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="TEST" Foreground="Red" Click="NavTest_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Main Content -->
+        <ContentControl Grid.Row="1" Grid.Column="1" x:Name="contentMain"/>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Grid.ColumnSpan="2" Background="#1E1E1E" Padding="15,8">
+            <StackPanel Orientation="Horizontal">
+                <Ellipse Width="8" Height="8" Fill="LimeGreen" VerticalAlignment="Center"/>
+                <TextBlock Text="Verbunden" Foreground="#888" Margin="8,0,0,0" FontSize="11"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

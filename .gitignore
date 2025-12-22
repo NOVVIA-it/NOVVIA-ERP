@@ -1,0 +1,110 @@
+# .NET Build Output
+bin/
+obj/
+out/
+build-new/
+*.exe
+*.pdb
+*.dll
+*.zip
+
+# Root level build artifacts
+/NovviaERP.exe
+/NovviaERP.pdb
+/NovviaERP.zip
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.csproj.user
+
+# Rider
+.idea/
+
+# NuGet
+packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Test Results
+[Tt]est[Rr]esult*/
+*.trx
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+logs/
+
+# Secrets and credentials - WICHTIG!
+*.env
+.env.*
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json.example
+secrets.json
+credentials.json
+profile.json
+
+# Database files
+*.mdf
+*.ldf
+*.ndf
+
+# Publish output
+publish/
+PublishOutput/
+
+# Azure
+.azure/
+
+# Local settings
+local.settings.json
+
+# Coverage
+coverage/
+*.coverage
+*.coveragexml
+
+# Resharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Windows reserved names
+nul
+NUL
+con
+CON
+aux
+AUX
+prn
+PRN

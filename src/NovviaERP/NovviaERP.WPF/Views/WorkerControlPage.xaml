@@ -1,0 +1,95 @@
+<Page x:Class="NovviaERP.WPF.Views.WorkerControlPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Worker-Steuerung">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="200"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <StackPanel>
+                <TextBlock Text="⚙️ Hintergrund-Prozesse" FontSize="24" FontWeight="Light"/>
+                <TextBlock Text="Worker-Status und manuelle Ausführung" Foreground="#666"/>
+            </StackPanel>
+            
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="▶️ Alle starten" Width="120" Height="35" Margin="0,0,10,0" Click="BtnAlleStarten_Click"/>
+                <Button Content="⏹️ Alle stoppen" Width="120" Height="35" Click="BtnAlleStoppen_Click"/>
+            </StackPanel>
+        </Grid>
+        
+        <!-- Worker-Liste -->
+        <Border Grid.Row="1" Background="White" CornerRadius="8" Margin="0,0,0,15">
+            <DataGrid x:Name="dgWorker" AutoGenerateColumns="False" IsReadOnly="True"
+                      GridLinesVisibility="Horizontal" RowHeight="60" BorderThickness="0">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Status" Width="80">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Ellipse Width="20" Height="20" Fill="{Binding StatusFarbe}"
+                                         HorizontalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    
+                    <DataGridTextColumn Header="Worker" Binding="{Binding Name}" Width="200"/>
+                    <DataGridTextColumn Header="Beschreibung" Binding="{Binding Beschreibung}" Width="*"/>
+                    <DataGridTextColumn Header="Letzter Lauf" Binding="{Binding LetzterLaufText}" Width="150"/>
+                    <DataGridTextColumn Header="Dauer" Binding="{Binding LaufzeitText}" Width="80"/>
+                    <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding Aktiv}" Width="60"/>
+                    
+                    <DataGridTemplateColumn Header="Aktionen" Width="180">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="▶️" Width="35" ToolTip="Jetzt ausführen" Margin="2"
+                                            Click="BtnWorkerAusfuehren_Click"/>
+                                    <Button Content="⏸️" Width="35" ToolTip="Pausieren" Margin="2"
+                                            Click="BtnWorkerPausieren_Click"/>
+                                    <Button Content="⚙️" Width="35" ToolTip="Konfigurieren" Margin="2"
+                                            Click="BtnWorkerKonfig_Click"/>
+                                    <Button Content="📋" Width="35" ToolTip="Log anzeigen" Margin="2"
+                                            Click="BtnWorkerLog_Click"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+        
+        <!-- Live-Log -->
+        <Border Grid.Row="2" Background="White" CornerRadius="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <Border Background="#F5F5F5" Padding="10" CornerRadius="8,8,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📝 Live-Log" FontWeight="SemiBold"/>
+                        <Button Content="Löschen" Width="60" Height="22" Margin="20,0,0,0" Click="BtnLogLoeschen_Click"/>
+                    </StackPanel>
+                </Border>
+                
+                <ListBox Grid.Row="1" x:Name="lstLog" BorderThickness="0" FontFamily="Consolas" FontSize="11">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" Foreground="{Binding Converter={StaticResource LogLevelConverter}}"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

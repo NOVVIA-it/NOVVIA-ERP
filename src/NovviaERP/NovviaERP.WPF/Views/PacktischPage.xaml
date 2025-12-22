@@ -1,0 +1,29 @@
+<Page x:Class="NovviaERP.WPF.Views.PacktischPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Packtisch" Background="#f0f2f5">
+    <Grid Margin="20"><Grid.ColumnDefinitions><ColumnDefinition Width="400"/><ColumnDefinition/></Grid.ColumnDefinitions>
+        <Border Style="{StaticResource CardStyle}"><StackPanel>
+            <TextBlock Text="Scanner-Eingabe" Style="{StaticResource HeaderText}"/>
+            <TextBox x:Name="txtScan" Height="50" FontSize="20" KeyDown="Scan_KeyDown"/>
+            <TextBlock x:Name="txtStatus" Margin="0,10" FontSize="14" Foreground="Gray"/>
+            <TextBlock Text="Aktuelle Bestellung:" FontWeight="Bold" Margin="0,20,0,5"/>
+            <TextBlock x:Name="txtBestellung" FontSize="18"/>
+            <DataGrid x:Name="dgPositionen" Height="300" Margin="0,10" AutoGenerateColumns="False" IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Art.Nr." Binding="{Binding ArtNr}" Width="100"/>
+                    <DataGridTextColumn Header="Artikel" Binding="{Binding Name}" Width="*"/>
+                    <DataGridTextColumn Header="Soll" Binding="{Binding Menge}" Width="50"/>
+                    <DataGridTextColumn Header="Ist" Binding="{Binding Geliefert}" Width="50"/>
+                </DataGrid.Columns>
+            </DataGrid>
+            <Button Content="✓ Abschließen &amp; Versenden" Height="40" Background="#27ae60" Foreground="White" Click="Abschliessen_Click"/>
+        </StackPanel></Border>
+        <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="20,0,0,0"><StackPanel>
+            <TextBlock Text="Offene Bestellungen" Style="{StaticResource HeaderText}"/>
+            <DataGrid x:Name="dgOffene" AutoGenerateColumns="False" IsReadOnly="True" MouseDoubleClick="Bestellung_Click">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Bestellnr." Binding="{Binding BestellNr}" Width="120"/>
+                    <DataGridTextColumn Header="Kunde" Binding="{Binding Kunde.Nachname}" Width="*"/>
+                    <DataGridTextColumn Header="Positionen" Binding="{Binding Positionen.Count}" Width="80"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </StackPanel></Border></Grid>
+</Page>

@@ -1,0 +1,107 @@
+<Page x:Class="NovviaERP.WPF.Views.EigeneFelderPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Eigene Felder" Background="#f5f5f5">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="20,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Eigene Felder verwalten" FontSize="24" FontWeight="SemiBold"/>
+                    <TextBlock Text="Benutzerdefinierte Felder fuer Kunden, Artikel, Lieferanten usw." FontSize="12" Foreground="#666"/>
+                </StackPanel>
+                <Button Grid.Column="1" Content="+ Neues Feld" Click="NeuesFeld_Click"
+                        Background="#0078D4" Foreground="White" Padding="15,8" BorderThickness="0"/>
+            </Grid>
+        </Border>
+
+        <!-- Content -->
+        <Grid Grid.Row="1" Margin="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Bereich-Auswahl -->
+            <Border Background="White" BorderBrush="#ddd" BorderThickness="1" CornerRadius="4">
+                <StackPanel>
+                    <Border Background="#f8f8f8" BorderBrush="#ddd" BorderThickness="0,0,0,1">
+                        <TextBlock Text="Bereich" FontWeight="SemiBold" Padding="15,12"/>
+                    </Border>
+                    <ListBox x:Name="lstBereiche" SelectionChanged="Bereich_Changed" BorderThickness="0" Padding="5">
+                        <ListBoxItem Content="Kunde" Tag="Kunde"/>
+                        <ListBoxItem Content="Artikel" Tag="Artikel"/>
+                        <ListBoxItem Content="Lieferant" Tag="Lieferant"/>
+                        <ListBoxItem Content="Auftrag" Tag="Auftrag"/>
+                        <ListBoxItem Content="Rechnung" Tag="Rechnung"/>
+                        <ListBoxItem Content="Lieferschein" Tag="Lieferschein"/>
+                        <ListBoxItem Content="Einkaufsbestellung" Tag="Einkaufsbestellung"/>
+                        <ListBoxItem Content="Kategorie" Tag="Kategorie"/>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+
+            <!-- Felder-Liste -->
+            <Border Grid.Column="2" Background="White" BorderBrush="#ddd" BorderThickness="1" CornerRadius="4">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Background="#f8f8f8" Padding="15,12" BorderBrush="#ddd" BorderThickness="0,0,0,1">
+                        <TextBlock x:Name="txtBereichTitel" Text="Felder" FontWeight="SemiBold"/>
+                    </Border>
+
+                    <DataGrid x:Name="dgFelder" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" BorderThickness="0"
+                              RowBackground="White" AlternatingRowBackground="#fafafa"
+                              SelectionChanged="Feld_SelectionChanged" MouseDoubleClick="Feld_DoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="150"/>
+                            <DataGridTextColumn Header="Interner Name" Binding="{Binding InternerName}" Width="120"/>
+                            <DataGridTextColumn Header="Typ" Binding="{Binding Typ}" Width="80"/>
+                            <DataGridTemplateColumn Header="Pflicht" Width="60">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="Ja" Foreground="Red" Visibility="{Binding IstPflichtfeld, Converter={StaticResource BoolToVis}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Standardwert" Binding="{Binding Standardwert}" Width="100"/>
+                            <DataGridTextColumn Header="Hinweis" Binding="{Binding Hinweis}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="White" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="20,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="txtStatus" Text="Bereit" Foreground="#666" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="btnBearbeiten" Content="Bearbeiten" Click="Bearbeiten_Click"
+                            Padding="12,8" Margin="0,0,10,0" IsEnabled="False"/>
+                    <Button x:Name="btnLoeschen" Content="Loeschen" Click="Loeschen_Click"
+                            Padding="12,8" IsEnabled="False" Background="#dc3545" Foreground="White" BorderThickness="0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Page>

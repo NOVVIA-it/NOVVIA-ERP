@@ -1,0 +1,337 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Build Commands
+
+```powershell
+# Restore dependencies
+dotnet restore
+
+# Build solution
+dotnet build
+
+# Build release
+dotnet build -c Release
+
+# Run WPF client (development)
+dotnet run --project NovviaERP.WPF
+
+# Run Worker service
+dotnet run --project NovviaERP.Worker
+
+# Run API
+dotnet run --project NovviaERP.API
+
+# Full build & deploy (requires Admin)
+.\Scripts\Build-And-Deploy.ps1
+
+# Build only (no installation)
+.\Scripts\Build-And-Deploy.ps1 -NurBuild
+```
+
+## Architecture
+
+### Solution Structure
+- **NovviaERP.Core** - Business logic layer (shared library)
+  - `Data/JtlDbContext.cs` - Central data access with Dapper/raw SQL
+  - `Services/` - Business services (AngebotService, AusgabeService, etc.)
+  - `Entities/` - Data models (JtlEntities for JTL-Wawi tables, NovviaEntities for custom)
+- **NovviaERP.WPF** - Windows desktop client (code-behind pattern)
+  - `Views/` - XAML pages and dialogs with code-behind
+  - `App.xaml.cs` - DI container setup, session management
+- **NovviaERP.Worker** - Background services (Windows Service)
+  - Workers: ZahlungsabgleichWorker, WooCommerceSyncWorker, MahnlaufWorker, WorkflowQueueWorker
+- **NovviaERP.API** - REST API with JWT authentication and Swagger
+- **Scripts/** - PowerShell deployment and SQL setup scripts
+
+### Data Access Pattern
+- `JtlDbContext` uses Dapper for all database operations
+- Raw SQL queries (no Entity Framework)
+- Connection string set at runtime after login
+- Multi-tenant: Connection string includes mandant database (Mandant_1, Mandant_2, etc.)
+
+### JTL-Wawi Compatibility
+- READ-ONLY access to JTL tables (tArtikel, tKunde, tAuftrag, etc.)
+- Custom tables use `NOVVIA.` schema prefix
+- SQL scripts in `Scripts/Setup-NovviaTables.sql`
+
+### Dependency Injection
+- WPF: Configured in `App.xaml.cs` via `IServiceCollection`
+- Worker: Standard .NET Host builder pattern
+- `JtlDbContext` registered as singleton with runtime connection string
+
+## Key Technologies
+- .NET 8.0, WPF, Dapper, MS SQL Server
+- QuestPDF (document generation)
+- Serilog (logging to file)
+- BCrypt.Net (password hashing)
+- CsvHelper (import/export)
+
+## Database
+- Server configured at runtime via profile selection
+- Mandanten: Mandant_1 (NOVVIA), Mandant_2 (NOVVIA_PHARM), Mandant_3, Mandant_5 (Test)
+- User profiles stored in `%APPDATA%\NovviaERP\profile.json`
+
+## German Language
+The codebase uses German naming conventions:
+- Auftrag = Order, Kunde = Customer, Artikel = Article/Product
+- Angebot = Quote, Rechnung = Invoice, Lager = Warehouse
+- Bestellung = Purchase Order, Versand = Shipping
+
+---
+
+## Detaillierte Projekt-Dokumentation
+
+### Core Services (NovviaERP.Core/Services/)
+
+| Service | Beschreibung | Wichtige Methoden |
+|---------|-------------|-------------------|
+| `AngebotService` | Angebote CRUD, Angebot→Auftrag | `CreateAngebotAsync`, `AngebotToAuftragAsync` |
+| `AusgabeService` | Dokument-Ausgabe (Druck, E-Mail, PDF, Archiv) | `DruckenAsync`, `EmailSendenAsync`, `PdfSpeichernAsync` |
+| `WooCommerceService` | Shop-Sync (Produkte, Bestellungen) | `SyncProductsAsync`, `ImportOrdersAsync` |
+| `ShippingService` | Labels DHL, DPD, GLS, UPS | `CreateShipmentAsync`, `GetTrackingUrl` |
+| `MSV3Service` | Pharma-Großhandel (SOAP) | `CheckVerfuegbarkeitAsync`, `SendBestellungAsync` |
+| `EinkaufService` | Lieferantenbestellungen | `GetEinkaufslisteAsync`, `CreateBestellungAsync` |
+| `ABdataService` | Pharma-Stammdaten Import | `ImportArtikelstammAsync`, `AutoMappingAsync` |
+| `PaymentService` | Zahlungsanbieter | `ProcessPaymentAsync` |
+| `WorkflowService` | Workflow-Engine | `ExecuteWorkflowAsync` |
+| `EigeneFelderService` | Custom Fields | `GetFelderAsync`, `SetWertAsync` |
+
+### Entities (NovviaERP.Core/Entities/)
+
+#### JTL-Wawi Tabellen (Read-Only)
+```
+tArtikel, tKunde, tBestellung, tBestellPos, tRechnung, tLieferschein
+tAngebot, tFirma, tBenutzer, tShop, tWarenLager, tLieferant
+```
+
+#### NOVVIA Custom Tabellen (Schema: `NOVVIA.`)
+```
+NOVVIA.MSV3Lieferant      - MSV3-Konfiguration pro Lieferant
+NOVVIA.MSV3Bestellung     - MSV3-Bestellungen
+NOVVIA.MSV3BestellungPos  - MSV3-Bestellpositionen
+NOVVIA.ABdataArtikel      - Pharma-Stammdaten
+NOVVIA.ABdataArtikelMapping - PZN↔Artikel Zuordnung
+NOVVIA.ImportVorlage      - Import-Templates
+NOVVIA.ImportLog          - Import-Historie
+NOVVIA.WorkerStatus       - Worker-Status
+NOVVIA.AusgabeLog         - Ausgabe-Historie
+NOVVIA.DokumentArchiv     - Archivierte Dokumente
+```
+
+#### Business Entities
+- **Artikel**: Beschreibungen, Merkmale, Preise, Staffelpreise, Bilder, Kategorien, Lieferanten, Stücklisten
+- **Kunde**: KundeAdresse, Bestellungen
+- **Bestellung**: BestellPosition, BestellAdresse, Rechnungen, Lieferscheine
+- **Rechnung/Gutschrift**: RechnungsPosition, Zahlungseingang
+- **Einkauf**: EinkaufsBestellung, EinkaufsBestellPosition, Wareneingang
+- **RMA/Retouren**: RMA, RMAPosition, ArtikelZustand
+
+### MSV3-Anbindung (Pharma-Großhandel) - IN ARBEIT
+
+**Status**: Code implementiert, GEHE blockiert durch Incapsula WAF (HTTP 405)
+
+**Letzter Stand (19.12.2024):**
+- Incapsula WAF blockiert Requests mit "HTTP method POST is not supported"
+- Credentials funktionieren in Vario 8 (gleicher PC, gleiche IP)
+- User-Agent Header hinzugefügt um WAF zu umgehen
+- Versions-ComboBox in UI hinzugefügt (war vorher hardcoded auf 1, GEHE braucht 2)
+
+**Dateien:**
+- `Services/MSV3Service.cs` - SOAP-Kommunikation (V1+V2)
+- `Views/LieferantenPage.xaml` - UI mit Versions-ComboBox
+- `Views/LieferantenPage.xaml.cs` - Code-Behind mit Debug-Output
+- `Entities/BestellungMSV3ViewEntities.cs` - View-Entities
+- `Scripts/SP-MSV3LieferantSpeichern.sql` - DB Stored Procedure
+
+**Code-Änderungen Session 19.12.2024:**
+1. `MSV3Service.cs`:
+   - User-Agent Header: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) NovviaERP/1.0 MSV3Client`
+   - Accept Header: `application/soap+xml, text/xml, */*`
+   - Bessere Fehler-Rückmeldung mit URL die versucht wurde
+
+2. `LieferantenPage.xaml`:
+   - Versions-ComboBox hinzugefügt (Row 5)
+   - Default: Version 2 (für GEHE)
+
+3. `LieferantenPage.xaml.cs`:
+   - Version aus ComboBox lesen statt hardcoded
+   - Version beim Laden setzen (aus DB oder Default 2)
+
+**Unterstützte Operationen:**
+- `VerbindungTestenAsync` - Verbindungstest
+- `CheckVerfuegbarkeitAsync` - Verfügbarkeitsabfrage
+- `SendBestellungAsync` - Bestellung senden (mit MinMHD)
+- Automatische URL-Pfad-Erkennung (/msv3, /msv3/v2.0/ActionName)
+- SOAP 1.1 + 1.2 Support
+- Preemptive HTTP Basic Auth + SOAP Body Credentials
+
+**Bekannte Großhändler-URLs:**
+```
+GEHE:      https://www.gehe-auftragsservice.de/msv3  (v2.0, Incapsula WAF!)
+Phoenix:   https://msv3.phoenixgroup.eu/msv3         (v1.0 + v2.0)
+Sanacorp:  https://msv3.sanacorp.de/msv3             (v1.0 + v2.0)
+Noweda:    https://msv3.noweda.de/msv3
+Alliance:  https://webservice.alliance-healthcare.de/web/msv3
+```
+
+**MSV3 v2.0 URL-Struktur:**
+```
+Basis:     /msv3
+Endpoints: /msv3/v2.0/VerbindungTesten
+           /msv3/v2.0/VerfuegbarkeitAnfragen
+           /msv3/v2.0/Bestellen
+```
+
+**SOAP-Format (MSV3 v2):**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:msv="urn:msv3:v2">
+   <soap:Body>
+      <msv:VerbindungTesten>
+         <msv:Clientsystem>NovviaERP</msv:Clientsystem>
+         <msv:Benutzerkennung>BENUTZERNAME</msv:Benutzerkennung>
+         <msv:Kennwort>PASSWORT</msv:Kennwort>
+      </msv:VerbindungTesten>
+   </soap:Body>
+</soap:Envelope>
+```
+
+**Test-Credentials GEHE (aus Vario 8):**
+```
+URL:      https://www.gehe-auftragsservice.de/msv3
+Benutzer: 152776
+Passwort: ajrjwo30
+Version:  2
+```
+
+**Incapsula WAF Problem (GEHE):**
+- GEHE verwendet Incapsula/Imperva WAF
+- Blockiert Requests die nicht "legitim" aussehen
+- Response enthält: `<script src="/_Incapsula_Resource?...`
+- Mögliche Lösungen:
+  1. User-Agent Header (bereits implementiert)
+  2. Fiddler Traffic von Vario 8 capturen um exakte Headers zu sehen
+  3. Bei GEHE nachfragen ob IP freigeschaltet werden muss
+  4. Anderen Großhändler (Phoenix, Sanacorp) zuerst testen
+
+**Nächste Schritte:**
+1. **WICHTIG: Alle NovviaERP Prozesse beenden** vor dem Build:
+   ```powershell
+   Get-Process | Where-Object { $_.ProcessName -like "*Novvia*" } | Stop-Process -Force
+   ```
+2. Build ausführen:
+   ```powershell
+   cd C:\NovviaERP\src\NovviaERP\NovviaERP.WPF
+   dotnet build
+   ```
+3. Debug-Version starten: `bin\Debug\net8.0-windows\NovviaERP.WPF.exe`
+4. MSV3-Test mit Version 2 durchführen
+5. Falls immer noch 405: Mit Fiddler Vario 8 Traffic capturen
+
+**Häufiger Build-Fehler:**
+```
+error MSB3021: Access to the path '...\NovviaERP.Core.dll' is denied.
+```
+→ Lösung: Task-Manager öffnen, alle `NovviaERP.WPF.exe` beenden
+
+**UI:** `Views/LieferantenPage.xaml` → Tab "Lieferanten" → MSV3-Konfiguration
+- URL, Benutzer, Passwort, Kundennr, Filiale, **Version**, Aktiv
+
+### WPF Views (NovviaERP.WPF/Views/)
+
+| View | Beschreibung |
+|------|-------------|
+| `DashboardPage` | Startseite mit KPIs |
+| `KundenPage` | Kundenverwaltung |
+| `ArtikelPage` | Artikelverwaltung |
+| `BestellungenPage` | Kundenbestellungen |
+| `RechnungenPage` | Rechnungsverwaltung |
+| `LagerPage` | Lagerverwaltung |
+| `VersandPage` | Versand + Label-Druck |
+| `MahnungenPage` | Mahnwesen |
+| `RetourenPage` | RMA/Retouren |
+| `LieferantenPage` | Lieferanten + MSV3 + Einkauf |
+| `WooCommercePage` | Shop-Synchronisation |
+| `EMailVorlagenPage` | E-Mail Templates |
+| `EinstellungenPage` | Systemeinstellungen |
+| `BenutzerPage` | Benutzerverwaltung |
+| `FormularDesignerPage` | Formular-Editor |
+
+### Worker Services (NovviaERP.Worker/)
+
+| Worker | Intervall | Beschreibung |
+|--------|-----------|-------------|
+| `ZahlungsabgleichWorker` | 15 Min | Bank-Zahlungen abgleichen |
+| `WooCommerceSyncWorker` | 5 Min | Shop-Bestellungen importieren |
+| `MahnlaufWorker` | 1x täglich | Mahnungen erstellen |
+| `WorkflowQueueWorker` | 1 Min | Workflow-Jobs verarbeiten |
+
+### Wichtige Dateipfade
+
+```
+src/NovviaERP/
+├── NovviaERP.Core/
+│   ├── Data/JtlDbContext.cs          # Zentraler DB-Zugriff
+│   ├── Services/                      # Business-Logik
+│   └── Entities/                      # Datenmodelle
+├── NovviaERP.WPF/
+│   ├── App.xaml.cs                   # DI-Setup, Session
+│   └── Views/                        # UI-Pages
+├── NovviaERP.Worker/
+│   └── Program.cs                    # Worker-Host
+├── NovviaERP.API/
+│   └── Controllers/                  # REST-Endpoints
+└── Scripts/
+    ├── Setup-NovviaTables.sql        # Basis-Tabellen
+    ├── Setup-NOVVIA-Mandant2.sql     # Pharma-spezifisch
+    └── SP-*.sql                      # Stored Procedures
+```
+
+### Offene Aufgaben / Known Issues
+
+1. **MSV3-Anbindung GEHE** - HTTP 405 durch Incapsula WAF
+   - Code ist fertig (User-Agent, Version 2, SOAP 1.1+1.2)
+   - GEHE blockiert Requests - Incapsula WAF
+   - Credentials funktionieren in Vario 8 (gleiche IP)
+   - **TODO:** Fiddler HTTPS aktivieren, Vario 8 Traffic capturen
+   - **Alternative:** Phoenix oder Sanacorp testen (ohne WAF?)
+
+2. **App-Crash bei "Bestellung"** - Muss noch untersucht werden
+   - Tritt auf wenn man auf Bestellung klickt
+   - Fehlermeldung fehlt noch
+
+3. **MSVE** (Elektronischer Lieferschein) - Noch nicht implementiert
+
+4. **Automatische Nachbestellung** - Workflow für Mindestbestand → Bestellung
+
+### Letzte Code-Änderungen (19.12.2024)
+
+**MSV3Service.cs:**
+- User-Agent Header hinzugefügt: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) NovviaERP/1.0 MSV3Client`
+- Accept Header hinzugefügt: `application/soap+xml, text/xml, */*`
+
+**LieferantenPage.xaml:**
+- Versions-ComboBox hinzugefügt (Row 5, zwischen Filiale und Aktiv)
+- Default: Version 2 (für GEHE)
+- ComboBox Name: `cboLiefMSV3Version`
+
+**LieferantenPage.xaml.cs:**
+- `UpdateLiefMSV3Config()`: Version aus ComboBox lesen statt hardcoded 1
+- `LadeLieferantMSV3ConfigAsync()`: Version beim Laden setzen (aus DB oder Default 2)
+
+### Nach PC-Neustart
+
+1. Build ausführen:
+   ```powershell
+   cd C:\NovviaERP\src\NovviaERP\NovviaERP.WPF
+   dotnet build
+   ```
+
+2. Debug-Version starten:
+   ```
+   C:\NovviaERP\src\NovviaERP\NovviaERP.WPF\bin\Debug\net8.0-windows\NovviaERP.WPF.exe
+   ```
+
+3. MSV3 testen (Lieferanten → GEHE → Version 2 → Testen)

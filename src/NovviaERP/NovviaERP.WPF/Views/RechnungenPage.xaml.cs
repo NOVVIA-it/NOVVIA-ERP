@@ -1,0 +1,4 @@
+using System.Linq;using System.Windows;using System.Windows.Controls;using NovviaERP.Core.Entities;using NovviaERP.Core.Services;
+namespace NovviaERP.WPF.Views{public partial class RechnungenPage:Page{public RechnungenPage(){InitializeComponent();Loaded+=async(s,e)=>dgRechnungen.ItemsSource=await App.Db.GetOffeneRechnungenAsync();}
+private async void Suchen_Click(object s,RoutedEventArgs e)=>dgRechnungen.ItemsSource=(await App.Db.GetOffeneRechnungenAsync()).Where(r=>r.RechnungsNr.Contains(txtSuche.Text));
+private async void PDF_Click(object s,RoutedEventArgs e){if(dgRechnungen.SelectedItem is Rechnung r){var kunde=await App.Db.GetKundeByIdAsync(r.KundeId,false);var firma=new Firma{Name="NOVVIA GmbH"};var svc=new ReportService(firma);var pdf=svc.GenerateRechnungPdf(r,kunde!,r.Positionen);System.IO.File.WriteAllBytes($"Rechnung_{r.RechnungsNr}.pdf",pdf);MessageBox.Show("PDF erstellt!");}}}}
