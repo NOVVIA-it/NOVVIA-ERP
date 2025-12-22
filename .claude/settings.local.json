@@ -46,7 +46,17 @@
       "Bash(git init:*)",
       "Bash(git add:*)",
       "Bash(git reset:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit - NovviaERP\n\nWPF ERP-System mit JTL-Wawi Integration:\n- NovviaERP.Core: Business Logic, Services, Entities\n- NovviaERP.WPF: Windows Desktop Client\n- NovviaERP.Worker: Background Services\n- NovviaERP.API: REST API\n\nFeatures:\n- MSV3 Pharma-Grosshandel Anbindung \\(GEHE, Phoenix, Sanacorp\\)\n- WooCommerce Shop-Sync\n- Versand-Labels \\(DHL, DPD, GLS, UPS\\)\n- Dokumenten-Ausgabe \\(Druck, E-Mail, PDF\\)\n- Mahnwesen, RMA/Retouren\n- ABdata Pharma-Stammdaten\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(ls:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell -Command \"Get-Process NovviaERP* | Stop-Process -Force\")",
+      "Bash(findstr:*)",
+      "Bash(del /Q \"c:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\bin\\\\Debug\\\\net8.0-windows\\\\NovviaERP.Core.dll\")",
+      "Bash(del /Q \"c:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.Core\\\\bin\\\\Debug\\\\net8.0\\\\NovviaERP.Core.dll\")",
+      "Bash(dotnet clean:*)",
+      "Bash(tasklist:*)"
     ]
   }
 }

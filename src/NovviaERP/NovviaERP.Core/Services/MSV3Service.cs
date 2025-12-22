@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Security;
 using System.Text;
@@ -23,17 +24,77 @@ namespace NovviaERP.Core.Services
         private readonly HttpClient _http;
         private static readonly ILogger _log = Log.ForContext<MSV3Service>();
 
+        private readonly HttpClientHandler _handler;
+        private readonly CookieContainer _cookies;
+
         public MSV3Service(string connectionString)
         {
             _connectionString = connectionString;
-            var handler = new HttpClientHandler();
-            _http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) };
-            // User-Agent setzen (wichtig für WAF/Incapsula)
-            _http.DefaultRequestHeaders.UserAgent.ParseAdd("NovviaERP/1.0 MSV3Client");
-            _http.DefaultRequestHeaders.Accept.ParseAdd("application/soap+xml, application/xml, text/xml");
+
+            // Cookie-Container für Incapsula WAF - WICHTIG!
+            _cookies = new CookieContainer();
+            _handler = new HttpClientHandler
+            {
+                CookieContainer = _cookies,
+                UseCookies = true,
+                AllowAutoRedirect = true
+            };
+
+            _http = new HttpClient(_handler) { Timeout = TimeSpan.FromSeconds(60) };
         }
 
         public void Dispose() => _http.Dispose();
+
+        #region Incapsula Cookie Warmup
+
+        /// <summary>
+        /// Holt Incapsula-Cookies durch einen initialen GET-Request.
+        /// GEHE's WAF (Incapsula/Imperva) setzt Cookies die für POST-Requests benötigt werden.
+        /// </summary>
+        private async Task WarmupIncapsulaCookiesAsync(string baseUrl)
+        {
+            try
+            {
+                var uri = new Uri(baseUrl);
+                var cookieCount = _cookies.GetCookies(uri).Count;
+
+                // Nur wenn noch keine Cookies für diese Domain vorhanden
+                if (cookieCount == 0)
+                {
+                    _log.Debug("Incapsula Cookie-Warmup für {Host}...", uri.Host);
+
+                    var request = new HttpRequestMessage(HttpMethod.Get, baseUrl);
+                    request.Headers.TryAddWithoutValidation("User-Agent", "Embarcadero URI Client/1.0");
+                    request.Headers.Connection.Add("Keep-Alive");
+
+                    var response = await _http.SendAsync(request);
+                    var body = await response.Content.ReadAsStringAsync();
+
+                    // Cookies zählen nach Request
+                    var newCookieCount = _cookies.GetCookies(uri).Count;
+                    _log.Information("Incapsula Warmup: {Status}, {CookieCount} Cookies erhalten",
+                        response.StatusCode, newCookieCount);
+
+                    // Cookies loggen
+                    foreach (Cookie cookie in _cookies.GetCookies(uri))
+                    {
+                        _log.Debug("  Cookie: {Name}={Value}", cookie.Name,
+                            cookie.Value.Length > 20 ? cookie.Value.Substring(0, 20) + "..." : cookie.Value);
+                    }
+                }
+                else
+                {
+                    _log.Debug("Incapsula Cookies bereits vorhanden: {Count}", cookieCount);
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Warning("Incapsula Cookie-Warmup fehlgeschlagen: {Error}", ex.Message);
+                // Nicht fatal - weiter versuchen
+            }
+        }
+
+        #endregion
 
         #region Lieferanten-Konfiguration
 
@@ -125,6 +186,19 @@ namespace NovviaERP.Core.Services
 
         #endregion
 
+        #region Großhändler-Erkennung
+
+        /// <summary>
+        /// Prüft ob es sich um GEHE handelt (benötigt spezielle Behandlung - anderes XML-Format)
+        /// </summary>
+        private bool IsGeheGrosshandel(MSV3Lieferant config)
+        {
+            if (string.IsNullOrEmpty(config.MSV3Url)) return false;
+            return config.MSV3Url.Contains("gehe", StringComparison.OrdinalIgnoreCase);
+        }
+
+        #endregion
+
         #region Verfügbarkeitsabfrage
 
         /// <summary>
@@ -142,7 +216,8 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
-        /// Verfügbarkeit bei Großhandel prüfen (MSV3 VerfuegbarkeitAbfragen) - Vollständige Artikelliste
+        /// Verfügbarkeit bei Großhandel prüfen - Vollständige Artikelliste
+        /// HINWEIS: Bei GEHE wird VerfuegbarkeitAbfragen verwendet (keine echte Bestellung!)
         /// </summary>
         public async Task<MSV3VerfuegbarkeitResult> CheckVerfuegbarkeitAsync(MSV3Lieferant config, IEnumerable<MSV3ArtikelAnfrage> artikel)
         {
@@ -184,22 +259,49 @@ namespace NovviaERP.Core.Services
 
         private string BuildVerfuegbarkeitRequest(MSV3Lieferant config, IEnumerable<MSV3ArtikelAnfrage> artikel)
         {
+            var isGehe = IsGeheGrosshandel(config);
             var ns = XNamespace.Get(GetMSV3Namespace(config.MSV3Version));
-            var artikelElements = artikel.Select((a, i) => new XElement(ns + "Artikel",
-                new XElement(ns + "PZN", a.PZN),
-                new XElement(ns + "Menge", a.Menge),
-                new XElement(ns + "Id", a.Id ?? (i + 1).ToString())
-            ));
 
-            var doc = new XDocument(
-                new XElement(ns + "VerfuegbarkeitAbfragen",
-                    new XElement(ns + "Kundennummer", config.MSV3Kundennummer),
-                    new XElement(ns + "Filiale", config.MSV3Filiale ?? "001"),
-                    new XElement(ns + "Artikelliste", artikelElements)
-                )
-            );
+            if (isGehe)
+            {
+                // GEHE-spezifisches Format (wie Vario8):
+                // - verfuegbarkeitAnfragen mit xmlns="" (leerer Namespace)
+                // - Positionen statt Artikelliste
+                // - Pzn/Menge/Liefervorgabe pro Position
+                var sb = new StringBuilder();
+                sb.AppendLine($"<verfuegbarkeitAnfragen xmlns=\"\" Id=\"{Guid.NewGuid().ToString().ToUpper()}\">");
 
-            return doc.ToString();
+                foreach (var a in artikel)
+                {
+                    sb.AppendLine("  <Positionen>");
+                    sb.AppendLine($"    <Pzn>{a.PZN}</Pzn>");
+                    sb.AppendLine($"    <Menge>{(int)a.Menge}</Menge>");
+                    sb.AppendLine("    <Liefervorgabe>Normal</Liefervorgabe>");
+                    sb.AppendLine("  </Positionen>");
+                }
+
+                sb.AppendLine("</verfuegbarkeitAnfragen>");
+                return sb.ToString();
+            }
+            else
+            {
+                // Standard MSV3 Format für andere Großhändler
+                var artikelElements = artikel.Select((a, i) => new XElement(ns + "Artikel",
+                    new XElement(ns + "PZN", a.PZN),
+                    new XElement(ns + "Menge", a.Menge),
+                    new XElement(ns + "Id", a.Id ?? (i + 1).ToString())
+                ));
+
+                var doc = new XDocument(
+                    new XElement(ns + "VerfuegbarkeitAbfragen",
+                        new XElement(ns + "Kundennummer", config.MSV3Kundennummer),
+                        new XElement(ns + "Filiale", config.MSV3Filiale ?? "001"),
+                        new XElement(ns + "Artikelliste", artikelElements)
+                    )
+                );
+
+                return doc.ToString();
+            }
         }
 
         private MSV3VerfuegbarkeitResult ParseVerfuegbarkeitResponse(string xml)
@@ -494,47 +596,105 @@ namespace NovviaERP.Core.Services
                 // Namespace basierend auf MSV3-Version
                 var nsUri = GetMSV3Namespace(config.MSV3Version);
                 var baseUrl = config.MSV3Url.TrimEnd('/');
+                var isGehe = IsGeheGrosshandel(config);
 
-                // SOAP 1.2 Request mit korrektem MSV3 Namespace
-                var soapRequest = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
+                // WICHTIG: Erst Incapsula-Cookies holen (GEHE WAF)
+                await WarmupIncapsulaCookiesAsync(baseUrl);
+
+                // Action-Name für GEHE: VerbindungTesten -> verbindungTesten (camelCase)
+                var actionCamelCase = char.ToLower(action[0]) + action.Substring(1);
+                var soapActionName = isGehe ? actionCamelCase : action;
+
+                string soapRequest;
+                string soapRequest11;
+
+                if (isGehe)
+                {
+                    // GEHE/Vario8-Format: Element OHNE msv: Präfix, xmlns direkt am Element
+                    // Bei verbindungTesten: NUR clientSoftwareKennung (keine Credentials im Body!)
+                    // Bei bestellen: clientSoftwareKennung + Benutzerkennung + Kennwort
+                    string bodyContent;
+                    if (action == "VerbindungTesten")
+                    {
+                        // VerbindungTesten: Nur clientSoftwareKennung, Credentials via HTTP Basic Auth
+                        bodyContent = $@"<{soapActionName} xmlns=""{nsUri}"">
+         <clientSoftwareKennung xmlns="""">NovviaERP</clientSoftwareKennung>
+      </{soapActionName}>";
+                    }
+                    else
+                    {
+                        // Andere Aktionen (bestellen, etc.): Mit Credentials im Body
+                        bodyContent = $@"<{soapActionName} xmlns=""{nsUri}"">
+         <clientSoftwareKennung xmlns="""">NovviaERP</clientSoftwareKennung>
+         <Benutzerkennung xmlns="""">{SecurityElement.Escape(config.MSV3Benutzer)}</Benutzerkennung>
+         <Kennwort xmlns="""">{SecurityElement.Escape(config.MSV3Passwort)}</Kennwort>
+         {requestXml}
+      </{soapActionName}>";
+                    }
+
+                    soapRequest = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV=""http://www.w3.org/2003/05/soap-envelope"">
+   <SOAP-ENV:Body>
+      {bodyContent}
+   </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>";
+
+                    soapRequest11 = soapRequest; // GEHE verwendet nur SOAP 1.2
+                }
+                else
+                {
+                    // Standard MSV3 Format für andere Großhändler
+                    var credentialsXml = $@"<msv:Clientsystem>NovviaERP</msv:Clientsystem>
+         <msv:Benutzerkennung>{SecurityElement.Escape(config.MSV3Benutzer)}</msv:Benutzerkennung>
+         <msv:Kennwort>{SecurityElement.Escape(config.MSV3Passwort)}</msv:Kennwort>";
+
+                    soapRequest = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
 <soap:Envelope xmlns:soap=""http://www.w3.org/2003/05/soap-envelope"" xmlns:msv=""{nsUri}"">
-   <soap:Header/>
    <soap:Body>
-      <msv:{action}>
-         <msv:Clientsystem>NovviaERP</msv:Clientsystem>
-         <msv:Benutzerkennung>{SecurityElement.Escape(config.MSV3Benutzer)}</msv:Benutzerkennung>
-         <msv:Kennwort>{SecurityElement.Escape(config.MSV3Passwort)}</msv:Kennwort>
+      <msv:{soapActionName}>
+         {credentialsXml}
          {requestXml}
-      </msv:{action}>
+      </msv:{soapActionName}>
    </soap:Body>
 </soap:Envelope>";
 
-                // Auch SOAP 1.1 Variante vorbereiten (manche Großhändler wollen das)
-                var soapRequest11 = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
+                    soapRequest11 = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:msv=""{nsUri}"">
-   <soap:Header/>
    <soap:Body>
-      <msv:{action}>
-         <msv:Clientsystem>NovviaERP</msv:Clientsystem>
-         <msv:Benutzerkennung>{SecurityElement.Escape(config.MSV3Benutzer)}</msv:Benutzerkennung>
-         <msv:Kennwort>{SecurityElement.Escape(config.MSV3Passwort)}</msv:Kennwort>
+      <msv:{soapActionName}>
+         {credentialsXml}
          {requestXml}
-      </msv:{action}>
+      </msv:{soapActionName}>
    </soap:Body>
 </soap:Envelope>";
+                }
 
-                _log.Information("MSV3 Request an: {Url}, Action: {Action}", baseUrl, action);
+                _log.Information("MSV3 Request an: {Url}, Action: {Action} (SOAP: {SoapAction})", baseUrl, action, soapActionName);
                 _log.Debug("MSV3 SOAP Request:\n{Body}", soapRequest);
 
                 // MSV3 v2 erwartet den Action-Namen in der URL!
-                // Versuche verschiedene URL-Kombinationen
-                string[] urlsToTry = {
-                    $"{baseUrl}/v{config.MSV3Version}.0/{action}",       // /msv3/v2.0/VerfuegbarkeitAnfragen (Standard für v2)
-                    $"{baseUrl}/{config.MSV3Version}.0/{action}",        // /msv3/2.0/VerfuegbarkeitAnfragen
-                    $"{baseUrl}/v{config.MSV3Version}.0",                // /msv3/v2.0
-                    $"{baseUrl}/{action}",                               // /msv3/VerfuegbarkeitAnfragen (für v1)
-                    baseUrl,                                             // /msv3 (Fallback)
-                };
+                // Versuche verschiedene URL-Kombinationen (GEHE verwendet lowercase URLs!)
+                string[] urlsToTry;
+                if (isGehe)
+                {
+                    // GEHE: lowercase action in URL, z.B. /msv3/v2.0/verbindungTesten
+                    urlsToTry = new[] {
+                        $"{baseUrl}/v{config.MSV3Version}.0/{soapActionName}", // /msv3/v2.0/verbindungTesten (GEHE!)
+                        $"{baseUrl}/{soapActionName}",                          // /msv3/verbindungTesten
+                        baseUrl,                                                 // /msv3 (Fallback)
+                    };
+                }
+                else
+                {
+                    // Standard MSV3 URLs für andere Großhändler
+                    urlsToTry = new[] {
+                        $"{baseUrl}/v{config.MSV3Version}.0/{action}",  // /msv3/v2.0/VerfuegbarkeitAnfragen (Standard für v2)
+                        $"{baseUrl}/{config.MSV3Version}.0/{action}",   // /msv3/2.0/VerfuegbarkeitAnfragen
+                        $"{baseUrl}/v{config.MSV3Version}.0",           // /msv3/v2.0
+                        $"{baseUrl}/{action}",                          // /msv3/VerfuegbarkeitAnfragen (für v1)
+                        baseUrl,                                        // /msv3 (Fallback)
+                    };
+                }
 
                 // Content-Types die wir versuchen
                 string[] contentTypes = { "application/soap+xml", "text/xml" };
@@ -561,42 +721,51 @@ namespace NovviaERP.Core.Services
                         {
                             // IMMER mit Basic Auth versuchen (preemptive) - viele Großhändler erwarten das
                             var request = new HttpRequestMessage(HttpMethod.Post, url);
-                            request.Content = new StringContent(currentSoapRequest, Encoding.UTF8, contentType);
+
+                            // Content-Type EXAKT wie Vario8: action im Content-Type Header!
+                            // Vario8: application/soap+xml; charset=utf-8; action="urn:msv3:v2:Msv3:bestellen"
+                            var contentTypeWithAction = contentType == "application/soap+xml"
+                                ? $"application/soap+xml; charset=utf-8; action=\"{nsUri}:Msv3:{actionCamelCase}\""
+                                : contentType;
+
+                            request.Content = new StringContent(currentSoapRequest, Encoding.UTF8);
+                            request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentTypeWithAction);
                             request.Headers.Authorization = basicAuthHeader;
 
-                            // User-Agent Header - wichtig für Incapsula WAF Bypass
-                            request.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) NovviaERP/1.0 MSV3Client");
+                            // User-Agent EXAKT wie Vario8 - Incapsula WAF erkennt das!
+                            request.Headers.TryAddWithoutValidation("User-Agent", "Embarcadero URI Client/1.0");
 
-                            // Accept Header
-                            request.Headers.TryAddWithoutValidation("Accept", "application/soap+xml, text/xml, */*");
+                            // Connection: Keep-Alive (wie Vario8)
+                            request.Headers.Connection.Add("Keep-Alive");
 
-                            // SOAPAction Header hinzufügen (manche Services erwarten das)
-                            request.Headers.Add("SOAPAction", $"\"{nsUri}/{action}\"");
+                            _log.Debug("MSV3 Request an {Url}\nContent-Type: {CT}\nUser-Agent: Embarcadero URI Client/1.0",
+                                url, contentTypeWithAction);
 
                             response = await _http.SendAsync(request);
                             responseXml = await response.Content.ReadAsStringAsync();
 
-                            _log.Debug("MSV3 Versuch URL: {Url}, ContentType: {CT} -> Status: {Status}", url, contentType, response.StatusCode);
+                            _log.Debug("MSV3 Response Status: {Status}, Body-Länge: {Len}", response.StatusCode, responseXml?.Length ?? 0);
 
                             // Bei 200 OK oder SOAP-Antwort (auch 500 kann gültige SOAP-Antwort sein) -> verwenden
                             if (response.IsSuccessStatusCode || responseXml.Contains("soap:Envelope") || responseXml.Contains("Envelope") || responseXml.Contains("SOAP-ENV"))
                             {
-                                _log.Information("MSV3 Antwort von: {Url} (ContentType: {CT})", url, contentType);
+                                _log.Information("MSV3 Erfolg von: {Url}", url);
                                 goto FoundResponse; // Aus beiden Schleifen raus
                             }
 
                             // Bei 401 trotz Basic Auth: Credentials falsch oder anderes Auth-Problem
                             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                             {
-                                _log.Warning("MSV3 401 trotz Basic Auth bei URL: {Url}", url);
-                                // Weiter versuchen mit anderem Content-Type
+                                _log.Warning("MSV3 401 Unauthorized bei URL: {Url}", url);
                                 continue;
                             }
 
-                            // Bei 404/405 nächste URL versuchen
+                            // Bei 404/405 - loggen und nächste URL versuchen
                             if (response.StatusCode == System.Net.HttpStatusCode.NotFound ||
                                 response.StatusCode == System.Net.HttpStatusCode.MethodNotAllowed)
                             {
+                                _log.Warning("MSV3 {Status} bei URL: {Url}\nResponse: {Body}",
+                                    (int)response.StatusCode, url, responseXml?.Substring(0, Math.Min(500, responseXml?.Length ?? 0)));
                                 break; // Aus Content-Type Schleife, nächste URL
                             }
                         }

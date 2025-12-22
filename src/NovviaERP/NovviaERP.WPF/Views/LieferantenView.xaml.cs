@@ -143,22 +143,21 @@ namespace NovviaERP.WPF.Views
 
             try
             {
-                // Test mit echter PZN (Aspirin 500mg - bekannte PZN)
-                var result = await _msv3Service.CheckVerfuegbarkeitAsync(_selectedLiefMSV3, new List<string> { "04114918" });
+                // VerbindungTesten - der sichere Test-Endpoint (keine Bestellung!)
+                var result = await _msv3Service.VerbindungTestenAsync(_selectedLiefMSV3);
 
                 if (result.Success)
                 {
-                    var pos = result.Positionen.FirstOrDefault();
-                    var details = pos != null
-                        ? $"PZN: {pos.PZN}\nVerfügbar: {pos.Verfuegbar}\nBestand: {pos.MengeVerfuegbar}\nStatus: {pos.Status}"
-                        : "Keine Artikeldaten in Antwort";
-
-                    MessageBox.Show($"MSV3-Verbindung erfolgreich!\n\n{details}\n\nAnzahl Positionen: {result.Positionen.Count}",
+                    MessageBox.Show($"MSV3-Verbindung erfolgreich!\n\n{result.Meldung}",
                         "Test OK", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
-                    MessageBox.Show($"MSV3-Fehler:\n{result.Fehler}", "Test fehlgeschlagen", MessageBoxButton.OK, MessageBoxImage.Error);
+                    // Zeige auch die Response für Debugging
+                    var responseInfo = !string.IsNullOrEmpty(result.ResponseXml)
+                        ? result.ResponseXml.Length > 500 ? result.ResponseXml.Substring(0, 500) + "..." : result.ResponseXml
+                        : "(keine Response)";
+                    MessageBox.Show($"MSV3-Fehler:\n{result.Fehler}\n\n--- Response ---\n{responseInfo}", "Test fehlgeschlagen", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
