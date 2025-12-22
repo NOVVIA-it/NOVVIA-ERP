@@ -24,6 +24,28 @@ namespace NovviaERP.WPF
         {
             base.OnStartup(e);
 
+            // Globaler Exception Handler
+            DispatcherUnhandledException += (s, args) =>
+            {
+                var ex = args.Exception;
+                var msg = $"Unhandled Exception:\n\n{ex.Message}";
+                if (ex.InnerException != null)
+                    msg += $"\n\nInner: {ex.InnerException.Message}";
+                msg += $"\n\nStackTrace:\n{ex.StackTrace}";
+                System.Windows.MessageBox.Show(msg, "Fehler", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                args.Handled = true; // Verhindert Absturz
+            };
+
+            AppDomain.CurrentDomain.UnhandledException += (s, args) =>
+            {
+                var ex = args.ExceptionObject as Exception;
+                var msg = $"Fatal Exception:\n\n{ex?.Message ?? "Unknown"}";
+                if (ex?.InnerException != null)
+                    msg += $"\n\nInner: {ex.InnerException.Message}";
+                msg += $"\n\nStackTrace:\n{ex?.StackTrace}";
+                System.Windows.MessageBox.Show(msg, "Fataler Fehler", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            };
+
             // Login-Fenster anzeigen
             var loginWindow = new LoginWindow();
             var result = loginWindow.ShowDialog();

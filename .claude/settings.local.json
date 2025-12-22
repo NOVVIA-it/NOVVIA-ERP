@@ -56,7 +56,16 @@
       "Bash(del /Q \"c:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\bin\\\\Debug\\\\net8.0-windows\\\\NovviaERP.Core.dll\")",
       "Bash(del /Q \"c:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.Core\\\\bin\\\\Debug\\\\net8.0\\\\NovviaERP.Core.dll\")",
       "Bash(dotnet clean:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(git commit:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -Command \"Get-Process | Where-Object { $_ProcessName -like ''*Novvia*'' } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; dotnet build ''C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\NovviaERP.WPF.csproj'' 2>&1 | Select-Object -Last 25\")",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -Command \"dotnet build ''C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\NovviaERP.WPF.csproj'' 2>&1 | Select-Object -Last 15\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Name NovviaERP.WPF -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; dotnet build ''C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\NovviaERP.WPF.csproj'' 2>&1 | Select-Object -Last 8\")",
+      "Bash(powershell.exe -Command \"dotnet build ''C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\NovviaERP.WPF.csproj'' 2>&1 | Select-Object -Last 30\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Name NovviaERP.WPF -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; dotnet build ''C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\NovviaERP.WPF.csproj'' 2>&1 | Select-Object -Last 15\")",
+      "Bash(powershell.exe -Command \"dotnet build ''C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.Core\\\\NovviaERP.Core.csproj'' 2>&1 | Select-Object -Last 20\")",
+      "Bash(powershell.exe:*)",
+      "Bash(start:*)"
     ]
   }
 }

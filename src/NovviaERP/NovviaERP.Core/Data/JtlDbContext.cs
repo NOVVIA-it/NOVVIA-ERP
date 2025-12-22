@@ -92,8 +92,8 @@ namespace NovviaERP.Core.Data
                     artikel.Stuecklistenkomponenten = (await conn.QueryAsync<Stueckliste>(@"SELECT s.*, a.cArtNr AS KomponenteArtNr, ab.cName AS KomponenteName FROM tStueckliste s 
                         INNER JOIN tArtikel a ON s.kArtikelKomponente = a.kArtikel LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 
                         WHERE s.kArtikel = @Id ORDER BY s.nSort", new { Id = id })).ToList();
-                artikel.Lieferanten = (await conn.QueryAsync<ArtikelLieferant>(@"SELECT al.*, l.cFirma AS LieferantName FROM tArtikelLieferant al 
-                    INNER JOIN tLieferant l ON al.kLieferant = l.kLieferant WHERE al.kArtikel = @Id ORDER BY al.nPrioritaet", new { Id = id })).ToList();
+                artikel.Lieferanten = (await conn.QueryAsync<ArtikelLieferant>(@"SELECT la.*, la.tArtikel_kArtikel AS kArtikel, la.tLieferant_kLieferant AS kLieferant, l.cFirma AS LieferantName FROM tLiefArtikel la
+                    INNER JOIN tLieferant l ON la.tLieferant_kLieferant = l.kLieferant WHERE la.tArtikel_kArtikel = @Id ORDER BY la.nStandard DESC", new { Id = id })).ToList();
                 artikel.Lagerbestaende = (await conn.QueryAsync<Lagerbestand>(@"SELECT lb.*, w.cName AS LagerName FROM tLagerbestand lb 
                     INNER JOIN tWarenlager w ON lb.kWarenlager = w.kWarenlager WHERE lb.kArtikel = @Id", new { Id = id })).ToList();
                 artikel.WooCommerceLinks = (await conn.QueryAsync<ArtikelWooCommerce>("SELECT * FROM tArtikelWooCommerce WHERE kArtikel = @Id", new { Id = id })).ToList();

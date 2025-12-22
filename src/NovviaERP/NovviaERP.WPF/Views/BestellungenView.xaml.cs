@@ -27,8 +27,8 @@ namespace NovviaERP.WPF.Views
                 var suche = txtSuche.Text.Trim();
 
                 var bestellungen = await _core.GetBestellungenAsync(
-                    string.IsNullOrEmpty(status) ? null : status,
-                    string.IsNullOrEmpty(suche) ? null : suche);
+                    suche: string.IsNullOrEmpty(suche) ? null : suche,
+                    status: string.IsNullOrEmpty(status) ? null : status);
 
                 var liste = bestellungen.ToList();
                 dgBestellungen.ItemsSource = liste;
@@ -73,10 +73,18 @@ namespace NovviaERP.WPF.Views
 
         private void NavigateToDetail(int bestellungId)
         {
-            var detailView = App.Services.GetRequiredService<BestellungDetailView>();
-            detailView.LadeBestellung(bestellungId);
-            if (Window.GetWindow(this) is MainWindow main)
-                main.ShowContent(detailView);
+            try
+            {
+                var detailView = App.Services.GetRequiredService<BestellungDetailView>();
+                detailView.LadeBestellung(bestellungId);
+                if (Window.GetWindow(this) is MainWindow main)
+                    main.ShowContent(detailView);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Oeffnen der Bestellung:\n\n{ex.Message}\n\nDetails:\n{ex.StackTrace}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void Neu_Click(object sender, RoutedEventArgs e)

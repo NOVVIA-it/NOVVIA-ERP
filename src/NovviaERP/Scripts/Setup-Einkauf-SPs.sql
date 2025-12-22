@@ -105,8 +105,8 @@ BEGIN
     WHERE a.kArtikel = @kArtikel;
 
     -- Lieferanten-Artikelnummer holen
-    SELECT TOP 1 @cLieferantenArtNr = cArtNr, @fEKNetto = COALESCE(@fEKNetto, fEKNetto)
-    FROM tArtikelLieferant WHERE kArtikel = @kArtikel AND kLieferant = @kLieferant;
+    SELECT TOP 1 @fEKNetto = COALESCE(@fEKNetto, fEKNetto)
+    FROM tLiefArtikel WHERE tArtikel_kArtikel = @kArtikel AND tLieferant_kLieferant = @kLieferant;
 
     -- Nächste Sortierung
     DECLARE @nSort INT;

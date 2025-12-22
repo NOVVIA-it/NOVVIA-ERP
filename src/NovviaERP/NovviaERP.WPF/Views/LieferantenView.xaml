@@ -73,118 +73,272 @@
                             <StackPanel>
                                 <TextBlock x:Name="txtLiefFirma" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
                                 <TextBlock x:Name="txtLiefNr" Foreground="Gray" Margin="0,5,0,0"/>
-                                <Separator Margin="0,10"/>
 
-                                <!-- Kontaktdaten -->
-                                <TextBlock Text="Kontakt" FontWeight="SemiBold" Margin="0,5,0,5"/>
-                                <TextBlock x:Name="txtLiefAdresse" TextWrapping="Wrap"/>
-                                <TextBlock x:Name="txtLiefTel" Margin="0,3,0,0"/>
-                                <TextBlock x:Name="txtLiefEmail" Margin="0,3,0,0"/>
-                                <Separator Margin="0,10"/>
+                                <!-- Tabs für Stammdaten / MSV3 -->
+                                <TabControl Margin="0,10,0,0" Height="450">
+                                    <!-- Tab: Stammdaten -->
+                                    <TabItem Header="Stammdaten">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="5">
+                                            <StackPanel>
+                                                <!-- Kontaktdaten -->
+                                                <TextBlock Text="Kontaktdaten" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="90"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Text="Strasse:" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefStrasse" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="PLZ/Ort:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefPLZOrt" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Land:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefLand" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Telefon:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefTel" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Fax:" Grid.Row="4" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefFax" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="E-Mail:" Grid.Row="5" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefEmail" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" Foreground="#0078D4" Cursor="Hand" MouseLeftButtonUp="LiefEmail_Click"/>
+
+                                                    <TextBlock Text="Homepage:" Grid.Row="6" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefHomepage" Grid.Row="6" Grid.Column="1" VerticalAlignment="Center" Foreground="#0078D4" Cursor="Hand" MouseLeftButtonUp="LiefHomepage_Click"/>
+
+                                                    <TextBlock Text="Ansprech.:" Grid.Row="7" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefAnsprechpartner" Grid.Row="7" Grid.Column="1" VerticalAlignment="Center"/>
+                                                </Grid>
+
+                                                <Separator Margin="0,10"/>
+
+                                                <!-- Finanzdaten -->
+                                                <TextBlock Text="Finanzdaten" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="90"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Text="USt-IdNr:" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefUstId" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="GLN/ILN:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefGLN" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Kreditor Nr:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefKreditorNr" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="IBAN:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefIBAN" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" FontFamily="Consolas"/>
+
+                                                    <TextBlock Text="BIC:" Grid.Row="4" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefBIC" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Bank:" Grid.Row="5" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefBank" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center"/>
+                                                </Grid>
+
+                                                <Separator Margin="0,10"/>
+
+                                                <!-- Konditionen -->
+                                                <TextBlock Text="Konditionen" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="100"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Text="Zahlungsziel:" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefZahlungsziel" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Skonto:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefSkonto" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Min.Bestell.:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefMindestbestellwert" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Lieferzeit:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefLieferzeit" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
+                                                </Grid>
+
+                                                <Separator Margin="0,10"/>
+
+                                                <!-- NOVVIA Erweiterung -->
+                                                <TextBlock Text="NOVVIA Erweiterung" FontWeight="SemiBold" Margin="0,5,0,10" Foreground="#0078D4"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="100"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Text="Kategorien:" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <CheckBox x:Name="chkLiefAmbient" Content="Ambient" Margin="0,0,15,0"/>
+                                                        <CheckBox x:Name="chkLiefCool" Content="Cool" Margin="0,0,15,0"/>
+                                                        <CheckBox x:Name="chkLiefMedcan" Content="Medcan" Margin="0,0,15,0"/>
+                                                        <CheckBox x:Name="chkLiefTierarznei" Content="Tierarznei"/>
+                                                    </StackPanel>
+
+                                                    <TextBlock Text="Qualifiziert am:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <DatePicker x:Name="dpLiefQualifiziertAm" Grid.Row="1" Grid.Column="1" Width="120" HorizontalAlignment="Left"/>
+
+                                                    <TextBlock Text="Qualifiziert von:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBox x:Name="txtLiefQualifiziertVon" Grid.Row="2" Grid.Column="1" Width="200" HorizontalAlignment="Left"/>
+
+                                                    <TextBlock Text="Quali-Docs:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBox x:Name="txtLiefQualifikationsDocs" Grid.Row="3" Grid.Column="1"/>
+                                                </Grid>
+
+                                                <Button Content="NOVVIA-Daten speichern" Margin="0,15,0,0"
+                                                        Background="#0078D4" Foreground="White"
+                                                        HorizontalAlignment="Left" Width="160"
+                                                        Click="LieferantErweitertSpeichern_Click"/>
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                    </TabItem>
+
+                                    <!-- Tab: MSV3 -->
+                                    <TabItem Header="MSV3">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="5">
+                                            <StackPanel>
 
                                 <!-- MSV3 Konfiguration -->
-                                <StackPanel x:Name="pnlMSV3Config">
-                                    <TextBlock Text="MSV3 Konfiguration" FontWeight="SemiBold" Margin="0,5,0,10"/>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="100"/>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="30"/>
-                                            <RowDefinition Height="30"/>
-                                            <RowDefinition Height="30"/>
-                                            <RowDefinition Height="30"/>
-                                            <RowDefinition Height="30"/>
-                                            <RowDefinition Height="30"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
+                                                <TextBlock Text="MSV3 Konfiguration" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="100"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="30"/>
+                                                        <RowDefinition Height="30"/>
+                                                        <RowDefinition Height="30"/>
+                                                        <RowDefinition Height="30"/>
+                                                        <RowDefinition Height="30"/>
+                                                        <RowDefinition Height="30"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
 
-                                        <TextBlock Text="URL:" VerticalAlignment="Center"/>
-                                        <TextBox x:Name="txtLiefMSV3Url" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="URL:" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefMSV3Url" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                        <TextBlock Text="Benutzer:" Grid.Row="1" VerticalAlignment="Center"/>
-                                        <TextBox x:Name="txtLiefMSV3Benutzer" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Benutzer:" Grid.Row="1" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefMSV3Benutzer" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                        <TextBlock Text="Passwort:" Grid.Row="2" VerticalAlignment="Center"/>
-                                        <PasswordBox x:Name="txtLiefMSV3Passwort" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Passwort:" Grid.Row="2" VerticalAlignment="Center"/>
+                                                    <PasswordBox x:Name="txtLiefMSV3Passwort" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                        <TextBlock Text="Kundennr:" Grid.Row="3" VerticalAlignment="Center"/>
-                                        <TextBox x:Name="txtLiefMSV3Kundennr" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Kundennr:" Grid.Row="3" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefMSV3Kundennr" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                        <TextBlock Text="Filiale:" Grid.Row="4" VerticalAlignment="Center"/>
-                                        <TextBox x:Name="txtLiefMSV3Filiale" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Text="001"/>
+                                                    <TextBlock Text="Filiale:" Grid.Row="4" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefMSV3Filiale" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Text="001"/>
 
-                                        <TextBlock Text="Version:" Grid.Row="5" VerticalAlignment="Center"/>
-                                        <ComboBox x:Name="cboLiefMSV3Version" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" Width="60" HorizontalAlignment="Left">
-                                            <ComboBoxItem Content="1" Tag="1"/>
-                                            <ComboBoxItem Content="2" Tag="2"/>
-                                        </ComboBox>
+                                                    <TextBlock Text="Version:" Grid.Row="5" VerticalAlignment="Center"/>
+                                                    <ComboBox x:Name="cboLiefMSV3Version" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" Width="60" HorizontalAlignment="Left">
+                                                        <ComboBoxItem Content="1" Tag="1"/>
+                                                        <ComboBoxItem Content="2" Tag="2"/>
+                                                    </ComboBox>
 
-                                        <TextBlock Text="Aktiv:" Grid.Row="5" VerticalAlignment="Center" Margin="80,0,0,0"/>
-                                        <CheckBox x:Name="chkLiefMSV3Aktiv" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" Margin="80,0,0,0"/>
+                                                    <TextBlock Text="Aktiv:" Grid.Row="5" VerticalAlignment="Center" Margin="80,0,0,0"/>
+                                                    <CheckBox x:Name="chkLiefMSV3Aktiv" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" Margin="80,0,0,0"/>
 
-                                        <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,10,0,0">
-                                            <Button Content="Testen" Click="LieferantMSV3Test_Click" Width="70"/>
-                                            <Button Content="Speichern" Margin="10,0,0,0" Background="#0078D4" Foreground="White"
-                                                    Click="LieferantMSV3Speichern_Click" Width="90"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </StackPanel>
+                                                    <StackPanel Grid.Row="6" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,10,0,0">
+                                                        <Button Content="Testen" Click="LieferantMSV3Test_Click" Width="70"/>
+                                                        <Button Content="Speichern" Margin="10,0,0,0" Background="#0078D4" Foreground="White"
+                                                                Click="LieferantMSV3Speichern_Click" Width="90"/>
+                                                    </StackPanel>
+                                                </Grid>
 
-                                <Separator Margin="0,15"/>
+                                                <Separator Margin="0,15"/>
 
-                                <!-- PZN Schnellabfrage -->
-                                <StackPanel x:Name="pnlPZNAbfrage">
-                                    <TextBlock Text="PZN Bestandsabfrage" FontWeight="SemiBold" Margin="0,5,0,10"/>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox x:Name="txtPZNAbfrage" VerticalAlignment="Center"
-                                                 ToolTip="PZN eingeben (z.B. 01234567)"/>
-                                        <Button Grid.Column="1" Content="Abfragen" Margin="10,0,0,0"
-                                                Background="#5C2D91" Foreground="White"
-                                                Click="PZNAbfragen_Click" Width="80"/>
-                                    </Grid>
+                                                <!-- PZN Schnellabfrage -->
+                                                <TextBlock Text="PZN Bestandsabfrage" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox x:Name="txtPZNAbfrage" VerticalAlignment="Center"
+                                                             ToolTip="PZN eingeben (z.B. 01234567)"/>
+                                                    <Button Grid.Column="1" Content="Abfragen" Margin="10,0,0,0"
+                                                            Background="#5C2D91" Foreground="White"
+                                                            Click="PZNAbfragen_Click" Width="80"/>
+                                                </Grid>
 
-                                    <!-- Ergebnis -->
-                                    <Border x:Name="pnlPZNErgebnis" Background="#f8f9fa" CornerRadius="4"
-                                            Padding="10" Margin="0,10,0,0" Visibility="Collapsed">
-                                        <StackPanel>
-                                            <TextBlock x:Name="txtPZNArtikel" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                            <Grid Margin="0,8,0,0">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="80"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="22"/>
-                                                    <RowDefinition Height="22"/>
-                                                    <RowDefinition Height="22"/>
-                                                    <RowDefinition Height="22"/>
-                                                    <RowDefinition Height="22"/>
-                                                </Grid.RowDefinitions>
+                                                <!-- Ergebnis -->
+                                                <Border x:Name="pnlPZNErgebnis" Background="#f8f9fa" CornerRadius="4"
+                                                        Padding="10" Margin="0,10,0,0" Visibility="Collapsed">
+                                                    <StackPanel>
+                                                        <TextBlock x:Name="txtPZNArtikel" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                        <Grid Margin="0,8,0,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="80"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="22"/>
+                                                                <RowDefinition Height="22"/>
+                                                                <RowDefinition Height="22"/>
+                                                                <RowDefinition Height="22"/>
+                                                                <RowDefinition Height="22"/>
+                                                            </Grid.RowDefinitions>
 
-                                                <TextBlock Text="Bestand:" Foreground="Gray"/>
-                                                <TextBlock x:Name="txtPZNBestand" Grid.Column="1" FontWeight="SemiBold"/>
+                                                            <TextBlock Text="Bestand:" Foreground="Gray"/>
+                                                            <TextBlock x:Name="txtPZNBestand" Grid.Column="1" FontWeight="SemiBold"/>
 
-                                                <TextBlock Text="MHD:" Grid.Row="1" Foreground="Gray"/>
-                                                <TextBlock x:Name="txtPZNMHD" Grid.Row="1" Grid.Column="1"/>
+                                                            <TextBlock Text="MHD:" Grid.Row="1" Foreground="Gray"/>
+                                                            <TextBlock x:Name="txtPZNMHD" Grid.Row="1" Grid.Column="1"/>
 
-                                                <TextBlock Text="Charge:" Grid.Row="2" Foreground="Gray"/>
-                                                <TextBlock x:Name="txtPZNCharge" Grid.Row="2" Grid.Column="1"/>
+                                                            <TextBlock Text="Charge:" Grid.Row="2" Foreground="Gray"/>
+                                                            <TextBlock x:Name="txtPZNCharge" Grid.Row="2" Grid.Column="1"/>
 
-                                                <TextBlock Text="EK-Preis:" Grid.Row="3" Foreground="Gray"/>
-                                                <TextBlock x:Name="txtPZNPreis" Grid.Row="3" Grid.Column="1"/>
+                                                            <TextBlock Text="EK-Preis:" Grid.Row="3" Foreground="Gray"/>
+                                                            <TextBlock x:Name="txtPZNPreis" Grid.Row="3" Grid.Column="1"/>
 
-                                                <TextBlock Text="Status:" Grid.Row="4" Foreground="Gray"/>
-                                                <TextBlock x:Name="txtPZNStatus" Grid.Row="4" Grid.Column="1"/>
-                                            </Grid>
-                                        </StackPanel>
-                                    </Border>
-                                </StackPanel>
+                                                            <TextBlock Text="Status:" Grid.Row="4" Foreground="Gray"/>
+                                                            <TextBlock x:Name="txtPZNStatus" Grid.Row="4" Grid.Column="1"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                    </TabItem>
+                                </TabControl>
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
@@ -239,32 +393,69 @@
                             </Grid.RowDefinitions>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="Positionen" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
-                                <Button x:Name="btnBestandAlleAbfragen" Content="Bestand alle abfragen"
+                                <Button x:Name="btnBestandAlleAbfragen" Content="1. Bestand abfragen"
                                         Margin="20,0,0,0" Background="#5C2D91" Foreground="White"
                                         Click="BestandAlleAbfragen_Click" IsEnabled="False"/>
+                                <Button x:Name="btnBestellungUebermitteln" Content="2. Bestellung uebermitteln"
+                                        Margin="10,0,0,0" Background="#107C10" Foreground="White"
+                                        Click="BestellungUebermitteln_Click" IsEnabled="False"/>
                             </StackPanel>
-                            <DataGrid x:Name="dgBestellPositionen" Grid.Row="1" Margin="0,5,0,0" AutoGenerateColumns="False">
+                            <DataGrid x:Name="dgBestellPositionen" Grid.Row="1" Margin="0,5,0,0" AutoGenerateColumns="False"
+                                      CanUserAddRows="False" CanUserDeleteRows="False" GridLinesVisibility="Horizontal">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="PZN" Binding="{Binding CPZN}" Width="80" IsReadOnly="True"/>
-                                    <DataGridTextColumn Header="ArtNr" Binding="{Binding CArtNr}" Width="80" IsReadOnly="True"/>
-                                    <DataGridTextColumn Header="Artikel" Binding="{Binding ArtikelName}" Width="*" IsReadOnly="True"/>
-                                    <DataGridTextColumn Header="Menge" Binding="{Binding FMenge}" Width="55" IsReadOnly="True"/>
-                                    <DataGridTextColumn Header="EK" Binding="{Binding FEKNetto, StringFormat=C}" Width="65" IsReadOnly="True"/>
-                                    <DataGridTemplateColumn Header="Bestand Lief." Width="85">
+                                    <DataGridTemplateColumn Header="✓" Width="35">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding MSV3Bestand}"
+                                                <CheckBox IsChecked="{Binding IstAusgewaehlt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="PZN" Binding="{Binding CPZN}" Width="80" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Artikel" Binding="{Binding ArtikelName}" Width="200" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Lieferant" Binding="{Binding LieferantName}" Width="150" IsReadOnly="True"/>
+                                    <DataGridTemplateColumn Header="Menge" Width="55">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding FMenge, StringFormat=N0}" TextAlignment="Right" Margin="0,0,5,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="EK €" Width="75">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding EKNetto, StringFormat=N2}" TextAlignment="Right" Margin="0,0,5,0"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="Bestand" Width="65">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding MSV3Bestand}" TextAlignment="Right" Margin="0,0,5,0"
                                                            Foreground="{Binding MSV3BestandFarbe}" FontWeight="SemiBold"/>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="MHD Lief." Binding="{Binding MSV3MHDText}" Width="85" IsReadOnly="True"/>
-                                    <DataGridTextColumn Header="Charge" Binding="{Binding MSV3Charge}" Width="80" IsReadOnly="True"/>
+                                    <DataGridTemplateColumn Header="MHD" Width="80">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding MSV3MHDText}" TextAlignment="Left"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="Wunsch-MHD" Width="110">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <DatePicker SelectedDate="{Binding WunschMHD, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            BorderThickness="0" Background="Transparent"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Text" Binding="{Binding CPositionsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
                                     <DataGridTemplateColumn Header="Status" Width="100">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding MSV3StatusText}"
-                                                           Foreground="{Binding MSV3StatusFarbe}"/>
+                                                <TextBlock Text="{Binding MSV3StatusText}" Foreground="{Binding MSV3StatusFarbe}"/>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>

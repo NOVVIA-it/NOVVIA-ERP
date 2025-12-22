@@ -105,7 +105,7 @@ namespace NovviaERP.Core.Services
             return await conn.QueryAsync<MSV3Lieferant>("EXEC spNOVVIA_MSV3LieferantLaden");
         }
 
-        /// <summary>MSV3-Konfiguration für Lieferant laden</summary>
+        /// <summary>MSV3-Konfiguration für Lieferant laden (über tLieferant.kLieferant)</summary>
         public async Task<MSV3Lieferant?> GetMSV3LieferantAsync(int kLieferant)
         {
             try
@@ -118,6 +118,25 @@ namespace NovviaERP.Core.Services
             catch
             {
                 return null; // NOVVIA.MSV3Lieferant Tabelle existiert nicht
+            }
+        }
+
+        /// <summary>MSV3-Konfiguration anhand kMSV3Lieferant-ID laden</summary>
+        public async Task<MSV3Lieferant?> GetMSV3LieferantByIdAsync(int kMSV3Lieferant)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                return await conn.QuerySingleOrDefaultAsync<MSV3Lieferant>(
+                    @"SELECT m.*, l.cFirma AS LieferantName
+                      FROM NOVVIA.MSV3Lieferant m
+                      INNER JOIN tlieferant l ON m.kLieferant = l.kLieferant
+                      WHERE m.kMSV3Lieferant = @kMSV3Lieferant AND m.nAktiv = 1",
+                    new { kMSV3Lieferant });
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -217,18 +236,21 @@ namespace NovviaERP.Core.Services
 
         /// <summary>
         /// Verfügbarkeit bei Großhandel prüfen - Vollständige Artikelliste
-        /// HINWEIS: Bei GEHE wird VerfuegbarkeitAbfragen verwendet (keine echte Bestellung!)
+        /// HINWEIS: Bei GEHE wird VerfuegbarkeitAnfragenBulk verwendet (wie Vario8-Dienst)
         /// </summary>
         public async Task<MSV3VerfuegbarkeitResult> CheckVerfuegbarkeitAsync(MSV3Lieferant config, IEnumerable<MSV3ArtikelAnfrage> artikel)
         {
             var result = new MSV3VerfuegbarkeitResult();
+            var isGehe = IsGeheGrosshandel(config);
 
             try
             {
                 var xml = BuildVerfuegbarkeitRequest(config, artikel);
                 _log.Debug("MSV3 Verfügbarkeitsanfrage: {Url}", config.MSV3Url);
 
-                var response = await SendMSV3RequestAsync(config, xml, "VerfuegbarkeitAbfragen");
+                // Alle Großhändler: Standard verfuegbarkeitAnfragen
+                var action = "VerfuegbarkeitAnfragen";
+                var response = await SendMSV3RequestAsync(config, xml, action);
 
                 if (response.Success)
                 {
@@ -264,13 +286,13 @@ namespace NovviaERP.Core.Services
 
             if (isGehe)
             {
-                // GEHE-spezifisches Format (wie Vario8):
-                // - verfuegbarkeitAnfragen mit xmlns="" (leerer Namespace)
-                // - Positionen statt Artikelliste
-                // - Pzn/Menge/Liefervorgabe pro Position
+                // GEHE-Format für verfuegbarkeitAnfragen:
+                // - anfrage-Wrapper mit Id (wie bei bestellen)
+                // - Positionen mit Pzn/Menge/Liefervorgabe
+                var anfrageId = Guid.NewGuid().ToString().ToUpper();
                 var sb = new StringBuilder();
-                sb.AppendLine($"<verfuegbarkeitAnfragen xmlns=\"\" Id=\"{Guid.NewGuid().ToString().ToUpper()}\">");
 
+                sb.AppendLine($"<anfrage xmlns=\"\" Id=\"{anfrageId}\">");
                 foreach (var a in artikel)
                 {
                     sb.AppendLine("  <Positionen>");
@@ -279,8 +301,8 @@ namespace NovviaERP.Core.Services
                     sb.AppendLine("    <Liefervorgabe>Normal</Liefervorgabe>");
                     sb.AppendLine("  </Positionen>");
                 }
+                sb.AppendLine("</anfrage>");
 
-                sb.AppendLine("</verfuegbarkeitAnfragen>");
                 return sb.ToString();
             }
             else
@@ -293,7 +315,7 @@ namespace NovviaERP.Core.Services
                 ));
 
                 var doc = new XDocument(
-                    new XElement(ns + "VerfuegbarkeitAbfragen",
+                    new XElement(ns + "VerfuegbarkeitAnfragen",
                         new XElement(ns + "Kundennummer", config.MSV3Kundennummer),
                         new XElement(ns + "Filiale", config.MSV3Filiale ?? "001"),
                         new XElement(ns + "Artikelliste", artikelElements)
@@ -874,6 +896,199 @@ namespace NovviaERP.Core.Services
 
         #endregion
 
+        #region MSV3 Logging
+
+        /// <summary>
+        /// MSV3-Anfrage/Antwort in Datenbank protokollieren
+        /// </summary>
+        public async Task<long> LogMSV3RequestAsync(
+            int kMSV3Lieferant,
+            string aktion,
+            string? requestXml,
+            string? responseXml,
+            int? httpStatus,
+            bool erfolg,
+            string? fehler = null,
+            string? msv3AuftragsId = null,
+            string? bestellSupportId = null,
+            int? dauerMs = null,
+            int? kLieferantenBestellung = null,
+            int? kBenutzer = null)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                var p = new DynamicParameters();
+                p.Add("@kMSV3Lieferant", kMSV3Lieferant);
+                p.Add("@kLieferantenBestellung", kLieferantenBestellung);
+                p.Add("@cAktion", aktion);
+                p.Add("@cRequestXML", requestXml);
+                p.Add("@cResponseXML", responseXml);
+                p.Add("@nHttpStatus", httpStatus);
+                p.Add("@nErfolg", erfolg);
+                p.Add("@cFehler", fehler);
+                p.Add("@cMSV3AuftragsId", msv3AuftragsId);
+                p.Add("@cBestellSupportId", bestellSupportId);
+                p.Add("@nDauerMs", dauerMs);
+                p.Add("@kBenutzer", kBenutzer);
+                p.Add("@kMSV3Log", dbType: DbType.Int64, direction: ParameterDirection.Output);
+
+                await conn.ExecuteAsync("spNOVVIA_MSV3LogSchreiben", p, commandType: CommandType.StoredProcedure);
+                return p.Get<long>("@kMSV3Log");
+            }
+            catch (Exception ex)
+            {
+                _log.Warning("MSV3 Logging fehlgeschlagen: {Error}", ex.Message);
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// MSV3-Log-Einträge für einen Lieferanten laden
+        /// </summary>
+        public async Task<IEnumerable<MSV3LogEintrag>> GetMSV3LogAsync(int? kMSV3Lieferant = null, int? kLieferantenBestellung = null, int maxEintraege = 100)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                var sql = @"
+                    SELECT TOP (@Max)
+                        l.kMSV3Log, l.kMSV3Lieferant, l.kLieferantenBestellung, l.cAktion,
+                        l.nHttpStatus, l.nErfolg, l.cFehler, l.cMSV3AuftragsId, l.cBestellSupportId,
+                        l.nDauerMs, l.dZeitpunkt, l.kBenutzer, lf.cFirma AS LieferantName
+                    FROM NOVVIA.MSV3Log l
+                    LEFT JOIN NOVVIA.MSV3Lieferant m ON l.kMSV3Lieferant = m.kMSV3Lieferant
+                    LEFT JOIN tLieferant lf ON m.kLieferant = lf.kLieferant
+                    WHERE 1=1";
+                if (kMSV3Lieferant.HasValue) sql += " AND l.kMSV3Lieferant = @kMSV3Lieferant";
+                if (kLieferantenBestellung.HasValue) sql += " AND l.kLieferantenBestellung = @kLieferantenBestellung";
+                sql += " ORDER BY l.dZeitpunkt DESC";
+
+                return await conn.QueryAsync<MSV3LogEintrag>(sql, new { kMSV3Lieferant, kLieferantenBestellung, Max = maxEintraege });
+            }
+            catch
+            {
+                return Enumerable.Empty<MSV3LogEintrag>();
+            }
+        }
+
+        /// <summary>
+        /// Letzte erfolgreiche MSV3-Bestellung für eine Lieferantenbestellung abrufen (für Duplikat-Prüfung)
+        /// </summary>
+        public async Task<MSV3LogEintrag?> GetLetzteMSV3BestellungAsync(int kLieferantenBestellung)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                var sql = @"
+                    SELECT TOP 1
+                        l.kMSV3Log, l.kMSV3Lieferant, l.kLieferantenBestellung, l.cAktion,
+                        l.nHttpStatus, l.nErfolg, l.cFehler, l.cMSV3AuftragsId, l.cBestellSupportId,
+                        l.nDauerMs, l.dZeitpunkt, l.kBenutzer, lf.cFirma AS LieferantName
+                    FROM NOVVIA.MSV3Log l
+                    LEFT JOIN NOVVIA.MSV3Lieferant m ON l.kMSV3Lieferant = m.kMSV3Lieferant
+                    LEFT JOIN tLieferant lf ON m.kLieferant = lf.kLieferant
+                    WHERE l.kLieferantenBestellung = @kLieferantenBestellung
+                      AND l.cAktion = 'Bestellen'
+                      AND l.nErfolg = 1
+                    ORDER BY l.dZeitpunkt DESC";
+
+                return await conn.QueryFirstOrDefaultAsync<MSV3LogEintrag>(sql, new { kLieferantenBestellung });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        #endregion
+
+        #region Artikel-Lieferanten (MSV3-fähig)
+
+        /// <summary>
+        /// MSV3-fähige Lieferanten für einen Artikel laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelMSV3Lieferant>> GetArtikelMSV3LieferantenAsync(int kArtikel)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                return await conn.QueryAsync<ArtikelMSV3Lieferant>(@"
+                    SELECT
+                        la.tArtikel_kArtikel AS KArtikel,
+                        la.tLieferant_kLieferant AS KLieferant,
+                        l.cFirma AS LieferantName,
+                        l.cLiefNr AS LieferantNr,
+                        NULL AS LieferantenArtNr,
+                        ISNULL(la.fEKNetto, 0) AS EKNetto,
+                        0 AS Prioritaet,
+                        ISNULL(la.nStandard, 0) AS IstStandard,
+                        m.kMSV3Lieferant,
+                        m.cMSV3Url AS MSV3Url,
+                        m.nMSV3Version AS MSV3Version,
+                        CAST(CASE WHEN m.kMSV3Lieferant IS NOT NULL AND m.nAktiv = 1 THEN 1 ELSE 0 END AS BIT) AS HatMSV3
+                    FROM tLiefArtikel la
+                    INNER JOIN tLieferant l ON la.tLieferant_kLieferant = l.kLieferant
+                    LEFT JOIN NOVVIA.MSV3Lieferant m ON la.tLieferant_kLieferant = m.kLieferant AND m.nAktiv = 1
+                    WHERE la.tArtikel_kArtikel = @kArtikel AND l.cAktiv = 'Y'
+                    ORDER BY ISNULL(m.nPrioritaet, 99), la.nStandard DESC",
+                    new { kArtikel });
+            }
+            catch
+            {
+                return Enumerable.Empty<ArtikelMSV3Lieferant>();
+            }
+        }
+
+        /// <summary>
+        /// MSV3-fähige Lieferanten für mehrere Artikel laden
+        /// </summary>
+        public async Task<Dictionary<int, List<ArtikelMSV3Lieferant>>> GetArtikelMSV3LieferantenBulkAsync(IEnumerable<int> artikelIds)
+        {
+            var result = new Dictionary<int, List<ArtikelMSV3Lieferant>>();
+            if (!artikelIds.Any()) return result;
+
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                var lieferanten = await conn.QueryAsync<ArtikelMSV3Lieferant>(@"
+                    SELECT
+                        la.tArtikel_kArtikel AS KArtikel,
+                        la.tLieferant_kLieferant AS KLieferant,
+                        l.cFirma AS LieferantName,
+                        l.cLiefNr AS LieferantNr,
+                        NULL AS LieferantenArtNr,
+                        ISNULL(la.fEKNetto, 0) AS EKNetto,
+                        0 AS Prioritaet,
+                        ISNULL(la.nStandard, 0) AS IstStandard,
+                        m.kMSV3Lieferant,
+                        m.cMSV3Url AS MSV3Url,
+                        m.nMSV3Version AS MSV3Version,
+                        CAST(CASE WHEN m.kMSV3Lieferant IS NOT NULL AND m.nAktiv = 1 THEN 1 ELSE 0 END AS BIT) AS HatMSV3
+                    FROM tLiefArtikel la
+                    INNER JOIN tLieferant l ON la.tLieferant_kLieferant = l.kLieferant
+                    LEFT JOIN NOVVIA.MSV3Lieferant m ON la.tLieferant_kLieferant = m.kLieferant AND m.nAktiv = 1
+                    WHERE la.tArtikel_kArtikel IN @artikelIds AND l.cAktiv = 'Y'
+                    ORDER BY la.tArtikel_kArtikel, ISNULL(m.nPrioritaet, 99), la.nStandard DESC",
+                    new { artikelIds });
+
+                foreach (var l in lieferanten)
+                {
+                    if (!result.ContainsKey(l.KArtikel))
+                        result[l.KArtikel] = new List<ArtikelMSV3Lieferant>();
+                    result[l.KArtikel].Add(l);
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Warning("Fehler beim Laden der Artikel-Lieferanten: {Error}", ex.Message);
+            }
+
+            return result;
+        }
+
+        #endregion
+
         #region Bestellen-Response Parser (GEHE-Format)
 
         /// <summary>
@@ -928,10 +1143,12 @@ namespace NovviaERP.Core.Services
         {
             var bestellungId = Guid.NewGuid().ToString().ToUpper();
             var auftragId = Guid.NewGuid().ToString().ToUpper();
+            // Namespace basierend auf Version (GEHE erwartet v1 für Auftraege!)
+            var nsVersion = config.MSV3Version == 2 ? "v1" : "v1"; // GEHE braucht immer v1 für Auftraege
 
             var sb = new StringBuilder();
             sb.AppendLine($"<bestellung xmlns=\"\" Id=\"{bestellungId}\" BestellSupportId=\"{supportId}\">");
-            sb.AppendLine($"  <Auftraege xmlns=\"urn:msv3:v2\" Id=\"{auftragId}\" Auftragsart=\"NORMAL\" Auftragskennung=\"{supportId}\" AuftragsSupportID=\"{supportId}\">");
+            sb.AppendLine($"  <Auftraege xmlns=\"urn:msv3:{nsVersion}\" Id=\"{auftragId}\" Auftragsart=\"NORMAL\" Auftragskennung=\"{supportId}\" AuftragsSupportID=\"{supportId}\">");
 
             foreach (var pos in positionen)
             {
@@ -939,6 +1156,16 @@ namespace NovviaERP.Core.Services
                 sb.AppendLine($"      <Pzn>{pos.PZN}</Pzn>");
                 sb.AppendLine($"      <Menge>{pos.Menge}</Menge>");
                 sb.AppendLine("      <Liefervorgabe>Normal</Liefervorgabe>");
+                // MinMHD hinzufügen wenn vorhanden
+                if (pos.MinMHD.HasValue)
+                {
+                    sb.AppendLine($"      <MinMHD>{pos.MinMHD.Value:yyyy-MM-dd}</MinMHD>");
+                }
+                // Freitext/Hinweis hinzufügen wenn vorhanden
+                if (!string.IsNullOrWhiteSpace(pos.Freitext))
+                {
+                    sb.AppendLine($"      <Freitext>{System.Security.SecurityElement.Escape(pos.Freitext)}</Freitext>");
+                }
                 sb.AppendLine("    </Positionen>");
             }
 
@@ -1442,12 +1669,14 @@ namespace NovviaERP.Core.Services
         public int Menge { get; set; }
         public string? LieferantenArtNr { get; set; }
         public DateTime? MinMHD { get; set; }  // Mindest-MHD für Bestellung
+        public string? Freitext { get; set; }  // Hinweis/Freitext für Position
     }
 
     public class MSV3VerfuegbarkeitResult
     {
         public bool Success { get; set; }
         public string? Fehler { get; set; }
+        public string? ResponseXml { get; set; }
         public List<MSV3VerfuegbarkeitPosition> Positionen { get; set; } = new();
         public int AnzahlVerfuegbar { get; set; }
         public int AnzahlTeilweise { get; set; }
@@ -1479,6 +1708,7 @@ namespace NovviaERP.Core.Services
         public bool Success { get; set; }
         public string? Fehler { get; set; }
         public string? Fehlermeldung => Fehler; // Alias
+        public string? ResponseXml { get; set; }
         public string? AuftragsId { get; set; }
         public string? MSV3Bestellnummer => AuftragsId; // Alias
         public string? Status { get; set; }
@@ -1607,6 +1837,55 @@ namespace NovviaERP.Core.Services
         public DateTime DLastCheckedUtc { get => LastCheckedUtc; set => LastCheckedUtc = value; }
         public DateTime DValidUntilUtc { get => ValidUntilUtc; set => ValidUntilUtc = value; }
         public bool NIsValid { get => IsValid; set => IsValid = value; }
+    }
+
+    /// <summary>
+    /// MSV3 Log-Eintrag
+    /// </summary>
+    public class MSV3LogEintrag
+    {
+        public long KMSV3Log { get; set; }
+        public int KMSV3Lieferant { get; set; }
+        public int? KLieferantenBestellung { get; set; }
+        public string CAktion { get; set; } = "";
+        public int? NHttpStatus { get; set; }
+        public bool NErfolg { get; set; }
+        public string? CFehler { get; set; }
+        public string? CMSV3AuftragsId { get; set; }
+        public string? CBestellSupportId { get; set; }
+        public int? NDauerMs { get; set; }
+        public DateTime DZeitpunkt { get; set; }
+        public int? KBenutzer { get; set; }
+        public string? LieferantName { get; set; }
+
+        // Formatierte Anzeige
+        public string StatusText => NErfolg ? "OK" : "Fehler";
+        public string ZeitpunktText => DZeitpunkt.ToString("dd.MM.yyyy HH:mm:ss");
+        public string DauerText => NDauerMs.HasValue ? $"{NDauerMs}ms" : "-";
+    }
+
+    /// <summary>
+    /// MSV3-fähiger Lieferant für einen Artikel
+    /// </summary>
+    public class ArtikelMSV3Lieferant
+    {
+        public int KArtikel { get; set; }
+        public int KLieferant { get; set; }
+        public string? LieferantName { get; set; }
+        public string? LieferantNr { get; set; }
+        public string? LieferantenArtNr { get; set; }
+        public decimal EKNetto { get; set; }
+        public int Prioritaet { get; set; }
+        public bool IstStandard { get; set; }
+        public int? KMSV3Lieferant { get; set; }
+        public string? MSV3Url { get; set; }
+        public int? MSV3Version { get; set; }
+        public bool HatMSV3 { get; set; }
+
+        // Für ComboBox-Anzeige
+        public string DisplayText => HatMSV3
+            ? $"{LieferantName} (MSV3)"
+            : LieferantName ?? $"Lieferant {KLieferant}";
     }
 
     #endregion

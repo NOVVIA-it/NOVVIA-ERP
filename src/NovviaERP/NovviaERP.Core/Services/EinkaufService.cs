@@ -69,6 +69,81 @@ namespace NovviaERP.Core.Services
                 "SELECT * FROM tlieferant WHERE kLieferant = @Id", new { Id = kLieferant });
         }
 
+        /// <summary>Vollständige Lieferanten-Stammdaten laden</summary>
+        public async Task<LieferantStammdaten?> GetLieferantStammdatenAsync(int kLieferant)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            return await conn.QuerySingleOrDefaultAsync<LieferantStammdaten>(@"
+                SELECT
+                    l.kLieferant AS KLieferant,
+                    l.cLiefNr AS LiefNr,
+                    l.cFirma AS Firma,
+                    l.cAnsprechpartner AS Ansprechpartner,
+                    l.cStrasse AS Strasse,
+                    l.cPLZ AS PLZ,
+                    l.cOrt AS Ort,
+                    l.cLand AS Land,
+                    COALESCE(l.cTelZentralle, l.cTelDurchwahl) AS Tel,
+                    l.cFax AS Fax,
+                    l.cEMail AS EMail,
+                    l.cHomepage AS Homepage,
+                    l.cUstId AS UstId,
+                    l.cGLN AS GLN,
+                    l.nKreditorNr AS KreditorNr,
+                    l.cBankname AS Bankname,
+                    l.cIBAN AS IBAN,
+                    l.cBIC AS BIC,
+                    l.cKontoInhaber AS KontoInhaber,
+                    l.nZahlungsziel AS Zahlungsziel,
+                    ISNULL(l.fSkonto, 0) AS Skonto,
+                    ISNULL(l.nSkontoTage, 0) AS SkontoTage,
+                    ISNULL(l.fMindestbestellwert, 0) AS Mindestbestellwert,
+                    ISNULL(l.nLieferzeit, 0) AS Lieferzeit,
+                    ISNULL(l.fRabatt, 0) AS Rabatt,
+                    l.cAktiv AS Aktiv,
+                    l.cNotiz AS Notiz
+                FROM tlieferant l
+                WHERE l.kLieferant = @Id", new { Id = kLieferant });
+        }
+
+        /// <summary>NOVVIA-Erweiterung der Lieferanten-Stammdaten laden</summary>
+        public async Task<LieferantErweitert?> GetLieferantErweitertAsync(int kLieferant)
+        {
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                return await conn.QuerySingleOrDefaultAsync<LieferantErweitert>(
+                    "spNOVVIA_LieferantErweitertLaden",
+                    new { kLieferant },
+                    commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                // Tabelle existiert noch nicht
+                return null;
+            }
+        }
+
+        /// <summary>NOVVIA-Erweiterung der Lieferanten-Stammdaten speichern</summary>
+        public async Task SaveLieferantErweitertAsync(LieferantErweitert data)
+        {
+            using var conn = new SqlConnection(_connectionString);
+            await conn.ExecuteAsync(
+                "spNOVVIA_LieferantErweitertSpeichern",
+                new
+                {
+                    kLieferant = data.KLieferant,
+                    nAmbient = data.Ambient,
+                    nCool = data.Cool,
+                    nMedcan = data.Medcan,
+                    nTierarznei = data.Tierarznei,
+                    dQualifiziertAm = data.QualifiziertAm,
+                    cQualifiziertVon = data.QualifiziertVon,
+                    cQualifikationsDocs = data.QualifikationsDocs
+                },
+                commandType: CommandType.StoredProcedure);
+        }
+
         #endregion
 
         #region Lieferantenbestellungen
@@ -138,7 +213,7 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>Bestellung mit Positionen laden</summary>
-        public async Task<LieferantenBestellung?> GetBestellungAsync(int kLieferantenBestellung)
+        public async Task<LieferantenBestellung?> GetBestellungAsync(int kLieferantenBestellung, bool mitLieferantenAuswahl = false)
         {
             using var conn = new SqlConnection(_connectionString);
             var bestellung = await conn.QuerySingleOrDefaultAsync<LieferantenBestellung>(@"
@@ -149,6 +224,34 @@ namespace NovviaERP.Core.Services
             if (bestellung != null)
             {
                 bestellung.Positionen = (await GetBestellungPositionenAsync(kLieferantenBestellung)).ToList();
+
+                // Verfügbare Lieferanten pro Position laden (für MSV3-Auswahl)
+                if (mitLieferantenAuswahl && bestellung.Positionen.Any())
+                {
+                    var artikelIds = bestellung.Positionen.Select(p => p.KArtikel).Distinct().ToList();
+                    var lieferantenMap = await GetArtikelLieferantenMapAsync(artikelIds);
+
+                    foreach (var pos in bestellung.Positionen)
+                    {
+                        if (lieferantenMap.TryGetValue(pos.KArtikel, out var lieferanten))
+                        {
+                            pos.VerfuegbareLieferanten = lieferanten;
+                            // Günstigsten MSV3-Lieferant vorselektieren (nach EK-Preis)
+                            var msv3Lieferanten = lieferanten.Where(l => l.HatMSV3).ToList();
+                            var defaultLief = msv3Lieferanten.OrderBy(l => l.EKNetto).FirstOrDefault()
+                                ?? lieferanten.OrderBy(l => l.EKNetto).FirstOrDefault(l => l.IstStandard)
+                                ?? lieferanten.OrderBy(l => l.EKNetto).FirstOrDefault();
+                            if (defaultLief != null)
+                            {
+                                pos.SelectedKLieferant = defaultLief.KLieferant;
+                                pos.SelectedKMSV3Lieferant = defaultLief.KMSV3Lieferant;
+                                pos.SelectedLieferantName = defaultLief.LieferantName;
+                                // EK-Preis NICHT überschreiben - bleibt aus tLieferantenBestellungPos
+                                pos.IstAusgewaehlt = true; // Standardmäßig ausgewählt
+                            }
+                        }
+                    }
+                }
             }
 
             return bestellung;
@@ -164,14 +267,54 @@ namespace NovviaERP.Core.Services
                        p.cLieferantenArtNr AS CLieferantenArtNr, p.fMenge AS FMenge,
                        ISNULL(p.fMengeGeliefert, 0) AS FMengeGeliefert, p.fEKNetto AS FEKNetto,
                        p.cHinweis AS CHinweis, p.nSort AS NSort,
-                       COALESCE(am.cPZN, a.cHAN, attr.cWert) AS CPZN
+                       a.cArtNr AS CPZN
                 FROM tLieferantenBestellungPos p
                 INNER JOIN tArtikel a ON p.kArtikel = a.kArtikel
                 LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
-                LEFT JOIN NOVVIA.ABdataArtikelMapping am ON a.kArtikel = am.kArtikel
-                LEFT JOIN tArtikelAttribut attr ON a.kArtikel = attr.kArtikel AND attr.cName = 'PZN'
                 WHERE p.kLieferantenBestellung = @Id ORDER BY p.nSort",
                 new { Id = kLieferantenBestellung });
+        }
+
+        /// <summary>Verfügbare Lieferanten für mehrere Artikel laden (aus tLiefArtikel + MSV3-Info)</summary>
+        public async Task<Dictionary<int, List<ArtikelMSV3Lieferant>>> GetArtikelLieferantenMapAsync(IEnumerable<int> artikelIds)
+        {
+            var result = new Dictionary<int, List<ArtikelMSV3Lieferant>>();
+            if (!artikelIds.Any()) return result;
+
+            try
+            {
+                using var conn = new SqlConnection(_connectionString);
+                var lieferanten = await conn.QueryAsync<ArtikelMSV3Lieferant>(@"
+                    SELECT
+                        la.tArtikel_kArtikel AS KArtikel,
+                        la.tLieferant_kLieferant AS KLieferant,
+                        l.cFirma AS LieferantName,
+                        l.cLiefNr AS LieferantNr,
+                        NULL AS LieferantenArtNr,
+                        ISNULL(la.fEKNetto, 0) AS EKNetto,
+                        0 AS Prioritaet,
+                        ISNULL(la.nStandard, 0) AS IstStandard,
+                        m.kMSV3Lieferant AS KMSV3Lieferant,
+                        m.cMSV3Url AS MSV3Url,
+                        m.nMSV3Version AS MSV3Version,
+                        CAST(CASE WHEN m.kMSV3Lieferant IS NOT NULL AND m.nAktiv = 1 THEN 1 ELSE 0 END AS BIT) AS HatMSV3
+                    FROM tLiefArtikel la
+                    INNER JOIN tLieferant l ON la.tLieferant_kLieferant = l.kLieferant
+                    LEFT JOIN NOVVIA.MSV3Lieferant m ON la.tLieferant_kLieferant = m.kLieferant AND m.nAktiv = 1
+                    WHERE la.tArtikel_kArtikel IN @artikelIds AND l.cAktiv = 'Y'
+                    ORDER BY la.tArtikel_kArtikel, ISNULL(m.nPrioritaet, 99), la.nStandard DESC",
+                    new { artikelIds });
+
+                foreach (var l in lieferanten)
+                {
+                    if (!result.ContainsKey(l.KArtikel))
+                        result[l.KArtikel] = new List<ArtikelMSV3Lieferant>();
+                    result[l.KArtikel].Add(l);
+                }
+            }
+            catch { }
+
+            return result;
         }
 
         #endregion
@@ -312,6 +455,79 @@ namespace NovviaERP.Core.Services
         public decimal Skonto { get; set; }
     }
 
+    /// <summary>Vollständige Lieferanten-Stammdaten</summary>
+    public class LieferantStammdaten
+    {
+        public int KLieferant { get; set; }
+        public string? LiefNr { get; set; }
+        public string? Firma { get; set; }
+        public string? Ansprechpartner { get; set; }
+        public string? Strasse { get; set; }
+        public string? PLZ { get; set; }
+        public string? Ort { get; set; }
+        public string? Land { get; set; }
+        public string? Tel { get; set; }
+        public string? Fax { get; set; }
+        public string? EMail { get; set; }
+        public string? Homepage { get; set; }
+        public string? UstId { get; set; }
+        public string? GLN { get; set; }
+        public int? KreditorNr { get; set; }
+        public string? Bankname { get; set; }
+        public string? IBAN { get; set; }
+        public string? BIC { get; set; }
+        public string? KontoInhaber { get; set; }
+        public int Zahlungsziel { get; set; }
+        public decimal Skonto { get; set; }
+        public int SkontoTage { get; set; }
+        public decimal Mindestbestellwert { get; set; }
+        public int Lieferzeit { get; set; }
+        public decimal Rabatt { get; set; }
+        public string? Aktiv { get; set; }
+        public string? Notiz { get; set; }
+
+        // Formatierte Ausgaben
+        public string ZahlungszielText => Zahlungsziel > 0 ? $"{Zahlungsziel} Tage" : "-";
+        public string SkontoText => Skonto > 0 ? $"{Skonto:N2}% bei {SkontoTage} Tagen" : "-";
+        public string MindestbestellwertText => Mindestbestellwert > 0 ? $"{Mindestbestellwert:C}" : "-";
+        public string LieferzeitText => Lieferzeit > 0 ? $"{Lieferzeit} Tage" : "-";
+    }
+
+    /// <summary>NOVVIA-Erweiterung der Lieferanten-Stammdaten</summary>
+    public class LieferantErweitert
+    {
+        public int KLieferantErweitert { get; set; }
+        public int KLieferant { get; set; }
+
+        // Produktkategorien
+        public bool Ambient { get; set; }
+        public bool Cool { get; set; }
+        public bool Medcan { get; set; }
+        public bool Tierarznei { get; set; }
+
+        // Qualifizierung
+        public DateTime? QualifiziertAm { get; set; }
+        public string? QualifiziertVon { get; set; }
+        public string? QualifikationsDocs { get; set; }
+
+        public DateTime? Erstellt { get; set; }
+        public DateTime? Geaendert { get; set; }
+
+        // Aliase für Dapper (SQL-Spaltennamen)
+        public bool NAmbient { get => Ambient; set => Ambient = value; }
+        public bool NCool { get => Cool; set => Cool = value; }
+        public bool NMedcan { get => Medcan; set => Medcan = value; }
+        public bool NTierarznei { get => Tierarznei; set => Tierarznei = value; }
+        public DateTime? DQualifiziertAm { get => QualifiziertAm; set => QualifiziertAm = value; }
+        public string? CQualifiziertVon { get => QualifiziertVon; set => QualifiziertVon = value; }
+        public string? CQualifikationsDocs { get => QualifikationsDocs; set => QualifikationsDocs = value; }
+        public DateTime? DErstellt { get => Erstellt; set => Erstellt = value; }
+        public DateTime? DGeaendert { get => Geaendert; set => Geaendert = value; }
+
+        // Formatierte Anzeige
+        public string QualifiziertAmText => QualifiziertAm?.ToString("dd.MM.yyyy") ?? "-";
+    }
+
     public class LieferantUebersicht
     {
         public int KLieferant { get; set; }
@@ -363,6 +579,25 @@ namespace NovviaERP.Core.Services
         public string? CHinweis { get; set; }
         public int NSort { get; set; }
 
+        // Auswahl-Checkbox für Bestellung
+        public bool IstAusgewaehlt { get; set; }
+
+        // Wunsch-MHD (editierbar)
+        public DateTime? WunschMHD { get; set; }
+
+        // Positionstext
+        public string? CPositionsText { get; set; }
+
+        // Lieferant-Auswahl (für MSV3-Bestellung)
+        public int? SelectedKLieferant { get; set; }
+        public int? SelectedKMSV3Lieferant { get; set; }
+        public string? SelectedLieferantName { get; set; }
+        public List<ArtikelMSV3Lieferant> VerfuegbareLieferanten { get; set; } = new();
+
+        // Anzeige für ausgewählten Lieferanten
+        public string LieferantDisplayText => SelectedLieferantName ??
+            (VerfuegbareLieferanten.FirstOrDefault(l => l.KLieferant == SelectedKLieferant)?.DisplayText ?? "-");
+
         // MSV3 Verfügbarkeitsdaten (werden zur Laufzeit befüllt)
         public int? MSV3Bestand { get; set; }
         public bool? MSV3Verfuegbar { get; set; }
@@ -390,6 +625,62 @@ namespace NovviaERP.Core.Services
 
         // Mindest-MHD für Bestellung (vom Benutzer eingebbar)
         public DateTime? MinMHD { get; set; }
+    }
+
+    /// <summary>
+    /// Flache Darstellung: Eine Zeile pro Artikel-Lieferant-Kombination
+    /// </summary>
+    public class BestellPositionLieferantZeile
+    {
+        // Artikel-Daten
+        public int KLieferantenBestellungPos { get; set; }
+        public int KArtikel { get; set; }
+        public string? CArtNr { get; set; }
+        public string? ArtikelName { get; set; }
+        public string? CPZN { get; set; }
+        public decimal FMenge { get; set; }
+        public string? CHinweis { get; set; }
+
+        // Lieferant-Daten
+        public int KLieferant { get; set; }
+        public int? KMSV3Lieferant { get; set; }
+        public string? LieferantName { get; set; }
+        public string? LieferantenArtNr { get; set; }
+        public decimal EKNetto { get; set; }
+        public bool HatMSV3 { get; set; }
+
+        // Auswahl-Checkbox
+        public bool IstAusgewaehlt { get; set; }
+
+        // Wunsch-MHD (editierbar)
+        public DateTime? WunschMHD { get; set; }
+
+        // Positionstext (editierbar)
+        public string? CPositionsText { get; set; }
+
+        // MSV3 Verfügbarkeitsdaten
+        public int? MSV3Bestand { get; set; }
+        public bool? MSV3Verfuegbar { get; set; }
+        public string? MSV3StatusText { get; set; }
+        public DateTime? MSV3MHD { get; set; }
+        public string? MSV3ChargenNr { get; set; }
+        public DateTime? MSV3Lieferzeit { get; set; }
+
+        // Formatierte Anzeigen
+        public string EKNettoText => EKNetto.ToString("N2") + " €";
+        public string MSV3MHDText => MSV3MHD?.ToString("dd.MM.yyyy") ?? "";
+        public string WunschMHDText => WunschMHD?.ToString("dd.MM.yyyy") ?? "";
+        public string MSV3BestandFarbe => MSV3Bestand > 0 ? "Green" : (MSV3Bestand.HasValue ? "Red" : "Gray");
+        public string MSV3StatusFarbe => MSV3StatusText switch
+        {
+            "VERFUEGBAR" or "SOFORT_LIEFERBAR" => "Green",
+            "TEILWEISE" or "TEILWEISE_LIEFERBAR" => "Orange",
+            "NICHT_VERFUEGBAR" or "NICHT_LIEFERBAR" => "Red",
+            _ => "Gray"
+        };
+
+        // Für Gruppierung nach Artikel
+        public string ArtikelKey => $"{KArtikel}_{CPZN}";
     }
 
     public class Eingangsrechnung
