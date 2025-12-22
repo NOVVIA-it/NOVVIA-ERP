@@ -122,21 +122,30 @@ namespace NovviaERP.WPF.Views
 
                 if (_selectedLiefStammdaten != null)
                 {
-                    // Kontaktdaten
+                    // Identifikation
+                    txtLiefLiefNr.Text = _selectedLiefStammdaten.LiefNr ?? "-";
+                    txtLiefEigeneKdNr.Text = _selectedLiefStammdaten.EigeneKundennr ?? "-";
+                    txtLiefStatus.Text = _selectedLiefStammdaten.AktivText;
+
+                    // Adresse & Kontakt
                     txtLiefStrasse.Text = _selectedLiefStammdaten.Strasse ?? "-";
                     txtLiefPLZOrt.Text = $"{_selectedLiefStammdaten.PLZ} {_selectedLiefStammdaten.Ort}".Trim();
                     if (string.IsNullOrWhiteSpace(txtLiefPLZOrt.Text)) txtLiefPLZOrt.Text = "-";
                     txtLiefLand.Text = _selectedLiefStammdaten.Land ?? "-";
+                    txtLiefAnsprechpartner.Text = _selectedLiefStammdaten.Ansprechpartner ?? "-";
                     txtLiefTel.Text = _selectedLiefStammdaten.Tel ?? "-";
+                    txtLiefTelDurchwahl.Text = _selectedLiefStammdaten.TelDurchwahl ?? "-";
+                    txtLiefMobil.Text = _selectedLiefStammdaten.Mobil ?? "-";
                     txtLiefFax.Text = _selectedLiefStammdaten.Fax ?? "-";
                     txtLiefEmail.Text = _selectedLiefStammdaten.EMail ?? "-";
                     txtLiefHomepage.Text = _selectedLiefStammdaten.Homepage ?? "-";
-                    txtLiefAnsprechpartner.Text = _selectedLiefStammdaten.Ansprechpartner ?? "-";
 
                     // Finanzdaten
                     txtLiefUstId.Text = _selectedLiefStammdaten.UstId ?? "-";
+                    txtLiefUstBefreit.Text = _selectedLiefStammdaten.UstBefreit ? "✅ Ja" : "❌ Nein";
                     txtLiefGLN.Text = _selectedLiefStammdaten.GLN ?? "-";
                     txtLiefKreditorNr.Text = _selectedLiefStammdaten.KreditorNr?.ToString() ?? "-";
+                    txtLiefWaehrung.Text = _selectedLiefStammdaten.Bestellwaehrung ?? "EUR";
                     txtLiefIBAN.Text = FormatIBAN(_selectedLiefStammdaten.IBAN) ?? "-";
                     txtLiefBIC.Text = _selectedLiefStammdaten.BIC ?? "-";
                     txtLiefBank.Text = _selectedLiefStammdaten.Bankname ?? "-";
@@ -145,7 +154,16 @@ namespace NovviaERP.WPF.Views
                     txtLiefZahlungsziel.Text = _selectedLiefStammdaten.ZahlungszielText;
                     txtLiefSkonto.Text = _selectedLiefStammdaten.SkontoText;
                     txtLiefMindestbestellwert.Text = _selectedLiefStammdaten.MindestbestellwertText;
+                    txtLiefMindermenge.Text = _selectedLiefStammdaten.MindermengenzuschlagText;
+                    txtLiefFrachtkosten.Text = _selectedLiefStammdaten.FrachtkostenText;
+                    txtLiefFreiHausAb.Text = _selectedLiefStammdaten.FreiHausAbText;
                     txtLiefLieferzeit.Text = _selectedLiefStammdaten.LieferzeitText;
+                    txtLiefRabatt.Text = _selectedLiefStammdaten.RabattText;
+
+                    // Dropshipping
+                    txtLiefDropshipping.Text = _selectedLiefStammdaten.DropshippingText;
+                    txtLiefDropshippingNN.Text = _selectedLiefStammdaten.DropshippingNachnahme ? "✅ Ja" : "❌ Nein";
+                    txtLiefDropshippingFP.Text = _selectedLiefStammdaten.DropshippingFreipos ? "✅ Ja" : "❌ Nein";
                 }
             }
             catch (Exception ex)

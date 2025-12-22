@@ -75,33 +75,73 @@ namespace NovviaERP.Core.Services
             using var conn = new SqlConnection(_connectionString);
             return await conn.QuerySingleOrDefaultAsync<LieferantStammdaten>(@"
                 SELECT
+                    -- Identifikation
                     l.kLieferant AS KLieferant,
                     l.cLiefNr AS LiefNr,
                     l.cFirma AS Firma,
-                    l.cAnsprechpartner AS Ansprechpartner,
+                    l.cKundennummer AS EigeneKundennr,
+
+                    -- Adresse
                     l.cStrasse AS Strasse,
                     l.cPLZ AS PLZ,
                     l.cOrt AS Ort,
                     l.cLand AS Land,
-                    COALESCE(l.cTelZentralle, l.cTelDurchwahl) AS Tel,
+                    l.cBundesland AS Bundesland,
+                    l.cAdressZusatz AS Adresszusatz,
+
+                    -- Kontakt
+                    l.cAnsprechpartner AS Ansprechpartner,
+                    l.cTelZentralle AS Tel,
+                    l.cTelDurchwahl AS TelDurchwahl,
+                    l.cMobil AS Mobil,
                     l.cFax AS Fax,
                     l.cEMail AS EMail,
                     l.cHomepage AS Homepage,
+
+                    -- Finanzen / Steuern
                     l.cUstId AS UstId,
+                    ISNULL(l.nUstBefreit, 0) AS UstBefreit,
                     l.cGLN AS GLN,
                     l.nKreditorNr AS KreditorNr,
+                    ISNULL(l.cWaehrung, 'EUR') AS Bestellwaehrung,
+
+                    -- Bankverbindung
                     l.cBankname AS Bankname,
                     l.cIBAN AS IBAN,
                     l.cBIC AS BIC,
                     l.cKontoInhaber AS KontoInhaber,
-                    l.nZahlungsziel AS Zahlungsziel,
+
+                    -- Konditionen
+                    ISNULL(l.nZahlungsziel, 0) AS Zahlungsziel,
                     ISNULL(l.fSkonto, 0) AS Skonto,
                     ISNULL(l.nSkontoTage, 0) AS SkontoTage,
                     ISNULL(l.fMindestbestellwert, 0) AS Mindestbestellwert,
+                    ISNULL(l.fMindermengenzuschlag, 0) AS Mindermengenzuschlag,
+                    ISNULL(l.fFrachtkosten, 0) AS Frachtkosten,
+                    ISNULL(l.fFreiHausAb, 0) AS FreiHausAb,
                     ISNULL(l.nLieferzeit, 0) AS Lieferzeit,
                     ISNULL(l.fRabatt, 0) AS Rabatt,
+
+                    -- Rabattstaffel
+                    l.fRabatt1 AS RabattStaffel1,
+                    l.fRabatt1Ab AS RabattStaffel1Ab,
+                    l.fRabatt2 AS RabattStaffel2,
+                    l.fRabatt2Ab AS RabattStaffel2Ab,
+                    l.fRabatt3 AS RabattStaffel3,
+                    l.fRabatt3Ab AS RabattStaffel3Ab,
+
+                    -- Dropshipping
+                    ISNULL(l.nDropshipping, 0) AS Dropshipping,
+                    ISNULL(l.nDropshippingNachnahme, 0) AS DropshippingNachnahme,
+                    ISNULL(l.nDropshippingFreipos, 0) AS DropshippingFreipos,
+
+                    -- Sonstiges
                     l.cAktiv AS Aktiv,
-                    l.cNotiz AS Notiz
+                    ISNULL(l.nFuerEinkaufslisteGesperrt, 0) AS FuerEinkaufslisteGesperrt,
+                    l.cNotiz AS Notiz,
+                    l.kFirma AS StandardFirma,
+                    l.kWarenlager AS StandardLager,
+                    l.fUstSatz AS UstSatzFreipos
                 FROM tlieferant l
                 WHERE l.kLieferant = @Id", new { Id = kLieferant });
         }
@@ -455,42 +495,90 @@ namespace NovviaERP.Core.Services
         public decimal Skonto { get; set; }
     }
 
-    /// <summary>Vollständige Lieferanten-Stammdaten</summary>
+    /// <summary>Vollständige Lieferanten-Stammdaten (JTL tLieferant)</summary>
     public class LieferantStammdaten
     {
+        // === Identifikation ===
         public int KLieferant { get; set; }
         public string? LiefNr { get; set; }
         public string? Firma { get; set; }
-        public string? Ansprechpartner { get; set; }
+        public string? EigeneKundennr { get; set; }  // Eigene Kundennr beim Lieferanten
+
+        // === Adresse ===
         public string? Strasse { get; set; }
         public string? PLZ { get; set; }
         public string? Ort { get; set; }
         public string? Land { get; set; }
+        public string? Bundesland { get; set; }
+        public string? Adresszusatz { get; set; }
+
+        // === Kontakt ===
+        public string? Ansprechpartner { get; set; }
         public string? Tel { get; set; }
+        public string? TelDurchwahl { get; set; }
+        public string? Mobil { get; set; }
         public string? Fax { get; set; }
         public string? EMail { get; set; }
         public string? Homepage { get; set; }
+
+        // === Finanzen / Steuern ===
         public string? UstId { get; set; }
+        public bool UstBefreit { get; set; }
         public string? GLN { get; set; }
         public int? KreditorNr { get; set; }
+        public string? Bestellwaehrung { get; set; }
+
+        // === Bankverbindung ===
         public string? Bankname { get; set; }
         public string? IBAN { get; set; }
         public string? BIC { get; set; }
         public string? KontoInhaber { get; set; }
+
+        // === Konditionen ===
         public int Zahlungsziel { get; set; }
         public decimal Skonto { get; set; }
         public int SkontoTage { get; set; }
         public decimal Mindestbestellwert { get; set; }
+        public decimal Mindermengenzuschlag { get; set; }
+        public decimal Frachtkosten { get; set; }
+        public decimal FreiHausAb { get; set; }
         public int Lieferzeit { get; set; }
         public decimal Rabatt { get; set; }
-        public string? Aktiv { get; set; }
-        public string? Notiz { get; set; }
 
-        // Formatierte Ausgaben
+        // === Rabattstaffel ===
+        public decimal? RabattStaffel1 { get; set; }
+        public decimal? RabattStaffel1Ab { get; set; }
+        public decimal? RabattStaffel2 { get; set; }
+        public decimal? RabattStaffel2Ab { get; set; }
+        public decimal? RabattStaffel3 { get; set; }
+        public decimal? RabattStaffel3Ab { get; set; }
+
+        // === Dropshipping ===
+        public bool Dropshipping { get; set; }
+        public bool DropshippingNachnahme { get; set; }
+        public bool DropshippingFreipos { get; set; }
+
+        // === Sonstiges ===
+        public string? Aktiv { get; set; }
+        public bool FuerEinkaufslisteGesperrt { get; set; }
+        public string? Notiz { get; set; }
+        public int? StandardFirma { get; set; }
+        public int? StandardLager { get; set; }
+        public decimal? UstSatzFreipos { get; set; }
+
+        // === Formatierte Ausgaben ===
+        public bool IstAktiv => Aktiv == "Y";
+        public string AktivText => Aktiv == "Y" ? "✅ Aktiv" : "❌ Inaktiv";
         public string ZahlungszielText => Zahlungsziel > 0 ? $"{Zahlungsziel} Tage" : "-";
         public string SkontoText => Skonto > 0 ? $"{Skonto:N2}% bei {SkontoTage} Tagen" : "-";
         public string MindestbestellwertText => Mindestbestellwert > 0 ? $"{Mindestbestellwert:C}" : "-";
         public string LieferzeitText => Lieferzeit > 0 ? $"{Lieferzeit} Tage" : "-";
+        public string FrachtkostenText => Frachtkosten > 0 ? $"{Frachtkosten:C}" : "-";
+        public string FreiHausAbText => FreiHausAb > 0 ? $"ab {FreiHausAb:C}" : "-";
+        public string MindermengenzuschlagText => Mindermengenzuschlag > 0 ? $"{Mindermengenzuschlag:C}" : "-";
+        public string RabattText => Rabatt > 0 ? $"{Rabatt:N2}%" : "-";
+        public string DropshippingText => Dropshipping ? "✅ Ja" : "❌ Nein";
+        public string AdresseEinzeilig => $"{Strasse}, {PLZ} {Ort}".Trim(' ', ',');
     }
 
     /// <summary>NOVVIA-Erweiterung der Lieferanten-Stammdaten</summary>

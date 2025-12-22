@@ -80,14 +80,41 @@
                                     <TabItem Header="Stammdaten">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="5">
                                             <StackPanel>
-                                                <!-- Kontaktdaten -->
-                                                <TextBlock Text="Kontaktdaten" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                                <!-- Identifikation -->
+                                                <TextBlock Text="Identifikation" FontWeight="SemiBold" Margin="0,5,0,10"/>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="90"/>
+                                                        <ColumnDefinition Width="110"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <Grid.RowDefinitions>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Text="Lieferanten-Nr:" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefLiefNr" Grid.Column="1" VerticalAlignment="Center" FontWeight="SemiBold"/>
+
+                                                    <TextBlock Text="Eigene Kd-Nr:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefEigeneKdNr" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Status:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefStatus" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+                                                </Grid>
+
+                                                <Separator Margin="0,10"/>
+
+                                                <!-- Adresse & Kontakt -->
+                                                <TextBlock Text="Adresse &amp; Kontakt" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="110"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
                                                         <RowDefinition Height="26"/>
                                                         <RowDefinition Height="26"/>
                                                         <RowDefinition Height="26"/>
@@ -107,20 +134,26 @@
                                                     <TextBlock Text="Land:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
                                                     <TextBlock x:Name="txtLiefLand" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="Telefon:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefTel" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Ansprechpartner:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefAnsprechpartner" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="Fax:" Grid.Row="4" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefFax" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Tel. Zentrale:" Grid.Row="4" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefTel" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="E-Mail:" Grid.Row="5" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefEmail" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" Foreground="#0078D4" Cursor="Hand" MouseLeftButtonUp="LiefEmail_Click"/>
+                                                    <TextBlock Text="Tel. Durchwahl:" Grid.Row="5" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefTelDurchwahl" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="Homepage:" Grid.Row="6" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefHomepage" Grid.Row="6" Grid.Column="1" VerticalAlignment="Center" Foreground="#0078D4" Cursor="Hand" MouseLeftButtonUp="LiefHomepage_Click"/>
+                                                    <TextBlock Text="Mobil:" Grid.Row="6" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefMobil" Grid.Row="6" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="Ansprech.:" Grid.Row="7" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefAnsprechpartner" Grid.Row="7" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Fax:" Grid.Row="7" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefFax" Grid.Row="7" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="E-Mail:" Grid.Row="8" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefEmail" Grid.Row="8" Grid.Column="1" VerticalAlignment="Center" Foreground="#0078D4" Cursor="Hand" MouseLeftButtonUp="LiefEmail_Click"/>
+
+                                                    <TextBlock Text="Homepage:" Grid.Row="9" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefHomepage" Grid.Row="9" Grid.Column="1" VerticalAlignment="Center" Foreground="#0078D4" Cursor="Hand" MouseLeftButtonUp="LiefHomepage_Click"/>
                                                 </Grid>
 
                                                 <Separator Margin="0,10"/>
@@ -129,10 +162,12 @@
                                                 <TextBlock Text="Finanzdaten" FontWeight="SemiBold" Margin="0,5,0,10"/>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="90"/>
+                                                        <ColumnDefinition Width="110"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <Grid.RowDefinitions>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
                                                         <RowDefinition Height="26"/>
                                                         <RowDefinition Height="26"/>
                                                         <RowDefinition Height="26"/>
@@ -144,20 +179,26 @@
                                                     <TextBlock Text="USt-IdNr:" VerticalAlignment="Center" Foreground="Gray"/>
                                                     <TextBlock x:Name="txtLiefUstId" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="GLN/ILN:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefGLN" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="USt-befreit:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefUstBefreit" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="Kreditor Nr:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefKreditorNr" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="GLN/ILN:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefGLN" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="IBAN:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefIBAN" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" FontFamily="Consolas"/>
+                                                    <TextBlock Text="Kreditor-Nr:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefKreditorNr" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="BIC:" Grid.Row="4" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefBIC" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Währung:" Grid.Row="4" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefWaehrung" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="Bank:" Grid.Row="5" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefBank" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="IBAN:" Grid.Row="5" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefIBAN" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" FontFamily="Consolas"/>
+
+                                                    <TextBlock Text="BIC:" Grid.Row="6" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefBIC" Grid.Row="6" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Bank:" Grid.Row="7" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefBank" Grid.Row="7" Grid.Column="1" VerticalAlignment="Center"/>
                                                 </Grid>
 
                                                 <Separator Margin="0,10"/>
@@ -166,10 +207,14 @@
                                                 <TextBlock Text="Konditionen" FontWeight="SemiBold" Margin="0,5,0,10"/>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="100"/>
+                                                        <ColumnDefinition Width="110"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <Grid.RowDefinitions>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
                                                         <RowDefinition Height="26"/>
                                                         <RowDefinition Height="26"/>
                                                         <RowDefinition Height="26"/>
@@ -182,11 +227,48 @@
                                                     <TextBlock Text="Skonto:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
                                                     <TextBlock x:Name="txtLiefSkonto" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="Min.Bestell.:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock Text="Min.Bestellwert:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
                                                     <TextBlock x:Name="txtLiefMindestbestellwert" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
 
-                                                    <TextBlock Text="Lieferzeit:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefLieferzeit" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Mindermenge:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefMindermenge" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Frachtkosten:" Grid.Row="4" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefFrachtkosten" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Frei Haus ab:" Grid.Row="5" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefFreiHausAb" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Lieferzeit:" Grid.Row="6" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefLieferzeit" Grid.Row="6" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Rabatt:" Grid.Row="7" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefRabatt" Grid.Row="7" Grid.Column="1" VerticalAlignment="Center"/>
+                                                </Grid>
+
+                                                <Separator Margin="0,10"/>
+
+                                                <!-- Dropshipping -->
+                                                <TextBlock Text="Dropshipping" FontWeight="SemiBold" Margin="0,5,0,10"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="110"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="26"/>
+                                                    </Grid.RowDefinitions>
+
+                                                    <TextBlock Text="Dropshipping:" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefDropshipping" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Mit Nachnahme:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefDropshippingNN" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+
+                                                    <TextBlock Text="Freipos erlaubt:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtLiefDropshippingFP" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
                                                 </Grid>
 
                                                 <Separator Margin="0,10"/>
