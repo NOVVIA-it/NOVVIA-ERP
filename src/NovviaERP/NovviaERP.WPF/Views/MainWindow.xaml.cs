@@ -32,6 +32,7 @@ namespace NovviaERP.WPF.Views
         private void NavBestellungen_Click(object sender, RoutedEventArgs e) => ShowView<BestellungenView>();
         private void NavRechnungen_Click(object sender, RoutedEventArgs e) => ShowView<RechnungenView>();
         private void NavLieferanten_Click(object sender, RoutedEventArgs e) => ShowView<LieferantenView>();
+        private void NavLieferantenBestellungen_Click(object sender, RoutedEventArgs e) => contentMain.Content = new LieferantenBestellungPage();
         private void NavLager_Click(object sender, RoutedEventArgs e) => ShowView<LagerView>();
         private void NavVersand_Click(object sender, RoutedEventArgs e) => ShowView<VersandView>();
         private void NavImport_Click(object sender, RoutedEventArgs e) => contentMain.Content = new ImportView();

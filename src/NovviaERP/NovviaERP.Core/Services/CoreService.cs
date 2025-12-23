@@ -1063,5 +1063,488 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region Lieferantenbestellung (JTL Native SPs)
+
+        /// <summary>
+        /// Lieferanten laden (tLieferant)
+        /// </summary>
+        public async Task<IEnumerable<LieferantRef>> GetLieferantenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT kLieferant AS KLieferant, cFirma AS CFirma, cStrasse AS CStrasse,
+                       cPLZ AS CPLZ, cOrt AS COrt, cLand AS CLand,
+                       COALESCE(cTelZentralle, cTelDurchwahl, '') AS CTelefon,
+                       cFax AS CFax, cEMail AS CEmail
+                FROM dbo.tLieferant
+                WHERE cAktiv = 'Y'
+                ORDER BY cFirma";
+            return await conn.QueryAsync<LieferantRef>(sql);
+        }
+
+        /// <summary>
+        /// Warenlager laden (tWarenLager)
+        /// </summary>
+        public async Task<IEnumerable<WarenlagerRef>> GetWarenlagerAsync()
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT kWarenLager AS KWarenLager, cName AS CName
+                FROM dbo.tWarenLager
+                WHERE nAktiv = 1
+                ORDER BY nStandard DESC, cName";
+            return await conn.QueryAsync<WarenlagerRef>(sql);
+        }
+
+        /// <summary>
+        /// Firmen laden (tFirma)
+        /// </summary>
+        public async Task<IEnumerable<FirmaRef>> GetFirmenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT kFirma AS KFirma, cName AS CFirma, cStrasse AS CStrasse,
+                       cPLZ AS CPLZ, cOrt AS COrt
+                FROM dbo.tFirma
+                ORDER BY cName";
+            return await conn.QueryAsync<FirmaRef>(sql);
+        }
+
+        /// <summary>
+        /// Lieferantenbestellung laden
+        /// </summary>
+        public async Task<LieferantenBestellungDto?> GetLieferantenBestellungAsync(int kLieferantenBestellung)
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT kLieferantenBestellung AS KLieferantenBestellung,
+                       kLieferant AS KLieferant, kSprache AS KSprache,
+                       cWaehrungISO AS CWaehrungISO, cInternerKommentar AS CInternerKommentar,
+                       cDruckAnmerkung AS CDruckAnmerkung, nStatus AS NStatus,
+                       dErstellt AS DErstellt, kFirma AS KFirma, kLager AS KLager,
+                       kKunde AS KKunde, dLieferdatum AS DLieferdatum,
+                       cEigeneBestellnummer AS CEigeneBestellnummer,
+                       cBezugsAuftragsNummer AS CBezugsAuftragsNummer,
+                       nDropShipping AS NDropShipping, cFremdbelegnummer AS CFremdbelegnummer
+                FROM dbo.tLieferantenBestellung
+                WHERE kLieferantenBestellung = @id";
+            return await conn.QueryFirstOrDefaultAsync<LieferantenBestellungDto>(sql, new { id = kLieferantenBestellung });
+        }
+
+        /// <summary>
+        /// Lieferantenbestellung Positionen laden
+        /// </summary>
+        public async Task<IEnumerable<LieferantenBestellungPosition>> GetLieferantenBestellungPositionenAsync(int kLieferantenBestellung)
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT kLieferantenBestellungPos AS KLieferantenBestellungPos,
+                       kLieferantenBestellung AS KLieferantenBestellung,
+                       kArtikel AS KArtikel, cArtNr AS CArtNr,
+                       cLieferantenArtNr AS CLieferantenArtNr, cName AS CName,
+                       cLieferantenBezeichnung AS CLieferantenBezeichnung,
+                       fUST AS FUST, fMenge AS FMenge, cHinweis AS CHinweis,
+                       fEKNetto AS FEKNetto, nPosTyp AS NPosTyp,
+                       cNameLieferant AS CNameLieferant, nLiefertage AS NLiefertage,
+                       dLieferdatum AS DLieferdatum, nSort AS NSort,
+                       fMengeGeliefert AS FMengeGeliefert,
+                       cVPEEinheit AS CVPEEinheit, nVPEMenge AS NVPEMenge
+                FROM dbo.tLieferantenBestellungPos
+                WHERE kLieferantenBestellung = @id
+                ORDER BY nSort";
+            return await conn.QueryAsync<LieferantenBestellungPosition>(sql, new { id = kLieferantenBestellung });
+        }
+
+        /// <summary>
+        /// Lieferantenbestellung uebersicht laden
+        /// </summary>
+        public async Task<IEnumerable<LieferantenBestellungUebersicht>> GetLieferantenBestellungenAsync(int? kLieferant = null, int? status = null, int limit = 500)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@limit)
+                       lb.kLieferantenBestellung, lb.kLieferant, l.cFirma AS LieferantName,
+                       lb.cEigeneBestellnummer, lb.cFremdbelegnummer, lb.nStatus,
+                       lb.dErstellt, lb.dLieferdatum,
+                       (SELECT SUM(p.fMenge * p.fEKNetto) FROM dbo.tLieferantenBestellungPos p
+                        WHERE p.kLieferantenBestellung = lb.kLieferantenBestellung) AS NettoGesamt,
+                       (SELECT COUNT(*) FROM dbo.tLieferantenBestellungPos p
+                        WHERE p.kLieferantenBestellung = lb.kLieferantenBestellung) AS AnzahlPositionen
+                FROM dbo.tLieferantenBestellung lb
+                LEFT JOIN dbo.tLieferant l ON l.kLieferant = lb.kLieferant
+                WHERE lb.nDeleted = 0
+                  AND (@kLieferant IS NULL OR lb.kLieferant = @kLieferant)
+                  AND (@status IS NULL OR lb.nStatus = @status)
+                ORDER BY lb.dErstellt DESC";
+            return await conn.QueryAsync<LieferantenBestellungUebersicht>(sql, new { limit, kLieferant, status });
+        }
+
+        /// <summary>
+        /// Artikel fuer Lieferant finden (cArtNr oder cLieferantenArtNr)
+        /// </summary>
+        public async Task<ArtikelFuerLieferant?> FindeArtikelFuerLieferantAsync(string artNrOderLiefArtNr, int kLieferant)
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT TOP 1
+                       a.kArtikel AS KArtikel, a.cArtNr AS CArtNr,
+                       la.cLieferantenArtNr AS CLieferantenArtNr,
+                       COALESCE(ab.cName, a.cArtNr) AS CName,
+                       COALESCE(la.fUSt, 19.0) AS FUST,
+                       COALESCE(la.fEKNetto, a.fEKNetto, 0) AS FEKNetto
+                FROM dbo.tArtikel a
+                LEFT JOIN dbo.tArtikelBeschreibung ab ON ab.kArtikel = a.kArtikel AND ab.kSprache = 1
+                LEFT JOIN dbo.tLiefArtikel la ON la.tArtikel_kArtikel = a.kArtikel AND la.tLieferant_kLieferant = @kLieferant
+                WHERE a.cArtNr = @suche OR la.cLieferantenArtNr = @suche OR a.cBarcode = @suche
+                ORDER BY CASE WHEN la.tLieferant_kLieferant IS NOT NULL THEN 0 ELSE 1 END";
+            return await conn.QueryFirstOrDefaultAsync<ArtikelFuerLieferant>(sql, new { suche = artNrOderLiefArtNr, kLieferant });
+        }
+
+        /// <summary>
+        /// Lieferantenbestellung anlegen via JTL SP
+        /// </summary>
+        public async Task<int> CreateLieferantenBestellungAsync(LieferantenBestellungDto bestellung)
+        {
+            var conn = await GetConnectionAsync();
+
+            // XML fuer Positionen erstellen
+            var posXml = BuildPositionenXml(bestellung.Positionen);
+
+            var p = new DynamicParameters();
+            p.Add("@kLieferant", bestellung.KLieferant);
+            p.Add("@kSprache", bestellung.KSprache);
+            p.Add("@kLieferantenBestellungRA", 0);
+            p.Add("@kLieferantenBestellungLA", 0);
+            p.Add("@cWaehrungISO", bestellung.CWaehrungISO ?? "EUR");
+            p.Add("@cInternerKommentar", bestellung.CInternerKommentar ?? "");
+            p.Add("@cDruckAnmerkung", bestellung.CDruckAnmerkung ?? "");
+            p.Add("@nStatus", bestellung.NStatus);
+            p.Add("@kFirma", bestellung.KFirma);
+            p.Add("@kLager", bestellung.KLager);
+            p.Add("@kKunde", bestellung.KKunde);
+            p.Add("@dLieferdatum", bestellung.DLieferdatum);
+            p.Add("@cEigeneBestellnummer", bestellung.CEigeneBestellnummer ?? "");
+            p.Add("@cBezugsAuftragsNummer", bestellung.CBezugsAuftragsNummer ?? "");
+            p.Add("@nDropShipping", bestellung.NDropShipping);
+            p.Add("@kLieferantenBestellungLieferant", 0);
+            p.Add("@kBenutzer", 1); // TODO: Aktuellen Benutzer
+            p.Add("@fFaktor", 1.0m);
+            p.Add("@cFremdbelegnummer", bestellung.CFremdbelegnummer ?? "");
+            p.Add("@kLieferschein", 0);
+            p.Add("@nBestaetigt", 0);
+            p.Add("@istGedruckt", 0);
+            p.Add("@istGemailt", 0);
+            p.Add("@istGefaxt", 0);
+            p.Add("@nAngelegtDurchWMS", 0);
+            p.Add("@xLieferantenbestellungPos", posXml);
+            p.Add("@kLieferantenbestellung", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            await conn.ExecuteAsync("[Lieferantenbestellung].[spLieferantenBestellungErstellen]", p, commandType: CommandType.StoredProcedure);
+
+            return p.Get<int>("@kLieferantenbestellung");
+        }
+
+        /// <summary>
+        /// Lieferantenbestellung aktualisieren via JTL SP
+        /// </summary>
+        public async Task UpdateLieferantenBestellungAsync(LieferantenBestellungDto bestellung)
+        {
+            var conn = await GetConnectionAsync();
+
+            var p = new DynamicParameters();
+            p.Add("@kLieferantenBestellung", bestellung.KLieferantenBestellung);
+            p.Add("@kLieferant", bestellung.KLieferant);
+            p.Add("@kSprache", bestellung.KSprache);
+            p.Add("@kLieferantenBestellungRA", 0);
+            p.Add("@kLieferantenBestellungLA", 0);
+            p.Add("@cWaehrungISO", bestellung.CWaehrungISO ?? "EUR");
+            p.Add("@cInternerKommentar", bestellung.CInternerKommentar ?? "");
+            p.Add("@cDruckAnmerkung", bestellung.CDruckAnmerkung ?? "");
+            p.Add("@dGedruckt", DBNull.Value);
+            p.Add("@dGemailt", DBNull.Value);
+            p.Add("@dGefaxt", DBNull.Value);
+            p.Add("@nStatus", bestellung.NStatus);
+            p.Add("@dErstellt", bestellung.DErstellt);
+            p.Add("@kFirma", bestellung.KFirma);
+            p.Add("@kLager", bestellung.KLager);
+            p.Add("@kKunde", bestellung.KKunde);
+            p.Add("@dLieferdatum", bestellung.DLieferdatum);
+            p.Add("@cEigeneBestellnummer", bestellung.CEigeneBestellnummer ?? "");
+            p.Add("@cBezugsAuftragsNummer", bestellung.CBezugsAuftragsNummer ?? "");
+            p.Add("@nDropShipping", bestellung.NDropShipping);
+            p.Add("@kLieferantenBestellungLieferant", 0);
+            p.Add("@kBenutzer", 1);
+            p.Add("@fFaktor", 1.0m);
+            p.Add("@dAngemahnt", DBNull.Value);
+            p.Add("@dInBearbeitung", DBNull.Value);
+            p.Add("@nDeleted", 0);
+            p.Add("@nManuellAbgeschlossen", 0);
+            p.Add("@cFremdbelegnummer", bestellung.CFremdbelegnummer ?? "");
+            p.Add("@kLieferschein", 0);
+            p.Add("@nBestaetigt", 0);
+            p.Add("@dExportiert", DBNull.Value);
+
+            await conn.ExecuteAsync("[Lieferantenbestellung].[spLieferantenBestellungBearbeiten]", p, commandType: CommandType.StoredProcedure);
+
+            // Positionen aktualisieren (erst loeschen, dann neu anlegen)
+            await UpdateLieferantenBestellungPositionenAsync(bestellung.KLieferantenBestellung, bestellung.Positionen);
+        }
+
+        /// <summary>
+        /// Lieferantenbestellung loeschen (soft delete)
+        /// </summary>
+        public async Task DeleteLieferantenBestellungAsync(int kLieferantenBestellung)
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = "UPDATE dbo.tLieferantenBestellung SET nDeleted = 1 WHERE kLieferantenBestellung = @id";
+            await conn.ExecuteAsync(sql, new { id = kLieferantenBestellung });
+        }
+
+        /// <summary>
+        /// Lieferantenbestellung duplizieren
+        /// </summary>
+        public async Task<int> DuplicateLieferantenBestellungAsync(int kLieferantenBestellung)
+        {
+            // Original laden
+            var original = await GetLieferantenBestellungAsync(kLieferantenBestellung);
+            if (original == null) throw new Exception("Bestellung nicht gefunden");
+
+            var positionen = (await GetLieferantenBestellungPositionenAsync(kLieferantenBestellung)).ToList();
+
+            // Als neue Bestellung anlegen
+            original.KLieferantenBestellung = 0;
+            original.DErstellt = DateTime.Now;
+            original.NStatus = 5; // Entwurf
+            original.CEigeneBestellnummer = "";
+            original.CFremdbelegnummer = "";
+            original.Positionen = positionen;
+
+            // Positionen zuruecksetzen
+            foreach (var pos in original.Positionen)
+            {
+                pos.KLieferantenBestellungPos = 0;
+                pos.KLieferantenBestellung = 0;
+                pos.FMengeGeliefert = 0;
+            }
+
+            return await CreateLieferantenBestellungAsync(original);
+        }
+
+        private async Task UpdateLieferantenBestellungPositionenAsync(int kLieferantenBestellung, List<LieferantenBestellungPosition> positionen)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Vorhandene Positionen laden
+            var existingPos = (await GetLieferantenBestellungPositionenAsync(kLieferantenBestellung)).ToList();
+            var existingIds = existingPos.Select(p => p.KLieferantenBestellungPos).ToHashSet();
+            var newIds = positionen.Where(p => p.KLieferantenBestellungPos > 0).Select(p => p.KLieferantenBestellungPos).ToHashSet();
+
+            // Geloeschte Positionen entfernen
+            var toDelete = existingIds.Except(newIds);
+            foreach (var posId in toDelete)
+            {
+                await conn.ExecuteAsync("DELETE FROM dbo.tLieferantenBestellungPos WHERE kLieferantenBestellungPos = @id", new { id = posId });
+            }
+
+            // Positionen aktualisieren oder neu anlegen
+            foreach (var pos in positionen)
+            {
+                if (pos.KLieferantenBestellungPos > 0)
+                {
+                    // Update via SP
+                    var p = new DynamicParameters();
+                    p.Add("@kLieferantenbestellungPos", pos.KLieferantenBestellungPos);
+                    p.Add("@kLieferantenbestellung", kLieferantenBestellung);
+                    p.Add("@kArtikel", pos.KArtikel);
+                    p.Add("@cArtNr", pos.CArtNr);
+                    p.Add("@cLieferantenArtNr", pos.CLieferantenArtNr);
+                    p.Add("@cName", pos.CName);
+                    p.Add("@cLieferantenBezeichnung", pos.CLieferantenBezeichnung);
+                    p.Add("@fUST", pos.FUST);
+                    p.Add("@fMenge", pos.FMenge);
+                    p.Add("@cHinweis", pos.CHinweis);
+                    p.Add("@fEKNetto", pos.FEKNetto);
+                    p.Add("@nPosTyp", pos.NPosTyp);
+                    p.Add("@cNameLieferant", pos.CNameLieferant);
+                    p.Add("@nLiefertage", pos.NLiefertage);
+                    p.Add("@dLieferdatum", pos.DLieferdatum);
+                    p.Add("@nSort", pos.NSort);
+                    p.Add("@kLieferscheinPos", 0);
+                    p.Add("@fMengeGeliefert", pos.FMengeGeliefert);
+                    p.Add("@cVPEEinheit", pos.CVPEEinheit);
+                    p.Add("@nVPEMenge", pos.NVPEMenge);
+
+                    await conn.ExecuteAsync("[Lieferantenbestellung].[spLieferantenBestellungPosBearbeiten]", p, commandType: CommandType.StoredProcedure);
+                }
+                else
+                {
+                    // Neu anlegen via SP
+                    var p = new DynamicParameters();
+                    p.Add("@kLieferantenbestellung", kLieferantenBestellung);
+                    p.Add("@kArtikel", pos.KArtikel);
+                    p.Add("@cArtNr", pos.CArtNr);
+                    p.Add("@cLieferantenArtNr", pos.CLieferantenArtNr);
+                    p.Add("@cName", pos.CName);
+                    p.Add("@cLieferantenBezeichnung", pos.CLieferantenBezeichnung);
+                    p.Add("@fUST", pos.FUST);
+                    p.Add("@fMenge", pos.FMenge);
+                    p.Add("@cHinweis", pos.CHinweis);
+                    p.Add("@fEKNetto", pos.FEKNetto);
+                    p.Add("@nPosTyp", pos.NPosTyp);
+                    p.Add("@cNameLieferant", pos.CNameLieferant);
+                    p.Add("@nLiefertage", pos.NLiefertage);
+                    p.Add("@dLieferdatum", pos.DLieferdatum);
+                    p.Add("@nSort", pos.NSort);
+                    p.Add("@kLieferscheinPos", 0);
+                    p.Add("@cVPEEinheit", pos.CVPEEinheit);
+                    p.Add("@nVPEMenge", pos.NVPEMenge);
+                    p.Add("@nStatus", DBNull.Value);
+                    p.Add("@kLieferantenbestellungPos", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                    await conn.ExecuteAsync("[Lieferantenbestellung].[spLieferantenBestellungPosErstellen]", p, commandType: CommandType.StoredProcedure);
+                }
+            }
+        }
+
+        private string BuildPositionenXml(List<LieferantenBestellungPosition> positionen)
+        {
+            if (positionen == null || !positionen.Any()) return null!;
+
+            var sb = new System.Text.StringBuilder();
+            foreach (var pos in positionen)
+            {
+                sb.AppendLine($@"<LieferantenbestellungPos>
+                    <kArtikel>{pos.KArtikel}</kArtikel>
+                    <cArtNr>{System.Security.SecurityElement.Escape(pos.CArtNr)}</cArtNr>
+                    <cLieferantenArtNr>{System.Security.SecurityElement.Escape(pos.CLieferantenArtNr ?? "")}</cLieferantenArtNr>
+                    <cName>{System.Security.SecurityElement.Escape(pos.CName)}</cName>
+                    <cLieferantenBezeichnung>{System.Security.SecurityElement.Escape(pos.CLieferantenBezeichnung ?? "")}</cLieferantenBezeichnung>
+                    <fUST>{pos.FUST}</fUST>
+                    <fMenge>{pos.FMenge}</fMenge>
+                    <cHinweis>{System.Security.SecurityElement.Escape(pos.CHinweis ?? "")}</cHinweis>
+                    <fEKNetto>{pos.FEKNetto}</fEKNetto>
+                    <nPosTyp>{pos.NPosTyp}</nPosTyp>
+                    <cNameLieferant>{System.Security.SecurityElement.Escape(pos.CNameLieferant ?? "")}</cNameLieferant>
+                    <nLiefertage>{pos.NLiefertage}</nLiefertage>
+                    <dLieferdatum>{pos.DLieferdatum?.ToString("yyyy-MM-ddTHH:mm:ss") ?? ""}</dLieferdatum>
+                    <nSort>{pos.NSort}</nSort>
+                    <kLieferscheinPos>0</kLieferscheinPos>
+                    <cVPEEinheit>{System.Security.SecurityElement.Escape(pos.CVPEEinheit ?? "")}</cVPEEinheit>
+                    <nVPEMenge>{pos.NVPEMenge}</nVPEMenge>
+                </LieferantenbestellungPos>");
+            }
+            return sb.ToString();
+        }
+
+        public class LieferantenBestellungUebersicht
+        {
+            public int KLieferantenBestellung { get; set; }
+            public int KLieferant { get; set; }
+            public string? LieferantName { get; set; }
+            public string? CEigeneBestellnummer { get; set; }
+            public string? CFremdbelegnummer { get; set; }
+            public int NStatus { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public DateTime? DLieferdatum { get; set; }
+            public decimal NettoGesamt { get; set; }
+            public int AnzahlPositionen { get; set; }
+
+            public string StatusText => NStatus switch
+            {
+                5 => "Entwurf",
+                10 => "Offen",
+                20 => "In Bearbeitung",
+                30 => "Teilgeliefert",
+                50 => "Abgeschlossen",
+                100 => "Storniert",
+                _ => $"Status {NStatus}"
+            };
+        }
+
+        public class LieferantRef
+        {
+            public int KLieferant { get; set; }
+            public string CFirma { get; set; } = "";
+            public string CStrasse { get; set; } = "";
+            public string CPLZ { get; set; } = "";
+            public string COrt { get; set; } = "";
+            public string CLand { get; set; } = "";
+            public string CTelefon { get; set; } = "";
+            public string CFax { get; set; } = "";
+            public string CEmail { get; set; } = "";
+        }
+
+        public class WarenlagerRef
+        {
+            public int KWarenLager { get; set; }
+            public string CName { get; set; } = "";
+        }
+
+        public class FirmaRef
+        {
+            public int KFirma { get; set; }
+            public string CFirma { get; set; } = "";
+            public string CStrasse { get; set; } = "";
+            public string CPLZ { get; set; } = "";
+            public string COrt { get; set; } = "";
+        }
+
+        public class LieferantenBestellungPosition
+        {
+            public int KLieferantenBestellungPos { get; set; }
+            public int KLieferantenBestellung { get; set; }
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CLieferantenArtNr { get; set; } = "";
+            public string CName { get; set; } = "";
+            public string CLieferantenBezeichnung { get; set; } = "";
+            public decimal FUST { get; set; }
+            public decimal FMenge { get; set; }
+            public string CHinweis { get; set; } = "";
+            public decimal FEKNetto { get; set; }
+            public int NPosTyp { get; set; } = 1;
+            public string CNameLieferant { get; set; } = "";
+            public int NLiefertage { get; set; }
+            public DateTime? DLieferdatum { get; set; }
+            public int NSort { get; set; }
+            public decimal FMengeGeliefert { get; set; }
+            public string CVPEEinheit { get; set; } = "";
+            public decimal NVPEMenge { get; set; }
+            public decimal NettoGesamt => FMenge * FEKNetto;
+        }
+
+        public class LieferantenBestellungDto
+        {
+            public int KLieferantenBestellung { get; set; }
+            public int KLieferant { get; set; }
+            public int KSprache { get; set; } = 1;
+            public string CWaehrungISO { get; set; } = "EUR";
+            public string CInternerKommentar { get; set; } = "";
+            public string CDruckAnmerkung { get; set; } = "";
+            public int NStatus { get; set; }
+            public DateTime DErstellt { get; set; }
+            public int KFirma { get; set; }
+            public int KLager { get; set; }
+            public int? KKunde { get; set; }
+            public DateTime? DLieferdatum { get; set; }
+            public string CEigeneBestellnummer { get; set; } = "";
+            public string CBezugsAuftragsNummer { get; set; } = "";
+            public int NDropShipping { get; set; }
+            public string CFremdbelegnummer { get; set; } = "";
+            public List<LieferantenBestellungPosition> Positionen { get; set; } = new();
+        }
+
+        public class ArtikelFuerLieferant
+        {
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CLieferantenArtNr { get; set; } = "";
+            public string CName { get; set; } = "";
+            public decimal FUST { get; set; }
+            public decimal FEKNetto { get; set; }
+        }
+
+        #endregion
     }
 }

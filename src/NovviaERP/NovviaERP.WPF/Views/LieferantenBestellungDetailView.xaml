@@ -1,0 +1,415 @@
+<Window x:Class="NovviaERP.WPF.Views.LieferantenBestellungDetailView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Beschaffung" Height="900" Width="1400" WindowStartupLocation="CenterScreen"
+        Background="#F5F5F5">
+    <Window.Resources>
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,5,0"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style x:Key="FieldStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Padding" Value="3,2"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style x:Key="ComboStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Margin" Value="3"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Row 0: Header mit Lieferant, Lieferung an, Rechnungsadresse -->
+        <Grid Grid.Row="0" Margin="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Lieferant Section -->
+            <GroupBox Grid.Column="0" Header="Lieferant" Style="{StaticResource GroupBoxStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Lieferant:" Style="{StaticResource LabelStyle}"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="cboLieferant" Style="{StaticResource ComboStyle}"
+                              DisplayMemberPath="CFirma" SelectedValuePath="KLieferant"
+                              SelectionChanged="Lieferant_SelectionChanged"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Datum:" Style="{StaticResource LabelStyle}"/>
+                    <DatePicker Grid.Row="0" Grid.Column="3" x:Name="dpDatum" Height="22" FontSize="11"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Firma:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" x:Name="txtLiefFirma" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="Eigene Kdnr:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="1" Grid.Column="3" x:Name="txtEigeneKundennummer" Style="{StaticResource FieldStyle}"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Strasse:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="txtLiefStrasse" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="Adresszusatz:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="2" Grid.Column="3" x:Name="txtLiefAdresszusatz" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Postleitzahl:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="3" Grid.Column="1" x:Name="txtLiefPLZ" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+                    <TextBlock Grid.Row="3" Grid.Column="2" Text="Ort:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="3" Grid.Column="3" x:Name="txtLiefOrt" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Land:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="4" Grid.Column="1" x:Name="txtLiefLand" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+                    <TextBlock Grid.Row="4" Grid.Column="2" Text="Bundesland:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="4" Grid.Column="3" x:Name="txtLiefBundesland" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Telefon:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="5" Grid.Column="1" x:Name="txtLiefTelefon" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Fax:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="6" Grid.Column="1" x:Name="txtLiefFax" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+                    <TextBlock Grid.Row="6" Grid.Column="2" Text="Ansprechpartner:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="6" Grid.Column="3" x:Name="txtAnsprechpartner" Style="{StaticResource FieldStyle}"/>
+
+                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Mobil:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="7" Grid.Column="1" x:Name="txtLiefMobil" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+
+                    <TextBlock Grid.Row="8" Grid.Column="0" Text="E-Mail:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Row="8" Grid.Column="1" x:Name="txtLiefEmail" Style="{StaticResource FieldStyle}" IsReadOnly="True" Background="#F0F0F0"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- Lieferung an Section -->
+            <GroupBox Grid.Column="1" Header="Lieferung an" Style="{StaticResource GroupBoxStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <RadioButton Grid.Row="0" Grid.Column="0" x:Name="rbLager" Content="Lager:" IsChecked="True" VerticalAlignment="Center" Checked="LieferungAn_Changed"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="cboLager" Style="{StaticResource ComboStyle}"
+                              DisplayMemberPath="CName" SelectedValuePath="KWarenLager"/>
+
+                    <RadioButton Grid.Row="1" Grid.Column="0" x:Name="rbDropshipping" Content="Dropshipping:" VerticalAlignment="Center" Checked="LieferungAn_Changed"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" x:Name="txtDropshipping" Style="{StaticResource FieldStyle}" IsEnabled="False"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Lieferung an:" Style="{StaticResource LabelStyle}"/>
+                    <ComboBox Grid.Row="2" Grid.Column="1" x:Name="cboLieferungAn" Style="{StaticResource ComboStyle}" IsEnabled="False"
+                              DisplayMemberPath="DisplayName" SelectedValuePath="KKunde"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Zugehoerige Auftragsnr:" Style="{StaticResource LabelStyle}" TextWrapping="Wrap"/>
+                    <TextBox Grid.Row="3" Grid.Column="1" x:Name="txtBezugsAuftragsNummer" Style="{StaticResource FieldStyle}"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- Rechnungsadresse Section -->
+            <GroupBox Grid.Column="2" Header="Rechnungsadresse" Style="{StaticResource GroupBoxStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="26"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" x:Name="cboFirma" Style="{StaticResource ComboStyle}"
+                                  DisplayMemberPath="CFirma" SelectedValuePath="KFirma"/>
+                        <CheckBox Grid.Column="1" x:Name="chkLieferadresseGleich" Content="Lieferadresse = Rechnungsadresse"
+                                  VerticalAlignment="Center" Margin="10,0,0,0" IsChecked="True"
+                                  Checked="LieferadresseGleich_Changed" Unchecked="LieferadresseGleich_Changed"/>
+                    </Grid>
+
+                    <!-- Lieferadresse Details -->
+                    <GroupBox Grid.Row="1" Header="Lieferadresse" Margin="0,5,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="24"/>
+                                <RowDefinition Height="24"/>
+                                <RowDefinition Height="24"/>
+                                <RowDefinition Height="24"/>
+                                <RowDefinition Height="24"/>
+                                <RowDefinition Height="24"/>
+                                <RowDefinition Height="24"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Anrede:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtLAAnrede" Style="{StaticResource FieldStyle}"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Titel:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="txtLATitel" Style="{StaticResource FieldStyle}"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Vorname:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="txtLAVorname" Style="{StaticResource FieldStyle}"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="Nachname:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="txtLANachname" Style="{StaticResource FieldStyle}"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Firma:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="txtLAFirma" Style="{StaticResource FieldStyle}"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="Zusatz:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="2" Grid.Column="3" x:Name="txtLAFirmenzusatz" Style="{StaticResource FieldStyle}"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Strasse:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" x:Name="txtLAStrasse" Style="{StaticResource FieldStyle}"/>
+                            <TextBlock Grid.Row="3" Grid.Column="2" Text="PLZ/Ort:" Style="{StaticResource LabelStyle}"/>
+                            <StackPanel Grid.Row="3" Grid.Column="3" Orientation="Horizontal">
+                                <TextBox x:Name="txtLAPLZ" Width="50" Style="{StaticResource FieldStyle}"/>
+                                <TextBox x:Name="txtLAOrt" Style="{StaticResource FieldStyle}" Margin="3,0,0,0" Width="100"/>
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Land:" Style="{StaticResource LabelStyle}"/>
+                            <ComboBox Grid.Row="4" Grid.Column="1" x:Name="cboLALand" Style="{StaticResource ComboStyle}"/>
+                            <TextBlock Grid.Row="4" Grid.Column="2" Text="Bundesland:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="4" Grid.Column="3" x:Name="txtLABundesland" Style="{StaticResource FieldStyle}"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="E-Mail:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="5" Grid.Column="1" x:Name="txtLAEmail" Style="{StaticResource FieldStyle}"/>
+                            <TextBlock Grid.Row="5" Grid.Column="2" Text="Fax:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="5" Grid.Column="3" x:Name="txtLAFax" Style="{StaticResource FieldStyle}"/>
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Telefon:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="6" Grid.Column="1" x:Name="txtLATelefon" Style="{StaticResource FieldStyle}"/>
+                            <TextBlock Grid.Row="6" Grid.Column="2" Text="Mobil:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Row="6" Grid.Column="3" x:Name="txtLAMobil" Style="{StaticResource FieldStyle}"/>
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </GroupBox>
+        </Grid>
+
+        <!-- Row 1: Bestelldetails -->
+        <Grid Grid.Row="1" Margin="5,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" Text="Suchen:" Style="{StaticResource LabelStyle}" Margin="5,0"/>
+            <TextBox Grid.Column="1" x:Name="txtSuchen" Style="{StaticResource FieldStyle}"
+                     KeyDown="Suchen_KeyDown" ToolTip="Artikelnr./Artikelname"/>
+
+            <TextBlock Grid.Column="2" Text="Lieferdatum:" Style="{StaticResource LabelStyle}" Margin="10,0,5,0"/>
+            <DatePicker Grid.Column="3" x:Name="dpLieferdatum" Height="22" FontSize="11"/>
+
+            <TextBlock Grid.Column="4" Text="Eigene Bestellnr:" Style="{StaticResource LabelStyle}" Margin="10,0,5,0"/>
+            <TextBox Grid.Column="5" x:Name="txtEigeneBestellnummer" Style="{StaticResource FieldStyle}"/>
+
+            <TextBlock Grid.Column="6" Text="Fremdbelegnr:" Style="{StaticResource LabelStyle}" Margin="10,0,5,0"/>
+            <TextBox Grid.Column="7" x:Name="txtFremdbelegnummer" Style="{StaticResource FieldStyle}"/>
+
+            <TextBlock Grid.Column="8" Text="Status:" Style="{StaticResource LabelStyle}" Margin="10,0,5,0"/>
+            <ComboBox Grid.Column="9" x:Name="cboStatus" Style="{StaticResource ComboStyle}">
+                <ComboBoxItem Tag="5" Content="Entwurf"/>
+                <ComboBoxItem Tag="10" Content="Offen"/>
+                <ComboBoxItem Tag="20" Content="In Bearbeitung"/>
+                <ComboBoxItem Tag="30" Content="Teilgeliefert"/>
+                <ComboBoxItem Tag="50" Content="Abgeschlossen"/>
+                <ComboBoxItem Tag="100" Content="Storniert"/>
+            </ComboBox>
+        </Grid>
+
+        <!-- Row 2: Positionen DataGrid -->
+        <DataGrid Grid.Row="2" x:Name="dgPositionen" Margin="5" AutoGenerateColumns="False"
+                  CanUserAddRows="False" CanUserDeleteRows="False" SelectionMode="Single"
+                  GridLinesVisibility="All" AlternatingRowBackground="#F9F9F9"
+                  RowHeaderWidth="30" FontSize="11">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Artikelnr." Binding="{Binding CArtNr}" Width="80" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Artikelnr. Lieferant" Binding="{Binding CLieferantenArtNr}" Width="120"/>
+                <DataGridTextColumn Header="Artikelname" Binding="{Binding CName}" Width="200"/>
+                <DataGridTextColumn Header="MwSt. %" Binding="{Binding FUST, StringFormat=N2}" Width="60"/>
+                <DataGridTextColumn Header="Bestellmenge" Binding="{Binding FMenge, StringFormat=N4}" Width="90">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Background" Value="#E3F2FD"/>
+                            <Setter Property="Padding" Value="3"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Bereits gelief." Binding="{Binding FMengeGeliefert, StringFormat=N4}" Width="90">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Background" Value="#C8E6C9"/>
+                            <Setter Property="Padding" Value="3"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Netto-EK" Binding="{Binding FEKNetto, StringFormat=N4}" Width="80">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Background" Value="#FFECB3"/>
+                            <Setter Property="Padding" Value="3"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Netto-EK gesamt" Binding="{Binding NettoGesamt, StringFormat=N2}" Width="100" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Hinweis" Binding="{Binding CHinweis}" Width="120"/>
+                <DataGridTemplateColumn Header="Lieferdatum" Width="100">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DLieferdatum, StringFormat=dd.MM.yyyy}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                    <DataGridTemplateColumn.CellEditingTemplate>
+                        <DataTemplate>
+                            <DatePicker SelectedDate="{Binding DLieferdatum}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellEditingTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="VPE Einheit" Binding="{Binding CVPEEinheit}" Width="80"/>
+                <DataGridTextColumn Header="VPE Menge" Binding="{Binding NVPEMenge, StringFormat=N2}" Width="80"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Row 3: Position Aktionen + Artikelsuche -->
+        <Grid Grid.Row="3" Margin="5,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0" x:Name="btnPositionLoeschen" Content="Position loeschen" Padding="10,3" Click="PositionLoeschen_Click"/>
+            <Button Grid.Column="1" x:Name="btnPositionHoch" Content="^" Width="25" Margin="5,0" Click="PositionHoch_Click"/>
+            <Button Grid.Column="2" x:Name="btnPositionRunter" Content="v" Width="25" Click="PositionRunter_Click"/>
+
+            <TextBlock Grid.Column="3" Text="Artikelnummer, Artikelnummer des Lieferanten:"
+                       Style="{StaticResource LabelStyle}" Margin="20,0,5,0"/>
+            <TextBox Grid.Column="4" x:Name="txtArtikelSuche" Style="{StaticResource FieldStyle}"
+                     KeyDown="ArtikelSuche_KeyDown"/>
+            <Button Grid.Column="5" Content="..." Width="25" Margin="3,0" Click="ArtikelAuswahl_Click"/>
+
+            <CheckBox Grid.Column="6" x:Name="chkAutoZuordnen" Content="Artikel automatisch zuordnen"
+                      VerticalAlignment="Center" Margin="10,0"/>
+            <Button Grid.Column="7" x:Name="btnFreiposition" Content="Freiposition erstellen" Padding="10,3" Click="Freiposition_Click"/>
+        </Grid>
+
+        <!-- Row 4: Footer -->
+        <Grid Grid.Row="4" Margin="5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Anmerkung + Interner Kommentar -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <GroupBox Grid.Column="0" Header="Anmerkung (Druckausgabe)" Margin="0,0,5,0">
+                    <TextBox x:Name="txtAnmerkung" Height="50" AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"/>
+                </GroupBox>
+                <GroupBox Grid.Column="1" Header="Interner Kommentar">
+                    <TextBox x:Name="txtInternerKommentar" Height="50" AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"/>
+                </GroupBox>
+            </Grid>
+
+            <!-- Ausgeben + Details + Buttons -->
+            <Grid Grid.Row="1" Margin="0,5,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Ausgeben -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <GroupBox Header="Ausgeben">
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="chkEmail" Content="E-Mail" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <CheckBox x:Name="chkDrucken" Content="Drucken" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <CheckBox x:Name="chkFax" Content="Fax" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <ComboBox x:Name="cboDokumentTyp" Width="150" Style="{StaticResource ComboStyle}">
+                                <ComboBoxItem Content="Lieferantenbestellung" IsSelected="True"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+
+                <!-- Details der Bestellung -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0">
+                    <TextBlock Text="Details der Bestellung:" FontWeight="Bold" Margin="0,0,10,0"/>
+                    <TextBlock Text="Waehrung:"/>
+                    <TextBlock x:Name="txtWaehrung" Text="EUR" Margin="5,0,20,0"/>
+                    <TextBlock Text="Gewicht:"/>
+                    <TextBlock x:Name="txtGewicht" Text="0,0000" Margin="5,0,20,0"/>
+                    <TextBlock Text="Netto-EK (gesamt):"/>
+                    <TextBlock x:Name="txtNettoEKGesamt" Text="0,00" FontWeight="Bold" Margin="5,0,20,0"/>
+                    <TextBlock Text="Versandkostenfrei ab:"/>
+                    <TextBlock x:Name="txtVersandkostenfrei" Text="-" Margin="5,0"/>
+                </StackPanel>
+
+                <!-- Freigegeben -->
+                <CheckBox Grid.Column="2" x:Name="chkFreigegeben" Content="Freigegeben" VerticalAlignment="Center" Margin="10,0"/>
+
+                <!-- Buttons -->
+                <Button Grid.Column="3" x:Name="btnSpeichern" Content="Speichern" Width="100" Height="30"
+                        Margin="10,0" Click="Speichern_Click" FontWeight="Bold"/>
+                <Button Grid.Column="4" x:Name="btnAbbrechen" Content="Abbrechen" Width="100" Height="30"
+                        Click="Abbrechen_Click"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
