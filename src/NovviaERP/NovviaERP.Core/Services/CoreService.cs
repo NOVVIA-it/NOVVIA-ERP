@@ -57,6 +57,58 @@ namespace NovviaERP.Core.Services
             public bool IstGesperrt => CSperre == "Y";
         }
 
+        public class KundeStatistik
+        {
+            public int KKunde { get; set; }
+            public decimal UmsatzGesamt { get; set; }
+            public decimal UmsatzJahr { get; set; }
+            public int AnzahlAuftraege { get; set; }
+            public decimal DurchschnittWarenkorb { get; set; }
+            public decimal OffenePosten { get; set; }
+            public int AnzahlRetouren { get; set; }
+            public int AnzahlMahnungen { get; set; }
+            public DateTime? ErstBestellung { get; set; }
+            public DateTime? LetzteBestellung { get; set; }
+        }
+
+        public class KundeAuftragKurz
+        {
+            public int KBestellung { get; set; }
+            public string CBestellNr { get; set; } = "";
+            public DateTime DErstellt { get; set; }
+            public string CStatus { get; set; } = "";
+            public decimal GesamtBrutto { get; set; }
+        }
+
+        public class KundeRechnungKurz
+        {
+            public int KRechnung { get; set; }
+            public string CRechnungsNr { get; set; } = "";
+            public DateTime? DRechnungsdatum { get; set; }
+            public decimal FBetragBrutto { get; set; }
+            public decimal FBezahlt { get; set; }
+            public decimal Offen => FBetragBrutto - FBezahlt;
+        }
+
+        public class KundeAdresseKurz
+        {
+            public int KAdresse { get; set; }
+            public int NTyp { get; set; }
+            public string CName { get; set; } = "";
+            public string CStrasse { get; set; } = "";
+            public string CPLZ { get; set; } = "";
+            public string COrt { get; set; } = "";
+            public bool NStandard { get; set; }
+            public string AdressTypText => NTyp switch { 1 => "Rechnung", 2 => "Lieferung", _ => "Sonstige" };
+        }
+
+        public class KundeHistorieEintrag
+        {
+            public DateTime Datum { get; set; }
+            public string Typ { get; set; } = "";
+            public string Beschreibung { get; set; } = "";
+        }
+
         public class KundeDetail
         {
             // Aus tKunde
@@ -547,6 +599,121 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
             return await conn.QueryAsync<KundengruppeRef>("SELECT kKundenGruppe, cName, fRabatt FROM tKundenGruppe ORDER BY cName");
+        }
+
+        /// <summary>
+        /// Kunden-Statistiken für 360°-Ansicht
+        /// </summary>
+        public async Task<KundeStatistik?> GetKundeStatistikAsync(int kundeId)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryFirstOrDefaultAsync<KundeStatistik>(@"
+                SELECT
+                    @kundeId AS KKunde,
+                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100))
+                            FROM tBestellung b
+                            JOIN tBestellPos bp ON b.kBestellung = bp.tBestellung_kBestellung
+                            WHERE b.tKunde_kKunde = @kundeId), 0) AS UmsatzGesamt,
+                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100))
+                            FROM tBestellung b
+                            JOIN tBestellPos bp ON b.kBestellung = bp.tBestellung_kBestellung
+                            WHERE b.tKunde_kKunde = @kundeId AND YEAR(b.dErstellt) = YEAR(GETDATE())), 0) AS UmsatzJahr,
+                    ISNULL((SELECT COUNT(*) FROM tBestellung WHERE tKunde_kKunde = @kundeId), 0) AS AnzahlAuftraege,
+                    ISNULL((SELECT AVG(sub.Summe) FROM (
+                        SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100)) AS Summe
+                        FROM tBestellung b
+                        JOIN tBestellPos bp ON b.kBestellung = bp.tBestellung_kBestellung
+                        WHERE b.tKunde_kKunde = @kundeId
+                        GROUP BY b.kBestellung) sub), 0) AS DurchschnittWarenkorb,
+                    ISNULL((SELECT SUM(r.fBetragBrutto - ISNULL(r.fBezahlt, 0))
+                            FROM tRechnung r WHERE r.kKunde = @kundeId AND r.fBetragBrutto > ISNULL(r.fBezahlt, 0)), 0) AS OffenePosten,
+                    0 AS AnzahlRetouren,
+                    0 AS AnzahlMahnungen,
+                    (SELECT MIN(dErstellt) FROM tBestellung WHERE tKunde_kKunde = @kundeId) AS ErstBestellung,
+                    (SELECT MAX(dErstellt) FROM tBestellung WHERE tKunde_kKunde = @kundeId) AS LetzteBestellung",
+                new { kundeId });
+        }
+
+        /// <summary>
+        /// Aufträge eines Kunden (für 360°-Ansicht)
+        /// </summary>
+        public async Task<IEnumerable<KundeAuftragKurz>> GetKundeAuftraegeAsync(int kundeId, int limit = 20)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<KundeAuftragKurz>($@"
+                SELECT TOP {limit}
+                    b.kBestellung AS KBestellung,
+                    ISNULL(b.cBestellNr, CAST(b.kBestellung AS VARCHAR)) AS CBestellNr,
+                    b.dErstellt AS DErstellt,
+                    ISNULL(b.cStatus, 'Offen') AS CStatus,
+                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100))
+                            FROM tBestellPos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
+                FROM tBestellung b
+                WHERE b.tKunde_kKunde = @kundeId
+                ORDER BY b.dErstellt DESC", new { kundeId });
+        }
+
+        /// <summary>
+        /// Rechnungen eines Kunden (für 360°-Ansicht)
+        /// </summary>
+        public async Task<IEnumerable<KundeRechnungKurz>> GetKundeRechnungenAsync(int kundeId, int limit = 20)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<KundeRechnungKurz>($@"
+                SELECT TOP {limit}
+                    r.kRechnung AS KRechnung,
+                    ISNULL(r.cRechnungsNr, CAST(r.kRechnung AS VARCHAR)) AS CRechnungsNr,
+                    r.dErstellt AS DRechnungsdatum,
+                    r.fBetragBrutto AS FBetragBrutto,
+                    ISNULL(r.fBezahlt, 0) AS FBezahlt
+                FROM tRechnung r
+                WHERE r.kKunde = @kundeId
+                ORDER BY r.dErstellt DESC", new { kundeId });
+        }
+
+        /// <summary>
+        /// Adressen eines Kunden (für 360°-Ansicht)
+        /// </summary>
+        public async Task<IEnumerable<KundeAdresseKurz>> GetKundeAdressenKurzAsync(int kundeId)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<KundeAdresseKurz>(@"
+                SELECT kAdresse AS KAdresse, ISNULL(nTyp, 0) AS NTyp,
+                       ISNULL(cName, '') + CASE WHEN cVorname IS NOT NULL THEN ', ' + cVorname ELSE '' END AS CName,
+                       ISNULL(cStrasse, '') AS CStrasse, ISNULL(cPLZ, '') AS CPLZ, ISNULL(cOrt, '') AS COrt,
+                       CASE WHEN nStandard = 1 THEN 1 ELSE 0 END AS NStandard
+                FROM tAdresse
+                WHERE kKunde = @kundeId
+                ORDER BY nStandard DESC, nTyp", new { kundeId });
+        }
+
+        /// <summary>
+        /// Historie eines Kunden (für 360°-Ansicht)
+        /// </summary>
+        public async Task<IEnumerable<KundeHistorieEintrag>> GetKundeHistorieAsync(int kundeId, int limit = 30)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Kombiniere Aufträge, Rechnungen, etc. in eine Timeline
+            var historie = new List<KundeHistorieEintrag>();
+
+            // Aufträge
+            var auftraege = await conn.QueryAsync<KundeHistorieEintrag>($@"
+                SELECT TOP {limit} dErstellt AS Datum, 'Auftrag' AS Typ,
+                       'Auftrag ' + ISNULL(cBestellNr, CAST(kBestellung AS VARCHAR)) AS Beschreibung
+                FROM tBestellung WHERE tKunde_kKunde = @kundeId
+                ORDER BY dErstellt DESC", new { kundeId });
+            historie.AddRange(auftraege);
+
+            // Rechnungen
+            var rechnungen = await conn.QueryAsync<KundeHistorieEintrag>($@"
+                SELECT TOP {limit} dErstellt AS Datum, 'Rechnung' AS Typ,
+                       'Rechnung ' + ISNULL(cRechnungsNr, CAST(kRechnung AS VARCHAR)) AS Beschreibung
+                FROM tRechnung WHERE kKunde = @kundeId
+                ORDER BY dErstellt DESC", new { kundeId });
+            historie.AddRange(rechnungen);
+
+            return historie.OrderByDescending(h => h.Datum).Take(limit);
         }
 
         #endregion

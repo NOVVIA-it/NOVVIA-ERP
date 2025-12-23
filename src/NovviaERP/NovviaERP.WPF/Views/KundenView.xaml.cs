@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,14 +8,35 @@ namespace NovviaERP.WPF.Views
 {
     public partial class KundenView : UserControl
     {
-        private readonly CoreService _coreService;
+        private readonly CoreService _core;
         private List<CoreService.KundeUebersicht> _kunden = new();
+        private CoreService.KundeUebersicht? _selectedKunde;
 
         public KundenView()
         {
             InitializeComponent();
-            _coreService = App.Services.GetRequiredService<CoreService>();
-            Loaded += async (s, e) => await LadeKundenAsync();
+            _core = App.Services.GetRequiredService<CoreService>();
+            Loaded += async (s, e) => await InitAsync();
+        }
+
+        private async Task InitAsync()
+        {
+            try
+            {
+                // Kundengruppen laden
+                var gruppen = (await _core.GetKundengruppenAsync()).ToList();
+                cboKundengruppe.Items.Clear();
+                cboKundengruppe.Items.Add(new ComboBoxItem { Content = "Alle Gruppen", IsSelected = true });
+                foreach (var g in gruppen)
+                    cboKundengruppe.Items.Add(new ComboBoxItem { Content = g.CName, Tag = g.KKundenGruppe });
+
+                // Kunden laden
+                await LadeKundenAsync();
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
         }
 
         private void NavigateTo(UserControl view)
@@ -27,15 +45,18 @@ namespace NovviaERP.WPF.Views
                 main.ShowContent(view);
         }
 
-        private async System.Threading.Tasks.Task LadeKundenAsync()
+        private async Task LadeKundenAsync()
         {
             try
             {
                 txtStatus.Text = "Lade Kunden...";
-                _kunden = (await _coreService.GetKundenAsync(
-                    suche: string.IsNullOrWhiteSpace(txtSuche.Text) ? null : txtSuche.Text
-                )).ToList();
 
+                var suche = string.IsNullOrWhiteSpace(txtSuche.Text) ? null : txtSuche.Text.Trim();
+                int? gruppeId = null;
+                if (cboKundengruppe.SelectedItem is ComboBoxItem item && item.Tag is int id)
+                    gruppeId = id;
+
+                _kunden = (await _core.GetKundenAsync(suche: suche, kundengruppeId: gruppeId)).ToList();
                 dgKunden.ItemsSource = _kunden;
                 txtAnzahl.Text = $"({_kunden.Count} Kunden)";
                 txtStatus.Text = $"{_kunden.Count} Kunden geladen";
@@ -49,22 +70,95 @@ namespace NovviaERP.WPF.Views
 
         private async void Suchen_Click(object sender, RoutedEventArgs e) => await LadeKundenAsync();
         private async void TxtSuche_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) await LadeKundenAsync(); }
-        private async void Aktualisieren_Click(object sender, RoutedEventArgs e) => await LadeKundenAsync();
+        private async void Filter_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            await LadeKundenAsync();
+        }
+
+        private async void FilterReset_Click(object sender, RoutedEventArgs e)
+        {
+            txtSuche.Text = "";
+            cboKundengruppe.SelectedIndex = 0;
+            await LadeKundenAsync();
+        }
 
         private void Neu_Click(object sender, RoutedEventArgs e) => NavigateTo(new KundeDetailView(null));
+
         private void Bearbeiten_Click(object sender, RoutedEventArgs e)
         {
-            if (dgKunden.SelectedItem is CoreService.KundeUebersicht kunde)
-                NavigateTo(new KundeDetailView(kunde.KKunde));
+            if (_selectedKunde != null)
+                NavigateTo(new KundeDetailView(_selectedKunde.KKunde));
         }
+
         private void DG_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (dgKunden.SelectedItem is CoreService.KundeUebersicht kunde)
-                NavigateTo(new KundeDetailView(kunde.KKunde));
+            if (_selectedKunde != null)
+                NavigateTo(new KundeDetailView(_selectedKunde.KKunde));
         }
-        private void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
+
+        private async void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            btnBearbeiten.IsEnabled = dgKunden.SelectedItem != null;
+            _selectedKunde = dgKunden.SelectedItem as CoreService.KundeUebersicht;
+            btnBearbeiten.IsEnabled = _selectedKunde != null;
+            btnNachricht.IsEnabled = _selectedKunde != null;
+
+            if (_selectedKunde != null)
+            {
+                await Lade360GradAnsichtAsync(_selectedKunde);
+            }
+            else
+            {
+                pnlDetails.Visibility = Visibility.Collapsed;
+                pnlNoSelection.Visibility = Visibility.Visible;
+            }
+        }
+
+        private async Task Lade360GradAnsichtAsync(CoreService.KundeUebersicht kunde)
+        {
+            try
+            {
+                pnlNoSelection.Visibility = Visibility.Collapsed;
+                pnlDetails.Visibility = Visibility.Visible;
+
+                // Header
+                txtKundeName.Text = kunde.Anzeigename;
+                txtKundeNr.Text = $"Kd-Nr: {kunde.CKundenNr}";
+
+                // Kontakt
+                txtKundeMail.Text = kunde.CMail ?? "-";
+                txtKundeTel.Text = kunde.CTel ?? "-";
+                txtKundeAdresse.Text = kunde.COrt ?? "-";
+
+                // Statistiken laden
+                var stats = await _core.GetKundeStatistikAsync(kunde.KKunde);
+                if (stats != null)
+                {
+                    txtStatUmsatz.Text = $"{stats.UmsatzGesamt:N2} EUR";
+                    txtStatAuftraege.Text = stats.AnzahlAuftraege.ToString();
+                    txtStatDurchschnitt.Text = $"{stats.DurchschnittWarenkorb:N2} EUR";
+                    txtStatOffen.Text = $"{stats.OffenePosten:N2} EUR";
+                    txtStatRetouren.Text = stats.AnzahlRetouren.ToString();
+                    txtStatSeit.Text = stats.ErstBestellung?.ToString("dd.MM.yyyy") ?? "-";
+                }
+
+                // Tabs laden (parallel)
+                var auftraegeTask = _core.GetKundeAuftraegeAsync(kunde.KKunde);
+                var rechnungenTask = _core.GetKundeRechnungenAsync(kunde.KKunde);
+                var adressenTask = _core.GetKundeAdressenKurzAsync(kunde.KKunde);
+                var historieTask = _core.GetKundeHistorieAsync(kunde.KKunde);
+
+                await Task.WhenAll(auftraegeTask, rechnungenTask, adressenTask, historieTask);
+
+                dgKundeAuftraege.ItemsSource = auftraegeTask.Result.ToList();
+                dgKundeRechnungen.ItemsSource = rechnungenTask.Result.ToList();
+                dgKundeAdressen.ItemsSource = adressenTask.Result.ToList();
+                lstHistorie.ItemsSource = historieTask.Result.ToList();
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler 360°: {ex.Message}";
+            }
         }
     }
 }
