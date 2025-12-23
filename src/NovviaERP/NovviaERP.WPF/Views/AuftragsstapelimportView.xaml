@@ -1,0 +1,186 @@
+<Window x:Class="NovviaERP.WPF.Views.AuftragsstapelimportView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Auftragsstapelimport" Height="650" Width="700"
+        WindowStartupLocation="CenterScreen" ResizeMode="CanResize"
+        Background="#F0F0F0">
+
+    <Window.Resources>
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+        </Style>
+        <Style x:Key="FieldStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="ComboStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Einstellungen -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="130"/>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="30"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="28"/>
+                <RowDefinition Height="28"/>
+                <RowDefinition Height="28"/>
+                <RowDefinition Height="28"/>
+                <RowDefinition Height="28"/>
+                <RowDefinition Height="28"/>
+            </Grid.RowDefinitions>
+
+            <!-- Belegart -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Belegart" Style="{StaticResource LabelStyle}"/>
+            <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtBelegart" Text="0200" Style="{StaticResource FieldStyle}"/>
+            <Button Grid.Row="0" Grid.Column="2" Content="..." Width="24" Height="24" Margin="3,0,0,0"/>
+            <TextBox Grid.Row="0" Grid.Column="3" x:Name="txtBelegartBez" Text="Auftrag" IsReadOnly="True"
+                     Style="{StaticResource FieldStyle}" Background="#F5F5F5"/>
+
+            <!-- Lieferbedingung -->
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Lieferbedingung" Style="{StaticResource LabelStyle}"/>
+            <TextBox Grid.Row="1" Grid.Column="1" x:Name="txtLieferbedingung" Text="AH" Style="{StaticResource FieldStyle}"/>
+            <Button Grid.Row="1" Grid.Column="2" Content="..." Width="24" Height="24" Margin="3,0,0,0"/>
+            <TextBox Grid.Row="1" Grid.Column="3" x:Name="txtLieferbedingungBez" Text="Abholung / Mitnahme" IsReadOnly="True"
+                     Style="{StaticResource FieldStyle}" Background="#F5F5F5"/>
+
+            <!-- Zahlungsart -->
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Zahlungsart" Style="{StaticResource LabelStyle}"/>
+            <TextBox Grid.Row="2" Grid.Column="1" x:Name="txtZahlungsart" Text="NE" Style="{StaticResource FieldStyle}"/>
+            <Button Grid.Row="2" Grid.Column="2" Content="..." Width="24" Height="24" Margin="3,0,0,0"/>
+            <TextBox Grid.Row="2" Grid.Column="3" x:Name="txtZahlungsartBez" Text="Sofort ohne Abzug" IsReadOnly="True"
+                     Style="{StaticResource FieldStyle}" Background="#F5F5F5"/>
+
+            <!-- Anz. Lieferungen -->
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Anz. Lieferungen" Style="{StaticResource LabelStyle}"/>
+            <TextBox Grid.Row="3" Grid.Column="1" x:Name="txtAnzLieferungen" Text="999" Style="{StaticResource FieldStyle}" Width="60" HorizontalAlignment="Left"/>
+            <CheckBox Grid.Row="3" Grid.Column="3" x:Name="chkZahlungsartAusAdresse" Content="Zahlungsart aus Adresse verwenden"
+                      VerticalAlignment="Center"/>
+
+            <!-- Stapelverarbeitung -->
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Stapelverarbeitung" Style="{StaticResource LabelStyle}"/>
+            <ComboBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" x:Name="cboStapelverarbeitung" Style="{StaticResource ComboStyle}">
+                <ComboBoxItem Content="verfuegbare Mengen liefern" IsSelected="True"/>
+                <ComboBoxItem Content="nur vollstaendige Auftraege"/>
+                <ComboBoxItem Content="Teillieferung erlauben"/>
+            </ComboBox>
+
+            <!-- Adress-Nr. entspricht -->
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="Adress-Nr. entspricht" Style="{StaticResource LabelStyle}"/>
+            <ComboBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="3" x:Name="cboAdressNr" Style="{StaticResource ComboStyle}">
+                <ComboBoxItem Content="Adress-Nr." IsSelected="True"/>
+                <ComboBoxItem Content="Kundennummer"/>
+                <ComboBoxItem Content="Externe ID"/>
+            </ComboBox>
+        </Grid>
+
+        <!-- Excel-Import Button -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,10">
+            <Button x:Name="btnExcelImport" Click="ExcelImport_Click" Padding="15,10" Background="White" BorderBrush="#ccc">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="/Resources/excel.png" Width="32" Height="32" Margin="0,0,8,0"/>
+                    <TextBlock Text="Excel-Import" VerticalAlignment="Center" FontSize="14" Foreground="#217346"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+
+        <!-- Zusatztext -->
+        <GroupBox Grid.Row="2" Header="Zusatztext" Margin="0,5,0,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="100"/>
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" Margin="10">
+                    <RadioButton x:Name="rbUeberPositionen" Content="ueber Positionen einfuegen" IsChecked="True" Margin="0,0,30,0"/>
+                    <RadioButton x:Name="rbUnterPositionen" Content="unter Positionen einfuegen"/>
+                </StackPanel>
+                <TextBox Grid.Row="1" x:Name="txtZusatztext" AcceptsReturn="True" TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto" Margin="10,0,10,10"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- Import-Vorschau -->
+        <GroupBox Grid.Row="3" Header="Importierte Positionen">
+            <DataGrid x:Name="dgPositionen" AutoGenerateColumns="False" IsReadOnly="True"
+                      GridLinesVisibility="All" HeadersVisibility="Column"
+                      CanUserAddRows="False" CanUserDeleteRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Adress-Nr." Binding="{Binding AdressNr}" Width="80"/>
+                    <DataGridTextColumn Header="Kunde" Binding="{Binding KundeName}" Width="150"/>
+                    <DataGridTextColumn Header="Art-Nr." Binding="{Binding ArtNr}" Width="100"/>
+                    <DataGridTextColumn Header="Artikelname" Binding="{Binding ArtikelName}" Width="*"/>
+                    <DataGridTextColumn Header="Menge" Binding="{Binding Menge}" Width="60">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Preis" Binding="{Binding Preis, StringFormat=N2}" Width="80">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
+
+        <!-- Status -->
+        <Grid Grid.Row="4" Margin="0,10,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Import-Datei:" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                <TextBlock x:Name="txtImportDatei" Text="" Foreground="#666"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,0">
+                <TextBlock Text="Positionen importiert:" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                <TextBlock x:Name="txtPositionenCount" Text="0" Foreground="#666"/>
+            </StackPanel>
+            <ProgressBar x:Name="pbProgress" Grid.Row="1" Height="20" Margin="0,25,0,0" Visibility="Collapsed"/>
+        </Grid>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,15,0,0">
+            <Button x:Name="btnSpeichernBuchen" Content="Speichern &amp; buchen" Click="SpeichernBuchen_Click"
+                    Padding="15,8" IsEnabled="False">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Background" Value="#28a745"/>
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button x:Name="btnSpeichern" Content="Speichern" Click="Speichern_Click"
+                    Padding="15,8" Margin="10,0,0,0" IsEnabled="False"/>
+            <Button Content="Hilfe" Padding="15,8" Margin="10,0,0,0"/>
+            <Button Content="Schliessen" Click="Schliessen_Click" Padding="15,8" Margin="10,0,0,0"
+                    Background="#dc3545" Foreground="White" BorderThickness="0"/>
+        </StackPanel>
+    </Grid>
+</Window>

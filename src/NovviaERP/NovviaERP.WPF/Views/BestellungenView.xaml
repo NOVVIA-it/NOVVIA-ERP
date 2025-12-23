@@ -25,8 +25,12 @@
                     <TextBlock Text="Bestellungen" FontSize="24" FontWeight="SemiBold" Foreground="#333"/>
                     <TextBlock x:Name="txtAnzahl" Text="" FontSize="14" Foreground="#888" VerticalAlignment="Center" Margin="15,0,0,0"/>
                 </StackPanel>
-                <Button Grid.Column="1" Content="+ Neue Bestellung" Click="Neu_Click"
-                        Background="#0078D4" Foreground="White" Padding="15,8" BorderThickness="0"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Excel-Import" Click="Import_Click"
+                            Background="#217346" Foreground="White" Padding="15,8" BorderThickness="0" Margin="0,0,10,0"/>
+                    <Button Content="+ Neue Bestellung" Click="Neu_Click"
+                            Background="#0078D4" Foreground="White" Padding="15,8" BorderThickness="0"/>
+                </StackPanel>
             </Grid>
         </Border>
 

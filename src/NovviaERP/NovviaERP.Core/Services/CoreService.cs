@@ -1545,5 +1545,286 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region Auftragsstapelimport
+
+        /// <summary>
+        /// Artikel nach Artikelnummer suchen
+        /// </summary>
+        public async Task<ArtikelRef?> GetArtikelByArtNrAsync(string artNr)
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT TOP 1 a.kArtikel AS KArtikel, a.cArtNr AS CArtNr,
+                       ab.cName AS CName, a.fVKNetto AS FVKNetto, a.fMwSt AS FMwSt
+                FROM dbo.tArtikel a
+                LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
+                WHERE a.cArtNr = @artNr OR a.cBarcode = @artNr";
+            return await conn.QueryFirstOrDefaultAsync<ArtikelRef>(sql, new { artNr });
+        }
+
+        /// <summary>
+        /// Auftrag aus Import-Daten erstellen
+        /// </summary>
+        public async Task<int> CreateAuftragFromImportAsync(string kundenNr, List<AuftragImportPosition> positionen, string zusatztext, bool ueberPositionen)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Kunde suchen
+            var kunde = await conn.QueryFirstOrDefaultAsync<dynamic>(
+                "SELECT kKunde, cFirma, cVorname, cName FROM dbo.tKunde WHERE cKundenNr = @nr OR CAST(kKunde AS VARCHAR) = @nr",
+                new { nr = kundenNr });
+
+            if (kunde == null)
+            {
+                throw new Exception($"Kunde mit Nr. {kundenNr} nicht gefunden");
+            }
+
+            // Bestellnummer generieren
+            var maxNr = await conn.QueryFirstOrDefaultAsync<int?>(
+                "SELECT MAX(CAST(cBestellNr AS INT)) FROM dbo.tBestellung WHERE ISNUMERIC(cBestellNr) = 1");
+            var neueBestellNr = ((maxNr ?? 0) + 1).ToString();
+
+            // Bestellung anlegen
+            var bestellungId = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO dbo.tBestellung (
+                    cBestellNr, kKunde, dErstellt, cStatus, cWaehrung,
+                    cAnmerkung, fGesamtNetto, fGesamtBrutto
+                ) VALUES (
+                    @BestellNr, @KundeId, GETDATE(), 'Offen', 'EUR',
+                    @Anmerkung, 0, 0
+                );
+                SELECT SCOPE_IDENTITY();",
+                new {
+                    BestellNr = neueBestellNr,
+                    KundeId = (int)kunde.kKunde,
+                    Anmerkung = zusatztext
+                });
+
+            decimal gesamtNetto = 0;
+            decimal gesamtBrutto = 0;
+            int posNr = 1;
+
+            // Positionen anlegen
+            foreach (var pos in positionen)
+            {
+                var artikel = await GetArtikelByArtNrAsync(pos.ArtNr);
+                if (artikel == null) continue;
+
+                var preis = pos.Preis > 0 ? pos.Preis : artikel.FVKNetto;
+                var mwst = artikel.FMwSt;
+                var netto = preis * pos.Menge;
+                var brutto = netto * (1 + mwst / 100);
+
+                await conn.ExecuteAsync(@"
+                    INSERT INTO dbo.tBestellPos (
+                        kBestellung, kArtikel, cArtNr, cName,
+                        fAnzahl, fVKNetto, fMwSt, nPosNr
+                    ) VALUES (
+                        @BestellungId, @ArtikelId, @ArtNr, @Name,
+                        @Menge, @Preis, @MwSt, @PosNr
+                    )",
+                    new {
+                        BestellungId = bestellungId,
+                        ArtikelId = artikel.KArtikel,
+                        ArtNr = artikel.CArtNr,
+                        Name = artikel.CName,
+                        Menge = pos.Menge,
+                        Preis = preis,
+                        MwSt = mwst,
+                        PosNr = posNr++
+                    });
+
+                gesamtNetto += netto;
+                gesamtBrutto += brutto;
+            }
+
+            // Summen aktualisieren
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tBestellung
+                SET fGesamtNetto = @Netto, fGesamtBrutto = @Brutto
+                WHERE kBestellung = @Id",
+                new { Netto = gesamtNetto, Brutto = gesamtBrutto, Id = bestellungId });
+
+            return bestellungId;
+        }
+
+        /// <summary>
+        /// Auftrag buchen/freigeben
+        /// </summary>
+        public async Task AuftragBuchenAsync(int bestellungId)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tBestellung
+                SET cStatus = 'In Bearbeitung', dGeaendert = GETDATE()
+                WHERE kBestellung = @Id",
+                new { Id = bestellungId });
+        }
+
+        public class ArtikelRef
+        {
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CName { get; set; } = "";
+            public decimal FVKNetto { get; set; }
+            public decimal FMwSt { get; set; }
+        }
+
+        public class AuftragImportPosition
+        {
+            public string AdressNr { get; set; } = "";
+            public string ArtNr { get; set; } = "";
+            public decimal Menge { get; set; }
+            public decimal Preis { get; set; }
+        }
+
+        #endregion
+
+        #region Lagerbuchungen (JTL-konform via Stored Procedures)
+
+        /// <summary>
+        /// Baut XML-Payload für JTL spWarenlagerEingangSchreiben
+        /// </summary>
+        private static string BuildWareneingangXml(
+            int artikelId,
+            int lagerPlatzId,
+            decimal menge,
+            string? chargenNr = null,
+            DateTime? mhd = null)
+        {
+            var chargenTag = !string.IsNullOrEmpty(chargenNr)
+                ? $"<cChargenNr>{chargenNr}</cChargenNr>" : "";
+            var mhdTag = mhd.HasValue
+                ? $"<dMHD>{mhd.Value:yyyy-MM-dd}</dMHD>" : "";
+
+            return $@"<WarenlagerEingaenge>
+  <Eingang>
+    <kArtikel>{artikelId}</kArtikel>
+    <kWarenlagerPlatz>{lagerPlatzId}</kWarenlagerPlatz>
+    <fAnzahl>{menge.ToString(System.Globalization.CultureInfo.InvariantCulture)}</fAnzahl>
+    {chargenTag}
+    {mhdTag}
+  </Eingang>
+</WarenlagerEingaenge>";
+        }
+
+        /// <summary>
+        /// Baut XML-Payload für JTL spWarenlagerAusgangSchreiben
+        /// </summary>
+        private static string BuildWarenausgangXml(decimal menge, int? warenlagerEingangId = null)
+        {
+            var eingangTag = warenlagerEingangId.HasValue
+                ? $"<kWarenlagerEingang>{warenlagerEingangId.Value}</kWarenlagerEingang>" : "";
+
+            return $@"<WarenlagerAusgaenge>
+  <Ausgang>
+    <fAnzahl>{menge.ToString(System.Globalization.CultureInfo.InvariantCulture)}</fAnzahl>
+    {eingangTag}
+  </Ausgang>
+</WarenlagerAusgaenge>";
+        }
+
+        /// <summary>
+        /// Wareneingang über JTL Stored Procedure buchen (100% JTL-konform)
+        /// Nutzt dbo.spWarenlagerEingangSchreiben mit XML-Payload
+        /// </summary>
+        public async Task BucheWareneingangAsync(
+            int artikelId,
+            int lagerPlatzId,
+            decimal menge,
+            int benutzerId,
+            string? kommentar = null,
+            string? lieferscheinNr = null,
+            string? chargenNr = null,
+            DateTime? mhd = null,
+            decimal? ekEinzel = null,
+            int? lieferantenBestellungPosId = null)
+        {
+            var conn = await GetConnectionAsync();
+
+            var xml = BuildWareneingangXml(artikelId, lagerPlatzId, menge, chargenNr, mhd);
+
+            _log.Information("Wareneingang: Artikel={ArtikelId}, Platz={PlatzId}, Menge={Menge}, XML={Xml}",
+                artikelId, lagerPlatzId, menge, xml);
+
+            var parameters = new DynamicParameters();
+            parameters.Add("@xWarenlagerEingaenge", xml, DbType.Xml);
+            parameters.Add("@kArtikel", artikelId);
+            parameters.Add("@kWarenlagerPlatz", lagerPlatzId);
+            parameters.Add("@kBenutzer", benutzerId);
+            parameters.Add("@fAnzahl", menge);
+            parameters.Add("@fEKEinzel", ekEinzel);
+            parameters.Add("@cLieferscheinNr", lieferscheinNr);
+            parameters.Add("@cChargenNr", chargenNr);
+            parameters.Add("@dMHD", mhd);
+            parameters.Add("@cKommentar", kommentar);
+            parameters.Add("@kLieferantenBestellungPos", lieferantenBestellungPosId);
+            parameters.Add("@dGeliefertAm", DateTime.Now);
+
+            await conn.ExecuteAsync(
+                "dbo.spWarenlagerEingangSchreiben",
+                parameters,
+                commandType: CommandType.StoredProcedure);
+
+            _log.Information("Wareneingang erfolgreich gebucht: Artikel={ArtikelId}, Menge={Menge}", artikelId, menge);
+        }
+
+        /// <summary>
+        /// Warenausgang über JTL Stored Procedure buchen (100% JTL-konform)
+        /// Nutzt dbo.spWarenlagerAusgangSchreiben mit XML-Payload
+        /// </summary>
+        /// <returns>kWarenlagerAusgang (OUTPUT Parameter)</returns>
+        public async Task<int?> BucheWarenausgangAsync(
+            decimal menge,
+            int benutzerId,
+            int buchungsart,
+            string? kommentar = null,
+            int? warenlagerEingangId = null,
+            int? lieferscheinPosId = null)
+        {
+            var conn = await GetConnectionAsync();
+
+            var xml = BuildWarenausgangXml(menge, warenlagerEingangId);
+
+            _log.Information("Warenausgang: Menge={Menge}, Buchungsart={Buchungsart}, XML={Xml}",
+                menge, buchungsart, xml);
+
+            var parameters = new DynamicParameters();
+            parameters.Add("@xWarenlagerAusgaenge", xml, DbType.Xml);
+            parameters.Add("@kWarenlagerEingang", warenlagerEingangId);
+            parameters.Add("@kLieferscheinPos", lieferscheinPosId);
+            parameters.Add("@fAnzahl", menge);
+            parameters.Add("@cKommentar", kommentar);
+            parameters.Add("@kBenutzer", benutzerId);
+            parameters.Add("@kBuchungsart", buchungsart);
+            parameters.Add("@nHistorieNichtSchreiben", 0);
+            parameters.Add("@kWarenlagerAusgang", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            await conn.ExecuteAsync(
+                "dbo.spWarenlagerAusgangSchreiben",
+                parameters,
+                commandType: CommandType.StoredProcedure);
+
+            var ausgangId = parameters.Get<int?>("@kWarenlagerAusgang");
+            _log.Information("Warenausgang erfolgreich gebucht: kWarenlagerAusgang={AusgangId}, Menge={Menge}", ausgangId, menge);
+
+            return ausgangId;
+        }
+
+        /// <summary>
+        /// Standard-Buchungsarten für Warenausgang
+        /// </summary>
+        public static class Buchungsart
+        {
+            public const int Verkauf = 1;
+            public const int Inventur = 2;
+            public const int Schwund = 3;
+            public const int Retoure = 4;
+            public const int Umlagerung = 5;
+            public const int Korrektur = 6;
+        }
+
+        #endregion
     }
 }

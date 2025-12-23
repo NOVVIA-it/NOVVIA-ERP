@@ -93,6 +93,15 @@ namespace NovviaERP.WPF.Views
                 "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
+        private async void Import_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new AuftragsstapelimportView();
+            if (dialog.ShowDialog() == true)
+            {
+                await LadeBestellungenAsync();
+            }
+        }
+
         private void Rechnung_Click(object sender, RoutedEventArgs e)
         {
             if (dgBestellungen.SelectedItem is CoreService.BestellungUebersicht best)
