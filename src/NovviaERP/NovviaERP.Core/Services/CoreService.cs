@@ -1092,8 +1092,7 @@ namespace NovviaERP.Core.Services
             const string sql = @"
                 SELECT kWarenLager AS KWarenLager, cName AS CName
                 FROM dbo.tWarenLager
-                WHERE nAktiv = 1
-                ORDER BY nStandard DESC, cName";
+                ORDER BY cName";
             return await conn.QueryAsync<WarenlagerRef>(sql);
         }
 
@@ -1261,9 +1260,9 @@ namespace NovviaERP.Core.Services
             p.Add("@cWaehrungISO", bestellung.CWaehrungISO ?? "EUR");
             p.Add("@cInternerKommentar", bestellung.CInternerKommentar ?? "");
             p.Add("@cDruckAnmerkung", bestellung.CDruckAnmerkung ?? "");
-            p.Add("@dGedruckt", DBNull.Value);
-            p.Add("@dGemailt", DBNull.Value);
-            p.Add("@dGefaxt", DBNull.Value);
+            p.Add("@dGedruckt", (DateTime?)null);
+            p.Add("@dGemailt", (DateTime?)null);
+            p.Add("@dGefaxt", (DateTime?)null);
             p.Add("@nStatus", bestellung.NStatus);
             p.Add("@dErstellt", bestellung.DErstellt);
             p.Add("@kFirma", bestellung.KFirma);
@@ -1276,14 +1275,14 @@ namespace NovviaERP.Core.Services
             p.Add("@kLieferantenBestellungLieferant", 0);
             p.Add("@kBenutzer", 1);
             p.Add("@fFaktor", 1.0m);
-            p.Add("@dAngemahnt", DBNull.Value);
-            p.Add("@dInBearbeitung", DBNull.Value);
+            p.Add("@dAngemahnt", (DateTime?)null);
+            p.Add("@dInBearbeitung", (DateTime?)null);
             p.Add("@nDeleted", 0);
             p.Add("@nManuellAbgeschlossen", 0);
             p.Add("@cFremdbelegnummer", bestellung.CFremdbelegnummer ?? "");
             p.Add("@kLieferschein", 0);
             p.Add("@nBestaetigt", 0);
-            p.Add("@dExportiert", DBNull.Value);
+            p.Add("@dExportiert", (DateTime?)null);
 
             await conn.ExecuteAsync("[Lieferantenbestellung].[spLieferantenBestellungBearbeiten]", p, commandType: CommandType.StoredProcedure);
 
@@ -1399,7 +1398,7 @@ namespace NovviaERP.Core.Services
                     p.Add("@kLieferscheinPos", 0);
                     p.Add("@cVPEEinheit", pos.CVPEEinheit);
                     p.Add("@nVPEMenge", pos.NVPEMenge);
-                    p.Add("@nStatus", DBNull.Value);
+                    p.Add("@nStatus", (int?)null);
                     p.Add("@kLieferantenbestellungPos", dbType: DbType.Int32, direction: ParameterDirection.Output);
 
                     await conn.ExecuteAsync("[Lieferantenbestellung].[spLieferantenBestellungPosErstellen]", p, commandType: CommandType.StoredProcedure);

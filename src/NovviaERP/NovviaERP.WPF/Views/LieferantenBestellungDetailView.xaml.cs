@@ -68,6 +68,10 @@ namespace NovviaERP.WPF.Views
                 }
 
                 UpdateSummen();
+
+                // Initialen Zustand der Controls setzen
+                LieferungAn_Changed(null, null!);
+                LieferadresseGleich_Changed(null, null!);
             }
             catch (Exception ex)
             {
@@ -142,24 +146,11 @@ namespace NovviaERP.WPF.Views
 
         private void LieferadresseGleich_Changed(object sender, RoutedEventArgs e)
         {
-            if (chkLieferadresseGleich == null || txtLAAnrede == null)
+            if (chkLieferadresseGleich == null || grpLieferadresse == null)
                 return;
+
             bool isGleich = chkLieferadresseGleich.IsChecked == true;
-            txtLAAnrede.IsEnabled = !isGleich;
-            txtLATitel.IsEnabled = !isGleich;
-            txtLAVorname.IsEnabled = !isGleich;
-            txtLANachname.IsEnabled = !isGleich;
-            txtLAFirma.IsEnabled = !isGleich;
-            txtLAFirmenzusatz.IsEnabled = !isGleich;
-            txtLAStrasse.IsEnabled = !isGleich;
-            txtLAPLZ.IsEnabled = !isGleich;
-            txtLAOrt.IsEnabled = !isGleich;
-            cboLALand.IsEnabled = !isGleich;
-            txtLABundesland.IsEnabled = !isGleich;
-            txtLAEmail.IsEnabled = !isGleich;
-            txtLAFax.IsEnabled = !isGleich;
-            txtLATelefon.IsEnabled = !isGleich;
-            txtLAMobil.IsEnabled = !isGleich;
+            grpLieferadresse.IsEnabled = !isGleich;
 
             if (isGleich && cboFirma.SelectedItem is CoreService.FirmaRef firma)
             {
