@@ -44,7 +44,12 @@ namespace NovviaERP.WPF.Views
 
         private async void Suchen_Click(object sender, RoutedEventArgs e) => await LadeBestellungenAsync();
         private async void Aktualisieren_Click(object sender, RoutedEventArgs e) => await LadeBestellungenAsync();
-        private async void Status_Changed(object sender, SelectionChangedEventArgs e) => await LadeBestellungenAsync();
+        private async void Status_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            // Nicht laden während InitializeComponent
+            if (!IsLoaded) return;
+            await LadeBestellungenAsync();
+        }
 
         private async void TxtSuche_KeyDown(object sender, KeyEventArgs e)
         {

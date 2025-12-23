@@ -1097,6 +1097,67 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
+        /// Lagerplätze für ein Warenlager laden
+        /// </summary>
+        public async Task<IEnumerable<WarenlagerPlatzRef>> GetWarenlagerPlaetzeAsync(int? kWarenLager = null)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT kWarenlagerPlatz AS KWarenlagerPlatz, kWarenLager AS KWarenLager,
+                       cPlatz AS CPlatz, ISNULL(cRegal, '') AS CRegal, ISNULL(cFach, '') AS CFach
+                FROM dbo.tWarenlagerPlatz
+                WHERE (@kWarenLager IS NULL OR kWarenLager = @kWarenLager)
+                ORDER BY cRegal, cFach, cPlatz";
+            return await conn.QueryAsync<WarenlagerPlatzRef>(sql, new { kWarenLager });
+        }
+
+        /// <summary>
+        /// Offene Lieferantenbestellungen laden (für Wareneingang-Referenz)
+        /// </summary>
+        public async Task<IEnumerable<OffeneLieferantenBestellung>> GetOffeneLieferantenBestellungenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT lb.kLieferantenBestellung AS KLieferantenBestellung,
+                       ISNULL(lb.cEigeneBestellnummer, CAST(lb.kLieferantenBestellung AS VARCHAR)) AS CEigeneBestellnummer,
+                       ISNULL(l.cName, 'Unbekannt') AS CLieferantName,
+                       lb.dErstellt AS DErstellt,
+                       (SELECT COUNT(*) FROM dbo.tLieferantenBestellungPos p WHERE p.kLieferantenBestellung = lb.kLieferantenBestellung) AS AnzahlPositionen,
+                       (SELECT COUNT(*) FROM dbo.tLieferantenBestellungPos p WHERE p.kLieferantenBestellung = lb.kLieferantenBestellung AND p.fMenge > ISNULL(p.fMengeGeliefert, 0)) AS OffenePositionen
+                FROM dbo.tLieferantenBestellung lb
+                LEFT JOIN dbo.tLieferant l ON lb.kLieferant = l.kLieferant
+                WHERE lb.nStatus < 4
+                ORDER BY lb.dErstellt DESC";
+            return await conn.QueryAsync<OffeneLieferantenBestellung>(sql);
+        }
+
+        /// <summary>
+        /// Letzte Wareneingänge laden (Historie)
+        /// </summary>
+        public async Task<IEnumerable<WareneingangHistorie>> GetWareneingaengeAsync(int limit = 50)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = $@"
+                SELECT TOP {limit} we.kWarenlagerEingang AS KWarenlagerEingang,
+                       we.kArtikel AS KArtikel,
+                       a.cArtNr AS CArtNr,
+                       ISNULL(ab.cName, a.cArtNr) AS CArtikelName,
+                       we.fAnzahl AS FAnzahl,
+                       ISNULL(we.cChargenNr, '') AS CChargenNr,
+                       we.dMHD AS DMHD,
+                       we.dErstellt AS DErstellt,
+                       ISNULL(we.cKommentar, '') AS CKommentar,
+                       ISNULL(wl.cName, '') AS CLagerName
+                FROM dbo.tWarenlagerEingang we
+                LEFT JOIN dbo.tArtikel a ON we.kArtikel = a.kArtikel
+                LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
+                LEFT JOIN dbo.tWarenlagerPlatz wp ON we.kWarenlagerPlatz = wp.kWarenlagerPlatz
+                LEFT JOIN dbo.tWarenLager wl ON wp.kWarenLager = wl.kWarenLager
+                ORDER BY we.dErstellt DESC";
+            return await conn.QueryAsync<WareneingangHistorie>(sql);
+        }
+
+        /// <summary>
         /// Firmen laden (tFirma)
         /// </summary>
         public async Task<IEnumerable<FirmaRef>> GetFirmenAsync()
@@ -1478,6 +1539,42 @@ namespace NovviaERP.Core.Services
         {
             public int KWarenLager { get; set; }
             public string CName { get; set; } = "";
+        }
+
+        public class WarenlagerPlatzRef
+        {
+            public int KWarenlagerPlatz { get; set; }
+            public int KWarenLager { get; set; }
+            public string CPlatz { get; set; } = "";
+            public string CRegal { get; set; } = "";
+            public string CFach { get; set; } = "";
+            public string AnzeigeName => !string.IsNullOrEmpty(CRegal)
+                ? $"{CRegal}/{CFach}/{CPlatz}"
+                : CPlatz;
+        }
+
+        public class WareneingangHistorie
+        {
+            public int KWarenlagerEingang { get; set; }
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CArtikelName { get; set; } = "";
+            public decimal FAnzahl { get; set; }
+            public string CChargenNr { get; set; } = "";
+            public DateTime? DMHD { get; set; }
+            public DateTime DErstellt { get; set; }
+            public string CKommentar { get; set; } = "";
+            public string CLagerName { get; set; } = "";
+        }
+
+        public class OffeneLieferantenBestellung
+        {
+            public int KLieferantenBestellung { get; set; }
+            public string CEigeneBestellnummer { get; set; } = "";
+            public string CLieferantName { get; set; } = "";
+            public DateTime DErstellt { get; set; }
+            public int AnzahlPositionen { get; set; }
+            public int OffenePositionen { get; set; }
         }
 
         public class FirmaRef
