@@ -392,6 +392,12 @@ namespace NovviaERP.Core.Services
             public string? CName { get; set; }
         }
 
+        public class WarengruppeRef
+        {
+            public int KWarengruppe { get; set; }
+            public string? CName { get; set; }
+        }
+
         #endregion
 
         #region Kunden
@@ -547,7 +553,7 @@ namespace NovviaERP.Core.Services
 
         #region Artikel
 
-        public async Task<IEnumerable<ArtikelUebersicht>> GetArtikelAsync(string? suche = null, int? herstellerId = null, bool nurAktive = true, bool nurUnterMindestbestand = false, int limit = 200)
+        public async Task<IEnumerable<ArtikelUebersicht>> GetArtikelAsync(string? suche = null, int? herstellerId = null, int? warengruppeId = null, bool nurAktive = true, bool nurUnterMindestbestand = false, int limit = 200)
         {
             var conn = await GetConnectionAsync();
             var sql = @"
@@ -564,6 +570,7 @@ namespace NovviaERP.Core.Services
 
             if (nurAktive) sql += " AND a.cAktiv = 'Y'";
             if (herstellerId.HasValue) sql += " AND a.kHersteller = @HerstellerId";
+            if (warengruppeId.HasValue) sql += " AND a.kWarengruppe = @WarengruppeId";
             if (nurUnterMindestbestand) sql += " AND a.nLagerbestand < a.nMidestbestand";
             if (!string.IsNullOrEmpty(suche))
             {
@@ -574,7 +581,7 @@ namespace NovviaERP.Core.Services
             }
             sql += " ORDER BY ab.cName, a.cArtNr";
 
-            return await conn.QueryAsync<ArtikelUebersicht>(sql, new { Limit = limit, Suche = $"%{suche}%", HerstellerId = herstellerId });
+            return await conn.QueryAsync<ArtikelUebersicht>(sql, new { Limit = limit, Suche = $"%{suche}%", HerstellerId = herstellerId, WarengruppeId = warengruppeId });
         }
 
         public async Task<ArtikelDetail?> GetArtikelByIdAsync(int artikelId)
@@ -644,14 +651,14 @@ namespace NovviaERP.Core.Services
                 {
                     await conn.ExecuteAsync(@"
                         UPDATE tArtikelBeschreibung SET cName = @Name, cBeschreibung = @Beschreibung,
-                               cKurzBeschreibung = @KurzBeschreibung, cSeo = @CSeo
+                               cKurzBeschreibung = @KurzBeschreibung, cUrlPfad = @CSeo
                         WHERE kArtikel = @KArtikel AND kSprache = 1", artikel, tx);
                 }
                 else
                 {
                     await conn.ExecuteAsync(@"
-                        INSERT INTO tArtikelBeschreibung (kArtikel, kSprache, cName, cBeschreibung, cKurzBeschreibung, cSeo)
-                        VALUES (@KArtikel, 1, @Name, @Beschreibung, @KurzBeschreibung, @CSeo)", artikel, tx);
+                        INSERT INTO tArtikelBeschreibung (kArtikel, kSprache, kPlattform, cName, cBeschreibung, cKurzBeschreibung, cUrlPfad)
+                        VALUES (@KArtikel, 1, 1, @Name, @Beschreibung, @KurzBeschreibung, @CSeo)", artikel, tx);
                 }
 
                 tx.Commit();
@@ -669,6 +676,59 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
             return await conn.QueryAsync<SteuerklasseRef>("SELECT kSteuerklasse, cName FROM tSteuerklasse ORDER BY cName");
+        }
+
+        public async Task<IEnumerable<WarengruppeRef>> GetWarengruppenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<WarengruppeRef>("SELECT kWarengruppe, cName FROM tWarengruppe ORDER BY cName");
+        }
+
+        public async Task<int> CreateArtikelAsync(ArtikelDetail artikel)
+        {
+            var conn = await GetConnectionAsync();
+            using var tx = conn.BeginTransaction();
+            try
+            {
+                // Artikelnummer generieren wenn leer
+                if (string.IsNullOrEmpty(artikel.CArtNr))
+                {
+                    var maxNr = await conn.QuerySingleOrDefaultAsync<string>(
+                        "SELECT TOP 1 cArtNr FROM tArtikel WHERE cArtNr LIKE 'ART%' ORDER BY cArtNr DESC",
+                        transaction: tx);
+                    if (maxNr != null && int.TryParse(maxNr.Replace("ART", ""), out var nr))
+                        artikel.CArtNr = $"ART{(nr + 1):D6}";
+                    else
+                        artikel.CArtNr = "ART000001";
+                }
+
+                // Artikel anlegen
+                var artikelId = await conn.QuerySingleAsync<int>(@"
+                    INSERT INTO tArtikel (cArtNr, cBarcode, cHAN, cISBN, cUPC, cASIN,
+                        fVKNetto, fUVP, fEKNetto, nMidestbestand, cLagerArtikel, cLagerAktiv, cLagerKleinerNull,
+                        fGewicht, fArtGewicht, fBreite, fHoehe, fLaenge, fPackeinheit,
+                        kSteuerklasse, kHersteller, kWarengruppe, kVersandklasse,
+                        cAktiv, cTopArtikel, cNeu, cTeilbar, nMHD, nCharge, nSeriennr,
+                        cTaric, cHerkunftsland, cSuchbegriffe, dErstellt, dMod)
+                    VALUES (@CArtNr, @CBarcode, @CHAN, @CISBN, @CUPC, @CASIN,
+                        @FVKNetto, @FUVP, @FEKNetto, @NMidestbestand, @CLagerArtikel, @CLagerAktiv, @CLagerKleinerNull,
+                        @FGewicht, @FArtGewicht, @FBreite, @FHoehe, @FLaenge, @FPackeinheit,
+                        @KSteuerklasse, @KHersteller, @KWarengruppe, @KVersandklasse,
+                        @CAktiv, @CTopArtikel, @CNeu, @CTeilbar, @NMHD, @NCharge, @NSeriennummernVerfolgung,
+                        @CTaric, @CHerkunftsland, @CSuchbegriffe, GETDATE(), GETDATE());
+                    SELECT SCOPE_IDENTITY();", artikel, tx);
+
+                artikel.KArtikel = artikelId;
+
+                // Beschreibung anlegen
+                await conn.ExecuteAsync(@"
+                    INSERT INTO tArtikelBeschreibung (kArtikel, kSprache, kPlattform, cName, cBeschreibung, cKurzBeschreibung, cUrlPfad)
+                    VALUES (@KArtikel, 1, 1, @Name, @Beschreibung, @KurzBeschreibung, @CSeo)", artikel, tx);
+
+                tx.Commit();
+                return artikelId;
+            }
+            catch { tx.Rollback(); throw; }
         }
 
         #endregion
@@ -803,6 +863,203 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
             return await conn.QueryAsync<VersandartRef>("SELECT kVersandArt, cName FROM tVersandArt ORDER BY cName");
+        }
+
+        #endregion
+
+        #region Eigene Felder (JTL native Tabellen)
+
+        /// <summary>
+        /// Lädt eigene Felder für einen Artikel
+        /// JTL native: tAttribut, tAttributSprache, tArtikelAttribut, tArtikelAttributSprache
+        /// </summary>
+        public async Task<Dictionary<string, string?>> GetArtikelEigeneFelderAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            var result = new Dictionary<string, string?>();
+
+            try
+            {
+                // JTL native Tabellen - wie in JTL-Wawi verwendet
+                // Spaltennamen: nWertInt (Integer/Boolean), cWertVarchar (Text), fWertDecimal (Zahl)
+                // kSprache IN (0, 1) für beide Sprachen
+                var felder = await conn.QueryAsync<(string Name, string? Wert)>(
+                    @"SELECT AttributS.cName AS Name,
+                             COALESCE(
+                                 CAST(ArtikelAttributS.nWertInt AS NVARCHAR(50)),
+                                 ArtikelAttributS.cWertVarchar,
+                                 CAST(ArtikelAttributS.fWertDecimal AS NVARCHAR(50))
+                             ) AS Wert
+                      FROM dbo.tAttribut AS Attribut
+                      INNER JOIN dbo.tAttributSprache AS AttributS ON Attribut.kAttribut = AttributS.kAttribut
+                      INNER JOIN dbo.tArtikelAttribut AS ArtikelAttribut ON Attribut.kAttribut = ArtikelAttribut.kAttribut
+                      INNER JOIN dbo.tArtikelAttributSprache AS ArtikelAttributS ON ArtikelAttribut.kArtikelAttribut = ArtikelAttributS.kArtikelAttribut
+                      WHERE ArtikelAttribut.kArtikel = @kArtikel
+                        AND AttributS.kSprache IN (0, 1)
+                        AND ArtikelAttributS.kSprache IN (0, 1)",
+                    new { kArtikel });
+
+                foreach (var f in felder)
+                {
+                    if (!string.IsNullOrEmpty(f.Name) && !result.ContainsKey(f.Name))
+                    {
+                        result[f.Name] = f.Wert;
+                    }
+                }
+
+                _log.Debug("GetArtikelEigeneFelderAsync: kArtikel={kArtikel}, gefunden={Anzahl} Felder", kArtikel, result.Count);
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "Fehler beim Laden der Artikel-Eigenfelder für {kArtikel}", kArtikel);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Speichert ein eigenes Feld für einen Artikel
+        /// Verwendet NOVVIA.spArtikelEigenesFeldCreateOrUpdate (JTL native Tabellen)
+        /// </summary>
+        public async Task SetArtikelEigenesFeldAsync(int kArtikel, string feldName, string? wert)
+        {
+            var conn = await GetConnectionAsync();
+
+            _log.Debug("SetArtikelEigenesFeldAsync: kArtikel={kArtikel}, Feld={Feld}, Wert={Wert}", kArtikel, feldName, wert);
+
+            try
+            {
+                // NOVVIA TVP verwenden - schreibt in JTL native Tabellen
+                var dt = new System.Data.DataTable();
+                dt.Columns.Add("kArtikel", typeof(int));
+                dt.Columns.Add("cKey", typeof(string));
+                dt.Columns.Add("cValue", typeof(string));
+                dt.Rows.Add(kArtikel, feldName, wert ?? "");
+
+                var p = new DynamicParameters();
+                p.Add("@ArtikelEigenesFeldAnpassen", dt.AsTableValuedParameter("NOVVIA.TYPE_ArtikelEigenesFeldAnpassen"));
+                p.Add("@nAutoCreateAttribute", 1);
+
+                await conn.ExecuteAsync("NOVVIA.spArtikelEigenesFeldCreateOrUpdate", p, commandType: CommandType.StoredProcedure);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Fehler beim Speichern des Artikel-Eigenfelds {feldName} für {kArtikel}", feldName, kArtikel);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Lädt eigene Felder für einen Kunden (JTL Kunde.tKundeEigenesFeld)
+        /// </summary>
+        public async Task<Dictionary<string, string?>> GetKundeEigeneFelderAsync(int kKunde)
+        {
+            var conn = await GetConnectionAsync();
+            var result = new Dictionary<string, string?>();
+
+            try
+            {
+                // JTL speichert eigene Felder in Kunde.tKundeEigenesFeld mit Attribut-Verknüpfung
+                var felder = await conn.QueryAsync<(string Name, string? Wert)>(
+                    @"SELECT s.cName AS Name, k.cWertVarchar AS Wert
+                      FROM Kunde.tKundeEigenesFeld k
+                      INNER JOIN dbo.tAttribut a ON k.kAttribut = a.kAttribut
+                      INNER JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 0
+                      WHERE k.kKunde = @kKunde AND a.nIstFreifeld = 1",
+                    new { kKunde });
+
+                foreach (var f in felder)
+                {
+                    result[f.Name] = f.Wert;
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "Fehler beim Laden der Kunden-Eigenfelder für {kKunde}", kKunde);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Speichert ein eigenes Feld für einen Kunden via JTL TVP
+        /// TVP: Kunde.TYPE_KundenEigenesFeldAnpassen (kKunde, cKey, cValue)
+        /// SP: Kunde.spKundenEigenesFeldCreateOrUpdate @Data, @nFeldTyp
+        /// </summary>
+        public async Task SetKundeEigenesFeldAsync(int kKunde, string feldName, string? wert)
+        {
+            var conn = await GetConnectionAsync();
+
+            // JTL TVP verwenden - Parameter: @KundenEigenesFeldAnpassen, @nFeldTyp
+            var dt = new System.Data.DataTable();
+            dt.Columns.Add("kKunde", typeof(int));
+            dt.Columns.Add("cKey", typeof(string));
+            dt.Columns.Add("cValue", typeof(string));
+            dt.Rows.Add(kKunde, feldName, wert ?? "");
+
+            _log.Debug("SetKundeEigenesFeldAsync: kKunde={kKunde}, Feld={Feld}, Wert={Wert}", kKunde, feldName, wert);
+
+            var p = new DynamicParameters();
+            p.Add("@KundenEigenesFeldAnpassen", dt.AsTableValuedParameter("Kunde.TYPE_KundenEigenesFeldAnpassen"));
+            p.Add("@nFeldTyp", 12); // 12 = Default laut SP
+
+            await conn.ExecuteAsync("Kunde.spKundenEigenesFeldCreateOrUpdate", p, commandType: CommandType.StoredProcedure);
+        }
+
+        /// <summary>
+        /// Speichert mehrere eigene Felder für einen Artikel (JTL native Tabellen)
+        /// </summary>
+        public async Task SetArtikelEigeneFelderAsync(int kArtikel, Dictionary<string, string?> felder)
+        {
+            if (felder == null || felder.Count == 0) return;
+
+            _log.Debug("SetArtikelEigeneFelderAsync: kArtikel={kArtikel}, {Anzahl} Felder", kArtikel, felder.Count);
+
+            // Einzeln speichern - JTL native Tabellen verwenden
+            foreach (var kvp in felder)
+            {
+                await SetArtikelEigenesFeldAsync(kArtikel, kvp.Key, kvp.Value);
+            }
+        }
+
+        /// <summary>
+        /// Speichert mehrere eigene Felder für einen Kunden via JTL TVP (effizient, nur ein DB-Aufruf)
+        /// </summary>
+        public async Task SetKundeEigeneFelderAsync(int kKunde, Dictionary<string, string?> felder)
+        {
+            if (felder == null || felder.Count == 0) return;
+
+            var conn = await GetConnectionAsync();
+
+            try
+            {
+                // JTL TVP mit allen Feldern auf einmal - Parameter: @KundenEigenesFeldAnpassen, @nFeldTyp
+                var dt = new System.Data.DataTable();
+                dt.Columns.Add("kKunde", typeof(int));
+                dt.Columns.Add("cKey", typeof(string));
+                dt.Columns.Add("cValue", typeof(string));
+
+                foreach (var kvp in felder)
+                {
+                    dt.Rows.Add(kKunde, kvp.Key, kvp.Value ?? "");
+                }
+
+                var p = new DynamicParameters();
+                p.Add("@KundenEigenesFeldAnpassen", dt.AsTableValuedParameter("Kunde.TYPE_KundenEigenesFeldAnpassen"));
+                p.Add("@nFeldTyp", 12); // 12 = Default laut SP
+
+                await conn.ExecuteAsync("Kunde.spKundenEigenesFeldCreateOrUpdate", p, commandType: CommandType.StoredProcedure);
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "JTL TVP Bulk fehlgeschlagen für Kunde {kKunde}, verwende Fallback", kKunde);
+
+                // Fallback: Einzelne Felder speichern
+                foreach (var kvp in felder)
+                {
+                    await SetKundeEigenesFeldAsync(kKunde, kvp.Key, kvp.Value);
+                }
+            }
         }
 
         #endregion
