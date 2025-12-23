@@ -14,17 +14,49 @@ namespace NovviaERP.WPF.Views
         private readonly CoreService _coreService;
         private List<CoreService.ArtikelUebersicht> _artikel = new();
         private List<CoreService.HerstellerRef> _hersteller = new();
+        private List<CoreService.WarengruppeRef> _warengruppen = new();
+        private bool _initialized = false;
 
         public ArtikelView()
         {
             InitializeComponent();
             _coreService = App.Services.GetRequiredService<CoreService>();
-            Loaded += ArtikelView_Loaded;
+            Loaded += async (s, e) => await InitializeAsync();
         }
 
-        private void ArtikelView_Loaded(object sender, RoutedEventArgs e)
+        private async System.Threading.Tasks.Task InitializeAsync()
         {
-            txtStatus.Text = "Klicke 'Suchen' um Artikel zu laden";
+            if (_initialized) return;
+            _initialized = true;
+
+            try
+            {
+                // Warengruppen laden
+                _warengruppen = (await _coreService.GetWarengruppenAsync()).ToList();
+                cmbWarengruppe.Items.Clear();
+                cmbWarengruppe.Items.Add(new ComboBoxItem { Content = "Alle Warengruppen", IsSelected = true });
+                foreach (var wg in _warengruppen)
+                {
+                    cmbWarengruppe.Items.Add(wg);
+                }
+                cmbWarengruppe.SelectedIndex = 0;
+
+                // Hersteller laden
+                _hersteller = (await _coreService.GetHerstellerAsync()).ToList();
+                cmbHersteller.Items.Clear();
+                cmbHersteller.Items.Add(new ComboBoxItem { Content = "Alle Hersteller", IsSelected = true });
+                foreach (var h in _hersteller)
+                {
+                    cmbHersteller.Items.Add(h);
+                }
+                cmbHersteller.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Filter-Fehler: {ex.Message}";
+            }
+
+            await LadeArtikelAsync();
         }
 
         private void NavigateTo(UserControl view)
@@ -41,10 +73,23 @@ namespace NovviaERP.WPF.Views
             {
                 txtStatus.Text = "Lade Artikel...";
 
+                // Warengruppe-Filter
+                int? warengruppeId = null;
+                if (cmbWarengruppe.SelectedItem is CoreService.WarengruppeRef wg)
+                    warengruppeId = wg.KWarengruppe;
+
+                // Hersteller-Filter
+                int? herstellerId = null;
+                if (cmbHersteller.SelectedItem is CoreService.HerstellerRef h)
+                    herstellerId = h.KHersteller;
+
                 _artikel = (await _coreService.GetArtikelAsync(
                     suche: string.IsNullOrWhiteSpace(txtSuche.Text) ? null : txtSuche.Text,
-                    nurAktive: true,
-                    limit: 100
+                    herstellerId: herstellerId,
+                    warengruppeId: warengruppeId,
+                    nurAktive: chkNurAktive.IsChecked == true,
+                    nurUnterMindestbestand: chkUnterMindest.IsChecked == true,
+                    limit: 500
                 )).ToList();
 
                 dgArtikel.ItemsSource = _artikel;
@@ -54,7 +99,6 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 txtStatus.Text = $"Fehler: {ex.Message}";
-                MessageBox.Show($"Fehler: {ex.Message}", "Fehler");
             }
         }
 
@@ -69,9 +113,10 @@ namespace NovviaERP.WPF.Views
                 await LadeArtikelAsync();
         }
 
-        private void Filter_Changed(object sender, RoutedEventArgs e)
+        private async void Filter_Changed(object sender, RoutedEventArgs e)
         {
-            // Deaktiviert
+            if (IsLoaded)
+                await LadeArtikelAsync();
         }
 
         private async void Aktualisieren_Click(object sender, RoutedEventArgs e)
@@ -94,11 +139,7 @@ namespace NovviaERP.WPF.Views
         {
             if (dgArtikel.SelectedItem is CoreService.ArtikelUebersicht artikel)
             {
-                MessageBox.Show($"DEBUG: Navigiere zu Artikel {artikel.KArtikel}");
-                var view = new ArtikelDetailView(artikel.KArtikel);
-                MessageBox.Show("DEBUG: View erstellt");
-                NavigateTo(view);
-                MessageBox.Show("DEBUG: Navigation fertig");
+                NavigateTo(new ArtikelDetailView(artikel.KArtikel));
             }
         }
 
@@ -114,8 +155,8 @@ namespace NovviaERP.WPF.Views
         {
             if (dgArtikel.SelectedItem is CoreService.ArtikelUebersicht artikel)
             {
-                MessageBox.Show($"Lagerbestand fuer Artikel {artikel.CArtNr}:\n{artikel.NLagerbestand:N0} Stueck\n\n(Dialog wird implementiert)",
-                    "Lagerbestand", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Oeffne Artikel-Detail mit Lager-Tab
+                NavigateTo(new ArtikelDetailView(artikel.KArtikel));
             }
         }
 
@@ -123,8 +164,8 @@ namespace NovviaERP.WPF.Views
         {
             if (dgArtikel.SelectedItem is CoreService.ArtikelUebersicht artikel)
             {
-                MessageBox.Show($"Preise fuer Artikel {artikel.CArtNr}:\nVK Netto: {artikel.FVKNetto:N2}\nEK Netto: {artikel.FEKNetto:N2}\n\n(Dialog wird implementiert)",
-                    "Preise", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Oeffne Artikel-Detail mit Preise-Tab
+                NavigateTo(new ArtikelDetailView(artikel.KArtikel));
             }
         }
     }

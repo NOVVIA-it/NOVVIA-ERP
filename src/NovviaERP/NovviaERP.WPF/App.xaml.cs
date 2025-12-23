@@ -1,9 +1,11 @@
 using System;
+using System.IO;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Data;
 using NovviaERP.Core.Services;
 using NovviaERP.WPF.Views;
+using Serilog;
 
 namespace NovviaERP.WPF
 {
@@ -23,6 +25,19 @@ namespace NovviaERP.WPF
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // Serilog konfigurieren - Logs in C:\NovviaERP\logs
+            var logPath = @"C:\NovviaERP\logs";
+            Directory.CreateDirectory(logPath);
+
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.File(
+                    Path.Combine(logPath, "novviaerp-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+                .CreateLogger();
 
             // Globaler Exception Handler
             DispatcherUnhandledException += (s, args) =>

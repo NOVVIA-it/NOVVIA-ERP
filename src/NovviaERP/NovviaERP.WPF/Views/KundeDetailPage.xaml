@@ -358,6 +358,41 @@
                 </Grid>
             </TabItem>
 
+            <!-- Tab: Validierung -->
+            <TabItem Header="Validierung">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="400" HorizontalAlignment="Left">
+                        <!-- Validierung GroupBox -->
+                        <GroupBox Header="Validierung" Margin="0,0,0,20">
+                            <StackPanel Margin="10">
+                                <CheckBox x:Name="chkKundeAmbient" Content="Ambient" Margin="0,5,0,10"/>
+                                <CheckBox x:Name="chkKundeCool" Content="Cool" Margin="0,0,0,10"/>
+                                <CheckBox x:Name="chkKundeMedcan" Content="Medcan" Margin="0,0,0,10"/>
+                                <CheckBox x:Name="chkKundeTierarznei" Content="Tierarznei" Margin="0,0,0,5"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- Qualifikation -->
+                        <TextBlock Text="QualifiziertAm" FontWeight="Normal" Margin="0,0,0,5"/>
+                        <DatePicker x:Name="dpKundeQualifiziertAm" Width="200" HorizontalAlignment="Left" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="QualifiziertVon" FontWeight="Normal" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtKundeQualifiziertVon" Height="28" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="GDP" FontWeight="Normal" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtKundeGDP" Height="28" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="GMP" FontWeight="Normal" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtKundeGMP" Height="28" Margin="0,0,0,15"/>
+
+                        <!-- Speichern Button -->
+                        <Button Content="Validierung speichern" Click="ValidierungSpeichern_Click"
+                                Padding="15,8" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- Tab: Eigene Felder -->
             <TabItem Header="Eigene Felder">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">

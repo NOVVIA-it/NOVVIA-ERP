@@ -32,6 +32,8 @@ BEGIN
         dQualifiziertAm         DATE NULL,                        -- Datum der Qualifizierung
         cQualifiziertVon        NVARCHAR(200) NULL,               -- Wer hat qualifiziert
         cQualifikationsDocs     NVARCHAR(500) NULL,               -- Pfad/Referenz zu Dokumenten
+        cGDP                    NVARCHAR(200) NULL,               -- Good Distribution Practice
+        cGMP                    NVARCHAR(200) NULL,               -- Good Manufacturing Practice
 
         -- Timestamps
         dErstellt               DATETIME DEFAULT GETDATE(),
@@ -45,6 +47,19 @@ END
 ELSE
 BEGIN
     PRINT 'Tabelle NOVVIA.LieferantErweitert existiert bereits';
+
+    -- GDP und GMP Spalten hinzufügen falls nicht vorhanden
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('NOVVIA.LieferantErweitert') AND name = 'cGDP')
+    BEGIN
+        ALTER TABLE NOVVIA.LieferantErweitert ADD cGDP NVARCHAR(200) NULL;
+        PRINT '  - Spalte cGDP hinzugefuegt';
+    END
+
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('NOVVIA.LieferantErweitert') AND name = 'cGMP')
+    BEGIN
+        ALTER TABLE NOVVIA.LieferantErweitert ADD cGMP NVARCHAR(200) NULL;
+        PRINT '  - Spalte cGMP hinzugefuegt';
+    END
 END
 GO
 
@@ -63,7 +78,9 @@ CREATE PROCEDURE spNOVVIA_LieferantErweitertSpeichern
     @nTierarznei BIT = 0,
     @dQualifiziertAm DATE = NULL,
     @cQualifiziertVon NVARCHAR(200) = NULL,
-    @cQualifikationsDocs NVARCHAR(500) = NULL
+    @cQualifikationsDocs NVARCHAR(500) = NULL,
+    @cGDP NVARCHAR(200) = NULL,
+    @cGMP NVARCHAR(200) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -79,6 +96,8 @@ BEGIN
             dQualifiziertAm = @dQualifiziertAm,
             cQualifiziertVon = @cQualifiziertVon,
             cQualifikationsDocs = @cQualifikationsDocs,
+            cGDP = @cGDP,
+            cGMP = @cGMP,
             dGeaendert = GETDATE()
         WHERE kLieferant = @kLieferant;
     END
@@ -87,11 +106,11 @@ BEGIN
         -- Insert
         INSERT INTO NOVVIA.LieferantErweitert (
             kLieferant, nAmbient, nCool, nMedcan, nTierarznei,
-            dQualifiziertAm, cQualifiziertVon, cQualifikationsDocs
+            dQualifiziertAm, cQualifiziertVon, cQualifikationsDocs, cGDP, cGMP
         )
         VALUES (
             @kLieferant, @nAmbient, @nCool, @nMedcan, @nTierarznei,
-            @dQualifiziertAm, @cQualifiziertVon, @cQualifikationsDocs
+            @dQualifiziertAm, @cQualifiziertVon, @cQualifikationsDocs, @cGDP, @cGMP
         );
     END
 END
@@ -123,6 +142,8 @@ BEGIN
         dQualifiziertAm,
         cQualifiziertVon,
         cQualifikationsDocs,
+        cGDP,
+        cGMP,
         dErstellt,
         dGeaendert
     FROM NOVVIA.LieferantErweitert

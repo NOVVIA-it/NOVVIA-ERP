@@ -1,6 +1,6 @@
 -- ============================================
--- NOVVIA ERP - MSV3 Logging
--- Protokolliert alle MSV3-Anfragen und -Antworten
+-- NOVVIA ERP - Lieferant Erweiterung
+-- Zusätzliche Stammdatenfelder für Lieferanten
 -- ============================================
 
 USE Mandant_2;
@@ -14,111 +14,148 @@ END
 GO
 
 -- ============================================
--- MSV3 Request/Response Log
+-- Lieferant Erweiterung (NOVVIA-spezifisch)
 -- ============================================
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'MSV3Log' AND schema_id = SCHEMA_ID('NOVVIA'))
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'LieferantErweitert' AND schema_id = SCHEMA_ID('NOVVIA'))
 BEGIN
-    CREATE TABLE NOVVIA.MSV3Log (
-        kMSV3Log                BIGINT IDENTITY(1,1) PRIMARY KEY,
-        kMSV3Lieferant          INT NOT NULL,                    -- FK zu NOVVIA.MSV3Lieferant
-        kLieferantenBestellung  INT NULL,                        -- FK zu tLieferantenBestellung (optional)
-        cAktion                 NVARCHAR(50) NOT NULL,           -- VerbindungTesten, VerfuegbarkeitAnfragen, Bestellen
-        cRequestXML             NVARCHAR(MAX) NULL,              -- Gesendetes XML
-        cResponseXML            NVARCHAR(MAX) NULL,              -- Empfangenes XML
-        nHttpStatus             INT NULL,                        -- HTTP Status Code
-        nErfolg                 BIT DEFAULT 0,                   -- 1=Erfolg, 0=Fehler
-        cFehler                 NVARCHAR(1000) NULL,             -- Fehlermeldung
-        cMSV3AuftragsId         NVARCHAR(100) NULL,              -- Auftrags-ID vom Großhandel
-        cBestellSupportId       NVARCHAR(100) NULL,              -- Support-ID für Nachverfolgung
-        nDauerMs                INT NULL,                        -- Dauer der Anfrage in ms
-        dZeitpunkt              DATETIME DEFAULT GETDATE(),
-        kBenutzer               INT NULL                         -- Wer hat die Anfrage ausgelöst
+    CREATE TABLE NOVVIA.LieferantErweitert (
+        kLieferantErweitert     INT IDENTITY(1,1) PRIMARY KEY,
+        kLieferant              INT NOT NULL UNIQUE,              -- FK zu tLieferant (1:1)
+
+        -- Produktkategorien
+        nAmbient                BIT DEFAULT 0,                    -- Liefert Ambient-Produkte
+        nCool                   BIT DEFAULT 0,                    -- Liefert Kühlware
+        nMedcan                 BIT DEFAULT 0,                    -- Liefert Medizinal-Cannabis
+        nTierarznei             BIT DEFAULT 0,                    -- Liefert Tierarzneimittel
+
+        -- Qualifizierung
+        dQualifiziertAm         DATE NULL,                        -- Datum der Qualifizierung
+        cQualifiziertVon        NVARCHAR(200) NULL,               -- Wer hat qualifiziert
+        cQualifikationsDocs     NVARCHAR(500) NULL,               -- Pfad/Referenz zu Dokumenten
+        cGDP                    NVARCHAR(200) NULL,               -- Good Distribution Practice
+        cGMP                    NVARCHAR(200) NULL,               -- Good Manufacturing Practice
+
+        -- Timestamps
+        dErstellt               DATETIME DEFAULT GETDATE(),
+        dGeaendert              DATETIME NULL,
+
+        CONSTRAINT FK_LieferantErweitert_Lieferant FOREIGN KEY (kLieferant) REFERENCES tLieferant(kLieferant)
     );
-    CREATE INDEX IX_MSV3Log_Lieferant ON NOVVIA.MSV3Log(kMSV3Lieferant);
-    CREATE INDEX IX_MSV3Log_Bestellung ON NOVVIA.MSV3Log(kLieferantenBestellung);
-    CREATE INDEX IX_MSV3Log_Zeitpunkt ON NOVVIA.MSV3Log(dZeitpunkt DESC);
-    PRINT 'Tabelle NOVVIA.MSV3Log erstellt';
+    CREATE INDEX IX_LieferantErweitert_Lieferant ON NOVVIA.LieferantErweitert(kLieferant);
+    PRINT 'Tabelle NOVVIA.LieferantErweitert erstellt';
+END
+ELSE
+BEGIN
+    PRINT 'Tabelle NOVVIA.LieferantErweitert existiert bereits';
+
+    -- GDP und GMP Spalten hinzufügen falls nicht vorhanden
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('NOVVIA.LieferantErweitert') AND name = 'cGDP')
+    BEGIN
+        ALTER TABLE NOVVIA.LieferantErweitert ADD cGDP NVARCHAR(200) NULL;
+        PRINT '  - Spalte cGDP hinzugefuegt';
+    END
+
+    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('NOVVIA.LieferantErweitert') AND name = 'cGMP')
+    BEGIN
+        ALTER TABLE NOVVIA.LieferantErweitert ADD cGMP NVARCHAR(200) NULL;
+        PRINT '  - Spalte cGMP hinzugefuegt';
+    END
 END
 GO
 
 -- ============================================
--- Stored Procedure: MSV3 Log schreiben
+-- Stored Procedure: Lieferant Erweiterung speichern
 -- ============================================
-IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spNOVVIA_MSV3LogSchreiben')
-    DROP PROCEDURE spNOVVIA_MSV3LogSchreiben;
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spNOVVIA_LieferantErweitertSpeichern')
+    DROP PROCEDURE spNOVVIA_LieferantErweitertSpeichern;
 GO
 
-CREATE PROCEDURE spNOVVIA_MSV3LogSchreiben
-    @kMSV3Lieferant INT,
-    @kLieferantenBestellung INT = NULL,
-    @cAktion NVARCHAR(50),
-    @cRequestXML NVARCHAR(MAX) = NULL,
-    @cResponseXML NVARCHAR(MAX) = NULL,
-    @nHttpStatus INT = NULL,
-    @nErfolg BIT = 0,
-    @cFehler NVARCHAR(1000) = NULL,
-    @cMSV3AuftragsId NVARCHAR(100) = NULL,
-    @cBestellSupportId NVARCHAR(100) = NULL,
-    @nDauerMs INT = NULL,
-    @kBenutzer INT = NULL,
-    @kMSV3Log BIGINT OUTPUT
+CREATE PROCEDURE spNOVVIA_LieferantErweitertSpeichern
+    @kLieferant INT,
+    @nAmbient BIT = 0,
+    @nCool BIT = 0,
+    @nMedcan BIT = 0,
+    @nTierarznei BIT = 0,
+    @dQualifiziertAm DATE = NULL,
+    @cQualifiziertVon NVARCHAR(200) = NULL,
+    @cQualifikationsDocs NVARCHAR(500) = NULL,
+    @cGDP NVARCHAR(200) = NULL,
+    @cGMP NVARCHAR(200) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO NOVVIA.MSV3Log (
-        kMSV3Lieferant, kLieferantenBestellung, cAktion,
-        cRequestXML, cResponseXML, nHttpStatus, nErfolg, cFehler,
-        cMSV3AuftragsId, cBestellSupportId, nDauerMs, kBenutzer
-    )
-    VALUES (
-        @kMSV3Lieferant, @kLieferantenBestellung, @cAktion,
-        @cRequestXML, @cResponseXML, @nHttpStatus, @nErfolg, @cFehler,
-        @cMSV3AuftragsId, @cBestellSupportId, @nDauerMs, @kBenutzer
-    );
-
-    SET @kMSV3Log = SCOPE_IDENTITY();
+    IF EXISTS (SELECT 1 FROM NOVVIA.LieferantErweitert WHERE kLieferant = @kLieferant)
+    BEGIN
+        -- Update
+        UPDATE NOVVIA.LieferantErweitert
+        SET nAmbient = @nAmbient,
+            nCool = @nCool,
+            nMedcan = @nMedcan,
+            nTierarznei = @nTierarznei,
+            dQualifiziertAm = @dQualifiziertAm,
+            cQualifiziertVon = @cQualifiziertVon,
+            cQualifikationsDocs = @cQualifikationsDocs,
+            cGDP = @cGDP,
+            cGMP = @cGMP,
+            dGeaendert = GETDATE()
+        WHERE kLieferant = @kLieferant;
+    END
+    ELSE
+    BEGIN
+        -- Insert
+        INSERT INTO NOVVIA.LieferantErweitert (
+            kLieferant, nAmbient, nCool, nMedcan, nTierarznei,
+            dQualifiziertAm, cQualifiziertVon, cQualifikationsDocs, cGDP, cGMP
+        )
+        VALUES (
+            @kLieferant, @nAmbient, @nCool, @nMedcan, @nTierarznei,
+            @dQualifiziertAm, @cQualifiziertVon, @cQualifikationsDocs, @cGDP, @cGMP
+        );
+    END
 END
 GO
 
-PRINT 'Stored Procedure spNOVVIA_MSV3LogSchreiben erstellt';
+PRINT 'Stored Procedure spNOVVIA_LieferantErweitertSpeichern erstellt';
 GO
 
 -- ============================================
--- View: Lieferanten für Artikel mit MSV3-Info
--- Zeigt alle Lieferanten pro Artikel die MSV3-fähig sind
+-- Stored Procedure: Lieferant Erweiterung laden
 -- ============================================
-IF EXISTS (SELECT * FROM sys.views WHERE name = 'vwArtikelMSV3Lieferanten' AND schema_id = SCHEMA_ID('NOVVIA'))
-    DROP VIEW NOVVIA.vwArtikelMSV3Lieferanten;
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spNOVVIA_LieferantErweitertLaden')
+    DROP PROCEDURE spNOVVIA_LieferantErweitertLaden;
 GO
 
-CREATE VIEW NOVVIA.vwArtikelMSV3Lieferanten
+CREATE PROCEDURE spNOVVIA_LieferantErweitertLaden
+    @kLieferant INT
 AS
-SELECT
-    la.tArtikel_kArtikel AS kArtikel,
-    la.tLieferant_kLieferant AS kLieferant,
-    l.cFirma AS LieferantName,
-    l.cLiefNr AS LieferantNr,
-    NULL AS LieferantenArtNr,
-    ISNULL(la.fEKNetto, 0) AS EKNetto,
-    0 AS Standardmenge,
-    0 AS Prioritaet,
-    ISNULL(la.nStandard, 0) AS IstStandard,
-    m.kMSV3Lieferant,
-    m.cMSV3Url AS MSV3Url,
-    m.nMSV3Version AS MSV3Version,
-    CASE WHEN m.kMSV3Lieferant IS NOT NULL AND m.nAktiv = 1 THEN 1 ELSE 0 END AS HatMSV3
-FROM tLiefArtikel la
-INNER JOIN tLieferant l ON la.tLieferant_kLieferant = l.kLieferant
-LEFT JOIN NOVVIA.MSV3Lieferant m ON la.tLieferant_kLieferant = m.kLieferant AND m.nAktiv = 1
-WHERE l.cAktiv = 'Y';
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        kLieferantErweitert,
+        kLieferant,
+        ISNULL(nAmbient, 0) AS nAmbient,
+        ISNULL(nCool, 0) AS nCool,
+        ISNULL(nMedcan, 0) AS nMedcan,
+        ISNULL(nTierarznei, 0) AS nTierarznei,
+        dQualifiziertAm,
+        cQualifiziertVon,
+        cQualifikationsDocs,
+        cGDP,
+        cGMP,
+        dErstellt,
+        dGeaendert
+    FROM NOVVIA.LieferantErweitert
+    WHERE kLieferant = @kLieferant;
+END
 GO
 
-PRINT 'View NOVVIA.vwArtikelMSV3Lieferanten erstellt';
+PRINT 'Stored Procedure spNOVVIA_LieferantErweitertLaden erstellt';
 GO
 
 PRINT '';
 PRINT '============================================';
-PRINT 'NOVVIA MSV3 Logging erfolgreich eingerichtet!';
+PRINT 'NOVVIA Lieferant Erweiterung eingerichtet!';
 PRINT '============================================';
 GO

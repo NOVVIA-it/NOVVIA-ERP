@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,11 @@ namespace NovviaERP.WPF.Views
             _kundeId = kundeId;
             _coreService = App.Services.GetRequiredService<CoreService>();
             txtTitel.Text = kundeId.HasValue ? "Kunde bearbeiten" : "Neuer Kunde";
-            Loaded += async (s, e) => await LadeKundeAsync();
+            Loaded += async (s, e) =>
+            {
+                await LadeKundeAsync();
+                await LadeValidierungAsync();
+            };
         }
 
         private async System.Threading.Tasks.Task LadeKundeAsync()
@@ -53,15 +58,82 @@ namespace NovviaERP.WPF.Views
             pnlInhalt.Children.Add(sp);
         }
 
+        #region Validierung (JTL Eigene Felder)
+
+        private async System.Threading.Tasks.Task LadeValidierungAsync()
+        {
+            if (!_kundeId.HasValue) return;
+
+            try
+            {
+                var felder = await _coreService.GetKundeEigeneFelderAsync(_kundeId.Value);
+
+                chkValAmbient.IsChecked = GetBoolWert(felder, "Ambient");
+                chkValCool.IsChecked = GetBoolWert(felder, "Cool");
+                chkValMedcan.IsChecked = GetBoolWert(felder, "Medcan");
+                chkValTierarznei.IsChecked = GetBoolWert(felder, "Tierarznei");
+
+                if (felder.TryGetValue("QualifiziertAm", out var qualDatum) && DateTime.TryParse(qualDatum, out var dt))
+                {
+                    dpQualifiziertAm.SelectedDate = dt;
+                }
+
+                txtQualifiziertVon.Text = felder.TryGetValue("QualifiziertVon", out var qualVon) ? qualVon ?? "" : "";
+                txtGDP.Text = felder.TryGetValue("GDP", out var gdp) ? gdp ?? "" : "";
+                txtGMP.Text = felder.TryGetValue("GMP", out var gmp) ? gmp ?? "" : "";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der Validierungsfelder: {ex.Message}");
+            }
+        }
+
+        private bool GetBoolWert(Dictionary<string, string?> felder, string key)
+        {
+            if (felder.TryGetValue(key, out var wert))
+            {
+                return wert == "1" || wert?.ToLower() == "true" || wert?.ToLower() == "ja";
+            }
+            return false;
+        }
+
+        private async void ValidierungSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_kundeId.HasValue)
+            {
+                MessageBox.Show("Bitte zuerst den Kunden speichern!", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var felder = new Dictionary<string, string?>
+                {
+                    ["Ambient"] = chkValAmbient.IsChecked == true ? "1" : "0",
+                    ["Cool"] = chkValCool.IsChecked == true ? "1" : "0",
+                    ["Medcan"] = chkValMedcan.IsChecked == true ? "1" : "0",
+                    ["Tierarznei"] = chkValTierarznei.IsChecked == true ? "1" : "0",
+                    ["QualifiziertAm"] = dpQualifiziertAm.SelectedDate?.ToString("yyyy-MM-dd"),
+                    ["QualifiziertVon"] = txtQualifiziertVon.Text.Trim(),
+                    ["GDP"] = txtGDP.Text.Trim(),
+                    ["GMP"] = txtGMP.Text.Trim()
+                };
+
+                await _coreService.SetKundeEigeneFelderAsync(_kundeId.Value, felder);
+                MessageBox.Show("Validierungsfelder wurden gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
         private void Zurueck_Click(object sender, RoutedEventArgs e)
         {
             if (Window.GetWindow(this) is MainWindow main)
                 main.ShowContent(App.Services.GetRequiredService<KundenView>());
-        }
-
-        private void Speichern_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show("Speichern noch nicht implementiert", "Info");
         }
     }
 }

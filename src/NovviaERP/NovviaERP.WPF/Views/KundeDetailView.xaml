@@ -16,15 +16,51 @@
             </StackPanel>
         </Border>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20">
-            <StackPanel x:Name="pnlInhalt">
-                <TextBlock x:Name="txtStatus" Text="Lade..." FontSize="16"/>
-            </StackPanel>
-        </ScrollViewer>
+        <TabControl Grid.Row="1" Margin="20,15,20,0">
+            <!-- Tab: Stammdaten -->
+            <TabItem Header="Stammdaten">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel x:Name="pnlInhalt">
+                        <TextBlock x:Name="txtStatus" Text="Lade..." FontSize="16"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Tab: Validierung -->
+            <TabItem Header="Validierung">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="400" HorizontalAlignment="Left">
+                        <GroupBox Header="Validierung" Margin="0,0,0,20">
+                            <StackPanel Margin="10">
+                                <CheckBox x:Name="chkValAmbient" Content="Ambient" Margin="0,5,0,10"/>
+                                <CheckBox x:Name="chkValCool" Content="Cool" Margin="0,0,0,10"/>
+                                <CheckBox x:Name="chkValMedcan" Content="Medcan" Margin="0,0,0,10"/>
+                                <CheckBox x:Name="chkValTierarznei" Content="Tierarznei" Margin="0,0,0,5"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <TextBlock Text="Qualifiziert am" FontWeight="Normal" Margin="0,0,0,5"/>
+                        <DatePicker x:Name="dpQualifiziertAm" Width="200" HorizontalAlignment="Left" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Qualifiziert von" FontWeight="Normal" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtQualifiziertVon" Height="28" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="GDP" FontWeight="Normal" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtGDP" Height="28" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="GMP" FontWeight="Normal" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtGMP" Height="28" Margin="0,0,0,15"/>
+
+                        <Button Content="Validierung speichern" Click="ValidierungSpeichern_Click"
+                                Padding="15,8" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
 
         <Border Grid.Row="2" Background="#f0f0f0" Padding="20,10" BorderBrush="#ddd" BorderThickness="0,1,0,0">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Speichern" Click="Speichern_Click" Background="#0078D4" Foreground="White" Padding="20,8" Margin="0,0,10,0"/>
                 <Button Content="Abbrechen" Click="Zurueck_Click" Padding="20,8"/>
             </StackPanel>
         </Border>

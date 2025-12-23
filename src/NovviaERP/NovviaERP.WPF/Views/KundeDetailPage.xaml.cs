@@ -113,6 +113,9 @@ namespace NovviaERP.WPF.Views
                     // Eigene Felder laden
                     await LadeEigeneFelderAsync();
 
+                    // Validierungsfelder laden
+                    await LadeValidierungAsync();
+
                     txtStatus.Text = "Kunde geladen";
                 }
                 else
@@ -462,6 +465,85 @@ namespace NovviaERP.WPF.Views
         {
             MessageBox.Show("Neue eigene Felder werden unter Einstellungen -> Eigene Felder verwaltet.",
                 "Eigene Felder", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        #endregion
+
+        #region Validierungsfelder (JTL Eigene Felder)
+
+        private async System.Threading.Tasks.Task LadeValidierungAsync()
+        {
+            if (!_kundeId.HasValue) return;
+
+            try
+            {
+                var felder = await _coreService.GetKundeEigeneFelderAsync(_kundeId.Value);
+
+                // Validierung Checkboxen
+                chkKundeAmbient.IsChecked = GetBoolWert(felder, "Ambient");
+                chkKundeCool.IsChecked = GetBoolWert(felder, "Cool");
+                chkKundeMedcan.IsChecked = GetBoolWert(felder, "Medcan");
+                chkKundeTierarznei.IsChecked = GetBoolWert(felder, "Tierarznei");
+
+                // Qualifikation
+                if (felder.TryGetValue("QualifiziertAm", out var qualDatum) && DateTime.TryParse(qualDatum, out var dt))
+                {
+                    dpKundeQualifiziertAm.SelectedDate = dt;
+                }
+
+                txtKundeQualifiziertVon.Text = felder.TryGetValue("QualifiziertVon", out var qualVon) ? qualVon ?? "" : "";
+                txtKundeGDP.Text = felder.TryGetValue("GDP", out var gdp) ? gdp ?? "" : "";
+                txtKundeGMP.Text = felder.TryGetValue("GMP", out var gmp) ? gmp ?? "" : "";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der Validierungsfelder: {ex.Message}");
+            }
+        }
+
+        private bool GetBoolWert(Dictionary<string, string?> felder, string key)
+        {
+            if (felder.TryGetValue(key, out var wert))
+            {
+                return wert == "1" || wert?.ToLower() == "true" || wert?.ToLower() == "ja";
+            }
+            return false;
+        }
+
+        private async void ValidierungSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_kundeId.HasValue)
+            {
+                MessageBox.Show("Bitte zuerst den Kunden speichern!", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                txtStatus.Text = "Speichere Validierungsfelder...";
+
+                var felder = new Dictionary<string, string?>
+                {
+                    ["Ambient"] = chkKundeAmbient.IsChecked == true ? "1" : "0",
+                    ["Cool"] = chkKundeCool.IsChecked == true ? "1" : "0",
+                    ["Medcan"] = chkKundeMedcan.IsChecked == true ? "1" : "0",
+                    ["Tierarznei"] = chkKundeTierarznei.IsChecked == true ? "1" : "0",
+                    ["QualifiziertAm"] = dpKundeQualifiziertAm.SelectedDate?.ToString("yyyy-MM-dd"),
+                    ["QualifiziertVon"] = txtKundeQualifiziertVon.Text.Trim(),
+                    ["GDP"] = txtKundeGDP.Text.Trim(),
+                    ["GMP"] = txtKundeGMP.Text.Trim()
+                };
+
+                await _coreService.SetKundeEigeneFelderAsync(_kundeId.Value, felder);
+
+                txtStatus.Text = "Validierungsfelder gespeichert";
+                MessageBox.Show("Validierungsfelder wurden gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
         }
 
         #endregion

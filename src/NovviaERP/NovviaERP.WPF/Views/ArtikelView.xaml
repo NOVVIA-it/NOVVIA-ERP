@@ -42,6 +42,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -55,6 +56,17 @@
                         Foreground="White" BorderThickness="0"/>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="20,0,0,0">
+                    <TextBlock Text="Warengruppe:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="cmbWarengruppe" Width="150" Height="32"
+                              DisplayMemberPath="CName" SelectedValuePath="KWarengruppe"
+                              SelectionChanged="Filter_Changed">
+                        <ComboBox.Items>
+                            <ComboBoxItem Content="Alle Warengruppen" IsSelected="True"/>
+                        </ComboBox.Items>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="15,0,0,0">
                     <TextBlock Text="Hersteller:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <ComboBox x:Name="cmbHersteller" Width="150" Height="32"
                               DisplayMemberPath="CName" SelectedValuePath="KHersteller"
@@ -65,15 +77,15 @@
                     </ComboBox>
                 </StackPanel>
 
-                <CheckBox x:Name="chkNurAktive" Grid.Column="3" Content="Nur aktive"
+                <CheckBox x:Name="chkNurAktive" Grid.Column="4" Content="Nur aktive"
                           IsChecked="True" VerticalAlignment="Center" Margin="20,0,0,0"
                           Checked="Filter_Changed" Unchecked="Filter_Changed"/>
 
-                <CheckBox x:Name="chkUnterMindest" Grid.Column="4" Content="Unter Mindestbestand"
+                <CheckBox x:Name="chkUnterMindest" Grid.Column="5" Content="Unter Mindestbestand"
                           VerticalAlignment="Center" Margin="20,0,0,0"
                           Checked="Filter_Changed" Unchecked="Filter_Changed"/>
 
-                <Button Grid.Column="6" Content="Aktualisieren" Click="Aktualisieren_Click"
+                <Button Grid.Column="7" Content="Aktualisieren" Click="Aktualisieren_Click"
                         Padding="15,5" Background="#f0f0f0" BorderThickness="1" BorderBrush="#ccc"/>
             </Grid>
         </Border>

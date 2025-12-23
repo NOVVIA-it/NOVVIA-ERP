@@ -102,7 +102,12 @@ namespace NovviaERP.Core.Services
         public async Task<IEnumerable<MSV3Lieferant>> GetMSV3LieferantenAsync()
         {
             using var conn = new SqlConnection(_connectionString);
-            return await conn.QueryAsync<MSV3Lieferant>("EXEC spNOVVIA_MSV3LieferantLaden");
+            return await conn.QueryAsync<MSV3Lieferant>(@"
+                SELECT m.*, l.cFirma AS LieferantName
+                FROM NOVVIA.MSV3Lieferant m
+                INNER JOIN tlieferant l ON m.kLieferant = l.kLieferant
+                WHERE m.nAktiv = 1
+                ORDER BY l.cFirma");
         }
 
         /// <summary>MSV3-Konfiguration für Lieferant laden (über tLieferant.kLieferant)</summary>
@@ -248,19 +253,26 @@ namespace NovviaERP.Core.Services
                 var xml = BuildVerfuegbarkeitRequest(config, artikel);
                 _log.Debug("MSV3 Verfügbarkeitsanfrage: {Url}", config.MSV3Url);
 
-                // Alle Großhändler: Standard verfuegbarkeitAnfragen
-                var action = "VerfuegbarkeitAnfragen";
+                // GEHE: verfuegbarkeitAnfragenBulk, andere: VerfuegbarkeitAnfragen
+                var action = isGehe ? "VerfuegbarkeitAnfragenBulk" : "VerfuegbarkeitAnfragen";
                 var response = await SendMSV3RequestAsync(config, xml, action);
 
                 if (response.Success)
                 {
+                    // DEBUG: Log raw response for troubleshooting
+                    _log.Debug("MSV3 Response (raw): {ResponseXml}", response.ResponseXml);
+                    System.Diagnostics.Debug.WriteLine($"MSV3 Response: {response.ResponseXml}");
+
                     result = ParseVerfuegbarkeitResponse(response.ResponseXml!);
                     result.Success = true;
+
+                    _log.Debug("MSV3 Parsed: {AnzahlPositionen} Positionen", result.Positionen?.Count ?? 0);
                 }
                 else
                 {
                     result.Success = false;
                     result.Fehler = response.Fehler;
+                    _log.Warning("MSV3 Response fehlgeschlagen: {Fehler}", response.Fehler);
                 }
             }
             catch (Exception ex)
@@ -286,8 +298,8 @@ namespace NovviaERP.Core.Services
 
             if (isGehe)
             {
-                // GEHE-Format für verfuegbarkeitAnfragen:
-                // - anfrage-Wrapper mit Id (wie bei bestellen)
+                // GEHE-Format für verfuegbarkeitAnfragenBulk:
+                // - anfrage-Wrapper mit Id
                 // - Positionen mit Pzn/Menge/Liefervorgabe
                 var anfrageId = Guid.NewGuid().ToString().ToUpper();
                 var sb = new StringBuilder();
@@ -335,27 +347,93 @@ namespace NovviaERP.Core.Services
                 var doc = XDocument.Parse(xml);
                 var ns = doc.Root?.GetDefaultNamespace() ?? XNamespace.None;
 
-                foreach (var artikel in doc.Descendants(ns + "Artikel"))
+                _log.Debug("MSV3 Parse: Namespace={Ns}, Root={Root}", ns.NamespaceName, doc.Root?.Name.LocalName);
+
+                // Versuche verschiedene Element-Namen
+                // GEHE Bulk: Positionen, Standard MSV3: Artikel, evtl. auch Position (singular)
+                var elementNamen = new[] { "Artikel", "Positionen", "Position", "Item", "Ergebnis", "artikel", "positionen", "position" };
+                var artikelElements = new List<XElement>();
+
+                foreach (var elementName in elementNamen)
                 {
+                    artikelElements = doc.Descendants(ns + elementName).ToList();
+                    if (artikelElements.Any())
+                    {
+                        _log.Debug("MSV3 Parse: Gefunden {Count}x {Element} (mit ns)", artikelElements.Count, elementName);
+                        break;
+                    }
+                    artikelElements = doc.Descendants(elementName).ToList();
+                    if (artikelElements.Any())
+                    {
+                        _log.Debug("MSV3 Parse: Gefunden {Count}x {Element} (ohne ns)", artikelElements.Count, elementName);
+                        break;
+                    }
+                }
+
+                // Falls immer noch nichts gefunden, alle Elemente loggen
+                if (!artikelElements.Any())
+                {
+                    var allElements = doc.Descendants().Select(e => e.Name.LocalName).Distinct().ToList();
+                    _log.Warning("MSV3 Parse: Keine bekannten Elemente gefunden. Vorhandene: {Elemente}", string.Join(", ", allElements));
+
+                    // Speichere Response in Fehler für Anzeige
+                    result.Fehler = $"XML-Struktur unbekannt. Elemente: {string.Join(", ", allElements.Take(10))}";
+                }
+
+                foreach (var artikel in artikelElements)
+                {
+                    // GEHE verwendet "Pzn" (Kleinschreibung), Standard "PZN"
+                    var pzn = artikel.Element(ns + "PZN")?.Value
+                           ?? artikel.Element(ns + "Pzn")?.Value
+                           ?? artikel.Element("PZN")?.Value
+                           ?? artikel.Element("Pzn")?.Value
+                           ?? "";
+
+                    // GEHE: Lieferfaehigkeit = true/false, Menge
+                    var lieferfaehig = artikel.Element(ns + "Lieferfaehigkeit")?.Value
+                                    ?? artikel.Element("Lieferfaehigkeit")?.Value;
+                    var menge = artikel.Element(ns + "Menge")?.Value
+                             ?? artikel.Element("Menge")?.Value;
+
                     var pos = new MSV3VerfuegbarkeitPosition
                     {
-                        PZN = artikel.Element(ns + "PZN")?.Value ?? "",
-                        Id = artikel.Element(ns + "Id")?.Value,
-                        MengeAngefragt = ParseDecimal(artikel.Element(ns + "MengeAngefragt")?.Value),
-                        MengeVerfuegbar = ParseDecimal(artikel.Element(ns + "MengeVerfuegbar")?.Value),
-                        PreisEK = ParseDecimal(artikel.Element(ns + "Preis")?.Value ?? artikel.Element(ns + "EK")?.Value),
-                        PreisAEP = ParseDecimal(artikel.Element(ns + "AEP")?.Value),
-                        PreisAVP = ParseDecimal(artikel.Element(ns + "AVP")?.Value),
+                        PZN = pzn,
+                        Id = artikel.Element(ns + "Id")?.Value ?? artikel.Element("Id")?.Value,
+                        MengeAngefragt = ParseDecimal(artikel.Element(ns + "MengeAngefragt")?.Value
+                                      ?? menge),
+                        MengeVerfuegbar = ParseDecimal(artikel.Element(ns + "MengeVerfuegbar")?.Value
+                                       ?? artikel.Element(ns + "Bestand")?.Value
+                                       ?? artikel.Element("Bestand")?.Value
+                                       ?? (lieferfaehig?.ToLower() == "true" ? menge : "0")),
+                        PreisEK = ParseDecimal(artikel.Element(ns + "Preis")?.Value
+                               ?? artikel.Element(ns + "EK")?.Value
+                               ?? artikel.Element("Preis")?.Value
+                               ?? artikel.Element("EK")?.Value),
+                        PreisAEP = ParseDecimal(artikel.Element(ns + "AEP")?.Value ?? artikel.Element("AEP")?.Value),
+                        PreisAVP = ParseDecimal(artikel.Element(ns + "AVP")?.Value ?? artikel.Element("AVP")?.Value),
                         Verfuegbar = artikel.Element(ns + "Verfuegbar")?.Value == "true" ||
-                                     artikel.Element(ns + "Status")?.Value == "VERFUEGBAR",
-                        Hinweis = artikel.Element(ns + "Hinweis")?.Value ?? artikel.Element(ns + "Meldung")?.Value,
-                        ChargenNr = artikel.Element(ns + "ChargenNr")?.Value ?? artikel.Element(ns + "Charge")?.Value,
-                        MHD = ParseDate(artikel.Element(ns + "MHD")?.Value ?? artikel.Element(ns + "Verfall")?.Value),
-                        Lieferzeit = artikel.Element(ns + "Lieferzeit")?.Value ?? artikel.Element(ns + "LieferzeitTage")?.Value
+                                     artikel.Element(ns + "Status")?.Value == "VERFUEGBAR" ||
+                                     lieferfaehig?.ToLower() == "true",
+                        Hinweis = artikel.Element(ns + "Hinweis")?.Value
+                               ?? artikel.Element(ns + "Meldung")?.Value
+                               ?? artikel.Element("Hinweis")?.Value
+                               ?? artikel.Element("Meldung")?.Value,
+                        ChargenNr = artikel.Element(ns + "ChargenNr")?.Value
+                                 ?? artikel.Element(ns + "Charge")?.Value
+                                 ?? artikel.Element("ChargenNr")?.Value
+                                 ?? artikel.Element("Charge")?.Value,
+                        MHD = ParseDate(artikel.Element(ns + "MHD")?.Value
+                           ?? artikel.Element(ns + "Verfall")?.Value
+                           ?? artikel.Element("MHD")?.Value
+                           ?? artikel.Element("Verfall")?.Value),
+                        Lieferzeit = artikel.Element(ns + "Lieferzeit")?.Value
+                                  ?? artikel.Element(ns + "LieferzeitTage")?.Value
+                                  ?? artikel.Element("Lieferzeit")?.Value
+                                  ?? artikel.Element("LieferzeitTage")?.Value
                     };
 
                     // Status ableiten
-                    if (pos.MengeVerfuegbar >= pos.MengeAngefragt)
+                    if (pos.Verfuegbar || pos.MengeVerfuegbar >= pos.MengeAngefragt)
                         pos.Status = "VERFUEGBAR";
                     else if (pos.MengeVerfuegbar > 0)
                         pos.Status = "TEILWEISE";

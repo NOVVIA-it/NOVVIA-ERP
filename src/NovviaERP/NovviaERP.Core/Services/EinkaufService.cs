@@ -201,7 +201,9 @@ namespace NovviaERP.Core.Services
                     nTierarznei = data.Tierarznei,
                     dQualifiziertAm = data.QualifiziertAm,
                     cQualifiziertVon = data.QualifiziertVon,
-                    cQualifikationsDocs = data.QualifikationsDocs
+                    cQualifikationsDocs = data.QualifikationsDocs,
+                    cGDP = data.GDP,
+                    cGMP = data.GMP
                 },
                 commandType: CommandType.StoredProcedure);
         }
@@ -374,7 +376,11 @@ namespace NovviaERP.Core.Services
                     result[l.KArtikel].Add(l);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Fehler beim Laden der Artikel-Lieferanten-Map für {ArtikelIds}", string.Join(",", artikelIds));
+                throw; // Fehler nicht verschlucken!
+            }
 
             return result;
         }
@@ -619,6 +625,8 @@ namespace NovviaERP.Core.Services
         public DateTime? QualifiziertAm { get; set; }
         public string? QualifiziertVon { get; set; }
         public string? QualifikationsDocs { get; set; }
+        public string? GDP { get; set; }
+        public string? GMP { get; set; }
 
         public DateTime? Erstellt { get; set; }
         public DateTime? Geaendert { get; set; }
@@ -631,6 +639,8 @@ namespace NovviaERP.Core.Services
         public DateTime? DQualifiziertAm { get => QualifiziertAm; set => QualifiziertAm = value; }
         public string? CQualifiziertVon { get => QualifiziertVon; set => QualifiziertVon = value; }
         public string? CQualifikationsDocs { get => QualifikationsDocs; set => QualifikationsDocs = value; }
+        public string? CGDP { get => GDP; set => GDP = value; }
+        public string? CGMP { get => GMP; set => GMP = value; }
         public DateTime? DErstellt { get => Erstellt; set => Erstellt = value; }
         public DateTime? DGeaendert { get => Geaendert; set => Geaendert = value; }
 

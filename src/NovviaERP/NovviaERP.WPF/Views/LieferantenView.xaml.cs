@@ -200,7 +200,8 @@ namespace NovviaERP.WPF.Views
                     // Qualifizierung
                     dpLiefQualifiziertAm.SelectedDate = _selectedLiefErweitert.QualifiziertAm;
                     txtLiefQualifiziertVon.Text = _selectedLiefErweitert.QualifiziertVon ?? "";
-                    txtLiefQualifikationsDocs.Text = _selectedLiefErweitert.QualifikationsDocs ?? "";
+                    txtLiefGDP.Text = _selectedLiefErweitert.GDP ?? "";
+                    txtLiefGMP.Text = _selectedLiefErweitert.GMP ?? "";
                 }
                 else
                 {
@@ -212,7 +213,8 @@ namespace NovviaERP.WPF.Views
                     chkLiefTierarznei.IsChecked = false;
                     dpLiefQualifiziertAm.SelectedDate = null;
                     txtLiefQualifiziertVon.Text = "";
-                    txtLiefQualifikationsDocs.Text = "";
+                    txtLiefGDP.Text = "";
+                    txtLiefGMP.Text = "";
                 }
             }
             catch (Exception ex)
@@ -239,7 +241,8 @@ namespace NovviaERP.WPF.Views
                 _selectedLiefErweitert.Tierarznei = chkLiefTierarznei.IsChecked ?? false;
                 _selectedLiefErweitert.QualifiziertAm = dpLiefQualifiziertAm.SelectedDate;
                 _selectedLiefErweitert.QualifiziertVon = txtLiefQualifiziertVon.Text;
-                _selectedLiefErweitert.QualifikationsDocs = txtLiefQualifikationsDocs.Text;
+                _selectedLiefErweitert.GDP = txtLiefGDP.Text;
+                _selectedLiefErweitert.GMP = txtLiefGMP.Text;
 
                 await _einkaufService.SaveLieferantErweitertAsync(_selectedLiefErweitert);
                 MessageBox.Show("NOVVIA-Erweiterungsdaten gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
