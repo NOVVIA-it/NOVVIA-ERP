@@ -781,7 +781,7 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
 
-            var bestellung = await conn.QuerySingleOrDefaultAsync<BestellungDetail>(@"
+            var bestellung = await conn.QueryFirstOrDefaultAsync<BestellungDetail>(@"
                 SELECT b.*,
                        k.cKundenNr,
                        a.cName AS KundeName, a.cFirma AS KundeFirma, a.cMail AS KundeMail, a.cTel AS KundeTel,
@@ -792,7 +792,7 @@ namespace NovviaERP.Core.Services
                        ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
                 FROM tBestellung b
                 LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
-                LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
+                OUTER APPLY (SELECT TOP 1 * FROM tAdresse WHERE kKunde = k.kKunde AND nStandard = 1 ORDER BY nTyp) a
                 LEFT JOIN tVersandArt v ON b.tVersandArt_kVersandArt = v.kVersandArt
                 LEFT JOIN tZahlungsArt z ON b.kZahlungsart = z.kZahlungsart
                 LEFT JOIN tShop s ON b.kShop = s.kShop
