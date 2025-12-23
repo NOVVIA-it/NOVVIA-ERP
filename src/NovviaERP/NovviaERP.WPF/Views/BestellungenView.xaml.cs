@@ -92,10 +92,20 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void Neu_Click(object sender, RoutedEventArgs e)
+        private async void Neu_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Neue Bestellung wird in JTL-Wawi erstellt.\n\nIn NovviaERP werden Bestellungen nur angezeigt und bearbeitet.",
-                "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+            var dialog = new NeueBestellungView();
+            dialog.Owner = Window.GetWindow(this);
+            if (dialog.ShowDialog() == true)
+            {
+                await LadeBestellungenAsync();
+
+                // Optional: Zur neuen Bestellung navigieren
+                if (dialog.ErstellteBestellungId.HasValue)
+                {
+                    NavigateToDetail(dialog.ErstellteBestellungId.Value);
+                }
+            }
         }
 
         private async void Import_Click(object sender, RoutedEventArgs e)
