@@ -604,34 +604,53 @@ namespace NovviaERP.Core.Services
         /// <summary>
         /// Kunden-Statistiken für 360°-Ansicht
         /// </summary>
-        public async Task<KundeStatistik?> GetKundeStatistikAsync(int kundeId)
+        public async Task<KundeStatistik> GetKundeStatistikAsync(int kundeId)
         {
             var conn = await GetConnectionAsync();
-            return await conn.QueryFirstOrDefaultAsync<KundeStatistik>(@"
-                SELECT
-                    @kundeId AS KKunde,
-                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100))
-                            FROM tBestellung b
-                            JOIN tBestellPos bp ON b.kBestellung = bp.tBestellung_kBestellung
-                            WHERE b.tKunde_kKunde = @kundeId), 0) AS UmsatzGesamt,
-                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100))
-                            FROM tBestellung b
-                            JOIN tBestellPos bp ON b.kBestellung = bp.tBestellung_kBestellung
-                            WHERE b.tKunde_kKunde = @kundeId AND YEAR(b.dErstellt) = YEAR(GETDATE())), 0) AS UmsatzJahr,
-                    ISNULL((SELECT COUNT(*) FROM tBestellung WHERE tKunde_kKunde = @kundeId), 0) AS AnzahlAuftraege,
-                    ISNULL((SELECT AVG(sub.Summe) FROM (
-                        SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100)) AS Summe
-                        FROM tBestellung b
-                        JOIN tBestellPos bp ON b.kBestellung = bp.tBestellung_kBestellung
-                        WHERE b.tKunde_kKunde = @kundeId
-                        GROUP BY b.kBestellung) sub), 0) AS DurchschnittWarenkorb,
-                    ISNULL((SELECT SUM(r.fBetragBrutto - ISNULL(r.fBezahlt, 0))
-                            FROM tRechnung r WHERE r.kKunde = @kundeId AND r.fBetragBrutto > ISNULL(r.fBezahlt, 0)), 0) AS OffenePosten,
-                    0 AS AnzahlRetouren,
-                    0 AS AnzahlMahnungen,
-                    (SELECT MIN(dErstellt) FROM tBestellung WHERE tKunde_kKunde = @kundeId) AS ErstBestellung,
-                    (SELECT MAX(dErstellt) FROM tBestellung WHERE tKunde_kKunde = @kundeId) AS LetzteBestellung",
-                new { kundeId });
+            var stats = new KundeStatistik { KKunde = kundeId };
+
+            try
+            {
+                // Aufträge zählen
+                var anzahl = await conn.QueryFirstOrDefaultAsync<int>(
+                    "SELECT COUNT(*) FROM tBestellung WHERE tKunde_kKunde = @kundeId AND nStorno = 0", new { kundeId });
+                stats.AnzahlAuftraege = anzahl;
+
+                // Umsatz berechnen (wie in anderen Queries - aus Positionen)
+                var umsatz = await conn.QueryFirstOrDefaultAsync<decimal?>(@"
+                    SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100))
+                    FROM tBestellung b
+                    INNER JOIN tbestellpos bp ON b.kBestellung = bp.tBestellung_kBestellung
+                    WHERE b.tKunde_kKunde = @kundeId AND b.nStorno = 0", new { kundeId });
+                stats.UmsatzGesamt = umsatz ?? 0;
+
+                // Durchschnitt
+                stats.DurchschnittWarenkorb = stats.AnzahlAuftraege > 0
+                    ? stats.UmsatzGesamt / stats.AnzahlAuftraege : 0;
+
+                // Erste/Letzte Bestellung
+                var datumStats = await conn.QueryFirstOrDefaultAsync<(DateTime? Erste, DateTime? Letzte)?>(@"
+                    SELECT MIN(dErstellt) AS Erste, MAX(dErstellt) AS Letzte
+                    FROM tBestellung WHERE tKunde_kKunde = @kundeId AND nStorno = 0", new { kundeId });
+                if (datumStats.HasValue)
+                {
+                    stats.ErstBestellung = datumStats.Value.Erste;
+                    stats.LetzteBestellung = datumStats.Value.Letzte;
+                }
+
+                // Offene Posten aus Rechnungen
+                var offen = await conn.QueryFirstOrDefaultAsync<decimal?>(@"
+                    SELECT SUM(fBetragBrutto - ISNULL(fBezahlt, 0))
+                    FROM tRechnung
+                    WHERE kKunde = @kundeId AND fBetragBrutto > ISNULL(fBezahlt, 0)", new { kundeId });
+                stats.OffenePosten = offen ?? 0;
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "Fehler beim Laden der Kundenstatistik für Kunde {KundeId}", kundeId);
+            }
+
+            return stats;
         }
 
         /// <summary>

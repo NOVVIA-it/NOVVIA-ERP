@@ -132,15 +132,12 @@ namespace NovviaERP.WPF.Views
 
                 // Statistiken laden
                 var stats = await _core.GetKundeStatistikAsync(kunde.KKunde);
-                if (stats != null)
-                {
-                    txtStatUmsatz.Text = $"{stats.UmsatzGesamt:N2} EUR";
-                    txtStatAuftraege.Text = stats.AnzahlAuftraege.ToString();
-                    txtStatDurchschnitt.Text = $"{stats.DurchschnittWarenkorb:N2} EUR";
-                    txtStatOffen.Text = $"{stats.OffenePosten:N2} EUR";
-                    txtStatRetouren.Text = stats.AnzahlRetouren.ToString();
-                    txtStatSeit.Text = stats.ErstBestellung?.ToString("dd.MM.yyyy") ?? "-";
-                }
+                txtStatUmsatz.Text = $"{stats.UmsatzGesamt:N2} EUR";
+                txtStatAuftraege.Text = stats.AnzahlAuftraege.ToString();
+                txtStatDurchschnitt.Text = $"{stats.DurchschnittWarenkorb:N2} EUR";
+                txtStatOffen.Text = $"{stats.OffenePosten:N2} EUR";
+                txtStatRetouren.Text = stats.AnzahlRetouren.ToString();
+                txtStatSeit.Text = stats.ErstBestellung?.ToString("dd.MM.yyyy") ?? "-";
 
                 // Tabs laden (parallel)
                 var auftraegeTask = _core.GetKundeAuftraegeAsync(kunde.KKunde);
