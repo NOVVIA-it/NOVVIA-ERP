@@ -14,7 +14,16 @@ namespace NovviaERP.Worker.Jobs;
 public sealed class Msv3SinglePznJob
 {
     private readonly string _connectionString;
-    private static readonly HttpClient _httpClient = new();
+
+    // Mit CookieContainer für Incapsula WAF
+    private static readonly CookieContainer _cookies = new();
+    private static readonly HttpClientHandler _handler = new()
+    {
+        CookieContainer = _cookies,
+        UseCookies = true,
+        AllowAutoRedirect = true
+    };
+    private static readonly HttpClient _httpClient = new(_handler) { Timeout = TimeSpan.FromSeconds(60) };
 
     public Msv3SinglePznJob(string connectionString)
     {
@@ -166,20 +175,58 @@ ELSE
     {
         try
         {
+            var baseUrl = cred.Url.TrimEnd('/');
+            var isGehe = baseUrl.Contains("gehe", StringComparison.OrdinalIgnoreCase);
             var version = cred.Version ?? 1;
-            var endpoint = version == 2
-                ? $"{cred.Url.TrimEnd('/')}/v2.0/VerfuegbarkeitAnfragen"
-                : $"{cred.Url.TrimEnd('/')}/v1.0/verfuegbarkeitAnfragenBulk";
 
-            var soapRequest = BuildSoapRequest(pzn, cred, version);
+            // Cookie-Warmup für Incapsula WAF (wie MSV3Service)
+            Console.WriteLine($"[MSV3] Cookie-Warmup für {baseUrl}...");
+            try
+            {
+                using var warmupRequest = new HttpRequestMessage(HttpMethod.Get, baseUrl);
+                warmupRequest.Headers.TryAddWithoutValidation("User-Agent", "Embarcadero URI Client/1.0");
+                warmupRequest.Headers.Connection.Add("Keep-Alive");
+                var warmupResponse = await _httpClient.SendAsync(warmupRequest);
+                Console.WriteLine($"[MSV3] Warmup Status: {warmupResponse.StatusCode}");
+            }
+            catch { /* Warmup darf fehlschlagen */ }
+
+            // MSV3 v2.0 verwendet VerfuegbarkeitAnfragen (nicht Bulk!)
+            // GEHE: camelCase in URL
+            string action, endpoint;
+            if (version == 2)
+            {
+                // v2.0: Standard VerfuegbarkeitAnfragen
+                var actionV2 = isGehe ? "verfuegbarkeitAnfragen" : "VerfuegbarkeitAnfragen";
+                action = actionV2;
+                endpoint = $"{baseUrl}/v2.0/{actionV2}";
+            }
+            else
+            {
+                // v1.0: verfuegbarkeitAnfragenBulk
+                action = "verfuegbarkeitAnfragenBulk";
+                endpoint = $"{baseUrl}/v1.0/{action}";
+            }
+
+            var soapRequest = BuildSoapRequest(pzn, cred, version, action, isGehe);
 
             using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
-            request.Content = new StringContent(soapRequest, Encoding.UTF8, "application/soap+xml");
+
+            // SOAP 1.2 Content-Type mit vollständiger SOAPAction (wie Vario8)
+            // Format: action="urn:msv3:v2:Msv3:verfuegbarkeitAnfragen"
+            var ns = version == 2 ? "urn:msv3:v2" : "urn:msv3:v1";
+            var soapAction = $"{ns}:Msv3:{action}";
+
+            request.Content = new StringContent(soapRequest, Encoding.UTF8);
+            request.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse($"application/soap+xml; charset=utf-8; action=\"{soapAction}\"");
 
             // HTTP Basic Auth
             var authBytes = Encoding.ASCII.GetBytes($"{cred.User}:{cred.Pass}");
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
-            request.Headers.Add("User-Agent", "Embarcadero URI Client/1.0");
+
+            // Headers wie Vario8 für Incapsula WAF
+            request.Headers.TryAddWithoutValidation("User-Agent", "Embarcadero URI Client/1.0");
+            request.Headers.Connection.Add("Keep-Alive");
 
             Console.WriteLine($"[MSV3] Request an {endpoint}");
 
@@ -204,15 +251,40 @@ ELSE
         }
     }
 
-    private static string BuildSoapRequest(string pzn, Msv3Cred cred, int version)
+    private static string BuildSoapRequest(string pzn, Msv3Cred cred, int version, string action, bool isGehe)
     {
         var ns = version == 2 ? "urn:msv3:v2" : "urn:msv3:v1";
-        var operation = version == 2 ? "VerfuegbarkeitAnfragen" : "verfuegbarkeitAnfragenBulk";
 
+        if (version == 2 && isGehe)
+        {
+            // GEHE v2.0 VerfuegbarkeitAnfragen Format (wie Vario8)
+            // Kind-Elemente mit xmlns="" um Namespace zu resetten
+            var filiale = string.IsNullOrEmpty(cred.Branch) ? "001" : cred.Branch;
+
+            return $@"<?xml version=""1.0"" encoding=""UTF-8""?>
+<soap:Envelope xmlns:soap=""http://www.w3.org/2003/05/soap-envelope"">
+   <soap:Body>
+      <{action} xmlns=""{ns}"">
+         <clientSoftwareKennung xmlns="""">NovviaERP</clientSoftwareKennung>
+         <Benutzerkennung xmlns="""">{cred.User}</Benutzerkennung>
+         <Kennwort xmlns="""">{cred.Pass}</Kennwort>
+         <Filiale xmlns="""">{filiale}</Filiale>
+         <Artikelliste xmlns="""">
+            <Artikel>
+               <Pzn>{pzn}</Pzn>
+               <Menge>1</Menge>
+            </Artikel>
+         </Artikelliste>
+      </{action}>
+   </soap:Body>
+</soap:Envelope>";
+        }
+
+        // v1.0 oder nicht-GEHE v2.0: anfrage/Positionen Format
         return $@"<?xml version=""1.0"" encoding=""UTF-8""?>
 <soap:Envelope xmlns:soap=""http://www.w3.org/2003/05/soap-envelope"">
    <soap:Body>
-      <{operation} xmlns=""{ns}"">
+      <{action} xmlns=""{ns}"">
          <clientSoftwareKennung>NovviaERP</clientSoftwareKennung>
          <Benutzerkennung>{cred.User}</Benutzerkennung>
          <Kennwort>{cred.Pass}</Kennwort>
@@ -223,7 +295,7 @@ ELSE
                <Liefervorgabe>Normal</Liefervorgabe>
             </Positionen>
          </anfrage>
-      </{operation}>
+      </{action}>
    </soap:Body>
 </soap:Envelope>";
     }

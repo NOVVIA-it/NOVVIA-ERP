@@ -198,46 +198,85 @@ namespace NovviaERP.WPF.Views
                     }
                     else
                     {
-                        // Verfuegbarkeit abfragen
-                        var result = await _msv3Service.CheckVerfuegbarkeitAsync(config, new[] { pzn });
+                        // GEHE/Alliance Erkennung - braucht CheckVerfuegbarkeitViaBestellenAsync
+                        bool isGehe = config.CMSV3Url?.Contains("gehe", StringComparison.OrdinalIgnoreCase) == true ||
+                                      config.CMSV3Url?.Contains("alliance", StringComparison.OrdinalIgnoreCase) == true;
 
-                        // DEBUG: Zeige Anzahl gefundener Positionen
-                        System.Diagnostics.Debug.WriteLine($"MSV3 Result: Success={result.Success}, Positionen={result.Positionen?.Count ?? 0}, Fehler={result.Fehler}");
-
-                        if (result.Success && result.Positionen != null && result.Positionen.Any())
+                        if (isGehe)
                         {
-                            var pos = result.Positionen.First();
-                            info.Bestand = (int)pos.MengeVerfuegbar;
-                            info.BestandText = $"{pos.MengeVerfuegbar:N0}";
-                            info.PreisText = pos.PreisEK > 0 ? $"EK: {pos.PreisEK:N2} EUR" : "";
-                            info.StatusText = pos.Status ?? "OK";
+                            // GEHE/Alliance: Bestandsabfrage via Bestellen-Operation
+                            var bestellPos = new List<NovviaERP.Core.Services.MSV3BestellPosition>
+                            {
+                                new NovviaERP.Core.Services.MSV3BestellPosition { PZN = pzn, Menge = 1 }
+                            };
 
-                            if (pos.Verfuegbar)
+                            var geheResult = await _msv3Service.CheckVerfuegbarkeitViaBestellenAsync(config, bestellPos);
+
+                            if (geheResult.Success && geheResult.Positionen != null && geheResult.Positionen.Any())
                             {
-                                info.BestandFarbe = new SolidColorBrush(Color.FromRgb(46, 125, 50)); // Gruen
-                            }
-                            else if (pos.MengeVerfuegbar > 0)
-                            {
-                                info.BestandFarbe = new SolidColorBrush(Color.FromRgb(245, 124, 0)); // Orange
+                                var pos = geheResult.Positionen.First();
+                                info.Bestand = pos.VerfuegbareMenge;
+                                info.BestandText = $"{pos.VerfuegbareMenge:N0}";
+                                info.StatusText = pos.StatusCode ?? "OK";
+
+                                if (pos.VerfuegbareMenge > 0)
+                                {
+                                    info.BestandFarbe = new SolidColorBrush(Color.FromRgb(46, 125, 50)); // Gruen
+                                }
+                                else
+                                {
+                                    info.BestandFarbe = new SolidColorBrush(Color.FromRgb(211, 47, 47)); // Rot
+                                }
+
+                                if (pos.NaechsterLieferzeitpunkt.HasValue)
+                                {
+                                    info.StatusText += $" | Lieferung: {pos.NaechsterLieferzeitpunkt:dd.MM.yyyy}";
+                                }
                             }
                             else
                             {
-                                info.BestandFarbe = new SolidColorBrush(Color.FromRgb(211, 47, 47)); // Rot
-                            }
-
-                            if (pos.MHD.HasValue)
-                            {
-                                info.StatusText += $" | MHD: {pos.MHD:dd.MM.yyyy}";
+                                info.StatusText = geheResult.Fehler ?? "Keine Antwort";
+                                info.BestandText = "-";
+                                info.BestandFarbe = new SolidColorBrush(Colors.Gray);
                             }
                         }
                         else
                         {
-                            // Keine Positionen gefunden - zeige Debug-Info
-                            var fehlerText = result.Fehler ?? "Keine Positionen gefunden";
-                            info.StatusText = fehlerText;
-                            info.BestandText = "-";
-                            info.BestandFarbe = new SolidColorBrush(Colors.Gray);
-                            System.Diagnostics.Debug.WriteLine($"MSV3 keine Positionen: {fehlerText}");
+                            // Standard MSV3: VerfuegbarkeitAnfragen
+                            var result = await _msv3Service.CheckVerfuegbarkeitAsync(config, new[] { pzn });
+
+                            if (result.Success && result.Positionen != null && result.Positionen.Any())
+                            {
+                                var pos = result.Positionen.First();
+                                info.Bestand = (int)pos.MengeVerfuegbar;
+                                info.BestandText = $"{pos.MengeVerfuegbar:N0}";
+                                info.PreisText = pos.PreisEK > 0 ? $"EK: {pos.PreisEK:N2} EUR" : "";
+                                info.StatusText = pos.Status ?? "OK";
+
+                                if (pos.Verfuegbar)
+                                {
+                                    info.BestandFarbe = new SolidColorBrush(Color.FromRgb(46, 125, 50)); // Gruen
+                                }
+                                else if (pos.MengeVerfuegbar > 0)
+                                {
+                                    info.BestandFarbe = new SolidColorBrush(Color.FromRgb(245, 124, 0)); // Orange
+                                }
+                                else
+                                {
+                                    info.BestandFarbe = new SolidColorBrush(Color.FromRgb(211, 47, 47)); // Rot
+                                }
+
+                                if (pos.MHD.HasValue)
+                                {
+                                    info.StatusText += $" | MHD: {pos.MHD:dd.MM.yyyy}";
+                                }
+                            }
+                            else
+                            {
+                                info.StatusText = result.Fehler ?? "Keine Positionen";
+                                info.BestandText = "-";
+                                info.BestandFarbe = new SolidColorBrush(Colors.Gray);
+                            }
                         }
                     }
                 }

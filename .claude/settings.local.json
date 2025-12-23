@@ -65,7 +65,14 @@
       "Bash(powershell.exe -Command \"Stop-Process -Name NovviaERP.WPF -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; dotnet build ''C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\NovviaERP.WPF.csproj'' 2>&1 | Select-Object -Last 15\")",
       "Bash(powershell.exe -Command \"dotnet build ''C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.Core\\\\NovviaERP.Core.csproj'' 2>&1 | Select-Object -Last 20\")",
       "Bash(powershell.exe:*)",
-      "Bash(start:*)"
+      "Bash(start:*)",
+      "Bash(powershell -Command \"Get-Process NovviaERP.WPF -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(powershell:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nArtikel Eigene Felder: JTL Native Tabellen Integration\n\n- CoreService: GetArtikelEigeneFelderAsync liest aus tArtikelAttributSprache \\(nWertInt, cWertVarchar, fWertDecimal\\)\n- CoreService: SetArtikelEigenesFeldAsync schreibt via SP in JTL native Tabellen\n- SP-ArtikelEigeneFelder-JTL.sql: Stored Procedure für JTL tArtikelAttribut/tArtikelAttributSprache\n- ArtikelDetailView: SecurPharm Checkbox hinzugefügt\n- Unterstützt kSprache IN \\(0, 1\\) für beide Sprachversionen\n- nWertInt für Checkboxen \\(0/1\\), cWertVarchar für Text\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(Select-Object -Last 10)",
+      "Bash(NovviaERP.Worker.exe --mode msv3-stock --pzn 14036711)",
+      "Bash(if exist \"%APPDATA%\\\\NovviaERP\\\\profile.json\" type \"%APPDATA%\\\\NovviaERP\\\\profile.json\")",
+      "Bash(./NovviaERP.Worker.exe:*)"
     ]
   }
 }

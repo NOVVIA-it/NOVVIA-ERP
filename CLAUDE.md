@@ -128,15 +128,14 @@ NOVVIA.DokumentArchiv     - Archivierte Dokumente
 - **Einkauf**: EinkaufsBestellung, EinkaufsBestellPosition, Wareneingang
 - **RMA/Retouren**: RMA, RMAPosition, ArtikelZustand
 
-### MSV3-Anbindung (Pharma-Großhandel) - IN ARBEIT
+### MSV3-Anbindung (Pharma-Großhandel) - FUNKTIONIERT
 
-**Status**: Code implementiert, GEHE blockiert durch Incapsula WAF (HTTP 405)
+**Status**: GEHE Bestandsabfrage funktioniert mit Version 1
 
-**Letzter Stand (19.12.2024):**
-- Incapsula WAF blockiert Requests mit "HTTP method POST is not supported"
-- Credentials funktionieren in Vario 8 (gleicher PC, gleiche IP)
-- User-Agent Header hinzugefügt um WAF zu umgehen
-- Versions-ComboBox in UI hinzugefügt (war vorher hardcoded auf 1, GEHE braucht 2)
+**Letzter Stand (23.12.2024):**
+- GEHE funktioniert mit **Version 1** (nicht Version 2!)
+- Cookie-Warmup und User-Agent Header für Incapsula WAF
+- Bestandsabfrage in Bestellungen funktioniert
 
 **Dateien:**
 - `Services/MSV3Service.cs` - SOAP-Kommunikation (V1+V2)
@@ -153,11 +152,10 @@ NOVVIA.DokumentArchiv     - Archivierte Dokumente
 
 2. `LieferantenPage.xaml`:
    - Versions-ComboBox hinzugefügt (Row 5)
-   - Default: Version 2 (für GEHE)
 
 3. `LieferantenPage.xaml.cs`:
    - Version aus ComboBox lesen statt hardcoded
-   - Version beim Laden setzen (aus DB oder Default 2)
+   - Version beim Laden aus DB setzen
 
 **Unterstützte Operationen:**
 - `VerbindungTestenAsync` - Verbindungstest
@@ -169,7 +167,7 @@ NOVVIA.DokumentArchiv     - Archivierte Dokumente
 
 **Bekannte Großhändler-URLs:**
 ```
-GEHE:      https://www.gehe-auftragsservice.de/msv3  (v2.0, Incapsula WAF!)
+GEHE:      https://www.gehe-auftragsservice.de/msv3  (v1.0! Incapsula WAF)
 Phoenix:   https://msv3.phoenixgroup.eu/msv3         (v1.0 + v2.0)
 Sanacorp:  https://msv3.sanacorp.de/msv3             (v1.0 + v2.0)
 Noweda:    https://msv3.noweda.de/msv3
@@ -198,25 +196,20 @@ Endpoints: /msv3/v2.0/VerbindungTesten
 </soap:Envelope>
 ```
 
-**Test-Credentials GEHE (aus Vario 8):**
+**GEHE Konfiguration (funktioniert!):**
 ```
 URL:      https://www.gehe-auftragsservice.de/msv3
 Benutzer: 152776
-Passwort: ajrjwo30
-Version:  2
+Passwort: rkwoib63
+Version:  1   <-- WICHTIG: Version 1, nicht 2!
 ```
 
-**Incapsula WAF Problem (GEHE):**
+**Incapsula WAF (GEHE) - GELÖST:**
 - GEHE verwendet Incapsula/Imperva WAF
-- Blockiert Requests die nicht "legitim" aussehen
-- Response enthält: `<script src="/_Incapsula_Resource?...`
-- Mögliche Lösungen:
-  1. User-Agent Header (bereits implementiert)
-  2. Fiddler Traffic von Vario 8 capturen um exakte Headers zu sehen
-  3. Bei GEHE nachfragen ob IP freigeschaltet werden muss
-  4. Anderen Großhändler (Phoenix, Sanacorp) zuerst testen
+- Lösung: Cookie-Warmup + User-Agent Header `Embarcadero URI Client/1.0`
+- Mit Version 1 funktioniert die Bestandsabfrage
 
-**Nächste Schritte:**
+**Build-Hinweise:**
 1. **WICHTIG: Alle NovviaERP Prozesse beenden** vor dem Build:
    ```powershell
    Get-Process | Where-Object { $_.ProcessName -like "*Novvia*" } | Stop-Process -Force
@@ -227,8 +220,6 @@ Version:  2
    dotnet build
    ```
 3. Debug-Version starten: `bin\Debug\net8.0-windows\NovviaERP.WPF.exe`
-4. MSV3-Test mit Version 2 durchführen
-5. Falls immer noch 405: Mit Fiddler Vario 8 Traffic capturen
 
 **Häufiger Build-Fehler:**
 ```
@@ -291,35 +282,24 @@ src/NovviaERP/
 
 ### Offene Aufgaben / Known Issues
 
-1. **MSV3-Anbindung GEHE** - HTTP 405 durch Incapsula WAF
-   - Code ist fertig (User-Agent, Version 2, SOAP 1.1+1.2)
-   - GEHE blockiert Requests - Incapsula WAF
-   - Credentials funktionieren in Vario 8 (gleiche IP)
-   - **TODO:** Fiddler HTTPS aktivieren, Vario 8 Traffic capturen
-   - **Alternative:** Phoenix oder Sanacorp testen (ohne WAF?)
+1. **MSVE** (Elektronischer Lieferschein) - Noch nicht implementiert
 
-2. **App-Crash bei "Bestellung"** - Muss noch untersucht werden
-   - Tritt auf wenn man auf Bestellung klickt
-   - Fehlermeldung fehlt noch
+2. **Automatische Nachbestellung** - Workflow für Mindestbestand → Bestellung
 
-3. **MSVE** (Elektronischer Lieferschein) - Noch nicht implementiert
+### Letzte Code-Änderungen (23.12.2024)
 
-4. **Automatische Nachbestellung** - Workflow für Mindestbestand → Bestellung
+**ArtikelDetailView.xaml.cs:**
+- MSV3 Bestandsabfrage für GEHE/Alliance korrigiert
+- GEHE/Alliance verwendet jetzt `CheckVerfuegbarkeitViaBestellenAsync` (wie in Bestellungen)
+- Andere Lieferanten verwenden weiterhin `CheckVerfuegbarkeitAsync`
+- GEHE-Erkennung über URL: "gehe" oder "alliance" im Hostnamen
 
-### Letzte Code-Änderungen (19.12.2024)
-
-**MSV3Service.cs:**
-- User-Agent Header hinzugefügt: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) NovviaERP/1.0 MSV3Client`
-- Accept Header hinzugefügt: `application/soap+xml, text/xml, */*`
-
-**LieferantenPage.xaml:**
-- Versions-ComboBox hinzugefügt (Row 5, zwischen Filiale und Aktiv)
-- Default: Version 2 (für GEHE)
-- ComboBox Name: `cboLiefMSV3Version`
-
-**LieferantenPage.xaml.cs:**
-- `UpdateLiefMSV3Config()`: Version aus ComboBox lesen statt hardcoded 1
-- `LadeLieferantMSV3ConfigAsync()`: Version beim Laden setzen (aus DB oder Default 2)
+**Msv3SinglePznJob.cs (Worker):**
+- Neuer CLI-Modus für On-Demand PZN-Bestandsabfrage
+- Aufruf: `NovviaERP.Worker.exe --mode msv3-stock --pzn 14036711`
+- Cookie-Warmup für Incapsula WAF
+- SOAP v1.0 und v2.0 Support
+- Cache in `NOVVIA.MSV3BestandCache` (5 Minuten TTL)
 
 ### Nach PC-Neustart
 
@@ -334,4 +314,4 @@ src/NovviaERP/
    C:\NovviaERP\src\NovviaERP\NovviaERP.WPF\bin\Debug\net8.0-windows\NovviaERP.WPF.exe
    ```
 
-3. MSV3 testen (Lieferanten → GEHE → Version 2 → Testen)
+3. MSV3 testen (Lieferanten → GEHE → Version 1 → Testen)
