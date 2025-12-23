@@ -25,6 +25,7 @@ namespace NovviaERP.WPF.Views
         private LieferantStammdaten? _selectedLiefStammdaten;
         private LieferantErweitert? _selectedLiefErweitert;
         private MSV3Lieferant? _selectedLiefMSV3;
+        private bool _isEditMode = false;
 
         public LieferantenView()
         {
@@ -128,10 +129,10 @@ namespace NovviaERP.WPF.Views
                     txtLiefStatus.Text = _selectedLiefStammdaten.AktivText;
 
                     // Adresse & Kontakt
-                    txtLiefStrasse.Text = _selectedLiefStammdaten.Strasse ?? "-";
-                    txtLiefPLZOrt.Text = $"{_selectedLiefStammdaten.PLZ} {_selectedLiefStammdaten.Ort}".Trim();
-                    if (string.IsNullOrWhiteSpace(txtLiefPLZOrt.Text)) txtLiefPLZOrt.Text = "-";
-                    txtLiefLand.Text = _selectedLiefStammdaten.Land ?? "-";
+                    txtLiefStrasse.Text = _selectedLiefStammdaten.Strasse ?? "";
+                    txtLiefPLZ.Text = _selectedLiefStammdaten.PLZ ?? "";
+                    txtLiefOrt.Text = _selectedLiefStammdaten.Ort ?? "";
+                    txtLiefLand.Text = _selectedLiefStammdaten.Land ?? "";
                     txtLiefAnsprechpartner.Text = _selectedLiefStammdaten.Ansprechpartner ?? "-";
                     txtLiefTel.Text = _selectedLiefStammdaten.Tel ?? "-";
                     txtLiefTelDurchwahl.Text = _selectedLiefStammdaten.TelDurchwahl ?? "-";
@@ -284,6 +285,125 @@ namespace NovviaERP.WPF.Views
                 catch { }
             }
         }
+
+        #region Lieferant Bearbeiten
+
+        private void LiefBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            SetEditMode(true);
+        }
+
+        private async void LiefSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedLieferant == null) return;
+
+            try
+            {
+                btnLiefSpeichern.IsEnabled = false;
+                btnLiefSpeichern.Content = "Speichere...";
+
+                // Daten aus Feldern sammeln (korrekte JTL-Spaltennamen)
+                var updateData = new Dictionary<string, object?>
+                {
+                    ["cStrasse"] = txtLiefStrasse.Text.Trim(),
+                    ["cPLZ"] = txtLiefPLZ.Text.Trim(),
+                    ["cOrt"] = txtLiefOrt.Text.Trim(),
+                    ["cLand"] = txtLiefLand.Text.Trim(),
+                    ["cKontakt"] = txtLiefAnsprechpartner.Text.Trim(),
+                    ["cTelZentralle"] = txtLiefTel.Text.Trim(),
+                    ["cTelDurchwahl"] = txtLiefTelDurchwahl.Text.Trim(),
+                    ["cFax"] = txtLiefFax.Text.Trim(),
+                    ["cEMail"] = txtLiefEmail.Text.Trim(),
+                    ["cWWW"] = txtLiefHomepage.Text.Trim()
+                };
+
+                await _einkaufService.UpdateLieferantAsync(_selectedLieferant.KLieferant, updateData);
+
+                MessageBox.Show("Lieferant erfolgreich gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                SetEditMode(false);
+
+                // Daten neu laden
+                await LadeLieferantStammdatenAsync(_selectedLieferant.KLieferant);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                btnLiefSpeichern.IsEnabled = true;
+                btnLiefSpeichern.Content = "💾 Speichern";
+            }
+        }
+
+        private async void LiefAbbrechen_Click(object sender, RoutedEventArgs e)
+        {
+            SetEditMode(false);
+
+            // Daten zurücksetzen
+            if (_selectedLieferant != null)
+            {
+                await LadeLieferantStammdatenAsync(_selectedLieferant.KLieferant);
+            }
+        }
+
+        private void SetEditMode(bool editMode)
+        {
+            _isEditMode = editMode;
+
+            // Buttons umschalten
+            btnLiefBearbeiten.Visibility = editMode ? Visibility.Collapsed : Visibility.Visible;
+            btnLiefSpeichern.Visibility = editMode ? Visibility.Visible : Visibility.Collapsed;
+            btnLiefAbbrechen.Visibility = editMode ? Visibility.Visible : Visibility.Collapsed;
+
+            // TextBoxen editierbar machen
+            var editableStyle = editMode;
+            txtLiefStrasse.IsReadOnly = !editMode;
+            txtLiefStrasse.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefStrasse.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefPLZ.IsReadOnly = !editMode;
+            txtLiefPLZ.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefPLZ.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefOrt.IsReadOnly = !editMode;
+            txtLiefOrt.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefOrt.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefLand.IsReadOnly = !editMode;
+            txtLiefLand.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefLand.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefAnsprechpartner.IsReadOnly = !editMode;
+            txtLiefAnsprechpartner.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefAnsprechpartner.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefTel.IsReadOnly = !editMode;
+            txtLiefTel.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefTel.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefTelDurchwahl.IsReadOnly = !editMode;
+            txtLiefTelDurchwahl.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefTelDurchwahl.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefMobil.IsReadOnly = !editMode;
+            txtLiefMobil.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefMobil.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefFax.IsReadOnly = !editMode;
+            txtLiefFax.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefFax.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefEmail.IsReadOnly = !editMode;
+            txtLiefEmail.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefEmail.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+
+            txtLiefHomepage.IsReadOnly = !editMode;
+            txtLiefHomepage.BorderThickness = editMode ? new Thickness(1) : new Thickness(0);
+            txtLiefHomepage.Background = editMode ? System.Windows.Media.Brushes.White : System.Windows.Media.Brushes.Transparent;
+        }
+
+        #endregion
 
         private async Task LadeLieferantMSV3ConfigAsync(int kLieferant)
         {

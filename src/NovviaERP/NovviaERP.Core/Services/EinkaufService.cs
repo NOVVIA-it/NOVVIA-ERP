@@ -79,7 +79,7 @@ namespace NovviaERP.Core.Services
                     l.kLieferant AS KLieferant,
                     l.cLiefNr AS LiefNr,
                     l.cFirma AS Firma,
-                    l.cKundennummer AS EigeneKundennr,
+                    l.cLieferantID AS EigeneKundennr,
 
                     -- Adresse
                     l.cStrasse AS Strasse,
@@ -87,29 +87,29 @@ namespace NovviaERP.Core.Services
                     l.cOrt AS Ort,
                     l.cLand AS Land,
                     l.cBundesland AS Bundesland,
-                    l.cAdressZusatz AS Adresszusatz,
+                    l.cAdresszusatz AS Adresszusatz,
 
                     -- Kontakt
-                    l.cAnsprechpartner AS Ansprechpartner,
+                    l.cKontakt AS Ansprechpartner,
                     l.cTelZentralle AS Tel,
                     l.cTelDurchwahl AS TelDurchwahl,
-                    l.cMobil AS Mobil,
+                    NULL AS Mobil,
                     l.cFax AS Fax,
                     l.cEMail AS EMail,
-                    l.cHomepage AS Homepage,
+                    l.cWWW AS Homepage,
 
                     -- Finanzen / Steuern
-                    l.cUstId AS UstId,
-                    ISNULL(l.nUstBefreit, 0) AS UstBefreit,
-                    l.cGLN AS GLN,
-                    l.nKreditorNr AS KreditorNr,
-                    ISNULL(l.cWaehrung, 'EUR') AS Bestellwaehrung,
+                    l.cUstid AS UstId,
+                    ISNULL(l.nVSTFrei, 0) AS UstBefreit,
+                    NULL AS GLN,
+                    l.nKreditorennr AS KreditorNr,
+                    ISNULL(l.cWaehrungISO, 'EUR') AS Bestellwaehrung,
 
-                    -- Bankverbindung
-                    l.cBankname AS Bankname,
-                    l.cIBAN AS IBAN,
-                    l.cBIC AS BIC,
-                    l.cKontoInhaber AS KontoInhaber,
+                    -- Bankverbindung (nicht in tLieferant - separate Tabelle)
+                    NULL AS Bankname,
+                    NULL AS IBAN,
+                    NULL AS BIC,
+                    NULL AS KontoInhaber,
 
                     -- Konditionen
                     ISNULL(l.nZahlungsziel, 0) AS Zahlungsziel,
@@ -118,32 +118,54 @@ namespace NovviaERP.Core.Services
                     ISNULL(l.fMindestbestellwert, 0) AS Mindestbestellwert,
                     ISNULL(l.fMindermengenzuschlag, 0) AS Mindermengenzuschlag,
                     ISNULL(l.fFrachtkosten, 0) AS Frachtkosten,
-                    ISNULL(l.fFreiHausAb, 0) AS FreiHausAb,
+                    ISNULL(l.fVersandfreiAb, 0) AS FreiHausAb,
                     ISNULL(l.nLieferzeit, 0) AS Lieferzeit,
-                    ISNULL(l.fRabatt, 0) AS Rabatt,
+                    0 AS Rabatt,
 
-                    -- Rabattstaffel
-                    l.fRabatt1 AS RabattStaffel1,
-                    l.fRabatt1Ab AS RabattStaffel1Ab,
-                    l.fRabatt2 AS RabattStaffel2,
-                    l.fRabatt2Ab AS RabattStaffel2Ab,
-                    l.fRabatt3 AS RabattStaffel3,
-                    l.fRabatt3Ab AS RabattStaffel3Ab,
+                    -- Rabattstaffel (nicht in tLieferant)
+                    NULL AS RabattStaffel1,
+                    NULL AS RabattStaffel1Ab,
+                    NULL AS RabattStaffel2,
+                    NULL AS RabattStaffel2Ab,
+                    NULL AS RabattStaffel3,
+                    NULL AS RabattStaffel3Ab,
 
                     -- Dropshipping
                     ISNULL(l.nDropshipping, 0) AS Dropshipping,
-                    ISNULL(l.nDropshippingNachnahme, 0) AS DropshippingNachnahme,
-                    ISNULL(l.nDropshippingFreipos, 0) AS DropshippingFreipos,
+                    ISNULL(l.nDropshippingBeiNachnahme, 0) AS DropshippingNachnahme,
+                    ISNULL(l.nDropshippingFreipositionen, 0) AS DropshippingFreipos,
 
                     -- Sonstiges
                     l.cAktiv AS Aktiv,
-                    ISNULL(l.nFuerEinkaufslisteGesperrt, 0) AS FuerEinkaufslisteGesperrt,
-                    l.cNotiz AS Notiz,
-                    l.kFirma AS StandardFirma,
-                    l.kWarenlager AS StandardLager,
-                    l.fUstSatz AS UstSatzFreipos
+                    ISNULL(l.nKeineEinkaufsliste, 0) AS FuerEinkaufslisteGesperrt,
+                    l.cAnmerkung AS Notiz,
+                    l.nStandardFirma AS StandardFirma,
+                    l.nStandardLager AS StandardLager,
+                    l.fMwStFreiposition AS UstSatzFreipos
                 FROM tlieferant l
                 WHERE l.kLieferant = @Id", new { Id = kLieferant });
+        }
+
+        /// <summary>Lieferanten-Stammdaten aktualisieren</summary>
+        public async Task UpdateLieferantAsync(int kLieferant, Dictionary<string, object?> updateData)
+        {
+            if (updateData.Count == 0) return;
+
+            using var conn = new SqlConnection(_connectionString);
+
+            // SET-Klausel dynamisch aufbauen
+            var setClauses = new List<string>();
+            var parameters = new DynamicParameters();
+            parameters.Add("kLieferant", kLieferant);
+
+            foreach (var kvp in updateData)
+            {
+                setClauses.Add($"{kvp.Key} = @{kvp.Key}");
+                parameters.Add(kvp.Key, kvp.Value);
+            }
+
+            var sql = $"UPDATE tLieferant SET {string.Join(", ", setClauses)} WHERE kLieferant = @kLieferant";
+            await conn.ExecuteAsync(sql, parameters);
         }
 
         /// <summary>NOVVIA-Erweiterung der Lieferanten-Stammdaten laden</summary>

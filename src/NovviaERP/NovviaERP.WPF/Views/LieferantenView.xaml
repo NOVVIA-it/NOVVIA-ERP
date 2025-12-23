@@ -71,8 +71,26 @@
                             Margin="0,10,0,0" Visibility="Collapsed">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock x:Name="txtLiefFirma" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
-                                <TextBlock x:Name="txtLiefNr" Foreground="Gray" Margin="0,5,0,0"/>
+                                <!-- Header mit Bearbeiten/Speichern Buttons -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock x:Name="txtLiefFirma" FontSize="16" FontWeight="Bold" TextWrapping="Wrap"/>
+                                        <TextBlock x:Name="txtLiefNr" Foreground="Gray" Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                        <Button x:Name="btnLiefBearbeiten" Content="✏️ Bearbeiten" Margin="0,0,5,0"
+                                                Click="LiefBearbeiten_Click" Padding="10,5"/>
+                                        <Button x:Name="btnLiefSpeichern" Content="💾 Speichern"
+                                                Background="#107C10" Foreground="White" Padding="10,5"
+                                                Click="LiefSpeichern_Click" Visibility="Collapsed"/>
+                                        <Button x:Name="btnLiefAbbrechen" Content="Abbrechen" Margin="5,0,0,0"
+                                                Click="LiefAbbrechen_Click" Visibility="Collapsed" Padding="10,5"/>
+                                    </StackPanel>
+                                </Grid>
 
                                 <!-- Tabs für Stammdaten / MSV3 -->
                                 <TabControl Margin="0,10,0,0" Height="450">
@@ -107,53 +125,56 @@
 
                                                 <!-- Adresse & Kontakt -->
                                                 <TextBlock Text="Adresse &amp; Kontakt" FontWeight="SemiBold" Margin="0,5,0,10"/>
-                                                <Grid>
+                                                <Grid x:Name="gridLiefAdresse">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="110"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <Grid.RowDefinitions>
-                                                        <RowDefinition Height="26"/>
-                                                        <RowDefinition Height="26"/>
-                                                        <RowDefinition Height="26"/>
-                                                        <RowDefinition Height="26"/>
-                                                        <RowDefinition Height="26"/>
-                                                        <RowDefinition Height="26"/>
-                                                        <RowDefinition Height="26"/>
-                                                        <RowDefinition Height="26"/>
-                                                        <RowDefinition Height="26"/>
-                                                        <RowDefinition Height="26"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
+                                                        <RowDefinition Height="28"/>
                                                     </Grid.RowDefinitions>
 
                                                     <TextBlock Text="Strasse:" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefStrasse" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefStrasse" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
 
-                                                    <TextBlock Text="PLZ/Ort:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefPLZOrt" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="PLZ:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
+                                                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                                        <TextBox x:Name="txtLiefPLZ" Width="60" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
+                                                        <TextBox x:Name="txtLiefOrt" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent" Margin="5,0,0,0"/>
+                                                    </StackPanel>
 
                                                     <TextBlock Text="Land:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefLand" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefLand" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
 
                                                     <TextBlock Text="Ansprechpartner:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefAnsprechpartner" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefAnsprechpartner" Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
 
                                                     <TextBlock Text="Tel. Zentrale:" Grid.Row="4" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefTel" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefTel" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
 
                                                     <TextBlock Text="Tel. Durchwahl:" Grid.Row="5" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefTelDurchwahl" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefTelDurchwahl" Grid.Row="5" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
 
                                                     <TextBlock Text="Mobil:" Grid.Row="6" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefMobil" Grid.Row="6" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefMobil" Grid.Row="6" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
 
                                                     <TextBlock Text="Fax:" Grid.Row="7" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefFax" Grid.Row="7" Grid.Column="1" VerticalAlignment="Center"/>
+                                                    <TextBox x:Name="txtLiefFax" Grid.Row="7" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
 
                                                     <TextBlock Text="E-Mail:" Grid.Row="8" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefEmail" Grid.Row="8" Grid.Column="1" VerticalAlignment="Center" Foreground="#0078D4" Cursor="Hand" MouseLeftButtonUp="LiefEmail_Click"/>
+                                                    <TextBox x:Name="txtLiefEmail" Grid.Row="8" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#0078D4" Cursor="Hand" MouseDoubleClick="LiefEmail_Click"/>
 
                                                     <TextBlock Text="Homepage:" Grid.Row="9" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBlock x:Name="txtLiefHomepage" Grid.Row="9" Grid.Column="1" VerticalAlignment="Center" Foreground="#0078D4" Cursor="Hand" MouseLeftButtonUp="LiefHomepage_Click"/>
+                                                    <TextBox x:Name="txtLiefHomepage" Grid.Row="9" Grid.Column="1" VerticalAlignment="Center" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#0078D4" Cursor="Hand" MouseDoubleClick="LiefHomepage_Click"/>
                                                 </Grid>
 
                                                 <Separator Margin="0,10"/>
