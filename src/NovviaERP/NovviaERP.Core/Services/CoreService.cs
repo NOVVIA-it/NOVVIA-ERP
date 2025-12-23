@@ -638,11 +638,11 @@ namespace NovviaERP.Core.Services
                     stats.LetzteBestellung = datumStats.Value.Letzte;
                 }
 
-                // Offene Posten aus Rechnungen
+                // Offene Posten aus Rechnungen (fOffen ist in JTL direkt verfügbar)
                 var offen = await conn.QueryFirstOrDefaultAsync<decimal?>(@"
-                    SELECT SUM(fBetragBrutto - ISNULL(fBezahlt, 0))
+                    SELECT ISNULL(SUM(fOffen), 0)
                     FROM tRechnung
-                    WHERE kKunde = @kundeId AND fBetragBrutto > ISNULL(fBezahlt, 0)", new { kundeId });
+                    WHERE kKunde = @kundeId AND nStatus IN (1,2) AND fOffen > 0", new { kundeId });
                 stats.OffenePosten = offen ?? 0;
             }
             catch (Exception ex)
@@ -683,7 +683,7 @@ namespace NovviaERP.Core.Services
                     r.kRechnung AS KRechnung,
                     ISNULL(r.cRechnungsNr, CAST(r.kRechnung AS VARCHAR)) AS CRechnungsNr,
                     r.dErstellt AS DRechnungsdatum,
-                    r.fBetragBrutto AS FBetragBrutto,
+                    ISNULL(r.fBrutto, 0) AS FBetragBrutto,
                     ISNULL(r.fBezahlt, 0) AS FBezahlt
                 FROM tRechnung r
                 WHERE r.kKunde = @kundeId
@@ -717,20 +717,28 @@ namespace NovviaERP.Core.Services
             var historie = new List<KundeHistorieEintrag>();
 
             // Aufträge
-            var auftraege = await conn.QueryAsync<KundeHistorieEintrag>($@"
-                SELECT TOP {limit} dErstellt AS Datum, 'Auftrag' AS Typ,
-                       'Auftrag ' + ISNULL(cBestellNr, CAST(kBestellung AS VARCHAR)) AS Beschreibung
-                FROM tBestellung WHERE tKunde_kKunde = @kundeId
-                ORDER BY dErstellt DESC", new { kundeId });
-            historie.AddRange(auftraege);
+            try
+            {
+                var auftraege = await conn.QueryAsync<KundeHistorieEintrag>($@"
+                    SELECT TOP {limit} dErstellt AS Datum, 'Auftrag' AS Typ,
+                           'Auftrag ' + ISNULL(cBestellNr, CAST(kBestellung AS VARCHAR)) AS Beschreibung
+                    FROM tBestellung WHERE tKunde_kKunde = @kundeId
+                    ORDER BY dErstellt DESC", new { kundeId });
+                historie.AddRange(auftraege);
+            }
+            catch { /* Aufträge optional */ }
 
             // Rechnungen
-            var rechnungen = await conn.QueryAsync<KundeHistorieEintrag>($@"
-                SELECT TOP {limit} dErstellt AS Datum, 'Rechnung' AS Typ,
-                       'Rechnung ' + ISNULL(cRechnungsNr, CAST(kRechnung AS VARCHAR)) AS Beschreibung
-                FROM tRechnung WHERE kKunde = @kundeId
-                ORDER BY dErstellt DESC", new { kundeId });
-            historie.AddRange(rechnungen);
+            try
+            {
+                var rechnungen = await conn.QueryAsync<KundeHistorieEintrag>($@"
+                    SELECT TOP {limit} dErstellt AS Datum, 'Rechnung' AS Typ,
+                           'Rechnung ' + ISNULL(cRechnungsNr, CAST(kRechnung AS VARCHAR)) AS Beschreibung
+                    FROM tRechnung WHERE kKunde = @kundeId
+                    ORDER BY dErstellt DESC", new { kundeId });
+                historie.AddRange(rechnungen);
+            }
+            catch { /* Rechnungen optional */ }
 
             return historie.OrderByDescending(h => h.Datum).Take(limit);
         }
