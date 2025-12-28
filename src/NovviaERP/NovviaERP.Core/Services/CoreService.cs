@@ -2117,5 +2117,118 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region JTL Auftrags-Eckdaten (via SP)
+
+        /// <summary>
+        /// Berechnet die Eckdaten (Summen, Status, etc.) für einen Auftrag neu.
+        /// MUSS nach jeder Auftragsänderung aufgerufen werden!
+        /// </summary>
+        public async Task<bool> BerechneAuftragEckdatenAsync(int kAuftrag)
+        {
+            try
+            {
+                var client = new Infrastructure.Jtl.JtlOrderClient(_connectionString);
+                var result = await client.BerechneAuftragEckdatenAsync(kAuftrag);
+                if (!result.Success)
+                {
+                    _log.Warning("Eckdaten-Berechnung fehlgeschlagen für Auftrag {KAuftrag}: {Message}",
+                        kAuftrag, result.Message);
+                }
+                return result.Success;
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Fehler bei Eckdaten-Berechnung für Auftrag {KAuftrag}", kAuftrag);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Berechnet die Eckdaten für mehrere Aufträge
+        /// </summary>
+        public async Task<bool> BerechneAuftragEckdatenAsync(IEnumerable<int> auftragIds)
+        {
+            try
+            {
+                var client = new Infrastructure.Jtl.JtlOrderClient(_connectionString);
+                var result = await client.BerechneAuftragEckdatenAsync(auftragIds);
+                return result.Success;
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Fehler bei Eckdaten-Berechnung für mehrere Aufträge");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Holt die berechneten Eckdaten eines Auftrags (aus tAuftragEckdaten)
+        /// </summary>
+        public async Task<AuftragEckdatenDto?> GetAuftragEckdatenAsync(int kAuftrag)
+        {
+            try
+            {
+                var client = new Infrastructure.Jtl.JtlOrderClient(_connectionString);
+                var eckdaten = await client.GetAuftragEckdatenAsync(kAuftrag);
+                if (eckdaten == null) return null;
+
+                return new AuftragEckdatenDto
+                {
+                    KAuftrag = eckdaten.KAuftrag,
+                    WertNetto = eckdaten.FWertNetto,
+                    WertBrutto = eckdaten.FWertBrutto,
+                    Zahlung = eckdaten.FZahlung,
+                    Gutschrift = eckdaten.FGutschrift,
+                    OffenerWert = eckdaten.FOffenerWert,
+                    ZahlungStatus = eckdaten.NZahlungStatus,
+                    ZahlungStatusText = Infrastructure.Jtl.JtlOrderClient.GetZahlungStatusText(eckdaten.NZahlungStatus),
+                    RechnungStatus = eckdaten.NRechnungStatus,
+                    RechnungStatusText = Infrastructure.Jtl.JtlOrderClient.GetRechnungStatusText(eckdaten.NRechnungStatus),
+                    LieferStatus = eckdaten.NLieferstatus,
+                    LieferStatusText = Infrastructure.Jtl.JtlOrderClient.GetLieferStatusText(eckdaten.NLieferstatus),
+                    LieferStatusColor = Infrastructure.Jtl.JtlOrderClient.GetLieferStatusColor(eckdaten.NLieferstatus),
+                    KomplettAusgeliefert = eckdaten.NKomplettAusgeliefert > 0,
+                    Bezahlt = eckdaten.DBezahlt,
+                    LetzterVersand = eckdaten.DLetzterVersand,
+                    AnzahlPakete = eckdaten.NAnzahlPakete,
+                    AnzahlVersendetePakete = eckdaten.NAnzahlVersendetePakete,
+                    Rechnungsnummern = eckdaten.CRechnungsnummern
+                };
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Fehler beim Laden der Eckdaten für Auftrag {KAuftrag}", kAuftrag);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// DTO für Auftrags-Eckdaten (berechnete Werte aus JTL)
+        /// </summary>
+        public class AuftragEckdatenDto
+        {
+            public int KAuftrag { get; set; }
+            public decimal WertNetto { get; set; }
+            public decimal WertBrutto { get; set; }
+            public decimal Zahlung { get; set; }
+            public decimal Gutschrift { get; set; }
+            public decimal OffenerWert { get; set; }
+            public int ZahlungStatus { get; set; }
+            public string ZahlungStatusText { get; set; } = "";
+            public int RechnungStatus { get; set; }
+            public string RechnungStatusText { get; set; } = "";
+            public int LieferStatus { get; set; }
+            public string LieferStatusText { get; set; } = "";
+            public string LieferStatusColor { get; set; } = "";
+            public bool KomplettAusgeliefert { get; set; }
+            public DateTime? Bezahlt { get; set; }
+            public DateTime? LetzterVersand { get; set; }
+            public int AnzahlPakete { get; set; }
+            public int AnzahlVersendetePakete { get; set; }
+            public string? Rechnungsnummern { get; set; }
+        }
+
+        #endregion
     }
 }
