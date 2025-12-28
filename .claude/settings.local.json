@@ -72,7 +72,8 @@
       "Bash(Select-Object -Last 10)",
       "Bash(NovviaERP.Worker.exe --mode msv3-stock --pzn 14036711)",
       "Bash(if exist \"%APPDATA%\\\\NovviaERP\\\\profile.json\" type \"%APPDATA%\\\\NovviaERP\\\\profile.json\")",
-      "Bash(./NovviaERP.Worker.exe:*)"
+      "Bash(./NovviaERP.Worker.exe:*)",
+      "Bash(dir \"C:\\\\temp\\\\novvia-output\")"
     ]
   }
 }

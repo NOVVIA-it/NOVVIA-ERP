@@ -45,6 +45,20 @@ if (string.Equals(mode, "msv3-stock", StringComparison.OrdinalIgnoreCase))
     return await job.RunAsync(pzn.Trim());
 }
 
+if (string.Equals(mode, "output", StringComparison.OrdinalIgnoreCase))
+{
+    // PDF + EML Ausgabe erzeugen
+    var outDir = GetArg(args, "--out");
+    var to = GetArg(args, "--to");
+    var subject = GetArg(args, "--subject");
+    var body = GetArg(args, "--body");
+    var pdfName = GetArg(args, "--pdfname");
+    var html = GetArg(args, "--html");
+
+    var job = new OutputJob(outDir, to, subject, body, pdfName, html);
+    return job.Run();
+}
+
 // Normaler Worker-Modus (Hosted Services)
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -58,8 +72,15 @@ builder.Services.AddSingleton<JtlDbContext>();
 // builder.Services.AddHostedService<WorkflowQueueWorker>();
 
 Console.WriteLine("NovviaERP Worker gestartet");
-Console.WriteLine("Verfügbare Modi:");
-Console.WriteLine("  --mode msv3-stock --pzn <PZN>   MSV3 Bestandsabfrage für einzelne PZN");
+Console.WriteLine("Verfuegbare Modi:");
+Console.WriteLine("  --mode msv3-stock --pzn <PZN>   MSV3 Bestandsabfrage fuer einzelne PZN");
+Console.WriteLine("  --mode output [Optionen]        PDF + EML Ausgabe erzeugen");
+Console.WriteLine("     --out <Verzeichnis>          Ausgabeverzeichnis (Standard: ./output)");
+Console.WriteLine("     --to <Email>                 Empfaenger E-Mail");
+Console.WriteLine("     --subject <Betreff>          E-Mail Betreff");
+Console.WriteLine("     --body <Text>                E-Mail/PDF Inhalt");
+Console.WriteLine("     --pdfname <Dateiname>        PDF Dateiname (Standard: output.pdf)");
+Console.WriteLine("     --html <HTML>                HTML-Inhalt fuer PDF");
 
 var host = builder.Build();
 host.Run();
