@@ -59,6 +59,94 @@ if (string.Equals(mode, "output", StringComparison.OrdinalIgnoreCase))
     return job.Run();
 }
 
+// ============ LAGER-BUCHUNGEN (JTL-konform via SP) ============
+
+static string GetConnectionString()
+{
+    var config = new ConfigurationBuilder()
+        .SetBasePath(AppContext.BaseDirectory)
+        .AddJsonFile("appsettings.json", optional: true)
+        .AddEnvironmentVariables()
+        .Build();
+
+    var cs = config.GetConnectionString("JtlWawi");
+    if (string.IsNullOrWhiteSpace(cs))
+    {
+        cs = "Server=JTL-DB;Database=Mandant_2;Integrated Security=True;TrustServerCertificate=True;";
+    }
+    return cs;
+}
+
+if (string.Equals(mode, "stock-we", StringComparison.OrdinalIgnoreCase))
+{
+    // Wareneingang buchen (JTL SP)
+    var artikelStr = GetArg(args, "--artikel");
+    var platzStr = GetArg(args, "--platz");
+    var mengeStr = GetArg(args, "--menge");
+
+    if (string.IsNullOrWhiteSpace(artikelStr) || string.IsNullOrWhiteSpace(platzStr) || string.IsNullOrWhiteSpace(mengeStr))
+    {
+        Console.Error.WriteLine("Fehler: --artikel, --platz und --menge sind Pflichtparameter");
+        Console.Error.WriteLine("Verwendung: NovviaERP.Worker.exe --mode stock-we --artikel 12345 --platz 1 --menge 5");
+        Console.Error.WriteLine("Optional:   --kommentar \"...\" --charge \"...\" --mhd 2025-12-31 --lieferschein \"...\"");
+        return 2;
+    }
+
+    if (!int.TryParse(artikelStr, out var artikelId) ||
+        !int.TryParse(platzStr, out var platzId) ||
+        !decimal.TryParse(mengeStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var menge))
+    {
+        Console.Error.WriteLine("Fehler: Ungueltige Parameter (artikel/platz muessen int sein, menge decimal)");
+        return 2;
+    }
+
+    var kommentar = GetArg(args, "--kommentar");
+    var charge = GetArg(args, "--charge");
+    var mhdStr = GetArg(args, "--mhd");
+    var lieferschein = GetArg(args, "--lieferschein");
+
+    DateTime? mhd = null;
+    if (!string.IsNullOrEmpty(mhdStr) && DateTime.TryParse(mhdStr, out var mhdParsed))
+        mhd = mhdParsed;
+
+    var job = new StockBookingJob(GetConnectionString());
+    return await job.RunWareneingangAsync(artikelId, platzId, menge, 1, kommentar, charge, mhd, lieferschein);
+}
+
+if (string.Equals(mode, "stock-wa", StringComparison.OrdinalIgnoreCase))
+{
+    // Warenausgang buchen (JTL SP)
+    var artikelStr = GetArg(args, "--artikel");
+    var platzStr = GetArg(args, "--platz");
+    var mengeStr = GetArg(args, "--menge");
+
+    if (string.IsNullOrWhiteSpace(artikelStr) || string.IsNullOrWhiteSpace(platzStr) || string.IsNullOrWhiteSpace(mengeStr))
+    {
+        Console.Error.WriteLine("Fehler: --artikel, --platz und --menge sind Pflichtparameter");
+        Console.Error.WriteLine("Verwendung: NovviaERP.Worker.exe --mode stock-wa --artikel 12345 --platz 1 --menge 2");
+        Console.Error.WriteLine("Optional:   --kommentar \"...\" --buchungsart 1");
+        Console.Error.WriteLine("Buchungsarten: 1=Verkauf, 2=Korrektur, 3=Inventur, 4=Umlagerung, 5=Verlust, 6=Retoure");
+        return 2;
+    }
+
+    if (!int.TryParse(artikelStr, out var artikelId) ||
+        !int.TryParse(platzStr, out var platzId) ||
+        !decimal.TryParse(mengeStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var menge))
+    {
+        Console.Error.WriteLine("Fehler: Ungueltige Parameter");
+        return 2;
+    }
+
+    var kommentar = GetArg(args, "--kommentar");
+    var buchungsartStr = GetArg(args, "--buchungsart");
+    int buchungsart = 1;
+    if (!string.IsNullOrEmpty(buchungsartStr) && int.TryParse(buchungsartStr, out var ba))
+        buchungsart = ba;
+
+    var job = new StockBookingJob(GetConnectionString());
+    return await job.RunWarenausgangAsync(artikelId, platzId, menge, 1, buchungsart, kommentar);
+}
+
 // Normaler Worker-Modus (Hosted Services)
 var builder = Host.CreateApplicationBuilder(args);
 
