@@ -16,6 +16,8 @@ namespace NovviaERP.Core.Data
         private SqlConnection? _connection;
         private static readonly ILogger _log = Log.ForContext<JtlDbContext>();
 
+        public string ConnectionString => _connectionString;
+
         public JtlDbContext(string connectionString) => _connectionString = connectionString;
         public JtlDbContext() : this("Server=192.168.0.220;Database=Mandant_1;User Id=sa;Password=YourPassword;TrustServerCertificate=True;") { }
 

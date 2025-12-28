@@ -3,6 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
+using NovviaERP.Core.Data;
+using NovviaERP.Core.Infrastructure.Jtl;
 using NovviaERP.Core.Services;
 using System.Threading.Tasks;
 
@@ -357,11 +359,39 @@ namespace NovviaERP.WPF.Views
 
         private async Task<List<AdresseDto>> LadeKundenAdressenAsync(int kundeId)
         {
-            // Adressen vom Kunden laden
+            // Alle Adressen des Kunden aus tAdresse laden
+            // nTyp: 1 = Rechnungsadresse, 2 = Lieferadresse
             var adressen = new List<AdresseDto>();
 
-            // Hauptadresse
-            if (_bestellung?.Rechnungsadresse != null)
+            try
+            {
+                var dbAdressen = await _core.GetKundeAdressenKurzAsync(kundeId);
+
+                foreach (var adr in dbAdressen)
+                {
+                    // Name aufteilen (Format: "Nachname, Vorname")
+                    var nameParts = adr.CName?.Split(',') ?? Array.Empty<string>();
+                    var nachname = nameParts.Length > 0 ? nameParts[0].Trim() : "";
+                    var vorname = nameParts.Length > 1 ? nameParts[1].Trim() : "";
+
+                    adressen.Add(new AdresseDto
+                    {
+                        KAdresse = adr.KAdresse,
+                        Vorname = vorname,
+                        Nachname = nachname,
+                        Strasse = adr.CStrasse,
+                        PLZ = adr.CPLZ,
+                        Ort = adr.COrt
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler beim Laden der Adressen: {ex.Message}";
+            }
+
+            // Fallback: Aktuelle Bestelladressen hinzufuegen falls keine aus DB
+            if (adressen.Count == 0 && _bestellung?.Rechnungsadresse != null)
             {
                 var ra = _bestellung.Rechnungsadresse;
                 adressen.Add(new AdresseDto
@@ -376,23 +406,6 @@ namespace NovviaERP.WPF.Views
                 });
             }
 
-            // Lieferadresse falls abweichend
-            if (_bestellung?.Lieferadresse != null)
-            {
-                var la = _bestellung.Lieferadresse;
-                adressen.Add(new AdresseDto
-                {
-                    Firma = la.CFirma,
-                    Vorname = la.CVorname,
-                    Nachname = la.CName,
-                    Strasse = la.CStrasse,
-                    PLZ = la.CPLZ,
-                    Ort = la.COrt,
-                    Land = la.CLand
-                });
-            }
-
-            // TODO: Weitere Adressen aus Kunde laden
             return adressen;
         }
 
@@ -431,15 +444,58 @@ namespace NovviaERP.WPF.Views
 
         #region Positionen-Toolbar
 
-        private void ArtikelSuchen_Click(object sender, RoutedEventArgs e)
+        private async void ArtikelSuchen_Click(object sender, RoutedEventArgs e)
         {
+            if (_bestellung == null) return;
+
             var suchbegriff = txtArtikelSuche.Text?.Trim();
-            if (string.IsNullOrEmpty(suchbegriff))
+
+            var dialog = new ArtikelSuchDialog(suchbegriff);
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.IstAusgewaehlt && dialog.AusgewaehlterArtikel != null)
             {
-                MessageBox.Show("Bitte einen Suchbegriff eingeben.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
+                await ArtikelHinzufuegenAsync(dialog.AusgewaehlterArtikel, dialog.Menge);
             }
-            MessageBox.Show($"Artikel suchen: {suchbegriff}\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private async Task ArtikelHinzufuegenAsync(CoreService.ArtikelUebersicht artikel, decimal menge)
+        {
+            if (_bestellung == null) return;
+
+            try
+            {
+                txtStatus.Text = $"Fuege {artikel.Name} hinzu...";
+
+                // Position zum Auftrag hinzufuegen via JtlOrderClient
+                var dbContext = App.Services.GetRequiredService<JtlDbContext>();
+                var jtlClient = new JtlOrderClient(dbContext.ConnectionString);
+
+                var input = new JtlOrderClient.AuftragPositionInput(
+                    KArtikel: artikel.KArtikel,
+                    FAnzahl: menge,
+                    FVKNetto: artikel.FVKNetto
+                );
+
+                var result = await jtlClient.AddAuftragPositionAsync(_bestellung.KBestellung, input);
+
+                if (result.Success)
+                {
+                    txtStatus.Text = $"{artikel.Name} hinzugefuegt";
+                    // Positionen neu laden
+                    LadeBestellung(_bestellung.KBestellung);
+                }
+                else
+                {
+                    MessageBox.Show($"Fehler: {result.Message}", "Fehler",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Hinzufuegen:\n{ex.Message}", "Fehler",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void FreipositionHinzufuegen_Click(object sender, RoutedEventArgs e)
