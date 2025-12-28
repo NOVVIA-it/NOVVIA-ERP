@@ -13,6 +13,7 @@ namespace NovviaERP.WPF.Views
         private readonly CoreService _core;
         private CoreService.BestellungDetail? _bestellung;
         private int _kundeId;
+        private Dictionary<string, string> _origEigeneFelder = new();
 
         public BestellungDetailView()
         {
@@ -228,6 +229,13 @@ namespace NovviaERP.WPF.Views
             {
                 // JTL native: Verkauf.tAuftragAttribut / tAuftragAttributSprache
                 var felder = await _core.GetAuftragEigeneFelderAsync(_bestellung.KBestellung);
+
+                // Original-Werte merken fuer Aenderungserkennung
+                _origEigeneFelder.Clear();
+                foreach (var f in felder)
+                {
+                    _origEigeneFelder[f.FeldName] = f.Wert ?? "";
+                }
 
                 var items = felder.Select(f => new EigenesFeldItem
                 {
@@ -483,12 +491,46 @@ namespace NovviaERP.WPF.Views
 
                 await _core.UpdateBestellungAsync(_bestellung);
 
+                // Eigene Felder speichern (nur geaenderte)
+                await SpeichereEigeneFelderAsync();
+
                 txtStatus.Text = "Gespeichert";
                 MessageBox.Show("Auftrag gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task SpeichereEigeneFelderAsync()
+        {
+            if (_bestellung == null) return;
+
+            // Aktuelle Werte aus DataGrid holen
+            var items = dgEigeneFelder.ItemsSource as List<EigenesFeldItem>;
+            if (items == null || items.Count == 0) return;
+
+            // Geaenderte Felder ermitteln
+            var geaendert = new Dictionary<string, string?>();
+            foreach (var item in items)
+            {
+                var origWert = _origEigeneFelder.TryGetValue(item.FeldName, out var v) ? v : "";
+                if (item.Wert != origWert)
+                {
+                    geaendert[item.FeldName] = item.Wert;
+                }
+            }
+
+            if (geaendert.Count > 0)
+            {
+                await _core.SetAuftragEigeneFelderAsync(_bestellung.KBestellung, geaendert);
+
+                // Original-Werte aktualisieren
+                foreach (var kvp in geaendert)
+                {
+                    _origEigeneFelder[kvp.Key] = kvp.Value ?? "";
+                }
             }
         }
 

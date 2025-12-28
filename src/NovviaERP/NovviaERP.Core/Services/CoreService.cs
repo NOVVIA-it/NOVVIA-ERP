@@ -1314,6 +1314,78 @@ namespace NovviaERP.Core.Services
             public string? Wert { get; set; }
         }
 
+        /// <summary>
+        /// Speichert ein eigenes Feld für einen Auftrag
+        /// Verwendet NOVVIA.spAuftragEigenesFeldCreateOrUpdate (JTL native Tabellen)
+        /// </summary>
+        public async Task SetAuftragEigenesFeldAsync(int kAuftrag, string feldName, string? wert)
+        {
+            var conn = await GetConnectionAsync();
+
+            _log.Debug("SetAuftragEigenesFeldAsync: kAuftrag={kAuftrag}, Feld={Feld}, Wert={Wert}", kAuftrag, feldName, wert);
+
+            try
+            {
+                // NOVVIA TVP verwenden - schreibt in JTL native Tabellen
+                var dt = new System.Data.DataTable();
+                dt.Columns.Add("kAuftrag", typeof(int));
+                dt.Columns.Add("cKey", typeof(string));
+                dt.Columns.Add("cValue", typeof(string));
+                dt.Rows.Add(kAuftrag, feldName, wert ?? "");
+
+                var p = new DynamicParameters();
+                p.Add("@AuftragEigenesFeldAnpassen", dt.AsTableValuedParameter("NOVVIA.TYPE_AuftragEigenesFeldAnpassen"));
+
+                await conn.ExecuteAsync("NOVVIA.spAuftragEigenesFeldCreateOrUpdate", p, commandType: CommandType.StoredProcedure);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Fehler beim Speichern des Auftrags-Eigenfelds {feldName} für {kAuftrag}", feldName, kAuftrag);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Speichert mehrere eigene Felder für einen Auftrag (JTL native Tabellen)
+        /// </summary>
+        public async Task SetAuftragEigeneFelderAsync(int kAuftrag, Dictionary<string, string?> felder)
+        {
+            if (felder == null || felder.Count == 0) return;
+
+            var conn = await GetConnectionAsync();
+
+            _log.Debug("SetAuftragEigeneFelderAsync: kAuftrag={kAuftrag}, {Anzahl} Felder", kAuftrag, felder.Count);
+
+            try
+            {
+                // JTL TVP mit allen Feldern auf einmal
+                var dt = new System.Data.DataTable();
+                dt.Columns.Add("kAuftrag", typeof(int));
+                dt.Columns.Add("cKey", typeof(string));
+                dt.Columns.Add("cValue", typeof(string));
+
+                foreach (var kvp in felder)
+                {
+                    dt.Rows.Add(kAuftrag, kvp.Key, kvp.Value ?? "");
+                }
+
+                var p = new DynamicParameters();
+                p.Add("@AuftragEigenesFeldAnpassen", dt.AsTableValuedParameter("NOVVIA.TYPE_AuftragEigenesFeldAnpassen"));
+
+                await conn.ExecuteAsync("NOVVIA.spAuftragEigenesFeldCreateOrUpdate", p, commandType: CommandType.StoredProcedure);
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "Bulk-Speichern fehlgeschlagen für Auftrag {kAuftrag}, verwende Fallback", kAuftrag);
+
+                // Fallback: Einzelne Felder speichern
+                foreach (var kvp in felder)
+                {
+                    await SetAuftragEigenesFeldAsync(kAuftrag, kvp.Key, kvp.Value);
+                }
+            }
+        }
+
         #endregion
 
         #region Lieferantenbestellung (JTL Native SPs)
