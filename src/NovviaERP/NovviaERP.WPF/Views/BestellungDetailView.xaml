@@ -220,21 +220,58 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Details Content -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="10">
-                            <!-- Kundenkommentar -->
-                            <TextBlock Text="Kundenkommentar" FontWeight="SemiBold" Foreground="#666" Margin="0,0,0,5"/>
-                            <TextBox x:Name="txtKundenkommentar" Height="100" AcceptsReturn="True"
-                                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                     Background="#fffef0" BorderBrush="#e0dfc0"/>
+                    <!-- Tab Content Container -->
+                    <Grid Grid.Row="1">
+                        <!-- Details Tab -->
+                        <ScrollViewer x:Name="pnlDetails" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="10">
+                                <!-- Kundenkommentar -->
+                                <TextBlock Text="Kundenkommentar" FontWeight="SemiBold" Foreground="#666" Margin="0,0,0,5"/>
+                                <TextBox x:Name="txtKundenkommentar" Height="100" AcceptsReturn="True"
+                                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                         Background="#fffef0" BorderBrush="#e0dfc0"/>
 
-                            <!-- Anmerkung -->
-                            <TextBlock Text="Anmerkung" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
-                            <TextBox x:Name="txtAnmerkung" Height="80" AcceptsReturn="True"
-                                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
-                        </StackPanel>
-                    </ScrollViewer>
+                                <!-- Anmerkung -->
+                                <TextBlock Text="Anmerkung" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
+                                <TextBox x:Name="txtAnmerkung" Height="80" AcceptsReturn="True"
+                                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Texte Tab -->
+                        <ScrollViewer x:Name="pnlTexte" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                            <StackPanel Margin="10">
+                                <TextBlock Text="Kopftext" FontWeight="SemiBold" Foreground="#666" Margin="0,0,0,5"/>
+                                <TextBox x:Name="txtKopftext" Height="80" AcceptsReturn="True"
+                                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+
+                                <TextBlock Text="Fusstext" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
+                                <TextBox x:Name="txtFusstext" Height="80" AcceptsReturn="True"
+                                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+
+                                <TextBlock Text="Interne Notiz" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
+                                <TextBox x:Name="txtInterneNotiz" Height="60" AcceptsReturn="True"
+                                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                         Background="#fff8f0" BorderBrush="#e0d0c0"/>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <!-- Eigene Felder Tab -->
+                        <ScrollViewer x:Name="pnlEigeneFelder" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                            <StackPanel Margin="10">
+                                <TextBlock Text="Eigene Felder" FontWeight="SemiBold" Foreground="#666" Margin="0,0,0,10"/>
+                                <DataGrid x:Name="dgEigeneFelder" AutoGenerateColumns="False" CanUserAddRows="False"
+                                          HeadersVisibility="Column" BorderThickness="1" BorderBrush="#ddd"
+                                          RowBackground="White" AlternatingRowBackground="#fafafa" Height="200">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Feldname" Binding="{Binding FeldName}" Width="150" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Wert" Binding="{Binding Wert}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <TextBlock Text="Doppelklick zum Bearbeiten" FontSize="10" Foreground="#999" Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>

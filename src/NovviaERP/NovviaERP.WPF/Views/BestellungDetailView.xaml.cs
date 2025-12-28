@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
+using System.Threading.Tasks;
 
 namespace NovviaERP.WPF.Views
 {
@@ -193,6 +194,9 @@ namespace NovviaERP.WPF.Views
             SetTabActive(tabDetails, true, "#0078D4");
             SetTabActive(tabTexte, false);
             SetTabActive(tabEigeneFelder, false);
+            pnlDetails.Visibility = Visibility.Visible;
+            pnlTexte.Visibility = Visibility.Collapsed;
+            pnlEigeneFelder.Visibility = Visibility.Collapsed;
         }
 
         private void TabTexte_Click(object sender, MouseButtonEventArgs e)
@@ -200,7 +204,9 @@ namespace NovviaERP.WPF.Views
             SetTabActive(tabDetails, false);
             SetTabActive(tabTexte, true, "#0078D4");
             SetTabActive(tabEigeneFelder, false);
-            MessageBox.Show("Texte-Tab wird noch implementiert.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            pnlDetails.Visibility = Visibility.Collapsed;
+            pnlTexte.Visibility = Visibility.Visible;
+            pnlEigeneFelder.Visibility = Visibility.Collapsed;
         }
 
         private void TabEigeneFelder_Click(object sender, MouseButtonEventArgs e)
@@ -208,7 +214,22 @@ namespace NovviaERP.WPF.Views
             SetTabActive(tabDetails, false);
             SetTabActive(tabTexte, false);
             SetTabActive(tabEigeneFelder, true, "#0078D4");
-            MessageBox.Show("Eigene Felder-Tab wird noch implementiert.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            pnlDetails.Visibility = Visibility.Collapsed;
+            pnlTexte.Visibility = Visibility.Collapsed;
+            pnlEigeneFelder.Visibility = Visibility.Visible;
+            LadeEigeneFelder();
+        }
+
+        private void LadeEigeneFelder()
+        {
+            // TODO: Eigene Felder aus DB laden
+            var felder = new List<EigenesFeldItem>
+            {
+                new EigenesFeldItem { FeldName = "Bestellreferenz", Wert = "" },
+                new EigenesFeldItem { FeldName = "Kostenstelle", Wert = "" },
+                new EigenesFeldItem { FeldName = "Projekt", Wert = "" }
+            };
+            dgEigeneFelder.ItemsSource = felder;
         }
 
         private void SetTabActive(Border tab, bool active, string activeColor = "#0078D4")
@@ -228,24 +249,158 @@ namespace NovviaERP.WPF.Views
 
         #region Adress-Buttons
 
-        private void RechnungsadresseAuswaehlen_Click(object sender, RoutedEventArgs e)
+        private async void RechnungsadresseAuswaehlen_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Rechnungsadresse auswaehlen...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_kundeId <= 0) return;
+
+            try
+            {
+                // Kundenadressen laden
+                var adressen = await LadeKundenAdressenAsync(_kundeId);
+
+                var dialog = new AdresseAuswahlDialog(adressen, "Rechnungsadresse auswaehlen");
+                dialog.Owner = Window.GetWindow(this);
+
+                if (dialog.ShowDialog() == true && dialog.AusgewaehlteAdresse != null)
+                {
+                    var adr = dialog.AusgewaehlteAdresse;
+                    txtRechnungsadresse.Text = adr.Formatiert;
+                    // TODO: Adresse in Bestellung speichern
+                    txtStatus.Text = "Rechnungsadresse geaendert";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void RechnungsadresseBearbeiten_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Rechnungsadresse bearbeiten...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            var aktuelleAdresse = AdresseAusText(txtRechnungsadresse.Text);
+
+            var dialog = new AdresseBearbeitenDialog(aktuelleAdresse, "Rechnungsadresse bearbeiten");
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.IstGespeichert)
+            {
+                txtRechnungsadresse.Text = dialog.Adresse.Formatiert;
+                // TODO: Adresse in Bestellung speichern
+                txtStatus.Text = "Rechnungsadresse geaendert";
+            }
         }
 
-        private void LieferadresseAuswaehlen_Click(object sender, RoutedEventArgs e)
+        private async void LieferadresseAuswaehlen_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Lieferadresse auswaehlen...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_kundeId <= 0) return;
+
+            try
+            {
+                // Kundenadressen laden
+                var adressen = await LadeKundenAdressenAsync(_kundeId);
+
+                var dialog = new AdresseAuswahlDialog(adressen, "Lieferadresse auswaehlen");
+                dialog.Owner = Window.GetWindow(this);
+
+                if (dialog.ShowDialog() == true && dialog.AusgewaehlteAdresse != null)
+                {
+                    var adr = dialog.AusgewaehlteAdresse;
+                    txtLieferadresse.Text = adr.Formatiert;
+                    // TODO: Adresse in Bestellung speichern
+                    txtStatus.Text = "Lieferadresse geaendert";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void LieferadresseBearbeiten_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Lieferadresse bearbeiten...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            var aktuelleAdresse = AdresseAusText(txtLieferadresse.Text);
+
+            var dialog = new AdresseBearbeitenDialog(aktuelleAdresse, "Lieferadresse bearbeiten");
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.IstGespeichert)
+            {
+                txtLieferadresse.Text = dialog.Adresse.Formatiert;
+                // TODO: Adresse in Bestellung speichern
+                txtStatus.Text = "Lieferadresse geaendert";
+            }
+        }
+
+        private async Task<List<AdresseDto>> LadeKundenAdressenAsync(int kundeId)
+        {
+            // Adressen vom Kunden laden
+            var adressen = new List<AdresseDto>();
+
+            // Hauptadresse
+            if (_bestellung?.Rechnungsadresse != null)
+            {
+                var ra = _bestellung.Rechnungsadresse;
+                adressen.Add(new AdresseDto
+                {
+                    Firma = ra.CFirma,
+                    Vorname = ra.CVorname,
+                    Nachname = ra.CName,
+                    Strasse = ra.CStrasse,
+                    PLZ = ra.CPLZ,
+                    Ort = ra.COrt,
+                    Land = ra.CLand
+                });
+            }
+
+            // Lieferadresse falls abweichend
+            if (_bestellung?.Lieferadresse != null)
+            {
+                var la = _bestellung.Lieferadresse;
+                adressen.Add(new AdresseDto
+                {
+                    Firma = la.CFirma,
+                    Vorname = la.CVorname,
+                    Nachname = la.CName,
+                    Strasse = la.CStrasse,
+                    PLZ = la.CPLZ,
+                    Ort = la.COrt,
+                    Land = la.CLand
+                });
+            }
+
+            // TODO: Weitere Adressen aus Kunde laden
+            return adressen;
+        }
+
+        private AdresseDto AdresseAusText(string text)
+        {
+            var zeilen = text.Split('\n');
+            var dto = new AdresseDto();
+
+            if (zeilen.Length >= 1) dto.Firma = zeilen[0].Trim();
+            if (zeilen.Length >= 2)
+            {
+                var nameParts = zeilen[1].Trim().Split(' ');
+                if (nameParts.Length >= 2)
+                {
+                    dto.Vorname = nameParts[0];
+                    dto.Nachname = string.Join(" ", nameParts.Skip(1));
+                }
+                else if (nameParts.Length == 1)
+                {
+                    dto.Nachname = nameParts[0];
+                }
+            }
+            if (zeilen.Length >= 3) dto.Strasse = zeilen[2].Trim();
+            if (zeilen.Length >= 4)
+            {
+                var plzOrt = zeilen[3].Trim().Split(' ');
+                if (plzOrt.Length >= 1) dto.PLZ = plzOrt[0];
+                if (plzOrt.Length >= 2) dto.Ort = string.Join(" ", plzOrt.Skip(1));
+            }
+            if (zeilen.Length >= 5) dto.Land = zeilen[4].Trim();
+
+            return dto;
         }
 
         #endregion
@@ -334,5 +489,14 @@ namespace NovviaERP.WPF.Views
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// Hilfsklasse fuer Eigene Felder DataGrid
+    /// </summary>
+    public class EigenesFeldItem
+    {
+        public string FeldName { get; set; } = "";
+        public string Wert { get; set; } = "";
     }
 }
