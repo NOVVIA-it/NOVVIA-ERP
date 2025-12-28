@@ -748,6 +748,99 @@ BEGIN
 END;
 GO
 
+-- TVP Type: Auftrag Eigene Felder
+IF EXISTS (SELECT 1 FROM sys.types WHERE name = 'TYPE_AuftragEigenesFeldAnpassen' AND schema_id = SCHEMA_ID('NOVVIA'))
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.procedures WHERE name = 'spAuftragEigenesFeldCreateOrUpdate' AND schema_id = SCHEMA_ID('NOVVIA'))
+        DROP PROCEDURE NOVVIA.spAuftragEigenesFeldCreateOrUpdate;
+    DROP TYPE NOVVIA.TYPE_AuftragEigenesFeldAnpassen;
+END
+GO
+
+CREATE TYPE NOVVIA.TYPE_AuftragEigenesFeldAnpassen AS TABLE
+(
+    kAuftrag INT           NOT NULL,
+    cKey     NVARCHAR(255) NOT NULL,
+    cValue   NVARCHAR(MAX) NULL
+);
+GO
+
+-- SP: Auftrag Eigene Felder Create/Update (JTL-Native Tabellen)
+CREATE PROCEDURE NOVVIA.spAuftragEigenesFeldCreateOrUpdate
+(
+    @AuftragEigenesFeldAnpassen NOVVIA.TYPE_AuftragEigenesFeldAnpassen READONLY
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM @AuftragEigenesFeldAnpassen)
+        RETURN;
+
+    BEGIN TRY
+        BEGIN TRAN;
+
+        IF OBJECT_ID('tempdb..#Input') IS NOT NULL DROP TABLE #Input;
+        CREATE TABLE #Input (kAuftrag INT NOT NULL, cKey NVARCHAR(255) NOT NULL, cValue NVARCHAR(MAX) NULL, kAttribut INT NULL);
+
+        INSERT INTO #Input (kAuftrag, cKey, cValue)
+        SELECT kAuftrag, LTRIM(RTRIM(cKey)), cValue FROM @AuftragEigenesFeldAnpassen;
+
+        UPDATE i SET i.kAttribut = s.kAttribut
+        FROM #Input i
+        INNER JOIN dbo.tAttributSprache s ON s.cName = i.cKey AND s.kSprache = 0;
+
+        DELETE FROM #Input WHERE kAttribut IS NULL;
+
+        IF NOT EXISTS (SELECT 1 FROM #Input)
+        BEGIN
+            COMMIT TRAN;
+            RETURN;
+        END
+
+        -- AuftragAttribut-Verknuepfungen erstellen falls nicht vorhanden
+        INSERT INTO Verkauf.tAuftragAttribut (kAuftrag, kAttribut)
+        SELECT DISTINCT i.kAuftrag, i.kAttribut FROM #Input i
+        WHERE NOT EXISTS (SELECT 1 FROM Verkauf.tAuftragAttribut aa WHERE aa.kAuftrag = i.kAuftrag AND aa.kAttribut = i.kAttribut);
+
+        IF OBJECT_ID('tempdb..#Resolved') IS NOT NULL DROP TABLE #Resolved;
+        CREATE TABLE #Resolved (kAuftragAttribut INT NOT NULL, cValue NVARCHAR(MAX) NULL);
+
+        INSERT INTO #Resolved (kAuftragAttribut, cValue)
+        SELECT aa.kAuftragAttribut, i.cValue
+        FROM #Input i
+        INNER JOIN Verkauf.tAuftragAttribut aa ON aa.kAuftrag = i.kAuftrag AND aa.kAttribut = i.kAttribut;
+
+        -- Werte in tAuftragAttributSprache upserten (kSprache = 0)
+        UPDATE aas
+        SET aas.nWertInt = CASE WHEN TRY_CAST(r.cValue AS DECIMAL(18,4)) IS NOT NULL AND CHARINDEX('.', r.cValue) = 0 AND CHARINDEX(',', r.cValue) = 0 THEN TRY_CAST(r.cValue AS INT) ELSE NULL END,
+            aas.fWertDecimal = CASE WHEN TRY_CAST(REPLACE(r.cValue, ',', '.') AS DECIMAL(18,4)) IS NOT NULL AND (CHARINDEX('.', r.cValue) > 0 OR CHARINDEX(',', r.cValue) > 0) THEN TRY_CAST(REPLACE(r.cValue, ',', '.') AS DECIMAL(18,4)) ELSE NULL END,
+            aas.cWertVarchar = CASE WHEN TRY_CAST(r.cValue AS DECIMAL(18,4)) IS NULL AND TRY_CAST(REPLACE(r.cValue, ',', '.') AS DECIMAL(18,4)) IS NULL THEN r.cValue ELSE NULL END
+        FROM Verkauf.tAuftragAttributSprache aas
+        INNER JOIN #Resolved r ON r.kAuftragAttribut = aas.kAuftragAttribut
+        WHERE aas.kSprache = 0;
+
+        INSERT INTO Verkauf.tAuftragAttributSprache (kAuftragAttribut, kSprache, nWertInt, fWertDecimal, cWertVarchar)
+        SELECT r.kAuftragAttribut, 0,
+               CASE WHEN TRY_CAST(r.cValue AS DECIMAL(18,4)) IS NOT NULL AND CHARINDEX('.', r.cValue) = 0 AND CHARINDEX(',', r.cValue) = 0 THEN TRY_CAST(r.cValue AS INT) ELSE NULL END,
+               CASE WHEN TRY_CAST(REPLACE(r.cValue, ',', '.') AS DECIMAL(18,4)) IS NOT NULL AND (CHARINDEX('.', r.cValue) > 0 OR CHARINDEX(',', r.cValue) > 0) THEN TRY_CAST(REPLACE(r.cValue, ',', '.') AS DECIMAL(18,4)) ELSE NULL END,
+               CASE WHEN TRY_CAST(r.cValue AS DECIMAL(18,4)) IS NULL AND TRY_CAST(REPLACE(r.cValue, ',', '.') AS DECIMAL(18,4)) IS NULL THEN r.cValue ELSE NULL END
+        FROM #Resolved r
+        WHERE NOT EXISTS (SELECT 1 FROM Verkauf.tAuftragAttributSprache aas WHERE aas.kAuftragAttribut = r.kAuftragAttribut AND aas.kSprache = 0);
+
+        COMMIT TRAN;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRAN;
+        DECLARE @ErrorMessage NVARCHAR(MAX) = ERROR_MESSAGE();
+        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
+        DECLARE @ErrorState INT = ERROR_STATE();
+        RAISERROR (@ErrorMessage, @ErrorSeverity, @ErrorState);
+    END CATCH
+END;
+GO
+
 -- SP: ABdata Artikel Upsert
 IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spABdataArtikelUpsert' AND schema_id = SCHEMA_ID('NOVVIA'))
     DROP PROCEDURE NOVVIA.spABdataArtikelUpsert;
@@ -913,10 +1006,12 @@ PRINT '    - NOVVIA.spArtikelEigenesFeldSetzen';
 PRINT '    - NOVVIA.spWorkerLogSchreiben, NOVVIA.spWorkerStatusAktualisieren';
 PRINT '    - NOVVIA.spMSV3BestandCache_Get/Upsert/Cleanup';
 PRINT '    - NOVVIA.spArtikelEigenesFeldCreateOrUpdate';
+PRINT '    - NOVVIA.spAuftragEigenesFeldCreateOrUpdate';
 PRINT '    - NOVVIA.spABdataArtikelUpsert, NOVVIA.spABdataAutoMapping';
 PRINT '';
 PRINT '  Types:';
 PRINT '    - NOVVIA.TYPE_ArtikelEigenesFeldAnpassen';
+PRINT '    - NOVVIA.TYPE_AuftragEigenesFeldAnpassen';
 PRINT '';
 PRINT 'Naechste Schritte:';
 PRINT '  1. Admin-Benutzer anlegen (falls nicht vorhanden)';
