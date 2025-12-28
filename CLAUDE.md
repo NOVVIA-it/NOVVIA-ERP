@@ -265,6 +265,9 @@ error MSB3021: Access to the path '...\NovviaERP.Core.dll' is denied.
 src/NovviaERP/
 ├── NovviaERP.Core/
 │   ├── Data/JtlDbContext.cs          # Zentraler DB-Zugriff
+│   ├── Infrastructure/Jtl/           # JTL SP-Clients
+│   │   ├── JtlOrderClient.cs         # Auftrags-Eckdaten
+│   │   └── JtlStockBookingClient.cs  # Lagerbuchungen
 │   ├── Services/                      # Business-Logik
 │   └── Entities/                      # Datenmodelle
 ├── NovviaERP.WPF/
@@ -275,6 +278,8 @@ src/NovviaERP/
 ├── NovviaERP.API/
 │   └── Controllers/                  # REST-Endpoints
 └── Scripts/
+    ├── INSTALL-NOVVIA-Complete.sql   # Master-Setup (Neuinstallation)
+    ├── README.md                     # Setup-Anleitung
     ├── Setup-NovviaTables.sql        # Basis-Tabellen
     ├── Setup-NOVVIA-Mandant2.sql     # Pharma-spezifisch
     └── SP-*.sql                      # Stored Procedures
@@ -286,7 +291,26 @@ src/NovviaERP/
 
 2. **Automatische Nachbestellung** - Workflow für Mindestbestand → Bestellung
 
-### Letzte Code-Änderungen (23.12.2024)
+### Letzte Code-Änderungen (28.12.2024)
+
+**DB-Setup: INSTALL-NOVVIA-Complete.sql**
+- Master-Installationsscript für Neuinstallationen
+- Enthält alle NOVVIA-Tabellen, Views, SPs, Types
+- README.md mit Installationsanleitung
+- Aufruf: `USE Mandant_X; GO` dann Script ausführen
+
+**JtlOrderClient (Infrastructure/Jtl/):**
+- Neuer Client für JTL Auftrags-Stored-Procedures
+- `BerechneAuftragEckdatenAsync` - ruft Verkauf.spAuftragEckdatenBerechnen
+- `GetAuftragEckdatenAsync` - liest berechnete Eckdaten
+- Status-Helper: GetZahlungStatusText, GetLieferStatusText, GetLieferStatusColor
+
+**BestellungDetailView (Views/):**
+- Komplett neues Layout (JTL-Style)
+- Positionen auf erster Seite sichtbar
+- Tabs: Auftragsdaten, Anhänge, Kosten (links)
+- Tabs: Details, Texte, Eigene Felder (rechts)
+- Zusammenfassung: Gewichte + Auftragswert
 
 **ArtikelDetailView.xaml.cs:**
 - MSV3 Bestandsabfrage für GEHE/Alliance korrigiert
