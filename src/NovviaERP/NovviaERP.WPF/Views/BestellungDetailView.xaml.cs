@@ -17,6 +17,7 @@ namespace NovviaERP.WPF.Views
         private CoreService.BestellungDetail? _bestellung;
         private int _kundeId;
         private Dictionary<string, string> _origEigeneFelder = new();
+        private bool _hatRechnung = false;
 
         public BestellungDetailView()
         {
@@ -130,7 +131,34 @@ namespace NovviaERP.WPF.Views
                 txtGewinn.Text = "0,00 EUR"; // TODO: Gewinn berechnen
                 txtKosten.Text = "0,00 EUR"; // TODO: Kosten
 
-                txtStatus.Text = $"Auftrag {_bestellung.CBestellNr} geladen";
+                // Prüfen ob aktive Rechnung vorhanden -> Bearbeitung sperren
+                // Status 5 = Storniert -> erlaubt Bearbeitung
+                var rechnungen = await _core.GetRechnungenAsync(bestellungId);
+                var aktiveRechnungen = rechnungen.Where(r => r.NRechnungStatus != 5).ToList();
+                var stornierteRechnungen = rechnungen.Where(r => r.NRechnungStatus == 5).ToList();
+
+                _hatRechnung = aktiveRechnungen.Any();
+
+                if (_hatRechnung)
+                {
+                    var rechnungsNummern = string.Join(", ", aktiveRechnungen.Select(r => r.CRechnungsnr));
+                    txtRechnungsNr.Text = rechnungsNummern;
+                    SperreBearbeitung(true);
+                    txtStatus.Text = $"Auftrag {_bestellung.CBestellNr} - Rechnung vorhanden (Bearbeitung gesperrt)";
+                    txtSubtitel.Text = $"Rechnung(en) vorhanden: {rechnungsNummern} - Änderungen nicht möglich";
+                }
+                else if (stornierteRechnungen.Any())
+                {
+                    var stornierteNummern = string.Join(", ", stornierteRechnungen.Select(r => r.CRechnungsnr));
+                    txtRechnungsNr.Text = $"(Storniert: {stornierteNummern})";
+                    SperreBearbeitung(false);
+                    txtStatus.Text = $"Auftrag {_bestellung.CBestellNr} - Rechnung storniert (Bearbeitung möglich)";
+                }
+                else
+                {
+                    SperreBearbeitung(false);
+                    txtStatus.Text = $"Auftrag {_bestellung.CBestellNr} geladen";
+                }
             }
             catch (Exception ex)
             {
@@ -163,6 +191,40 @@ namespace NovviaERP.WPF.Views
             if (!string.IsNullOrWhiteSpace(land) && land != "Deutschland" && land != "DE")
                 lines.Add(land);
             return lines.Count > 0 ? string.Join("\n", lines) : "-";
+        }
+
+        /// <summary>
+        /// Sperrt/Entsperrt die Bearbeitung des Auftrags (wenn Rechnung vorhanden)
+        /// </summary>
+        private void SperreBearbeitung(bool sperren)
+        {
+            // Status-ComboBox
+            cmbStatus.IsEnabled = !sperren;
+
+            // Externe Auftragsnummer
+            txtExterneNr.IsReadOnly = sperren;
+            txtExterneNr.Background = sperren
+                ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#f0f0f0"))
+                : Brushes.White;
+
+            // Texte
+            txtTextAnmerkung.IsReadOnly = sperren;
+            txtDrucktext.IsReadOnly = sperren;
+            txtHinweis.IsReadOnly = sperren;
+
+            // Positionen-Toolbar (als StackPanel im Footer der Positionen)
+            txtArtikelSuche.IsEnabled = !sperren;
+
+            // Header-Badge Farbe ändern wenn gesperrt
+            if (sperren)
+            {
+                brdStatus.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#6c757d"));
+                txtSubtitel.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#ffcccc"));
+            }
+            else
+            {
+                txtSubtitel.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#cce5ff"));
+            }
         }
 
         #region Navigation
@@ -475,6 +537,13 @@ namespace NovviaERP.WPF.Views
         {
             if (_bestellung == null) return;
 
+            if (_hatRechnung)
+            {
+                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
+                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var suchbegriff = txtArtikelSuche.Text?.Trim();
 
             var dialog = new ArtikelSuchDialog(suchbegriff);
@@ -527,11 +596,23 @@ namespace NovviaERP.WPF.Views
 
         private void FreipositionHinzufuegen_Click(object sender, RoutedEventArgs e)
         {
+            if (_hatRechnung)
+            {
+                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
+                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             MessageBox.Show("Freiposition hinzufuegen...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void PositionLoeschen_Click(object sender, RoutedEventArgs e)
         {
+            if (_hatRechnung)
+            {
+                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
+                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             if (dgPositionen.SelectedItem == null)
             {
                 MessageBox.Show("Bitte eine Position auswaehlen.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -543,6 +624,13 @@ namespace NovviaERP.WPF.Views
         private async void RabattSetzen_Click(object sender, RoutedEventArgs e)
         {
             if (_bestellung == null || !_bestellung.Positionen.Any()) return;
+
+            if (_hatRechnung)
+            {
+                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
+                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             // Rabatt-Dialog
             var input = Microsoft.VisualBasic.Interaction.InputBox(
@@ -600,6 +688,12 @@ namespace NovviaERP.WPF.Views
         private async Task VerschiebePositionAsync(int richtung)
         {
             if (_bestellung == null) return;
+            if (_hatRechnung)
+            {
+                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
+                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             if (dgPositionen.SelectedItem is not CoreService.BestellPositionDetail pos) return;
 
             var positionen = _bestellung.Positionen.OrderBy(p => p.KBestellPos).ToList();
@@ -646,6 +740,14 @@ namespace NovviaERP.WPF.Views
         private async void Speichern_Click(object sender, RoutedEventArgs e)
         {
             if (_bestellung == null) return;
+
+            // Bei Rechnung nur Hinweistext speichern (keine Änderungen an Positionen/Preisen)
+            if (_hatRechnung)
+            {
+                MessageBox.Show("Der Auftrag hat bereits eine Rechnung. Änderungen sind nicht möglich.\n\nNur der interne Hinweis kann bearbeitet werden.",
+                    "Bearbeitung eingeschränkt", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
 
             try
             {
@@ -780,6 +882,57 @@ namespace NovviaERP.WPF.Views
                     "Erfolg",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
+
+                // Neu laden um Sperre zu aktivieren
+                LadeBestellung(_bestellung.KBestellung);
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "";
+                MessageBox.Show(
+                    $"Fehler beim Erstellen der Rechnung:\n\n{ex.Message}",
+                    "Fehler",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Erstellt eine Rechnung ohne Lieferschein (für Dienstleistungen)
+        /// </summary>
+        private async void RechnungOhneVersand_Click(object sender, RoutedEventArgs e)
+        {
+            if (_bestellung == null) return;
+
+            var result = MessageBox.Show(
+                $"Dienstleistungsrechnung für Auftrag {_bestellung.CBestellNr} erstellen?\n\n" +
+                "Diese Rechnung wird OHNE Lieferschein erstellt (für Dienstleistungen ohne Warenversand).",
+                "Dienstleistungsrechnung erstellen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                txtStatus.Text = "Erstelle Dienstleistungsrechnung...";
+
+                // Rechnung ohne Lieferschein erstellen
+                var kRechnung = await _core.CreateRechnungOhneVersandAsync(_bestellung.KBestellung);
+
+                // Rechnungsnummer holen
+                var rechnungen = await _core.GetRechnungenAsync(_bestellung.KBestellung);
+                var neueRechnung = rechnungen.FirstOrDefault(r => r.KRechnung == kRechnung);
+
+                txtStatus.Text = "";
+                MessageBox.Show(
+                    $"Dienstleistungsrechnung {neueRechnung?.CRechnungsnr ?? kRechnung.ToString()} wurde erstellt!",
+                    "Erfolg",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                // Neu laden um Sperre zu aktivieren
+                LadeBestellung(_bestellung.KBestellung);
             }
             catch (Exception ex)
             {

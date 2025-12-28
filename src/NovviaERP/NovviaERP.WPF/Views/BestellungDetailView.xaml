@@ -611,12 +611,16 @@
 
                 <!-- Buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button Content="Lieferschein" Click="Lieferschein_Click" Padding="12,8" Margin="0,0,8,0"/>
-                    <Button Content="Rechnung" Click="Rechnung_Click" Padding="12,8" Margin="0,0,8,0"/>
+                    <Button Content="Lieferschein" Click="Lieferschein_Click" Padding="12,8" Margin="0,0,5,0"/>
+                    <Button Content="Rechnung" Click="Rechnung_Click" Padding="12,8" Margin="0,0,5,0"
+                            ToolTip="Rechnung erstellen (Lieferschein erforderlich)"/>
+                    <Button Content="Rechnung (DL)" Click="RechnungOhneVersand_Click" Padding="12,8" Margin="0,0,5,0"
+                            Background="#17a2b8" Foreground="White" BorderThickness="0"
+                            ToolTip="Dienstleistungsrechnung ohne Lieferschein/Versand"/>
                     <Button x:Name="btnLieferantenbestellung" Content="Lieferantenbestellung" Click="Lieferantenbestellung_Click"
-                            Padding="12,8" Margin="0,0,8,0" Background="#ffc107" Foreground="#333" BorderThickness="0"
+                            Padding="12,8" Margin="0,0,5,0" Background="#ffc107" Foreground="#333" BorderThickness="0"
                             ToolTip="Erstellt eine Lieferantenbestellung aus diesem Auftrag"/>
-                    <Button Content="Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,8,0"
+                    <Button Content="Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,5,0"
                             Background="#0078D4" Foreground="White" BorderThickness="0"/>
                     <Button Content="Abbrechen" Click="Zurueck_Click" Padding="12,8"/>
                 </StackPanel>

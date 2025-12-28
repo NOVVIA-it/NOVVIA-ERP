@@ -676,7 +676,8 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
             await conn.ExecuteAsync(@"
                 UPDATE tkunde SET
-                    kKundenGruppe = @KKundenGruppe, fRabatt = @FRabatt, cNewsletter = @CNewsletter,
+                    kKundenGruppe = @KKundenGruppe, kKundenKategorie = @KKundenKategorie,
+                    fRabatt = @FRabatt, cNewsletter = @CNewsletter,
                     cSperre = @CSperre, nZahlungsziel = @NZahlungsziel, kZahlungsart = @KZahlungsart,
                     nDebitorennr = @NDebitorennr, nKreditlimit = @NKreditlimit, nMahnstopp = @NMahnstopp,
                     nMahnrhythmus = @NMahnrhythmus, fSkonto = @FSkonto, nSkontoInTagen = @NSkontoInTagen
@@ -713,6 +714,18 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
             return await conn.QueryAsync<KundengruppeRef>("SELECT kKundenGruppe, cName, fRabatt FROM tKundenGruppe ORDER BY cName");
+        }
+
+        public async Task<IEnumerable<KundenkategorieRef>> GetKundenkategorienAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<KundenkategorieRef>("SELECT kKundenKategorie, cName FROM tKundenKategorie ORDER BY cName");
+        }
+
+        public class KundenkategorieRef
+        {
+            public int KKundenKategorie { get; set; }
+            public string CName { get; set; } = "";
         }
 
         /// <summary>
@@ -1510,6 +1523,120 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
+        /// Erstellt eine Rechnung OHNE Lieferschein (für Dienstleistungen)
+        /// Positionen werden direkt aus dem Auftrag übernommen
+        /// </summary>
+        public async Task<int> CreateRechnungOhneVersandAsync(int kAuftrag, int kBenutzer = 1)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Rechnungsnummer generieren
+            var nextNr = await conn.ExecuteScalarAsync<int>(
+                "SELECT ISNULL(MAX(CAST(REPLACE(cRechnungsnr, 'IN-', '') AS INT)), 0) + 1 FROM Rechnung.tRechnung WHERE cRechnungsnr LIKE 'IN-%'");
+            var rechnungsNr = $"IN-{nextNr}";
+
+            // Auftragsdaten laden
+            var auftrag = await conn.QuerySingleAsync<(int KKunde, string? CKundennr, int? KZahlungsart, int NZahlungsZiel, decimal FSkonto, int NSkontoTage)>(
+                @"SELECT kKunde, cKundenNr, kZahlungsart, nZahlungsziel, ISNULL(fSkonto, 0), ISNULL(nSkontoTage, 0)
+                  FROM tBestellung WHERE kBestellung = @kAuftrag",
+                new { kAuftrag });
+
+            // Kundendaten laden
+            var kunde = await conn.QuerySingleOrDefaultAsync<(string? CFirma, int? KKundenGruppe, string? CKundengruppe)>(
+                @"SELECT a.cFirma, k.kKundenGruppe, kg.cName
+                  FROM tkunde k
+                  LEFT JOIN tAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                  LEFT JOIN tKundenGruppe kg ON k.kKundenGruppe = kg.kKundenGruppe
+                  WHERE k.kKunde = @kKunde",
+                new { kKunde = auftrag.KKunde });
+
+            // Rechnung erstellen
+            var kRechnung = await conn.ExecuteScalarAsync<int>(
+                @"INSERT INTO Rechnung.tRechnung
+                  (kBenutzer, kKunde, cRechnungsnr, dErstellt, dValutadatum, cKundennr, cKundengruppe, kKundengruppe,
+                   cFirma, nZahlungszielTage, fSkonto, nSkontoInTage, nMahnstop, nStatus, cWaehrung, fWaehrungsfaktor,
+                   kZahlungsart, kSprache, nSteuereinstellung, nRechnungStatus, dLeistungsdatum)
+                  OUTPUT INSERTED.kRechnung
+                  VALUES
+                  (@kBenutzer, @kKunde, @cRechnungsnr, GETDATE(), GETDATE(), @cKundennr, @cKundengruppe, @kKundengruppe,
+                   @cFirma, @nZahlungszielTage, @fSkonto, @nSkontoInTage, 0, 0, 'EUR', 1.0,
+                   @kZahlungsart, 1, 0, 0, GETDATE())",
+                new
+                {
+                    kBenutzer,
+                    kKunde = auftrag.KKunde,
+                    cRechnungsnr = rechnungsNr,
+                    cKundennr = auftrag.CKundennr,
+                    cKundengruppe = kunde.CKundengruppe,
+                    kKundengruppe = kunde.KKundenGruppe,
+                    cFirma = kunde.CFirma,
+                    nZahlungszielTage = auftrag.NZahlungsZiel,
+                    fSkonto = auftrag.FSkonto,
+                    nSkontoInTage = auftrag.NSkontoTage,
+                    kZahlungsart = auftrag.KZahlungsart
+                });
+
+            // Positionen DIREKT aus Auftragspositionen erstellen (ohne Lieferschein)
+            var bestellPositionen = await conn.QueryAsync<(int KBestellPos, int KArtikel, string? CArtNr, string? CName, string? CEinheit, decimal FAnzahl, decimal FMwSt, decimal FVkNetto, decimal FRabatt, decimal FGewicht, decimal FEkNetto)>(
+                @"SELECT kBestellPos, kArtikel, cArtNr, cName, cEinheit,
+                         fAnzahl, fMwSt, fVKNetto, ISNULL(fRabatt, 0),
+                         ISNULL(fGewicht, 0), ISNULL(fEKNetto, 0)
+                  FROM tBestellPos
+                  WHERE tBestellung_kBestellung = @kAuftrag",
+                new { kAuftrag });
+
+            int nSort = 0;
+            foreach (var pos in bestellPositionen)
+            {
+                nSort++;
+                await conn.ExecuteScalarAsync<int>(
+                    @"INSERT INTO Rechnung.tRechnungPosition
+                      (kRechnung, kAuftrag, kAuftragPosition, kArtikel, cArtNr, cName, cEinheit,
+                       fAnzahl, fMwSt, fVkNetto, fRabatt, nType, fGewicht, fEkNetto, nSort)
+                      OUTPUT INSERTED.kRechnungPosition
+                      VALUES
+                      (@kRechnung, @kAuftrag, @kBestellPos, @kArtikel, @cArtNr, @cName, @cEinheit,
+                       @fAnzahl, @fMwSt, @fVkNetto, @fRabatt, 1, @fGewicht, @fEkNetto, @nSort)",
+                    new
+                    {
+                        kRechnung,
+                        kAuftrag,
+                        kBestellPos = pos.KBestellPos,
+                        kArtikel = pos.KArtikel,
+                        cArtNr = pos.CArtNr,
+                        cName = pos.CName,
+                        cEinheit = pos.CEinheit,
+                        fAnzahl = pos.FAnzahl,
+                        fMwSt = pos.FMwSt,
+                        fVkNetto = pos.FVkNetto,
+                        fRabatt = pos.FRabatt,
+                        fGewicht = pos.FGewicht,
+                        fEkNetto = pos.FEkNetto,
+                        nSort
+                    });
+            }
+
+            // Eckdaten berechnen (falls SP existiert)
+            try
+            {
+                await conn.ExecuteAsync("Rechnung.spRechnungEckdatenBerechnen",
+                    new { kRechnung },
+                    commandType: System.Data.CommandType.StoredProcedure);
+            }
+            catch
+            {
+                // SP eventuell nicht vorhanden - ignorieren
+            }
+
+            // Auftragsstatus aktualisieren
+            await conn.ExecuteAsync(
+                @"UPDATE tBestellung SET cStatus = 'Abgerechnet', dGeaendert = GETDATE() WHERE kBestellung = @kAuftrag",
+                new { kAuftrag });
+
+            return kRechnung;
+        }
+
+        /// <summary>
         /// Holt alle Rechnungen zu einem Auftrag
         /// </summary>
         public async Task<IEnumerable<RechnungInfo>> GetRechnungenAsync(int kAuftrag)
@@ -1523,6 +1650,142 @@ namespace NovviaERP.Core.Services
                   WHERE rp.kAuftrag = @kAuftrag
                   ORDER BY r.dErstellt DESC",
                 new { kAuftrag });
+        }
+
+        /// <summary>
+        /// Storniert eine Rechnung (nur Status ändern, keine Gutschrift)
+        /// Auftrag wird wieder bearbeitbar (Preis, Anschrift), aber KEINE Lagerbewegungen
+        /// Lagerbewegungen nur über Retoure änderbar
+        /// </summary>
+        public async Task StornoRechnungAsync(int kRechnung, int kBenutzer = 1)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Prüfen ob Rechnung existiert
+            var rechnung = await conn.QuerySingleOrDefaultAsync<(int KBestellung, string? CRechnungsnr)>(
+                @"SELECT ISNULL((SELECT TOP 1 kAuftrag FROM Rechnung.tRechnungPosition WHERE kRechnung = r.kRechnung), 0),
+                         cRechnungsnr
+                  FROM Rechnung.tRechnung r WHERE kRechnung = @kRechnung",
+                new { kRechnung });
+
+            if (string.IsNullOrEmpty(rechnung.CRechnungsnr))
+                throw new InvalidOperationException("Rechnung nicht gefunden.");
+
+            // Rechnung als storniert markieren (Status 5)
+            await conn.ExecuteAsync(
+                @"UPDATE Rechnung.tRechnung
+                  SET nRechnungStatus = 5,
+                      cAnmerkung = ISNULL(cAnmerkung, '') + ' [STORNIERT ' + CONVERT(VARCHAR, GETDATE(), 104) + ']'
+                  WHERE kRechnung = @kRechnung",
+                new { kRechnung });
+
+            // Hinweis: Auftrag wird dadurch wieder bearbeitbar (Preis, Anschrift)
+            // Lagerbewegungen bleiben bestehen - nur über Retoure änderbar
+            _log.Information("Rechnung {RechnungNr} storniert. Auftrag {KBestellung} wieder bearbeitbar für Preis/Anschrift.",
+                rechnung.CRechnungsnr, rechnung.KBestellung);
+        }
+
+        /// <summary>
+        /// Erstellt eine Rechnungskorrektur (Gutschrift) für einen Teilbetrag
+        /// </summary>
+        public async Task<int> CreateRechnungskorrekturAsync(int kRechnung, decimal betrag, string grund, int kBenutzer = 1)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Rechnungsdaten laden
+            var rechnung = await conn.QuerySingleOrDefaultAsync<(int KKunde, string? CRechnungsnr, decimal FMwSt, int? KZahlungsart)>(
+                @"SELECT kKunde, cRechnungsnr,
+                         (SELECT TOP 1 fMwSt FROM Rechnung.tRechnungPosition WHERE kRechnung = r.kRechnung) AS FMwSt,
+                         kZahlungsart
+                  FROM Rechnung.tRechnung r WHERE kRechnung = @kRechnung",
+                new { kRechnung });
+
+            if (rechnung.KKunde == 0)
+                throw new InvalidOperationException("Rechnung nicht gefunden.");
+
+            // Gutschriftnummer generieren
+            var nextNr = await conn.ExecuteScalarAsync<int>(
+                "SELECT ISNULL(MAX(CAST(REPLACE(cRechnungsnr, 'GS-', '') AS INT)), 0) + 1 FROM Rechnung.tRechnung WHERE cRechnungsnr LIKE 'GS-%'");
+            var gutschriftNr = $"GS-{nextNr}";
+
+            // Netto/Brutto berechnen
+            var mwstSatz = rechnung.FMwSt > 0 ? rechnung.FMwSt : 19m;
+            var netto = betrag / (1 + mwstSatz / 100);
+
+            // Kundendaten laden
+            var kunde = await conn.QuerySingleOrDefaultAsync<(string? CFirma, int? KKundenGruppe, string? CKundengruppe, string? CKundennr)>(
+                @"SELECT a.cFirma, k.kKundenGruppe, kg.cName, k.cKundenNr
+                  FROM tkunde k
+                  LEFT JOIN tAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                  LEFT JOIN tKundenGruppe kg ON k.kKundenGruppe = kg.kKundenGruppe
+                  WHERE k.kKunde = @kKunde",
+                new { kKunde = rechnung.KKunde });
+
+            // Gutschrift erstellen
+            var kGutschrift = await conn.ExecuteScalarAsync<int>(
+                @"INSERT INTO Rechnung.tRechnung
+                  (kBenutzer, kKunde, cRechnungsnr, dErstellt, dValutadatum, cKundennr, cKundengruppe, kKundengruppe,
+                   cFirma, nMahnstop, nStatus, cWaehrung, fWaehrungsfaktor, kZahlungsart, kSprache,
+                   nSteuereinstellung, nRechnungStatus, dLeistungsdatum, fBrutto, fNetto, cAnmerkung)
+                  OUTPUT INSERTED.kRechnung
+                  VALUES
+                  (@kBenutzer, @kKunde, @cRechnungsnr, GETDATE(), GETDATE(), @cKundennr, @cKundengruppe, @kKundengruppe,
+                   @cFirma, 1, 0, 'EUR', 1.0, @kZahlungsart, 1, 0, 10, GETDATE(), @fBrutto, @fNetto, @cAnmerkung)",
+                new
+                {
+                    kBenutzer,
+                    kKunde = rechnung.KKunde,
+                    cRechnungsnr = gutschriftNr,
+                    cKundennr = kunde.CKundennr,
+                    cKundengruppe = kunde.CKundengruppe,
+                    kKundengruppe = kunde.KKundenGruppe,
+                    cFirma = kunde.CFirma,
+                    kZahlungsart = rechnung.KZahlungsart,
+                    fBrutto = -betrag,
+                    fNetto = -netto,
+                    cAnmerkung = $"Rechnungskorrektur zu {rechnung.CRechnungsnr}: {grund}"
+                });
+
+            // Eine Position für die Gutschrift erstellen
+            await conn.ExecuteAsync(
+                @"INSERT INTO Rechnung.tRechnungPosition
+                  (kRechnung, cName, fAnzahl, fMwSt, fVkNetto, nType, nSort)
+                  VALUES
+                  (@kGutschrift, @cName, -1, @fMwSt, @fVkNetto, 1, 1)",
+                new
+                {
+                    kGutschrift,
+                    cName = $"Rechnungskorrektur: {grund}",
+                    fMwSt = mwstSatz,
+                    fVkNetto = netto
+                });
+
+            return kGutschrift;
+        }
+
+        /// <summary>
+        /// Erfasst eine Zahlung für eine Rechnung
+        /// </summary>
+        public async Task ErfasseZahlungAsync(int kRechnung, decimal betrag, int kBenutzer = 1)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Zahlungseingang erfassen
+            await conn.ExecuteAsync(
+                @"INSERT INTO Rechnung.tZahlungseingang
+                  (kRechnung, dDatum, fBetrag, cZahlungsart, kBenutzer)
+                  VALUES
+                  (@kRechnung, GETDATE(), @fBetrag, 'Manuell', @kBenutzer)",
+                new { kRechnung, fBetrag = betrag, kBenutzer });
+
+            // Offenen Betrag aktualisieren
+            await conn.ExecuteAsync(
+                @"UPDATE Rechnung.tRechnung
+                  SET fOffen = fOffen - @fBetrag,
+                      nRechnungStatus = CASE WHEN fOffen - @fBetrag <= 0 THEN 3 ELSE nRechnungStatus END,
+                      dBezahlt = CASE WHEN fOffen - @fBetrag <= 0 THEN GETDATE() ELSE dBezahlt END
+                  WHERE kRechnung = @kRechnung",
+                new { kRechnung, fBetrag = betrag });
         }
 
         public class RechnungInfo
@@ -3089,6 +3352,289 @@ namespace NovviaERP.Core.Services
             public int AnzahlPakete { get; set; }
             public int AnzahlVersendetePakete { get; set; }
             public string? Rechnungsnummern { get; set; }
+        }
+
+        #endregion
+
+        #region Einstellungen / Stammdaten
+
+        // --- Firmendaten ---
+        public class FirmendatenDetail
+        {
+            public int KFirma { get; set; }
+            public string? CFirma { get; set; }
+            public string? CZusatz { get; set; }
+            public string? CStrasse { get; set; }
+            public string? CHausNr { get; set; }
+            public string? CPLZ { get; set; }
+            public string? COrt { get; set; }
+            public string? CLand { get; set; }
+            public string? CTel { get; set; }
+            public string? CFax { get; set; }
+            public string? CMail { get; set; }
+            public string? CWWW { get; set; }
+            public string? CUSTID { get; set; }
+            public string? CSteuerNr { get; set; }
+            public string? CHReg { get; set; }
+            public string? CGF { get; set; }
+            public string? CBank { get; set; }
+            public string? CBIC { get; set; }
+            public string? CIBAN { get; set; }
+        }
+
+        public async Task<FirmendatenDetail?> GetFirmendatenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryFirstOrDefaultAsync<FirmendatenDetail>(@"
+                SELECT f.kFirma AS KFirma, f.cName AS CFirma, ISNULL(f.cUnternehmer, '') AS CZusatz,
+                       f.cStrasse AS CStrasse, '' AS CHausNr, f.cPLZ AS CPLZ, f.cOrt AS COrt, f.cLand AS CLand,
+                       f.cTel AS CTel, f.cFax AS CFax, f.cEMail AS CMail, f.cWWW AS CWWW,
+                       ISNULL(u.cUStId, '') AS CUSTID, f.cSteuerNr AS CSteuerNr,
+                       '' AS CHReg, ISNULL(f.cKontoInhaber, '') AS CGF,
+                       ISNULL(f.cBank, '') AS CBank, ISNULL(f.cBIC, '') AS CBIC, ISNULL(f.cIBAN, '') AS CIBAN
+                FROM dbo.tFirma f
+                LEFT JOIN dbo.tFirmaUStIdNr u ON f.kFirma = u.kFirma
+                WHERE f.kFirma = 1");
+        }
+
+        public async Task UpdateFirmendatenAsync(FirmendatenDetail firma)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Firma-Stammdaten
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tFirma SET
+                    cName = @CFirma, cUnternehmer = @CZusatz,
+                    cStrasse = @CStrasse, cPLZ = @CPLZ, cOrt = @COrt, cLand = @CLand,
+                    cTel = @CTel, cFax = @CFax, cEMail = @CMail, cWWW = @CWWW,
+                    cSteuerNr = @CSteuerNr, cBank = @CBank, cBIC = @CBIC, cIBAN = @CIBAN,
+                    cKontoInhaber = @CGF
+                WHERE kFirma = 1", firma);
+
+            // USt-ID aktualisieren/einfügen
+            var existsUstId = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM tFirmaUStIdNr WHERE kFirma = 1");
+            if (existsUstId > 0)
+            {
+                await conn.ExecuteAsync(
+                    "UPDATE tFirmaUStIdNr SET cUStId = @CUSTID WHERE kFirma = 1", firma);
+            }
+            else if (!string.IsNullOrEmpty(firma.CUSTID))
+            {
+                await conn.ExecuteAsync(
+                    "INSERT INTO tFirmaUStIdNr (kFirma, cLandISO, cUStId, nAuchAlsVersandlandBetrachten) VALUES (1, 'DE', @CUSTID, 1)", firma);
+            }
+        }
+
+        // --- Firma Eigene Felder ---
+        public class FirmaEigenesFeldDetail
+        {
+            public int KFirmaEigenesFeld { get; set; }
+            public int KAttribut { get; set; }
+            public string? CName { get; set; }
+            public string? CWertVarchar { get; set; }
+            public int? NWertInt { get; set; }
+            public decimal? FWertDecimal { get; set; }
+            public DateTime? DWertDateTime { get; set; }
+        }
+
+        public async Task<IEnumerable<FirmaEigenesFeldDetail>> GetFirmaEigeneFelderAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<FirmaEigenesFeldDetail>(@"
+                SELECT ef.kFirmaEigenesFeld AS KFirmaEigenesFeld, ef.kAttribut AS KAttribut,
+                       ISNULL(asp.cName, 'Attribut ' + CAST(ef.kAttribut AS NVARCHAR)) AS CName,
+                       ef.cWertVarchar AS CWertVarchar, ef.nWertInt AS NWertInt,
+                       ef.fWertDecimal AS FWertDecimal, ef.dWertDateTime AS DWertDateTime
+                FROM Firma.tFirmaEigenesFeld ef
+                LEFT JOIN tAttributSprache asp ON ef.kAttribut = asp.kAttribut AND asp.kSprache = 1
+                WHERE ef.kFirma = 1
+                ORDER BY asp.cName");
+        }
+
+        // --- Kundengruppen ---
+        public class KundengruppeDetail
+        {
+            public int KKundenGruppe { get; set; }
+            public string? CName { get; set; }
+            public decimal FRabatt { get; set; }
+            public int NNettoPreise { get; set; }
+        }
+
+        public async Task<IEnumerable<KundengruppeDetail>> GetKundengruppenDetailAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<KundengruppeDetail>(@"
+                SELECT kKundenGruppe AS KKundenGruppe, cName AS CName,
+                       ISNULL(fRabatt, 0) AS FRabatt, ISNULL(nNettoPreise, 0) AS NNettoPreise
+                FROM dbo.tKundenGruppe ORDER BY cName");
+        }
+
+        public async Task CreateKundengruppeAsync(string name, decimal rabatt)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tKundenGruppe (cName, fRabatt, nNettoPreise) VALUES (@Name, @Rabatt, 0)",
+                new { Name = name, Rabatt = rabatt });
+        }
+
+        public async Task UpdateKundengruppeAsync(int id, string name, decimal rabatt)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tKundenGruppe SET cName = @Name, fRabatt = @Rabatt WHERE kKundenGruppe = @Id",
+                new { Id = id, Name = name, Rabatt = rabatt });
+        }
+
+        public async Task DeleteKundengruppeAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tKundenGruppe WHERE kKundenGruppe = @Id", new { Id = id });
+        }
+
+        // --- Kundenkategorien ---
+        public async Task CreateKundenkategorieAsync(string name)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("INSERT INTO dbo.tKundenKategorie (cName) VALUES (@Name)", new { Name = name });
+        }
+
+        public async Task UpdateKundenkategorieAsync(int id, string name)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("UPDATE dbo.tKundenKategorie SET cName = @Name WHERE kKundenKategorie = @Id",
+                new { Id = id, Name = name });
+        }
+
+        public async Task DeleteKundenkategorieAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tKundenKategorie WHERE kKundenKategorie = @Id", new { Id = id });
+        }
+
+        // --- Zahlungsarten ---
+        public class ZahlungsartDetail
+        {
+            public int KZahlungsart { get; set; }
+            public string? CName { get; set; }
+            public string? CModulId { get; set; }
+            public int NAktiv { get; set; }
+        }
+
+        public async Task<IEnumerable<ZahlungsartDetail>> GetZahlungsartenDetailAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ZahlungsartDetail>(@"
+                SELECT kZahlungsart AS KZahlungsart, cName AS CName,
+                       ISNULL(cPaymentOption, '') AS CModulId,
+                       CAST(ISNULL(nAktiv, 1) AS INT) AS NAktiv
+                FROM dbo.tZahlungsArt ORDER BY cName");
+        }
+
+        public async Task CreateZahlungsartAsync(string name, string modulId)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tZahlungsArt (cName, cPaymentOption, nAktiv) VALUES (@Name, @ModulId, 1)",
+                new { Name = name, ModulId = modulId });
+        }
+
+        public async Task UpdateZahlungsartAsync(int id, string name, string modulId)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tZahlungsArt SET cName = @Name, cPaymentOption = @ModulId WHERE kZahlungsart = @Id",
+                new { Id = id, Name = name, ModulId = modulId });
+        }
+
+        public async Task DeleteZahlungsartAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tZahlungsArt WHERE kZahlungsart = @Id", new { Id = id });
+        }
+
+        // --- Versandarten ---
+        public class VersandartDetail
+        {
+            public int KVersandart { get; set; }
+            public string? CName { get; set; }
+            public string? CLieferzeitText { get; set; }
+            public decimal FKosten { get; set; }
+        }
+
+        public async Task<IEnumerable<VersandartDetail>> GetVersandartenDetailAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<VersandartDetail>(@"
+                SELECT kVersandArt AS KVersandart, cName AS CName,
+                       ISNULL(cDruckText, '') AS CLieferzeitText,
+                       ISNULL(fPrice, 0) AS FKosten
+                FROM dbo.tVersandArt ORDER BY cName");
+        }
+
+        public async Task CreateVersandartAsync(string name, decimal kosten)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tVersandArt (cName, fPrice, cAktiv) VALUES (@Name, @Kosten, 'Y')",
+                new { Name = name, Kosten = kosten });
+        }
+
+        public async Task UpdateVersandartAsync(int id, string name, decimal kosten)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tVersandArt SET cName = @Name, fPrice = @Kosten WHERE kVersandArt = @Id",
+                new { Id = id, Name = name, Kosten = kosten });
+        }
+
+        public async Task DeleteVersandartAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tVersandArt WHERE kVersandArt = @Id", new { Id = id });
+        }
+
+        // --- Steuern (nur Ansicht) ---
+        public class SteuerDetail
+        {
+            public int KSteuer { get; set; }
+            public string? CName { get; set; }
+            public decimal FSteuersatz { get; set; }
+            public string? CISO { get; set; }
+            public int NStandard { get; set; }
+        }
+
+        public async Task<IEnumerable<SteuerDetail>> GetSteuernAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<SteuerDetail>(@"
+                SELECT sk.kSteuerklasse AS KSteuer, sk.cName AS CName,
+                       ISNULL(ss.fSteuersatz, 0) AS FSteuersatz,
+                       'DE' AS CISO, sk.nStandard AS NStandard
+                FROM dbo.tSteuerklasse sk
+                LEFT JOIN dbo.tSteuersatz ss ON sk.kSteuerklasse = ss.kSteuerklasse AND ss.kSteuerzone = 3
+                ORDER BY sk.cName");
+        }
+
+        // --- Konten (nur Ansicht - Steuersammelkonten) ---
+        public class KontoDetail
+        {
+            public string? CKontoNr { get; set; }
+            public string? CName { get; set; }
+            public string? CTyp { get; set; }
+        }
+
+        public async Task<IEnumerable<KontoDetail>> GetKontenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            // Zeige Steuersammelkonten wenn vorhanden
+            return await conn.QueryAsync<KontoDetail>(@"
+                SELECT CAST(kSteuersatz AS NVARCHAR) AS CKontoNr,
+                       'Steuersatz ' + CAST(fSteuersatz AS NVARCHAR) + '%' AS CName,
+                       'Steuer' AS CTyp
+                FROM dbo.tSteuersatz
+                WHERE kSteuerzone = 3
+                ORDER BY fSteuersatz DESC");
         }
 
         #endregion

@@ -54,6 +54,15 @@ namespace NovviaERP.WPF.Views
                     cmbKundengruppe.Items.Add(new ComboBoxItem { Content = kg.CName, Tag = kg.KKundenGruppe });
                 }
 
+                // Kundenkategorien
+                var kundenkategorien = await _coreService.GetKundenkategorienAsync();
+                cmbKundenkategorie.Items.Clear();
+                cmbKundenkategorie.Items.Add(new ComboBoxItem { Content = "", Tag = (int?)null });
+                foreach (var kk in kundenkategorien)
+                {
+                    cmbKundenkategorie.Items.Add(new ComboBoxItem { Content = kk.CName, Tag = kk.KKundenKategorie });
+                }
+
                 // Zahlungsarten
                 var zahlungsarten = await _coreService.GetZahlungsartenAsync();
                 cmbZahlungsart.Items.Clear();
@@ -142,7 +151,7 @@ namespace NovviaERP.WPF.Views
                 chkGesperrt.IsChecked = _kunde.CSperre == "J";
                 txtKundeSeit.Text = _kunde.DErstellt?.ToString("dd.MM.yyyy") ?? "";
                 SetComboBoxByTag(cmbKundengruppe, _kunde.KKundenGruppe);
-                // TODO: Kundenkategorie ComboBox befuellen
+                SetComboBoxByTag(cmbKundenkategorie, _kunde.KKundenKategorie);
                 txtHerkunft.Text = _kunde.CHerkunft ?? "";
 
                 // Zahlungen
@@ -308,6 +317,7 @@ namespace NovviaERP.WPF.Views
                 _kunde.CKassenKunde = chkKassenkunde.IsChecked == true ? "J" : "N";
                 _kunde.CSperre = chkGesperrt.IsChecked == true ? "J" : "N";
                 _kunde.KKundenGruppe = (cmbKundengruppe.SelectedItem as ComboBoxItem)?.Tag as int?;
+                _kunde.KKundenKategorie = (cmbKundenkategorie.SelectedItem as ComboBoxItem)?.Tag as int?;
                 _kunde.CHerkunft = txtHerkunft.Text.Trim();
                 _kunde.NMahnstopp = (byte)(chkMahnstopp.IsChecked == true ? 1 : 0);
                 if (int.TryParse(txtZahlungsziel.Text, out var zz)) _kunde.NZahlungsziel = zz;

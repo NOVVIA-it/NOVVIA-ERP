@@ -1,7 +1,344 @@
-<Page x:Class="NovviaERP.WPF.Views.EinstellungenPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Einstellungen" Background="#f0f2f5">
-    <Grid Margin="20"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+<Page x:Class="NovviaERP.WPF.Views.EinstellungenPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Einstellungen" Background="#f0f2f5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
         <TextBlock Text="Einstellungen" FontSize="28" FontWeight="Bold"/>
-        <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="0,20,0,0">
-            <DataGrid x:Name="dgEinstellungen" AutoGenerateColumns="True" IsReadOnly="True"/>
-        </Border></Grid>
+
+        <TabControl Grid.Row="1" Margin="0,15,0,0">
+            <!-- Firmendaten Tab -->
+            <TabItem Header="Firmendaten">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="15">
+                        <TextBlock Text="Firmendaten" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="300"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="300"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Firma:" VerticalAlignment="Center" Grid.Row="0"/>
+                            <TextBox x:Name="txtFirmaName" Grid.Row="0" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="Zusatz:" VerticalAlignment="Center" Grid.Row="0" Grid.Column="3"/>
+                            <TextBox x:Name="txtFirmaZusatz" Grid.Row="0" Grid.Column="4" Margin="0,3"/>
+
+                            <TextBlock Text="Straße:" VerticalAlignment="Center" Grid.Row="1"/>
+                            <TextBox x:Name="txtFirmaStrasse" Grid.Row="1" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="Hausnummer:" VerticalAlignment="Center" Grid.Row="1" Grid.Column="3"/>
+                            <TextBox x:Name="txtFirmaHausnr" Grid.Row="1" Grid.Column="4" Margin="0,3"/>
+
+                            <TextBlock Text="PLZ:" VerticalAlignment="Center" Grid.Row="2"/>
+                            <TextBox x:Name="txtFirmaPLZ" Grid.Row="2" Grid.Column="1" Width="100" HorizontalAlignment="Left" Margin="0,3"/>
+
+                            <TextBlock Text="Ort:" VerticalAlignment="Center" Grid.Row="2" Grid.Column="3"/>
+                            <TextBox x:Name="txtFirmaOrt" Grid.Row="2" Grid.Column="4" Margin="0,3"/>
+
+                            <TextBlock Text="Land:" VerticalAlignment="Center" Grid.Row="3"/>
+                            <TextBox x:Name="txtFirmaLand" Grid.Row="3" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="Telefon:" VerticalAlignment="Center" Grid.Row="4"/>
+                            <TextBox x:Name="txtFirmaTelefon" Grid.Row="4" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="Fax:" VerticalAlignment="Center" Grid.Row="4" Grid.Column="3"/>
+                            <TextBox x:Name="txtFirmaFax" Grid.Row="4" Grid.Column="4" Margin="0,3"/>
+
+                            <TextBlock Text="E-Mail:" VerticalAlignment="Center" Grid.Row="5"/>
+                            <TextBox x:Name="txtFirmaEmail" Grid.Row="5" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="Website:" VerticalAlignment="Center" Grid.Row="5" Grid.Column="3"/>
+                            <TextBox x:Name="txtFirmaWebsite" Grid.Row="5" Grid.Column="4" Margin="0,3"/>
+
+                            <TextBlock Text="USt-IdNr:" VerticalAlignment="Center" Grid.Row="6"/>
+                            <TextBox x:Name="txtFirmaUstId" Grid.Row="6" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="Steuernummer:" VerticalAlignment="Center" Grid.Row="6" Grid.Column="3"/>
+                            <TextBox x:Name="txtFirmaSteuerNr" Grid.Row="6" Grid.Column="4" Margin="0,3"/>
+
+                            <TextBlock Text="Handelsregister:" VerticalAlignment="Center" Grid.Row="7"/>
+                            <TextBox x:Name="txtFirmaHReg" Grid.Row="7" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="Geschäftsführer:" VerticalAlignment="Center" Grid.Row="7" Grid.Column="3"/>
+                            <TextBox x:Name="txtFirmaGF" Grid.Row="7" Grid.Column="4" Margin="0,3"/>
+                        </Grid>
+
+                        <!-- Bankverbindung -->
+                        <TextBlock Text="Bankverbindung" FontSize="16" FontWeight="SemiBold" Margin="0,20,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="300"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="300"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Bank:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtFirmaBank" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="BIC:" VerticalAlignment="Center" Grid.Column="3"/>
+                            <TextBox x:Name="txtFirmaBIC" Grid.Column="4" Margin="0,3"/>
+
+                            <TextBlock Text="IBAN:" VerticalAlignment="Center" Grid.Row="1"/>
+                            <TextBox x:Name="txtFirmaIBAN" Grid.Row="1" Grid.Column="1" Margin="0,3"/>
+                        </Grid>
+
+                        <Button Content="Firmendaten speichern" Width="180" HorizontalAlignment="Left" Margin="0,20,0,0" Click="FirmaSpeichern_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Kundengruppen Tab -->
+            <TabItem Header="Kundengruppen">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="Neu" Width="80" Click="KundengruppeNeu_Click" Margin="0,0,5,0"/>
+                        <Button Content="Bearbeiten" Width="80" Click="KundengruppeBearbeiten_Click" Margin="0,0,5,0"/>
+                        <Button Content="Löschen" Width="80" Click="KundengruppeLöschen_Click"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="dgKundengruppen" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding KKundenGruppe}" Width="60"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                            <DataGridTextColumn Header="Rabatt %" Binding="{Binding FRabatt, StringFormat=N2}" Width="80"/>
+                            <DataGridTextColumn Header="Netto-Preise" Binding="{Binding NNettoPreise}" Width="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Bearbeitungsbereich -->
+                    <Border Grid.Row="2" BorderBrush="#ddd" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="Name:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtKGName" Grid.Column="1"/>
+
+                            <TextBlock Text="Rabatt %:" VerticalAlignment="Center" Grid.Column="3"/>
+                            <TextBox x:Name="txtKGRabatt" Grid.Column="4" Width="80" HorizontalAlignment="Left"/>
+
+                            <Button Content="Speichern" Grid.Column="5" Width="100" HorizontalAlignment="Left" Click="KundengruppeSpeichern_Click"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Kundenkategorien Tab -->
+            <TabItem Header="Kundenkategorien">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="Neu" Width="80" Click="KundenkategorieNeu_Click" Margin="0,0,5,0"/>
+                        <Button Content="Bearbeiten" Width="80" Click="KundenkategorieBearbeiten_Click" Margin="0,0,5,0"/>
+                        <Button Content="Löschen" Width="80" Click="KundenkategorieLöschen_Click"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="dgKundenkategorien" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding KKundenKategorie}" Width="60"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="250"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Border Grid.Row="2" BorderBrush="#ddd" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="250"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="Name:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtKKName" Grid.Column="1"/>
+                            <Button Content="Speichern" Grid.Column="2" Width="100" HorizontalAlignment="Left" Margin="20,0,0,0" Click="KundenkategorieSpeichern_Click"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Zahlungsarten Tab -->
+            <TabItem Header="Zahlungsarten">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="Neu" Width="80" Click="ZahlungsartNeu_Click" Margin="0,0,5,0"/>
+                        <Button Content="Bearbeiten" Width="80" Click="ZahlungsartBearbeiten_Click" Margin="0,0,5,0"/>
+                        <Button Content="Löschen" Width="80" Click="ZahlungsartLöschen_Click"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="dgZahlungsarten" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding KZahlungsart}" Width="60"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                            <DataGridTextColumn Header="Modul" Binding="{Binding CModulId}" Width="150"/>
+                            <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding NAktiv}" Width="60"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Border Grid.Row="2" BorderBrush="#ddd" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="Name:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtZAName" Grid.Column="1"/>
+
+                            <TextBlock Text="Modul:" VerticalAlignment="Center" Grid.Column="3"/>
+                            <TextBox x:Name="txtZAModul" Grid.Column="4"/>
+
+                            <Button Content="Speichern" Grid.Column="5" Width="100" HorizontalAlignment="Left" Margin="20,0,0,0" Click="ZahlungsartSpeichern_Click"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Versandarten Tab -->
+            <TabItem Header="Versandarten">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="Neu" Width="80" Click="VersandartNeu_Click" Margin="0,0,5,0"/>
+                        <Button Content="Bearbeiten" Width="80" Click="VersandartBearbeiten_Click" Margin="0,0,5,0"/>
+                        <Button Content="Löschen" Width="80" Click="VersandartLöschen_Click"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="dgVersandarten" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding KVersandart}" Width="60"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                            <DataGridTextColumn Header="Lieferzeit" Binding="{Binding CLieferzeitText}" Width="150"/>
+                            <DataGridTextColumn Header="Kosten" Binding="{Binding FKosten, StringFormat=N2}" Width="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Border Grid.Row="2" BorderBrush="#ddd" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="Name:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtVAName" Grid.Column="1"/>
+
+                            <TextBlock Text="Kosten:" VerticalAlignment="Center" Grid.Column="3"/>
+                            <TextBox x:Name="txtVAKosten" Grid.Column="4"/>
+
+                            <Button Content="Speichern" Grid.Column="5" Width="100" HorizontalAlignment="Left" Margin="20,0,0,0" Click="VersandartSpeichern_Click"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Steuern Tab -->
+            <TabItem Header="Steuern">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Steuersätze (nur Ansicht - Änderungen in JTL-Wawi)" FontStyle="Italic" Foreground="Gray" Margin="0,0,0,10"/>
+
+                    <DataGrid x:Name="dgSteuern" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding KSteuer}" Width="60"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                            <DataGridTextColumn Header="Steuersatz %" Binding="{Binding FSteuersatz, StringFormat=N2}" Width="100"/>
+                            <DataGridTextColumn Header="Land" Binding="{Binding CISO}" Width="60"/>
+                            <DataGridTextColumn Header="Standard" Binding="{Binding NStandard}" Width="70"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- Konten Tab -->
+            <TabItem Header="Konten">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Sachkonten (nur Ansicht - Änderungen in JTL-Wawi)" FontStyle="Italic" Foreground="Gray" Margin="0,0,0,10"/>
+
+                    <DataGrid x:Name="dgKonten" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Kontonr" Binding="{Binding CKontoNr}" Width="100"/>
+                            <DataGridTextColumn Header="Bezeichnung" Binding="{Binding CName}" Width="250"/>
+                            <DataGridTextColumn Header="Typ" Binding="{Binding CTyp}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
 </Page>

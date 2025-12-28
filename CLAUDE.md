@@ -308,6 +308,30 @@ src/NovviaERP/
 
 ### Letzte Code-Änderungen (28.12.2024)
 
+**Einstellungen - JTL-Tabellenstruktur Fix:**
+- SQL-Queries an echte JTL-Wawi 1.11 Tabellenstruktur angepasst
+- `tFirma`: cEMail statt cMail, cUnternehmer statt cZusatz
+- `tZahlungsart`: cPaymentOption statt cModulId
+- `tVersandart`: fPrice statt fPreis, cDruckText für Lieferzeit
+- USt-ID aus `tFirmaUStIdNr` (separate Tabelle, nicht in tFirma)
+- Steuersätze: JOIN tSteuerklasse mit tSteuersatz (kSteuerzone=3 für DE)
+
+**Einstellungen - Eigene Felder Tab:**
+- Neuer Tab "Eigene Felder" in EinstellungenView
+- Zeigt `Firma.tFirmaEigenesFeld` mit Attribut-Namen aus `tAttributSprache`
+- Spalten: Attribut, Text, Zahl (Int), Zahl (Dec), Datum
+
+**Rechnung Stornieren - Logik korrigiert:**
+- `StornoRechnungAsync`: Nur Rechnung auf Status 5 setzen, KEINE Gutschrift
+- Auftrag wird wieder bearbeitbar (Preis, Anschrift)
+- KEINE Lagerbewegungen - nur über Retoure änderbar
+- "Rechnungskorrektur" umbenannt zu "Gutschrift"
+
+**CoreService.cs - Neue Methoden:**
+- `GetFirmaEigeneFelderAsync()` - Firma eigene Felder laden
+- `GetFirmendatenAsync()` - USt-ID aus tFirmaUStIdNr JOIN
+- `UpdateFirmendatenAsync()` - USt-ID in tFirmaUStIdNr speichern
+
 **DB-Setup: INSTALL-NOVVIA-Complete.sql**
 - Master-Installationsscript für Neuinstallationen
 - Enthält alle NOVVIA-Tabellen, Views, SPs, Types
