@@ -220,16 +220,32 @@ namespace NovviaERP.WPF.Views
             LadeEigeneFelder();
         }
 
-        private void LadeEigeneFelder()
+        private async void LadeEigeneFelder()
         {
-            // TODO: Eigene Felder aus DB laden
-            var felder = new List<EigenesFeldItem>
+            if (_bestellung == null) return;
+
+            try
             {
-                new EigenesFeldItem { FeldName = "Bestellreferenz", Wert = "" },
-                new EigenesFeldItem { FeldName = "Kostenstelle", Wert = "" },
-                new EigenesFeldItem { FeldName = "Projekt", Wert = "" }
-            };
-            dgEigeneFelder.ItemsSource = felder;
+                // JTL native: Verkauf.tAuftragAttribut / tAuftragAttributSprache
+                var felder = await _core.GetAuftragEigeneFelderAsync(_bestellung.KBestellung);
+
+                var items = felder.Select(f => new EigenesFeldItem
+                {
+                    FeldName = f.FeldName,
+                    Wert = f.Wert ?? ""
+                }).ToList();
+
+                dgEigeneFelder.ItemsSource = items;
+
+                if (items.Count == 0)
+                {
+                    txtStatus.Text = "Keine eigenen Felder gefunden";
+                }
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler beim Laden der Eigenfelder: {ex.Message}";
+            }
         }
 
         private void SetTabActive(Border tab, bool active, string activeColor = "#0078D4")

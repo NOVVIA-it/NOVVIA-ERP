@@ -1256,6 +1256,64 @@ namespace NovviaERP.Core.Services
             }
         }
 
+        /// <summary>
+        /// Lädt eigene Felder (Attribute) für einen Auftrag
+        /// JTL native: tAttribut, tAttributSprache, Verkauf.tAuftragAttribut, Verkauf.tAuftragAttributSprache
+        /// </summary>
+        public async Task<List<AuftragEigenesFeld>> GetAuftragEigeneFelderAsync(int kAuftrag)
+        {
+            var conn = await GetConnectionAsync();
+            var result = new List<AuftragEigenesFeld>();
+
+            try
+            {
+                // JTL native Tabellen - Verkauf.tAuftragAttribut für Auftrags-Attribute
+                var felder = await conn.QueryAsync<AuftragEigenesFeld>(
+                    @"SELECT DISTINCT
+                         a.kAttribut,
+                         aS.cName AS FeldName,
+                         vS.cWertVarchar,
+                         vS.fWertDecimal,
+                         vS.nWertInt,
+                         COALESCE(
+                             vS.cWertVarchar,
+                             CASE WHEN vS.fWertDecimal IS NOT NULL THEN CAST(vS.fWertDecimal AS NVARCHAR(50)) END,
+                             CASE WHEN vS.nWertInt IS NOT NULL THEN CAST(vS.nWertInt AS NVARCHAR(50)) END
+                         ) AS Wert
+                      FROM dbo.tAttribut a
+                      INNER JOIN dbo.tAttributSprache aS ON a.kAttribut = aS.kAttribut
+                      INNER JOIN Verkauf.tAuftragAttribut v ON a.kAttribut = v.kAttribut
+                      INNER JOIN Verkauf.tAuftragAttributSprache vS ON v.kAuftragAttribut = vS.kAuftragAttribut
+                      WHERE v.kAuftrag = @kAuftrag
+                        AND aS.kSprache IN (0, 1)
+                        AND vS.kSprache IN (0, 1)
+                      ORDER BY aS.cName",
+                    new { kAuftrag });
+
+                result = felder.ToList();
+                _log.Debug("GetAuftragEigeneFelderAsync: kAuftrag={kAuftrag}, gefunden={Anzahl} Felder", kAuftrag, result.Count);
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "Fehler beim Laden der Auftrags-Eigenfelder für {kAuftrag}", kAuftrag);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// DTO für Auftrags-Eigene Felder
+        /// </summary>
+        public class AuftragEigenesFeld
+        {
+            public int KAttribut { get; set; }
+            public string FeldName { get; set; } = "";
+            public string? CWertVarchar { get; set; }
+            public decimal? FWertDecimal { get; set; }
+            public int? NWertInt { get; set; }
+            public string? Wert { get; set; }
+        }
+
         #endregion
 
         #region Lieferantenbestellung (JTL Native SPs)
