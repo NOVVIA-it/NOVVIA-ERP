@@ -113,6 +113,7 @@ namespace NovviaERP.Core.Services
         {
             // Aus tKunde
             public int KKunde { get; set; }
+            public int? KInetKunde { get; set; }
             public string? CKundenNr { get; set; }
             public int? KKundenGruppe { get; set; }
             public int? KKundenKategorie { get; set; }
@@ -142,8 +143,21 @@ namespace NovviaERP.Core.Services
             // Alle Adressen
             public List<AdresseDetail> Adressen { get; set; } = new();
 
+            // Ansprechpartner
+            public List<AnsprechpartnerDetail> Ansprechpartner { get; set; } = new();
+
+            // Bankverbindungen
+            public List<BankverbindungDetail> Bankverbindungen { get; set; } = new();
+
+            // Onlineshop-Kunden
+            public List<OnlineshopKundeDetail> OnlineshopKunden { get; set; } = new();
+
             // Kundengruppe
             public string? Kundengruppe { get; set; }
+            public string? Kundenkategorie { get; set; }
+            public string? Zahlungsart { get; set; }
+            public string? Sprache { get; set; }
+            public string CKassenKunde { get; set; } = "N";
 
             // Statistik
             public int AnzahlBestellungen { get; set; }
@@ -177,6 +191,55 @@ namespace NovviaERP.Core.Services
 
             public bool IstStandard => NStandard == 1;
             public string AdressTypText => NTyp == 1 ? "Rechnungsadresse" : NTyp == 2 ? "Lieferadresse" : "Adresse";
+        }
+
+        public class AnsprechpartnerDetail
+        {
+            public int KAnsprechpartner { get; set; }
+            public int? KKunde { get; set; }
+            public int? KLieferant { get; set; }
+            public string? CAnrede { get; set; }
+            public string? CVorname { get; set; }
+            public string? CName { get; set; }
+            public string? CAbteilung { get; set; }
+            public string? CTel { get; set; }
+            public string? CMobil { get; set; }
+            public string? CFax { get; set; }
+            public string? CMail { get; set; }
+        }
+
+        public class BankverbindungDetail
+        {
+            public int KKontoDaten { get; set; }
+            public int? KKunde { get; set; }
+            public int? KLieferant { get; set; }
+            public string? CBankName { get; set; }
+            public string? CBLZ { get; set; }
+            public string? CKontoNr { get; set; }
+            public string? CInhaber { get; set; }
+            public string? CIBAN { get; set; }
+            public string? CBIC { get; set; }
+            public byte NStandard { get; set; }
+            public bool IstStandard => NStandard == 1;
+        }
+
+        public class OnlineshopKundeDetail
+        {
+            public int KInetKunde { get; set; }
+            public int? KShop { get; set; }
+            public string? ShopName { get; set; }
+            public string? CKundenNr { get; set; }
+            public string? CBenutzername { get; set; }
+            public string? CAnrede { get; set; }
+            public string? CVorname { get; set; }
+            public string? CNachname { get; set; }
+            public string? CFirma { get; set; }
+            public string? CMail { get; set; }
+            public string? CTel { get; set; }
+            public byte NAktiv { get; set; }
+            public decimal FRabatt { get; set; }
+            public int? KKundenGruppe { get; set; }
+            public bool IstAktiv => NAktiv == 1;
         }
 
         public class ArtikelUebersicht
@@ -369,12 +432,29 @@ namespace NovviaERP.Core.Services
             public string? CIdentCode { get; set; }
             public string? TrackingNr { get => CIdentCode; set => CIdentCode = value; }
             public string? CVersandInfo { get; set; }
+            public DateTime? DVoraussichtlichesLieferdatum { get; set; }
+            public int NLieferPrioritaet { get; set; }  // 0=Normal
+            public decimal FZusatzGewicht { get; set; }
+            public int? KArtikelKarton { get; set; }    // Karton
 
             // Zahlung
             public int? KZahlungsart { get; set; }
             public string? ZahlungsartName { get; set; }
             public DateTime? DBezahlt { get; set; }
             public int NZahlungsZiel { get; set; }
+            public decimal FSkonto { get; set; }        // Skonto-Prozentsatz
+            public int NSkontoTage { get; set; }        // Skonto-Tage
+
+            // Steuern
+            public int NSteuereinstellung { get; set; } // 0=Steuerpflichtig, 10=InnergemLief, 15=Export, 20=Differenzbesteuert
+            public string? SteuerartName { get; set; }  // Berechneter Name
+
+            // Auftragsstatus (Vorgangssteuerung)
+            public int? KVorgangsstatus { get; set; }
+            public string? VorgangsstatusName { get; set; }
+            public int? KRueckhaltegrund { get; set; }
+            public string? RueckhaltegrundName { get; set; }
+            public int? KFarbe { get; set; }            // Vorgangsfarbe
 
             // Adressen
             public AdresseDetail? Rechnungsadresse { get; set; }
@@ -384,9 +464,18 @@ namespace NovviaERP.Core.Services
             public int? KShop { get; set; }
             public string? ShopName { get; set; }
 
-            // Anmerkungen
+            // Referenzen
+            public int KSprache { get; set; }           // Sprache (0=Deutsch, 1=Englisch, etc.)
+            public string? SpracheName { get; set; }
+
+            // Anmerkungen (aus tBestellung)
             public string? CAnmerkung { get; set; }
             public string? CVerwendungszweck { get; set; }
+
+            // Verkauftexte (aus Verkauf.tAuftragText)
+            public string? CDrucktext { get; set; }      // Kopf-/Fusstext fuer Dokumente
+            public string? CHinweis { get; set; }        // Interner Hinweis
+            public string? CVorgangsstatus { get; set; } // Vorgangsstatus
 
             // Status
             public byte NStorno { get; set; }
@@ -410,7 +499,10 @@ namespace NovviaERP.Core.Services
             public string? CEinheit { get; set; }
             public int? NPosTyp { get; set; }
 
-            public decimal Summe => FAnzahl * (FVKBrutto ?? FVKNetto * (1 + FMwSt / 100));
+            // Netto-VK (ges.) mit Rabatt: Anzahl * Netto * (1 - Rabatt/100)
+            public decimal SummeNetto => FAnzahl * FVKNetto * (1 - (FRabatt ?? 0) / 100);
+            // Brutto-VK (ges.) mit Rabatt
+            public decimal Summe => SummeNetto * (1 + FMwSt / 100);
         }
 
         public class KundengruppeRef
@@ -493,7 +585,10 @@ namespace NovviaERP.Core.Services
 
             // Kundendaten
             var kunde = await conn.QuerySingleOrDefaultAsync<KundeDetail>(@"
-                SELECT k.*, kg.cName AS Kundengruppe,
+                SELECT k.*,
+                       kg.cName AS Kundengruppe,
+                       kk.cName AS Kundenkategorie,
+                       za.cName AS Zahlungsart,
                        (SELECT COUNT(*) FROM tBestellung WHERE tKunde_kKunde = k.kKunde) AS AnzahlBestellungen,
                        ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto)
                                FROM tBestellung b
@@ -501,6 +596,8 @@ namespace NovviaERP.Core.Services
                                WHERE b.tKunde_kKunde = k.kKunde AND b.nStorno = 0), 0) AS GesamtUmsatz
                 FROM tkunde k
                 LEFT JOIN tKundenGruppe kg ON kg.kKundenGruppe = k.kKundenGruppe
+                LEFT JOIN tKundenKategorie kk ON kk.kKundenKategorie = k.kKundenKategorie
+                LEFT JOIN tZahlungsArt za ON za.kZahlungsart = k.kZahlungsart
                 WHERE k.kKunde = @Id", new { Id = kundeId });
 
             if (kunde == null) return null;
@@ -510,6 +607,23 @@ namespace NovviaERP.Core.Services
                 SELECT * FROM tAdresse WHERE kKunde = @Id ORDER BY nStandard DESC, nTyp", new { Id = kundeId })).ToList();
 
             kunde.StandardAdresse = kunde.Adressen.FirstOrDefault(a => a.NStandard == 1) ?? kunde.Adressen.FirstOrDefault();
+
+            // Ansprechpartner
+            kunde.Ansprechpartner = (await conn.QueryAsync<AnsprechpartnerDetail>(@"
+                SELECT * FROM tansprechpartner WHERE kKunde = @Id ORDER BY cName", new { Id = kundeId })).ToList();
+
+            // Bankverbindungen
+            kunde.Bankverbindungen = (await conn.QueryAsync<BankverbindungDetail>(@"
+                SELECT * FROM tkontodaten WHERE kKunde = @Id ORDER BY nStandard DESC", new { Id = kundeId })).ToList();
+
+            // Onlineshop-Kunden
+            kunde.OnlineshopKunden = (await conn.QueryAsync<OnlineshopKundeDetail>(@"
+                SELECT ik.*, s.cName AS ShopName
+                FROM tinetkunde ik
+                LEFT JOIN tShop s ON s.kShop = ik.kShop
+                WHERE ik.kInetKunde = @InetKundeId OR ik.cKundenNr = @KundenNr
+                ORDER BY s.cName",
+                new { InetKundeId = kunde.KInetKunde, KundenNr = kunde.CKundenNr })).ToList();
 
             return kunde;
         }
@@ -941,8 +1055,8 @@ namespace NovviaERP.Core.Services
                     k.cKundenNr,
                     a.cName AS KundeName, a.cFirma AS KundeFirma,
                     s.cName AS ShopName,
-                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtNetto,
-                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
+                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtNetto,
+                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100) * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
                 FROM tBestellung b
                 LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
                 LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
@@ -982,8 +1096,8 @@ namespace NovviaERP.Core.Services
                        v.cName AS VersandartName,
                        z.cName AS ZahlungsartName,
                        s.cName AS ShopName,
-                       ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtNetto,
-                       ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
+                       ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtNetto,
+                       ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100) * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
                 FROM tBestellung b
                 LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
                 OUTER APPLY (SELECT TOP 1 * FROM tAdresse WHERE kKunde = k.kKunde AND nStandard = 1 ORDER BY nTyp) a
@@ -994,27 +1108,111 @@ namespace NovviaERP.Core.Services
 
             if (bestellung == null) return null;
 
-            // Positionen
+            // Positionen - cString enthält den Positionstext, ab.cName ist der Artikelname
             bestellung.Positionen = (await conn.QueryAsync<BestellPositionDetail>(@"
-                SELECT bp.*, ab.cName AS CName
+                SELECT bp.kBestellPos, bp.tArtikel_kArtikel, bp.cArtNr,
+                       COALESCE(bp.cString, ab.cName, bp.cArtNr) AS CName,
+                       bp.nAnzahl AS FAnzahl, bp.fVkNetto AS FVKNetto, bp.fMwSt,
+                       CAST(bp.fVkNetto * (1 + bp.fMwSt / 100) AS DECIMAL(18,2)) AS FVKBrutto,
+                       bp.fRabatt, bp.cEinheit, bp.nType AS NPosTyp
                 FROM tbestellpos bp
                 LEFT JOIN tArtikel a ON bp.tArtikel_kArtikel = a.kArtikel
                 LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
                 WHERE bp.tBestellung_kBestellung = @Id
-                ORDER BY bp.kBestellPos", new { Id = bestellungId })).ToList();
+                ORDER BY bp.nSort, bp.kBestellPos", new { Id = bestellungId })).ToList();
 
-            // Falls Position keinen Namen hat, Artikelname verwenden
-            foreach (var pos in bestellung.Positionen.Where(p => string.IsNullOrEmpty(p.CName)))
+            // Rechnungsadresse aus Verkauf.tAuftragAdresse (nTyp = 1)
+            bestellung.Rechnungsadresse = await conn.QuerySingleOrDefaultAsync<AdresseDetail>(@"
+                SELECT kAuftrag AS KAdresse, kKunde AS KKunde, cFirma AS CFirma, cAnrede AS CAnrede,
+                       cTitel AS CTitel, cVorname AS CVorname, cName AS CName, cStrasse AS CStrasse,
+                       cPLZ AS CPLZ, cOrt AS COrt, cLand AS CLand, cTel AS CTel, cMobil AS CMobil,
+                       cFax AS CFax, cMail AS CMail, cZusatz AS CZusatz, cAdressZusatz AS CAdressZusatz,
+                       cBundesland AS CBundesland, cISO AS CISO, nTyp AS NTyp
+                FROM Verkauf.tAuftragAdresse
+                WHERE kAuftrag = @Id AND nTyp = 1", new { Id = bestellungId });
+
+            // Lieferadresse aus Verkauf.tAuftragAdresse (nTyp = 0)
+            bestellung.Lieferadresse = await conn.QuerySingleOrDefaultAsync<AdresseDetail>(@"
+                SELECT kAuftrag AS KAdresse, kKunde AS KKunde, cFirma AS CFirma, cAnrede AS CAnrede,
+                       cTitel AS CTitel, cVorname AS CVorname, cName AS CName, cStrasse AS CStrasse,
+                       cPLZ AS CPLZ, cOrt AS COrt, cLand AS CLand, cTel AS CTel, cMobil AS CMobil,
+                       cFax AS CFax, cMail AS CMail, cZusatz AS CZusatz, cAdressZusatz AS CAdressZusatz,
+                       cBundesland AS CBundesland, cISO AS CISO, nTyp AS NTyp
+                FROM Verkauf.tAuftragAdresse
+                WHERE kAuftrag = @Id AND nTyp = 0", new { Id = bestellungId });
+
+            // Verkauf.tAuftrag Details laden (Steuern, Zahlung, Versand, Vorgangsstatus)
+            try
             {
-                pos.CName = pos.CArtNr;
+                var auftrag = await conn.QuerySingleOrDefaultAsync<dynamic>(@"
+                    SELECT a.nSteuereinstellung, a.nZahlungszielTage, a.fSkonto, a.nSkontoTage,
+                           a.kVorgangsstatus, a.kRueckhaltegrund, a.kFarbe,
+                           a.dVoraussichtlichesLieferdatum, a.nLieferPrioritaet, a.fZusatzGewicht,
+                           a.kArtikelKarton, a.kSprache,
+                           vs.cName AS VorgangsstatusName,
+                           rg.cName AS RueckhaltegrundName,
+                           sp.cNameDeutsch AS SpracheName
+                    FROM Verkauf.tAuftrag a
+                    LEFT JOIN Verkauf.tVorgangsstatus vs ON a.kVorgangsstatus = vs.kVorgangsstatus
+                    LEFT JOIN tRueckhalteGrund rg ON a.kRueckhaltegrund = rg.kRueckhalteGrund
+                    LEFT JOIN tSprache sp ON a.kSprache = sp.kSprache
+                    WHERE a.kAuftrag = @Id", new { Id = bestellungId });
+
+                if (auftrag != null)
+                {
+                    bestellung.NSteuereinstellung = (int)(auftrag.nSteuereinstellung ?? 0);
+                    bestellung.NZahlungsZiel = (int)(auftrag.nZahlungszielTage ?? 0);
+                    bestellung.FSkonto = (decimal)(auftrag.fSkonto ?? 0m);
+                    bestellung.NSkontoTage = (int)(auftrag.nSkontoTage ?? 0);
+                    bestellung.KVorgangsstatus = (int?)auftrag.kVorgangsstatus;
+                    bestellung.VorgangsstatusName = (string?)auftrag.VorgangsstatusName;
+                    bestellung.KRueckhaltegrund = (int?)auftrag.kRueckhaltegrund;
+                    bestellung.RueckhaltegrundName = (string?)auftrag.RueckhaltegrundName;
+                    bestellung.KFarbe = (int?)auftrag.kFarbe;
+                    bestellung.DVoraussichtlichesLieferdatum = (DateTime?)auftrag.dVoraussichtlichesLieferdatum;
+                    bestellung.NLieferPrioritaet = (int)(auftrag.nLieferPrioritaet ?? 0);
+                    bestellung.FZusatzGewicht = (decimal)(auftrag.fZusatzGewicht ?? 0m);
+                    bestellung.KArtikelKarton = (int?)auftrag.kArtikelKarton;
+                    bestellung.KSprache = (int)(auftrag.kSprache ?? 0);
+                    bestellung.SpracheName = (string?)auftrag.SpracheName ?? "Deutsch";
+
+                    // Steuerart-Name berechnen
+                    bestellung.SteuerartName = bestellung.NSteuereinstellung switch
+                    {
+                        0 => "Steuerpflichtige Lieferung",
+                        10 => "Innergemeinschaftliche Lieferung",
+                        15 => "Ausfuhrlieferung (Export)",
+                        20 => "Differenzbesteuert",
+                        _ => $"Steuereinstellung {bestellung.NSteuereinstellung}"
+                    };
+                }
+            }
+            catch
+            {
+                // Verkauf.tAuftrag existiert moeglicherweise nicht
             }
 
-            // Rechnungsadresse
-            bestellung.Rechnungsadresse = await conn.QuerySingleOrDefaultAsync<AdresseDetail>(
-                "SELECT * FROM tAdresse WHERE kAdresse = @Id", new { Id = bestellung.KZahlungsart }); // TODO: Richtigen FK verwenden
+            // Verkauftexte aus Verkauf.tAuftragText laden
+            try
+            {
+                var texte = await conn.QuerySingleOrDefaultAsync<(string? CAnmerkung, string? CDrucktext, string? CHinweis, string? CVorgangsstatus)>(
+                    @"SELECT cAnmerkung, cDrucktext, cHinweis, cVorgangsstatus
+                      FROM Verkauf.tAuftragText
+                      WHERE kAuftrag = @Id", new { Id = bestellungId });
 
-            // Lieferadresse
-            // In JTL sind Adressen an der Bestellung gespeichert (kLieferadresse, kRechnungsadresse)
+                if (texte != default)
+                {
+                    if (!string.IsNullOrEmpty(texte.CAnmerkung))
+                        bestellung.CAnmerkung = texte.CAnmerkung;
+                    bestellung.CDrucktext = texte.CDrucktext;
+                    bestellung.CHinweis = texte.CHinweis;
+                    bestellung.CVorgangsstatus = texte.CVorgangsstatus;
+                }
+            }
+            catch
+            {
+                // Verkauf.tAuftragText existiert moeglicherweise nicht
+            }
 
             return bestellung;
         }
@@ -1045,6 +1243,297 @@ namespace NovviaERP.Core.Services
                     bestellung.CIdentCode,
                     bestellung.CAnmerkung
                 });
+        }
+
+        /// <summary>
+        /// Speichert Verkauftexte in Verkauf.tAuftragText
+        /// </summary>
+        public async Task UpdateAuftragTexteAsync(int kAuftrag, string? cAnmerkung, string? cDrucktext, string? cHinweis, string? cVorgangsstatus)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Prüfen ob Eintrag existiert
+            var exists = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM Verkauf.tAuftragText WHERE kAuftrag = @kAuftrag",
+                new { kAuftrag });
+
+            if (exists > 0)
+            {
+                await conn.ExecuteAsync(@"
+                    UPDATE Verkauf.tAuftragText SET
+                        cAnmerkung = @cAnmerkung,
+                        cDrucktext = @cDrucktext,
+                        cHinweis = @cHinweis,
+                        cVorgangsstatus = @cVorgangsstatus
+                    WHERE kAuftrag = @kAuftrag",
+                    new { kAuftrag, cAnmerkung, cDrucktext, cHinweis, cVorgangsstatus });
+            }
+            else
+            {
+                await conn.ExecuteAsync(@"
+                    INSERT INTO Verkauf.tAuftragText (kAuftrag, cAnmerkung, cDrucktext, cHinweis, cVorgangsstatus)
+                    VALUES (@kAuftrag, @cAnmerkung, @cDrucktext, @cHinweis, @cVorgangsstatus)",
+                    new { kAuftrag, cAnmerkung, cDrucktext, cHinweis, cVorgangsstatus });
+            }
+        }
+
+        /// <summary>
+        /// Erstellt einen Lieferschein für eine Bestellung via JTL Stored Procedures
+        /// </summary>
+        /// <param name="kBestellung">Bestellungs-ID</param>
+        /// <param name="kBenutzer">Benutzer-ID (optional, default 1)</param>
+        /// <param name="hinweis">Optionaler Hinweis</param>
+        /// <returns>Die neue Lieferschein-ID</returns>
+        public async Task<int> CreateLieferscheinAsync(int kBestellung, int kBenutzer = 1, string? hinweis = null)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Bestellung laden um Auftragsnummer zu bekommen
+            var bestellung = await conn.QuerySingleOrDefaultAsync<(string? CBestellNr, int KBestellung)>(
+                "SELECT cBestellNr, kBestellung FROM tBestellung WHERE kBestellung = @kBestellung",
+                new { kBestellung });
+
+            if (bestellung.KBestellung == 0)
+                throw new InvalidOperationException($"Bestellung {kBestellung} nicht gefunden");
+
+            // Nächste Lieferscheinnummer generieren (Format: AuftragNr-001, -002, etc.)
+            var auftragNr = bestellung.CBestellNr ?? kBestellung.ToString();
+            var existingCount = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM tLieferschein WHERE kBestellung = @kBestellung",
+                new { kBestellung });
+            var lieferscheinNr = $"{auftragNr}-{(existingCount + 1):D3}";
+
+            // Lieferschein via SP erstellen
+            var parameters = new DynamicParameters();
+            parameters.Add("@xLieferschein", null);
+            parameters.Add("@kBestellung", kBestellung);
+            parameters.Add("@kBenutzer", kBenutzer);
+            parameters.Add("@cLieferscheinNr", lieferscheinNr);
+            parameters.Add("@cHinweis", hinweis);
+            parameters.Add("@dMailVersand", (DateTime?)null);
+            parameters.Add("@dGedruckt", (DateTime?)null);
+            parameters.Add("@nFulfillment", 0);
+            parameters.Add("@kLieferantenBestellung", 0);
+            parameters.Add("@kSessionId", 0);
+            parameters.Add("@kLieferschein", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
+
+            await conn.ExecuteAsync("Versand.spLieferscheinErstellen", parameters, commandType: System.Data.CommandType.StoredProcedure);
+
+            var kLieferschein = parameters.Get<int>("@kLieferschein");
+
+            if (kLieferschein <= 0)
+                throw new InvalidOperationException($"Lieferschein konnte nicht erstellt werden (kLieferschein={kLieferschein})");
+
+            // Positionen erstellen - alle offenen Positionen der Bestellung
+            var positionen = await conn.QueryAsync<(int KBestellPos, decimal FAnzahl, decimal FGeliefert)>(
+                @"SELECT kBestellPos, fAnzahl, ISNULL(fGeliefert, 0) as fGeliefert
+                  FROM tBestellPos
+                  WHERE kBestellung = @kBestellung",
+                new { kBestellung });
+
+            foreach (var pos in positionen)
+            {
+                var offeneMenge = pos.FAnzahl - pos.FGeliefert;
+                if (offeneMenge <= 0) continue;
+
+                var posParams = new DynamicParameters();
+                posParams.Add("@xLieferscheinPos", null);
+                posParams.Add("@kLieferschein", kLieferschein);
+                posParams.Add("@kBestellPos", pos.KBestellPos);
+                posParams.Add("@fAnzahl", offeneMenge);
+                posParams.Add("@cHinweis", (string?)null);
+                posParams.Add("@nLagerbestandNichtBerechnen", 0);
+                posParams.Add("@kLieferscheinPos", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
+
+                await conn.ExecuteAsync("Versand.spLieferscheinPosErstellen", posParams, commandType: System.Data.CommandType.StoredProcedure);
+            }
+
+            return kLieferschein;
+        }
+
+        /// <summary>
+        /// Holt alle Lieferscheine zu einer Bestellung
+        /// </summary>
+        public async Task<IEnumerable<LieferscheinInfo>> GetLieferscheineAsync(int kBestellung)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<LieferscheinInfo>(
+                @"SELECT kLieferschein, kBestellung, cLieferscheinNr, dErstellt, dGedruckt, dMailVersand, cHinweis
+                  FROM tLieferschein
+                  WHERE kBestellung = @kBestellung
+                  ORDER BY dErstellt DESC",
+                new { kBestellung });
+        }
+
+        public class LieferscheinInfo
+        {
+            public int KLieferschein { get; set; }
+            public int KBestellung { get; set; }
+            public string? CLieferscheinNr { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public DateTime? DGedruckt { get; set; }
+            public DateTime? DMailVersand { get; set; }
+            public string? CHinweis { get; set; }
+        }
+
+        /// <summary>
+        /// Erstellt eine Rechnung für einen Auftrag via JTL Stored Procedure
+        /// WICHTIG: Es muss mindestens ein Lieferschein existieren!
+        /// </summary>
+        public async Task<int> CreateRechnungAsync(int kAuftrag, int kBenutzer = 1)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Prüfen ob Lieferschein existiert
+            var lieferscheine = await conn.QueryAsync<(int KLieferschein, int KLieferscheinPos, decimal FAnzahl)>(
+                @"SELECT ls.kLieferschein, lsp.kLieferscheinPos, lsp.fAnzahl
+                  FROM tLieferschein ls
+                  JOIN tLieferscheinPos lsp ON ls.kLieferschein = lsp.kLieferschein
+                  WHERE ls.kBestellung = @kAuftrag",
+                new { kAuftrag });
+
+            var lieferscheinPosList = lieferscheine.ToList();
+            if (!lieferscheinPosList.Any())
+                throw new InvalidOperationException("Kein Lieferschein vorhanden! Bitte zuerst Lieferschein erstellen.");
+
+            // Rechnungsnummer generieren
+            var nextNr = await conn.ExecuteScalarAsync<int>(
+                "SELECT ISNULL(MAX(CAST(REPLACE(cRechnungsnr, 'IN-', '') AS INT)), 0) + 1 FROM Rechnung.tRechnung WHERE cRechnungsnr LIKE 'IN-%'");
+            var rechnungsNr = $"IN-{nextNr}";
+
+            // Auftragsdaten laden
+            var auftrag = await conn.QuerySingleAsync<(int KKunde, string? CKundennr, int? KZahlungsart, int NZahlungsZiel, decimal FSkonto, int NSkontoTage)>(
+                @"SELECT kKunde, cKundenNr, kZahlungsart, nZahlungsziel, ISNULL(fSkonto, 0), ISNULL(nSkontoTage, 0)
+                  FROM tBestellung WHERE kBestellung = @kAuftrag",
+                new { kAuftrag });
+
+            // Kundendaten laden
+            var kunde = await conn.QuerySingleOrDefaultAsync<(string? CFirma, int? KKundenGruppe, string? CKundengruppe)>(
+                @"SELECT a.cFirma, k.kKundenGruppe, kg.cName
+                  FROM tkunde k
+                  LEFT JOIN tAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                  LEFT JOIN tKundenGruppe kg ON k.kKundenGruppe = kg.kKundenGruppe
+                  WHERE k.kKunde = @kKunde",
+                new { kKunde = auftrag.KKunde });
+
+            // Rechnung erstellen
+            var kRechnung = await conn.ExecuteScalarAsync<int>(
+                @"INSERT INTO Rechnung.tRechnung
+                  (kBenutzer, kKunde, cRechnungsnr, dErstellt, dValutadatum, cKundennr, cKundengruppe, kKundengruppe,
+                   cFirma, nZahlungszielTage, fSkonto, nSkontoInTage, nMahnstop, nStatus, cWaehrung, fWaehrungsfaktor,
+                   kZahlungsart, kSprache, nSteuereinstellung, nRechnungStatus, dLeistungsdatum)
+                  OUTPUT INSERTED.kRechnung
+                  VALUES
+                  (@kBenutzer, @kKunde, @cRechnungsnr, GETDATE(), GETDATE(), @cKundennr, @cKundengruppe, @kKundengruppe,
+                   @cFirma, @nZahlungszielTage, @fSkonto, @nSkontoInTage, 0, 0, 'EUR', 1.0,
+                   @kZahlungsart, 1, 0, 0, GETDATE())",
+                new
+                {
+                    kBenutzer,
+                    kKunde = auftrag.KKunde,
+                    cRechnungsnr = rechnungsNr,
+                    cKundennr = auftrag.CKundennr,
+                    cKundengruppe = kunde.CKundengruppe,
+                    kKundengruppe = kunde.KKundenGruppe,
+                    cFirma = kunde.CFirma,
+                    nZahlungszielTage = auftrag.NZahlungsZiel,
+                    fSkonto = auftrag.FSkonto,
+                    nSkontoInTage = auftrag.NSkontoTage,
+                    kZahlungsart = auftrag.KZahlungsart
+                });
+
+            // Positionen aus Lieferschein-Positionen erstellen
+            var bestellPositionen = await conn.QueryAsync<(int KBestellPos, int KArtikel, string? CArtNr, string? CName, string? CEinheit, decimal FAnzahl, decimal FMwSt, decimal FVkNetto, decimal FRabatt, decimal FGewicht, decimal FEkNetto)>(
+                @"SELECT bp.kBestellPos, bp.kArtikel, bp.cArtNr, bp.cName, bp.cEinheit,
+                         lsp.fAnzahl, bp.fMwSt, bp.fVKNetto, ISNULL(bp.fRabatt, 0),
+                         ISNULL(bp.fGewicht, 0), ISNULL(bp.fEKNetto, 0)
+                  FROM tLieferschein ls
+                  JOIN tLieferscheinPos lsp ON ls.kLieferschein = lsp.kLieferschein
+                  JOIN tBestellPos bp ON lsp.kBestellPos = bp.kBestellPos
+                  WHERE ls.kBestellung = @kAuftrag",
+                new { kAuftrag });
+
+            int nSort = 0;
+            foreach (var pos in bestellPositionen)
+            {
+                nSort++;
+                var kRechnungPosition = await conn.ExecuteScalarAsync<int>(
+                    @"INSERT INTO Rechnung.tRechnungPosition
+                      (kRechnung, kAuftrag, kAuftragPosition, kArtikel, cArtNr, cName, cEinheit,
+                       fAnzahl, fMwSt, fVkNetto, fRabatt, nType, fGewicht, fEkNetto, nSort)
+                      OUTPUT INSERTED.kRechnungPosition
+                      VALUES
+                      (@kRechnung, @kAuftrag, @kBestellPos, @kArtikel, @cArtNr, @cName, @cEinheit,
+                       @fAnzahl, @fMwSt, @fVkNetto, @fRabatt, 1, @fGewicht, @fEkNetto, @nSort)",
+                    new
+                    {
+                        kRechnung,
+                        kAuftrag,
+                        kBestellPos = pos.KBestellPos,
+                        kArtikel = pos.KArtikel,
+                        cArtNr = pos.CArtNr,
+                        cName = pos.CName,
+                        cEinheit = pos.CEinheit,
+                        fAnzahl = pos.FAnzahl,
+                        fMwSt = pos.FMwSt,
+                        fVkNetto = pos.FVkNetto,
+                        fRabatt = pos.FRabatt,
+                        fGewicht = pos.FGewicht,
+                        fEkNetto = pos.FEkNetto,
+                        nSort
+                    });
+
+                // Link zur Lieferschein-Position erstellen
+                var lieferscheinPos = lieferscheinPosList.FirstOrDefault(l => l.KLieferscheinPos > 0);
+                if (lieferscheinPos.KLieferscheinPos > 0)
+                {
+                    await conn.ExecuteAsync(
+                        @"INSERT INTO Rechnung.tRechnungLieferscheinPosition (kRechnungPosition, kLieferscheinPosition, fAnzahlAufRechnung)
+                          VALUES (@kRechnungPosition, @kLieferscheinPos, @fAnzahl)",
+                        new { kRechnungPosition, lieferscheinPos.KLieferscheinPos, fAnzahl = pos.FAnzahl });
+                }
+            }
+
+            // Eckdaten berechnen (falls SP existiert)
+            try
+            {
+                await conn.ExecuteAsync("Rechnung.spRechnungEckdatenBerechnen",
+                    new { kRechnung },
+                    commandType: System.Data.CommandType.StoredProcedure);
+            }
+            catch
+            {
+                // SP eventuell nicht vorhanden - ignorieren
+            }
+
+            return kRechnung;
+        }
+
+        /// <summary>
+        /// Holt alle Rechnungen zu einem Auftrag
+        /// </summary>
+        public async Task<IEnumerable<RechnungInfo>> GetRechnungenAsync(int kAuftrag)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<RechnungInfo>(
+                @"SELECT DISTINCT r.kRechnung, r.cRechnungsnr, r.dErstellt, r.nRechnungStatus,
+                         r.kKunde, r.cKundennr, r.cFirma
+                  FROM Rechnung.tRechnung r
+                  JOIN Rechnung.tRechnungPosition rp ON r.kRechnung = rp.kRechnung
+                  WHERE rp.kAuftrag = @kAuftrag
+                  ORDER BY r.dErstellt DESC",
+                new { kAuftrag });
+        }
+
+        public class RechnungInfo
+        {
+            public int KRechnung { get; set; }
+            public string? CRechnungsnr { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public byte NRechnungStatus { get; set; }
+            public int KKunde { get; set; }
+            public string? CKundennr { get; set; }
+            public string? CFirma { get; set; }
         }
 
         public async Task<IEnumerable<ZahlungsartRef>> GetZahlungsartenAsync()
@@ -1408,6 +1897,29 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
+        /// Lieferanten laden, die für Artikel im Auftrag hinterlegt sind (tLieferantenArtikel)
+        /// </summary>
+        public async Task<IEnumerable<LieferantRef>> GetLieferantenForBestellungAsync(int kBestellung)
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT l.kLieferant AS KLieferant, l.cFirma AS CFirma, l.cStrasse AS CStrasse,
+                       l.cPLZ AS CPLZ, l.cOrt AS COrt, l.cLand AS CLand,
+                       COALESCE(l.cTelZentralle, l.cTelDurchwahl, '') AS CTelefon,
+                       l.cFax AS CFax, l.cEMail AS CEmail,
+                       COUNT(DISTINCT bp.tArtikel_kArtikel) AS ArtikelAnzahl
+                FROM dbo.tLieferant l
+                JOIN dbo.tLieferantenArtikel la ON l.kLieferant = la.tLieferant_kLieferant
+                JOIN dbo.tBestellPos bp ON bp.tArtikel_kArtikel = la.tArtikel_kArtikel
+                WHERE bp.tBestellung_kBestellung = @kBestellung
+                  AND l.cAktiv = 'Y'
+                GROUP BY l.kLieferant, l.cFirma, l.cStrasse, l.cPLZ, l.cOrt, l.cLand,
+                         l.cTelZentralle, l.cTelDurchwahl, l.cFax, l.cEMail
+                ORDER BY l.cFirma";
+            return await conn.QueryAsync<LieferantRef>(sql, new { kBestellung });
+        }
+
+        /// <summary>
         /// Warenlager laden (tWarenLager)
         /// </summary>
         public async Task<IEnumerable<WarenlagerRef>> GetWarenlagerAsync()
@@ -1504,6 +2016,7 @@ namespace NovviaERP.Core.Services
             const string sql = @"
                 SELECT kLieferantenBestellung AS KLieferantenBestellung,
                        kLieferant AS KLieferant, kSprache AS KSprache,
+                       kLieferantenBestellungLA AS KLieferantenBestellungLA,
                        cWaehrungISO AS CWaehrungISO, cInternerKommentar AS CInternerKommentar,
                        cDruckAnmerkung AS CDruckAnmerkung, nStatus AS NStatus,
                        dErstellt AS DErstellt, kFirma AS KFirma, kLager AS KLager,
@@ -1513,7 +2026,101 @@ namespace NovviaERP.Core.Services
                        nDropShipping AS NDropShipping, cFremdbelegnummer AS CFremdbelegnummer
                 FROM dbo.tLieferantenBestellung
                 WHERE kLieferantenBestellung = @id";
-            return await conn.QueryFirstOrDefaultAsync<LieferantenBestellungDto>(sql, new { id = kLieferantenBestellung });
+            var bestellung = await conn.QueryFirstOrDefaultAsync<LieferantenBestellungDto>(sql, new { id = kLieferantenBestellung });
+
+            // Lieferadresse laden wenn vorhanden
+            if (bestellung != null && bestellung.KLieferantenBestellungLA > 0)
+            {
+                bestellung.Lieferadresse = await GetLieferantenBestellungAdresseAsync(bestellung.KLieferantenBestellungLA);
+                bestellung.LieferadresseGleichRechnungsadresse = false;
+            }
+            else if (bestellung != null)
+            {
+                bestellung.LieferadresseGleichRechnungsadresse = true;
+            }
+
+            return bestellung;
+        }
+
+        /// <summary>
+        /// Lieferadresse einer Lieferantenbestellung laden
+        /// </summary>
+        private async Task<LieferantenBestellungAdresse?> GetLieferantenBestellungAdresseAsync(int kLieferantenBestellungLA)
+        {
+            var conn = await GetConnectionAsync();
+            const string sql = @"
+                SELECT kLieferantenBestellungLA AS KLieferantenBestellungLA,
+                       ISNULL(cKundennummer, '') AS CKundennummer,
+                       ISNULL(cFirma, '') AS CFirma,
+                       ISNULL(cFirmenZusatz, '') AS CFirmenZusatz,
+                       ISNULL(cAnrede, '') AS CAnrede,
+                       ISNULL(cTitel, '') AS CTitel,
+                       ISNULL(cVorname, '') AS CVorname,
+                       ISNULL(cNachname, '') AS CNachname,
+                       ISNULL(cStrasse, '') AS CStrasse,
+                       ISNULL(cAdresszusatz, '') AS CAdresszusatz,
+                       ISNULL(cPLZ, '') AS CPLZ,
+                       ISNULL(cOrt, '') AS COrt,
+                       ISNULL(cBundesland, '') AS CBundesland,
+                       ISNULL(cLandISO, 'DE') AS CLandISO,
+                       ISNULL(cTel, '') AS CTel,
+                       ISNULL(cFax, '') AS CFax,
+                       ISNULL(cMobil, '') AS CMobil,
+                       ISNULL(cMail, '') AS CMail
+                FROM dbo.tLieferantenBestellungLA
+                WHERE kLieferantenBestellungLA = @id";
+            return await conn.QueryFirstOrDefaultAsync<LieferantenBestellungAdresse>(sql, new { id = kLieferantenBestellungLA });
+        }
+
+        /// <summary>
+        /// Lieferadresse einer Lieferantenbestellung erstellen oder aktualisieren
+        /// </summary>
+        private async Task<int> SaveLieferantenBestellungAdresseAsync(LieferantenBestellungAdresse adresse)
+        {
+            var conn = await GetConnectionAsync();
+
+            if (adresse.KLieferantenBestellungLA > 0)
+            {
+                // Update existing
+                const string updateSql = @"
+                    UPDATE dbo.tLieferantenBestellungLA SET
+                        cKundennummer = @CKundennummer,
+                        cFirma = @CFirma,
+                        cFirmenZusatz = @CFirmenZusatz,
+                        cAnrede = @CAnrede,
+                        cTitel = @CTitel,
+                        cVorname = @CVorname,
+                        cNachname = @CNachname,
+                        cStrasse = @CStrasse,
+                        cAdresszusatz = @CAdresszusatz,
+                        cPLZ = @CPLZ,
+                        cOrt = @COrt,
+                        cBundesland = @CBundesland,
+                        cLandISO = @CLandISO,
+                        cTel = @CTel,
+                        cFax = @CFax,
+                        cMobil = @CMobil,
+                        cMail = @CMail
+                    WHERE kLieferantenBestellungLA = @KLieferantenBestellungLA";
+                await conn.ExecuteAsync(updateSql, adresse);
+                return adresse.KLieferantenBestellungLA;
+            }
+            else
+            {
+                // Insert new
+                const string insertSql = @"
+                    INSERT INTO dbo.tLieferantenBestellungLA (
+                        cKundennummer, cFirma, cFirmenZusatz, cAnrede, cTitel, cVorname, cNachname,
+                        cStrasse, cAdresszusatz, cPLZ, cOrt, cBundesland, cLandISO,
+                        cTel, cFax, cMobil, cMail
+                    ) VALUES (
+                        @CKundennummer, @CFirma, @CFirmenZusatz, @CAnrede, @CTitel, @CVorname, @CNachname,
+                        @CStrasse, @CAdresszusatz, @CPLZ, @COrt, @CBundesland, @CLandISO,
+                        @CTel, @CFax, @CMobil, @CMail
+                    );
+                    SELECT SCOPE_IDENTITY();";
+                return await conn.QuerySingleAsync<int>(insertSql, adresse);
+            }
         }
 
         /// <summary>
@@ -1592,6 +2199,13 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
 
+            // Lieferadresse speichern wenn abweichend
+            int kLieferantenBestellungLA = 0;
+            if (!bestellung.LieferadresseGleichRechnungsadresse && bestellung.Lieferadresse != null)
+            {
+                kLieferantenBestellungLA = await SaveLieferantenBestellungAdresseAsync(bestellung.Lieferadresse);
+            }
+
             // XML fuer Positionen erstellen
             var posXml = BuildPositionenXml(bestellung.Positionen);
 
@@ -1599,7 +2213,7 @@ namespace NovviaERP.Core.Services
             p.Add("@kLieferant", bestellung.KLieferant);
             p.Add("@kSprache", bestellung.KSprache);
             p.Add("@kLieferantenBestellungRA", 0);
-            p.Add("@kLieferantenBestellungLA", 0);
+            p.Add("@kLieferantenBestellungLA", kLieferantenBestellungLA);
             p.Add("@cWaehrungISO", bestellung.CWaehrungISO ?? "EUR");
             p.Add("@cInternerKommentar", bestellung.CInternerKommentar ?? "");
             p.Add("@cDruckAnmerkung", bestellung.CDruckAnmerkung ?? "");
@@ -1636,12 +2250,24 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
 
+            // Lieferadresse speichern/aktualisieren wenn abweichend
+            int kLieferantenBestellungLA = 0;
+            if (!bestellung.LieferadresseGleichRechnungsadresse && bestellung.Lieferadresse != null)
+            {
+                // Bestehende Adress-ID verwenden falls vorhanden
+                if (bestellung.KLieferantenBestellungLA > 0)
+                {
+                    bestellung.Lieferadresse.KLieferantenBestellungLA = bestellung.KLieferantenBestellungLA;
+                }
+                kLieferantenBestellungLA = await SaveLieferantenBestellungAdresseAsync(bestellung.Lieferadresse);
+            }
+
             var p = new DynamicParameters();
             p.Add("@kLieferantenBestellung", bestellung.KLieferantenBestellung);
             p.Add("@kLieferant", bestellung.KLieferant);
             p.Add("@kSprache", bestellung.KSprache);
             p.Add("@kLieferantenBestellungRA", 0);
-            p.Add("@kLieferantenBestellungLA", 0);
+            p.Add("@kLieferantenBestellungLA", kLieferantenBestellungLA);
             p.Add("@cWaehrungISO", bestellung.CWaehrungISO ?? "EUR");
             p.Add("@cInternerKommentar", bestellung.CInternerKommentar ?? "");
             p.Add("@cDruckAnmerkung", bestellung.CDruckAnmerkung ?? "");
@@ -1683,6 +2309,75 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
             const string sql = "UPDATE dbo.tLieferantenBestellung SET nDeleted = 1 WHERE kLieferantenBestellung = @id";
             await conn.ExecuteAsync(sql, new { id = kLieferantenBestellung });
+        }
+
+        /// <summary>
+        /// Lieferantenbestellung aus Kundenauftrag erstellen
+        /// </summary>
+        public async Task<int> CreateLieferantenbestellungFromAuftragAsync(int kBestellung, int kLieferant)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Auftrag mit Positionen laden
+            var auftrag = await GetBestellungByIdAsync(kBestellung);
+            if (auftrag == null)
+                throw new Exception("Auftrag nicht gefunden");
+
+            var positionen = auftrag.Positionen;
+            if (!positionen.Any())
+                throw new Exception("Keine Positionen im Auftrag gefunden");
+
+            // Lieferanten-Artikeldaten laden (EK-Preise)
+            var liefPositionen = new List<LieferantenBestellungPosition>();
+            int sort = 1;
+
+            foreach (var pos in positionen)
+            {
+                if (pos.TArtikel_KArtikel == null || pos.TArtikel_KArtikel <= 0) continue;
+
+                // EK-Preis vom Lieferanten holen
+                var ekInfo = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
+                    SELECT la.fEKNetto, la.cArtNr AS cLieferantenArtNr, la.cBezeichnung AS cLieferantenBezeichnung,
+                           la.nLiefertage
+                    FROM tLieferantenArtikel la
+                    WHERE la.tArtikel_kArtikel = @kArtikel AND la.tLieferant_kLieferant = @kLieferant",
+                    new { kArtikel = pos.TArtikel_KArtikel, kLieferant });
+
+                var liefPos = new LieferantenBestellungPosition
+                {
+                    KArtikel = pos.TArtikel_KArtikel.Value,
+                    CArtNr = pos.CArtNr ?? "",
+                    CName = pos.CName ?? "",
+                    FMenge = pos.FAnzahl,
+                    FEKNetto = ekInfo?.fEKNetto ?? 0,
+                    CLieferantenArtNr = ekInfo?.cLieferantenArtNr ?? "",
+                    CLieferantenBezeichnung = ekInfo?.cLieferantenBezeichnung ?? pos.CName ?? "",
+                    NLiefertage = ekInfo?.nLiefertage ?? 0,
+                    NPosTyp = 1,
+                    NSort = sort++
+                };
+                liefPositionen.Add(liefPos);
+            }
+
+            if (!liefPositionen.Any())
+                throw new Exception("Keine Artikel konnten dem Lieferanten zugeordnet werden");
+
+            // Lieferantenbestellung erstellen
+            var bestellung = new LieferantenBestellungDto
+            {
+                KLieferant = kLieferant,
+                KSprache = 1,
+                CWaehrungISO = "EUR",
+                CInternerKommentar = $"Erstellt aus Auftrag {kBestellung}",
+                NStatus = 5, // Entwurf
+                DErstellt = DateTime.Now,
+                KFirma = 1,
+                KLager = 0,
+                Positionen = liefPositionen,
+                LieferadresseGleichRechnungsadresse = true
+            };
+
+            return await CreateLieferantenBestellungAsync(bestellung);
         }
 
         /// <summary>
@@ -1857,6 +2552,7 @@ namespace NovviaERP.Core.Services
             public string CTelefon { get; set; } = "";
             public string CFax { get; set; } = "";
             public string CEmail { get; set; } = "";
+            public int ArtikelAnzahl { get; set; }
         }
 
         public class WarenlagerRef
@@ -1939,6 +2635,7 @@ namespace NovviaERP.Core.Services
             public int KLieferantenBestellung { get; set; }
             public int KLieferant { get; set; }
             public int KSprache { get; set; } = 1;
+            public int KLieferantenBestellungLA { get; set; }
             public string CWaehrungISO { get; set; } = "EUR";
             public string CInternerKommentar { get; set; } = "";
             public string CDruckAnmerkung { get; set; } = "";
@@ -1953,6 +2650,32 @@ namespace NovviaERP.Core.Services
             public int NDropShipping { get; set; }
             public string CFremdbelegnummer { get; set; } = "";
             public List<LieferantenBestellungPosition> Positionen { get; set; } = new();
+
+            // Lieferadresse - wenn null oder LieferadresseGleichRechnungsadresse=true wird Firmenadresse verwendet
+            public bool LieferadresseGleichRechnungsadresse { get; set; } = true;
+            public LieferantenBestellungAdresse? Lieferadresse { get; set; }
+        }
+
+        public class LieferantenBestellungAdresse
+        {
+            public int KLieferantenBestellungLA { get; set; }
+            public string CKundennummer { get; set; } = "";
+            public string CFirma { get; set; } = "";
+            public string CFirmenZusatz { get; set; } = "";
+            public string CAnrede { get; set; } = "";
+            public string CTitel { get; set; } = "";
+            public string CVorname { get; set; } = "";
+            public string CNachname { get; set; } = "";
+            public string CStrasse { get; set; } = "";
+            public string CAdresszusatz { get; set; } = "";
+            public string CPLZ { get; set; } = "";
+            public string COrt { get; set; } = "";
+            public string CBundesland { get; set; } = "";
+            public string CLandISO { get; set; } = "DE";
+            public string CTel { get; set; } = "";
+            public string CFax { get; set; } = "";
+            public string CMobil { get; set; } = "";
+            public string CMail { get; set; } = "";
         }
 
         public class ArtikelFuerLieferant
@@ -1987,7 +2710,7 @@ namespace NovviaERP.Core.Services
         /// <summary>
         /// Auftrag aus Import-Daten erstellen
         /// </summary>
-        public async Task<int> CreateAuftragFromImportAsync(string kundenNr, List<AuftragImportPosition> positionen, string zusatztext, bool ueberPositionen)
+        public async Task<int> CreateAuftragFromImportAsync(string kundenNr, List<AuftragImportPosition> positionen, string zusatztext, bool ueberPositionen, DateTime? mindestMHD = null)
         {
             var conn = await GetConnectionAsync();
 
@@ -2006,6 +2729,14 @@ namespace NovviaERP.Core.Services
                 "SELECT MAX(CAST(cBestellNr AS INT)) FROM dbo.tBestellung WHERE ISNUMERIC(cBestellNr) = 1");
             var neueBestellNr = ((maxNr ?? 0) + 1).ToString();
 
+            // Anmerkung mit MHD ergänzen
+            var anmerkung = zusatztext;
+            if (mindestMHD.HasValue)
+            {
+                var mhdText = $"[Mindest-MHD: {mindestMHD.Value:dd.MM.yyyy}]";
+                anmerkung = string.IsNullOrEmpty(anmerkung) ? mhdText : $"{mhdText}\n{anmerkung}";
+            }
+
             // Bestellung anlegen
             var bestellungId = await conn.QuerySingleAsync<int>(@"
                 INSERT INTO dbo.tBestellung (
@@ -2019,7 +2750,7 @@ namespace NovviaERP.Core.Services
                 new {
                     BestellNr = neueBestellNr,
                     KundeId = (int)kunde.kKunde,
-                    Anmerkung = zusatztext
+                    Anmerkung = anmerkung
                 });
 
             decimal gesamtNetto = 0;
@@ -2098,6 +2829,7 @@ namespace NovviaERP.Core.Services
             public string ArtNr { get; set; } = "";
             public decimal Menge { get; set; }
             public decimal Preis { get; set; }
+            public DateTime? MindestMHD { get; set; }
         }
 
         #endregion

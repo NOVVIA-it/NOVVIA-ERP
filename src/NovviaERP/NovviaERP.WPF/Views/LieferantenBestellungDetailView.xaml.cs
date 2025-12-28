@@ -111,6 +111,26 @@ namespace NovviaERP.WPF.Views
             if (bestellung.NDropShipping == 1)
                 rbDropshipping.IsChecked = true;
 
+            // Lieferadresse laden
+            chkLieferadresseGleich.IsChecked = bestellung.LieferadresseGleichRechnungsadresse;
+            if (!bestellung.LieferadresseGleichRechnungsadresse && bestellung.Lieferadresse != null)
+            {
+                txtLAAnrede.Text = bestellung.Lieferadresse.CAnrede;
+                txtLATitel.Text = bestellung.Lieferadresse.CTitel;
+                txtLAVorname.Text = bestellung.Lieferadresse.CVorname;
+                txtLANachname.Text = bestellung.Lieferadresse.CNachname;
+                txtLAFirma.Text = bestellung.Lieferadresse.CFirma;
+                txtLAFirmenzusatz.Text = bestellung.Lieferadresse.CFirmenZusatz;
+                txtLAStrasse.Text = bestellung.Lieferadresse.CStrasse;
+                txtLAPLZ.Text = bestellung.Lieferadresse.CPLZ;
+                txtLAOrt.Text = bestellung.Lieferadresse.COrt;
+                txtLABundesland.Text = bestellung.Lieferadresse.CBundesland;
+                txtLAEmail.Text = bestellung.Lieferadresse.CMail;
+                txtLAFax.Text = bestellung.Lieferadresse.CFax;
+                txtLATelefon.Text = bestellung.Lieferadresse.CTel;
+                txtLAMobil.Text = bestellung.Lieferadresse.CMobil;
+            }
+
             var positionen = await _coreService.GetLieferantenBestellungPositionenAsync(bestellungId);
             _positionen.Clear();
             foreach (var pos in positionen)
@@ -337,8 +357,32 @@ namespace NovviaERP.WPF.Views
                     CBezugsAuftragsNummer = txtBezugsAuftragsNummer.Text,
                     NDropShipping = rbDropshipping.IsChecked == true ? 1 : 0,
                     CFremdbelegnummer = txtFremdbelegnummer.Text,
-                    Positionen = _positionen.Select(p => p.ToDto()).ToList()
+                    Positionen = _positionen.Select(p => p.ToDto()).ToList(),
+                    LieferadresseGleichRechnungsadresse = chkLieferadresseGleich.IsChecked == true
                 };
+
+                // Lieferadresse hinzufuegen wenn abweichend
+                if (chkLieferadresseGleich.IsChecked != true)
+                {
+                    bestellung.Lieferadresse = new CoreService.LieferantenBestellungAdresse
+                    {
+                        CAnrede = txtLAAnrede.Text,
+                        CTitel = txtLATitel.Text,
+                        CVorname = txtLAVorname.Text,
+                        CNachname = txtLANachname.Text,
+                        CFirma = txtLAFirma.Text,
+                        CFirmenZusatz = txtLAFirmenzusatz.Text,
+                        CStrasse = txtLAStrasse.Text,
+                        CPLZ = txtLAPLZ.Text,
+                        COrt = txtLAOrt.Text,
+                        CBundesland = txtLABundesland.Text,
+                        CLandISO = "DE", // TODO: Land aus ComboBox
+                        CMail = txtLAEmail.Text,
+                        CFax = txtLAFax.Text,
+                        CTel = txtLATelefon.Text,
+                        CMobil = txtLAMobil.Text
+                    };
+                }
 
                 int bestellungId;
                 if (_bestellungId.HasValue)

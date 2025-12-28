@@ -230,12 +230,37 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void Rechnung_Click(object sender, RoutedEventArgs e)
+        private async void Rechnung_Click(object sender, RoutedEventArgs e)
         {
-            if (_bestellung != null)
+            if (_bestellung == null) return;
+
+            var result = MessageBox.Show(
+                $"Rechnung für Auftrag {_bestellung.CBestellNr} erstellen?\n\nHinweis: Ein Lieferschein muss bereits existieren.",
+                "Rechnung erstellen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
             {
-                MessageBox.Show($"Rechnung fuer Auftrag {_bestellung.CBestellNr} erstellen\n(wird implementiert)",
-                    "Rechnung", MessageBoxButton.OK, MessageBoxImage.Information);
+                var kRechnung = await _coreService.CreateRechnungAsync(_bestellung.KBestellung);
+                var rechnungen = await _coreService.GetRechnungenAsync(_bestellung.KBestellung);
+                var neueRechnung = rechnungen.FirstOrDefault(r => r.KRechnung == kRechnung);
+
+                MessageBox.Show(
+                    $"Rechnung {neueRechnung?.CRechnungsnr ?? kRechnung.ToString()} wurde erstellt!",
+                    "Erfolg",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Fehler beim Erstellen der Rechnung:\n\n{ex.Message}",
+                    "Fehler",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 

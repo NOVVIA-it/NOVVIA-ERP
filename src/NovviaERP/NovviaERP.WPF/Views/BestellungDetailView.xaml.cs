@@ -76,9 +76,34 @@ namespace NovviaERP.WPF.Views
                 txtLieferadresse.Text = FormatAdresse(la?.CFirma, $"{la?.CVorname} {la?.CName}".Trim(),
                     la?.CStrasse, la?.CPLZ, la?.COrt, la?.CLand);
 
-                // Kundenkommentar / Anmerkung
-                txtKundenkommentar.Text = ""; // TODO: Kundenkommentar aus Bestellung
-                txtAnmerkung.Text = _bestellung.CAnmerkung ?? "";
+                // Details-Tab (JTL-Style) befuellen
+                // Auftragsstatus
+                txtDetailVorgangsstatus.Text = _bestellung.VorgangsstatusName ?? "Auftrag freigegeben";
+                txtRueckhaltegrund.Text = _bestellung.RueckhaltegrundName ?? "";
+
+                // Steuern
+                txtSteuerart.Text = _bestellung.SteuerartName ?? "Steuerpflichtige Lieferung";
+
+                // Zahlung
+                txtDetailZahlungsart.Text = _bestellung.ZahlungsartName ?? "";
+                txtZahlungsziel.Text = _bestellung.NZahlungsZiel.ToString();
+                txtSkontoProzent.Text = _bestellung.FSkonto.ToString("N1");
+                txtSkontoTage.Text = _bestellung.NSkontoTage.ToString();
+
+                // Versand
+                txtVoraussLieferdatum.Text = _bestellung.DVoraussichtlichesLieferdatum?.ToString("dd.MM.yyyy") ?? "";
+                txtDetailVersandart.Text = _bestellung.VersandartName ?? "";
+                txtDetailZusatzgewicht.Text = _bestellung.FZusatzGewicht.ToString("N3");
+                txtLieferprioritaet.Text = _bestellung.NLieferPrioritaet.ToString();
+
+                // Referenzen
+                txtDetailSprache.Text = _bestellung.SpracheName ?? "Deutsch";
+
+                // Verkauftexte (aus Verkauf.tAuftragText - fuer Texte-Tab)
+                txtTextAnmerkung.Text = _bestellung.CAnmerkung ?? "";
+                txtDrucktext.Text = _bestellung.CDrucktext ?? "";
+                txtHinweis.Text = _bestellung.CHinweis ?? "";
+                txtVorgangsstatus.Text = _bestellung.CVorgangsstatus ?? "";
 
                 // Positionen
                 dgPositionen.ItemsSource = _bestellung.Positionen;
@@ -152,9 +177,10 @@ namespace NovviaERP.WPF.Views
 
         private void KundeOeffnen_Click(object sender, MouseButtonEventArgs e)
         {
-            if (_kundeId > 0)
+            if (_kundeId > 0 && _bestellung != null)
             {
-                var kundeDetail = new KundeDetailView(_kundeId);
+                // Bestellungs-ID übergeben für Zurück-Navigation
+                var kundeDetail = new KundeDetailView(_kundeId, _bestellung.KBestellung);
                 if (Window.GetWindow(this) is MainWindow main)
                     main.ShowContent(kundeDetail);
             }
@@ -543,9 +569,17 @@ namespace NovviaERP.WPF.Views
                 }
 
                 _bestellung.CInetBestellNr = txtExterneNr.Text;
-                _bestellung.CAnmerkung = txtAnmerkung.Text;
+                _bestellung.CAnmerkung = txtTextAnmerkung.Text;
 
                 await _core.UpdateBestellungAsync(_bestellung);
+
+                // Verkauftexte speichern (Verkauf.tAuftragText)
+                await _core.UpdateAuftragTexteAsync(
+                    _bestellung.KBestellung,
+                    txtTextAnmerkung.Text,
+                    txtDrucktext.Text,
+                    txtHinweis.Text,
+                    txtVorgangsstatus.Text);
 
                 // Eigene Felder speichern (nur geaenderte)
                 await SpeichereEigeneFelderAsync();
@@ -590,16 +624,157 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void Lieferschein_Click(object sender, RoutedEventArgs e)
+        private async void Lieferschein_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show($"Lieferschein fuer Auftrag {_bestellung?.CBestellNr} erstellen...\n\n(Funktion folgt)",
-                "Lieferschein", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_bestellung == null) return;
+
+            var result = MessageBox.Show(
+                $"Lieferschein für Auftrag {_bestellung.CBestellNr} erstellen?\n\nAlle offenen Positionen werden übernommen.",
+                "Lieferschein erstellen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                txtStatus.Text = "Erstelle Lieferschein...";
+                var kLieferschein = await _core.CreateLieferscheinAsync(_bestellung.KBestellung);
+
+                // Lieferscheinnummer holen
+                var lieferscheine = await _core.GetLieferscheineAsync(_bestellung.KBestellung);
+                var neuerLieferschein = lieferscheine.FirstOrDefault(l => l.KLieferschein == kLieferschein);
+
+                txtStatus.Text = "";
+                MessageBox.Show(
+                    $"Lieferschein {neuerLieferschein?.CLieferscheinNr ?? kLieferschein.ToString()} wurde erstellt!",
+                    "Erfolg",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "";
+                MessageBox.Show(
+                    $"Fehler beim Erstellen des Lieferscheins:\n\n{ex.Message}",
+                    "Fehler",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
-        private void Rechnung_Click(object sender, RoutedEventArgs e)
+        private async void Rechnung_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show($"Rechnung fuer Auftrag {_bestellung?.CBestellNr} erstellen...\n\n(Funktion folgt)",
-                "Rechnung", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_bestellung == null) return;
+
+            var result = MessageBox.Show(
+                $"Rechnung für Auftrag {_bestellung.CBestellNr} erstellen?\n\nHinweis: Ein Lieferschein muss bereits existieren.",
+                "Rechnung erstellen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                txtStatus.Text = "Erstelle Rechnung...";
+                var kRechnung = await _core.CreateRechnungAsync(_bestellung.KBestellung);
+
+                // Rechnungsnummer holen
+                var rechnungen = await _core.GetRechnungenAsync(_bestellung.KBestellung);
+                var neueRechnung = rechnungen.FirstOrDefault(r => r.KRechnung == kRechnung);
+
+                txtStatus.Text = "";
+                MessageBox.Show(
+                    $"Rechnung {neueRechnung?.CRechnungsnr ?? kRechnung.ToString()} wurde erstellt!",
+                    "Erfolg",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "";
+                MessageBox.Show(
+                    $"Fehler beim Erstellen der Rechnung:\n\n{ex.Message}",
+                    "Fehler",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private async void Lieferantenbestellung_Click(object sender, RoutedEventArgs e)
+        {
+            if (_bestellung == null) return;
+
+            try
+            {
+                // Lieferanten laden, die für Artikel im Auftrag hinterlegt sind (tLieferantenArtikel)
+                var lieferanten = (await _core.GetLieferantenForBestellungAsync(_bestellung.KBestellung)).ToList();
+                if (!lieferanten.Any())
+                {
+                    MessageBox.Show("Keine Lieferanten für die Artikel im Auftrag hinterlegt!\n\nBitte prüfen Sie die Lieferanten-Zuordnungen in den Artikelstammdaten.",
+                        "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Dialog zur Lieferantenauswahl (Mehrfachauswahl möglich)
+                var dialog = new LieferantenAuswahlDialog(lieferanten);
+                dialog.Owner = Window.GetWindow(this);
+
+                if (dialog.ShowDialog() == true && dialog.SelectedLieferantIds.Any())
+                {
+                    var erstellteBestellungen = new List<int>();
+                    var fehler = new List<string>();
+
+                    foreach (var kLieferant in dialog.SelectedLieferantIds)
+                    {
+                        try
+                        {
+                            txtStatus.Text = $"Erstelle Lieferantenbestellung {erstellteBestellungen.Count + 1}/{dialog.SelectedLieferantIds.Count}...";
+
+                            var liefBestId = await _core.CreateLieferantenbestellungFromAuftragAsync(
+                                _bestellung.KBestellung,
+                                kLieferant);
+
+                            erstellteBestellungen.Add(liefBestId);
+                        }
+                        catch (Exception ex)
+                        {
+                            fehler.Add($"Lieferant {kLieferant}: {ex.Message}");
+                        }
+                    }
+
+                    txtStatus.Text = "";
+
+                    if (erstellteBestellungen.Any())
+                    {
+                        var msg = erstellteBestellungen.Count == 1
+                            ? $"Lieferantenbestellung {erstellteBestellungen[0]} wurde erstellt!"
+                            : $"{erstellteBestellungen.Count} Lieferantenbestellungen wurden erstellt:\n{string.Join(", ", erstellteBestellungen)}";
+
+                        if (fehler.Any())
+                            msg += $"\n\nFehler:\n{string.Join("\n", fehler)}";
+
+                        msg += "\n\nSie finden diese unter Beschaffung > Bestellungen.";
+
+                        MessageBox.Show(msg, "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else if (fehler.Any())
+                    {
+                        MessageBox.Show($"Fehler beim Erstellen:\n\n{string.Join("\n", fehler)}",
+                            "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "";
+                MessageBox.Show(
+                    $"Fehler beim Erstellen der Lieferantenbestellung:\n\n{ex.Message}",
+                    "Fehler",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
         #endregion

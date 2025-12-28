@@ -23,8 +23,35 @@ namespace NovviaERP.WPF.Views
                 txtSuche.Text = initialerSuchbegriff;
                 Loaded += async (s, e) => await SucheArtikelAsync(initialerSuchbegriff);
             }
+            else
+            {
+                // 200 Artikel ohne Suche anzeigen
+                Loaded += async (s, e) => await LadeArtikelAsync();
+            }
 
             txtSuche.Focus();
+        }
+
+        private async Task LadeArtikelAsync()
+        {
+            try
+            {
+                txtStatus.Text = "Lade Artikel...";
+                dgArtikel.ItemsSource = null;
+
+                var artikel = await _core.GetArtikelAsync(null, limit: 200);
+                var liste = artikel.ToList();
+
+                dgArtikel.ItemsSource = liste;
+                txtStatus.Text = $"{liste.Count} Artikel";
+
+                if (liste.Count > 0)
+                    dgArtikel.SelectedIndex = 0;
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
         }
 
         private void TxtSuche_KeyDown(object sender, KeyEventArgs e)

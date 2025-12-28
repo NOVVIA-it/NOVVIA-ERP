@@ -9,28 +9,401 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="20,15">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="Zurueck" Click="Zurueck_Click" Padding="10,5" Margin="0,0,20,0"/>
-                <TextBlock x:Name="txtTitel" Text="Kunde" FontSize="24" FontWeight="SemiBold"/>
-            </StackPanel>
+        <!-- Header -->
+        <Border Background="#0078D4" Padding="15,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Content="Zurück" Click="Zurueck_Click" Padding="10,5" VerticalAlignment="Center"
+                        Background="White" Foreground="#333"/>
+                <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="txtTitel" Text="Kunde" FontSize="18" FontWeight="SemiBold" Foreground="White"/>
+                    <TextBlock Text="Hier koennen Sie die Stammdaten Ihres Kunden erfassen und pflegen."
+                               FontSize="11" Foreground="#cce5ff" Margin="0,2,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <TextBlock x:Name="txtKundenNrHeader" Foreground="White" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
-        <TabControl Grid.Row="1" Margin="20,15,20,0">
-            <!-- Tab: Stammdaten -->
-            <TabItem Header="Stammdaten">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                    <StackPanel x:Name="pnlInhalt">
-                        <TextBlock x:Name="txtStatus" Text="Lade..." FontSize="16"/>
-                    </StackPanel>
-                </ScrollViewer>
+        <!-- Main Content -->
+        <TabControl Grid.Row="1" Margin="10,10,10,5">
+            <!-- Tab: Kundendaten -->
+            <TabItem Header="Kundendaten">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="350"/>
+                        <ColumnDefinition Width="280"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Linke Spalte: Allgemeine Infos + Kundendaten -->
+                    <ScrollViewer Grid.RowSpan="2" VerticalScrollBarVisibility="Auto" Margin="5">
+                        <StackPanel>
+                            <!-- Allgemeine Informationen -->
+                            <GroupBox Header="Allgemeine Informationen" Margin="0,0,0,10">
+                                <Grid Margin="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="28"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Kundennummer:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtKundenNr" Grid.Column="1" IsReadOnly="True" Background="#f8f8f8"/>
+                                    <TextBlock Text="Debitorennr.:" Grid.Column="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtDebitorenNr" Grid.Column="4" IsReadOnly="True" Background="#f8f8f8"/>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Kundendaten -->
+                            <GroupBox Header="Kundendaten" Margin="0,0,0,10">
+                                <Grid Margin="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="8"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Linke Seite -->
+                                    <TextBlock Text="Firma:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtFirma" Grid.Column="1" Grid.ColumnSpan="4"/>
+
+                                    <TextBlock Text="Firmenzusatz:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtFirmenzusatz" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="4"/>
+
+                                    <TextBlock Text="Anrede:" Grid.Row="2" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cmbAnrede" Grid.Row="2" Grid.Column="1" Width="80" HorizontalAlignment="Left">
+                                        <ComboBoxItem Content=""/>
+                                        <ComboBoxItem Content="Herr"/>
+                                        <ComboBoxItem Content="Frau"/>
+                                        <ComboBoxItem Content="Firma"/>
+                                    </ComboBox>
+                                    <TextBlock Text="Titel:" Grid.Row="2" Grid.Column="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtTitel2" Grid.Row="2" Grid.Column="4"/>
+
+                                    <TextBlock Text="Vorname:" Grid.Row="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtVorname" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="4"/>
+
+                                    <TextBlock Text="Nachname:" Grid.Row="4" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtNachname" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="4"/>
+
+                                    <!-- Separator -->
+                                    <TextBlock Text="Strasse/Nr.:" Grid.Row="7" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtStrasse" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="4"/>
+
+                                    <TextBlock Text="Adresszusatz:" Grid.Row="8" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtAdresszusatz" Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="4"/>
+
+                                    <TextBlock Text="PLZ:" Grid.Row="9" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtPLZ" Grid.Row="9" Grid.Column="1" Width="60" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Ort:" Grid.Row="9" Grid.Column="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtOrt" Grid.Row="9" Grid.Column="4"/>
+
+                                    <TextBlock Text="Land:" Grid.Row="10" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cmbLand" Grid.Row="10" Grid.Column="1" Grid.ColumnSpan="4"/>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Kontaktdaten -->
+                            <GroupBox Header="Kontaktdaten" Margin="0,0,0,10">
+                                <Grid Margin="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Text="E-Mail:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtEmail" Grid.Column="1" Grid.ColumnSpan="4"/>
+
+                                    <TextBlock Text="Telefon:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtTelefon" Grid.Row="1" Grid.Column="1"/>
+                                    <TextBlock Text="Mobil:" Grid.Row="1" Grid.Column="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtMobil" Grid.Row="1" Grid.Column="4"/>
+
+                                    <TextBlock Text="Fax:" Grid.Row="2" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtFax" Grid.Row="2" Grid.Column="1"/>
+                                    <TextBlock Text="Webseite:" Grid.Row="2" Grid.Column="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtWebseite" Grid.Row="2" Grid.Column="4"/>
+
+                                    <TextBlock Text="Steuernr.:" Grid.Row="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtSteuernr" Grid.Row="3" Grid.Column="1"/>
+                                    <TextBlock Text="USt-IdNr.:" Grid.Row="3" Grid.Column="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtUstId" Grid.Row="3" Grid.Column="4"/>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Tabs: Adressen, Ansprechpartner, Bankverbindungen, Onlineshop -->
+                            <TabControl Height="220">
+                                <TabItem Header="Adressen">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <DataGrid x:Name="dgAdressen" AutoGenerateColumns="False" IsReadOnly="True"
+                                                  CanUserAddRows="False" HeadersVisibility="Column">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Typ" Binding="{Binding AdressTypText}" Width="100"/>
+                                                <DataGridCheckBoxColumn Header="Standard" Binding="{Binding IstStandard, Mode=OneWay}" Width="60" IsReadOnly="True"/>
+                                                <DataGridTextColumn Header="Vorname" Binding="{Binding CVorname}" Width="80"/>
+                                                <DataGridTextColumn Header="Nachname" Binding="{Binding CName}" Width="100"/>
+                                                <DataGridTextColumn Header="Strasse" Binding="{Binding CStrasse}" Width="150"/>
+                                                <DataGridTextColumn Header="Ort" Binding="{Binding COrt}" Width="100"/>
+                                                <DataGridTextColumn Header="E-Mail" Binding="{Binding CMail}" Width="150"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5">
+                                            <Button Content="Hinzufuegen" Padding="8,4" Margin="0,0,5,0" Click="AdresseHinzufuegen_Click"/>
+                                            <Button Content="Bearbeiten" Padding="8,4" Margin="0,0,5,0" Click="AdresseBearbeiten_Click"/>
+                                            <Button Content="Loeschen" Padding="8,4" Click="AdresseLoeschen_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </TabItem>
+                                <TabItem Header="Ansprechpartner">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <DataGrid x:Name="dgAnsprechpartner" AutoGenerateColumns="False" IsReadOnly="True"
+                                                  CanUserAddRows="False" HeadersVisibility="Column">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Anrede" Binding="{Binding CAnrede}" Width="60"/>
+                                                <DataGridTextColumn Header="Vorname" Binding="{Binding CVorname}" Width="80"/>
+                                                <DataGridTextColumn Header="Nachname" Binding="{Binding CName}" Width="100"/>
+                                                <DataGridTextColumn Header="Abteilung" Binding="{Binding CAbteilung}" Width="100"/>
+                                                <DataGridTextColumn Header="Telefon" Binding="{Binding CTel}" Width="100"/>
+                                                <DataGridTextColumn Header="E-Mail" Binding="{Binding CMail}" Width="150"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5">
+                                            <Button Content="Hinzufuegen" Padding="8,4" Margin="0,0,5,0" Click="AnsprechpartnerHinzufuegen_Click"/>
+                                            <Button Content="Bearbeiten" Padding="8,4" Margin="0,0,5,0" Click="AnsprechpartnerBearbeiten_Click"/>
+                                            <Button Content="Loeschen" Padding="8,4" Click="AnsprechpartnerLoeschen_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </TabItem>
+                                <TabItem Header="Bankverbindungen">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <DataGrid x:Name="dgBankverbindungen" AutoGenerateColumns="False" IsReadOnly="True"
+                                                  CanUserAddRows="False" HeadersVisibility="Column">
+                                            <DataGrid.Columns>
+                                                <DataGridCheckBoxColumn Header="Standard" Binding="{Binding IstStandard, Mode=OneWay}" Width="60" IsReadOnly="True"/>
+                                                <DataGridTextColumn Header="Bankname" Binding="{Binding CBankName}" Width="150"/>
+                                                <DataGridTextColumn Header="Inhaber" Binding="{Binding CInhaber}" Width="120"/>
+                                                <DataGridTextColumn Header="IBAN" Binding="{Binding CIBAN}" Width="180"/>
+                                                <DataGridTextColumn Header="BIC" Binding="{Binding CBIC}" Width="100"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5">
+                                            <Button Content="Hinzufuegen" Padding="8,4" Margin="0,0,5,0" Click="BankverbindungHinzufuegen_Click"/>
+                                            <Button Content="Bearbeiten" Padding="8,4" Margin="0,0,5,0" Click="BankverbindungBearbeiten_Click"/>
+                                            <Button Content="Loeschen" Padding="8,4" Click="BankverbindungLoeschen_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </TabItem>
+                                <TabItem Header="Onlineshop">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <DataGrid x:Name="dgOnlineshop" AutoGenerateColumns="False" IsReadOnly="True"
+                                                  CanUserAddRows="False" HeadersVisibility="Column">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Shop" Binding="{Binding ShopName}" Width="120"/>
+                                                <DataGridTextColumn Header="Benutzername" Binding="{Binding CBenutzername}" Width="120"/>
+                                                <DataGridTextColumn Header="E-Mail" Binding="{Binding CMail}" Width="150"/>
+                                                <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding IstAktiv}" Width="50"/>
+                                                <DataGridTextColumn Header="Rabatt" Binding="{Binding FRabatt, StringFormat=N2}" Width="60"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        <TextBlock Grid.Row="1" Text="Onlineshop-Kunden werden automatisch verknuepft"
+                                                   FontSize="11" Foreground="#666" Margin="5"/>
+                                    </Grid>
+                                </TabItem>
+                            </TabControl>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Mittlere Spalte: Interne Daten + Zahlungen -->
+                    <ScrollViewer Grid.Column="1" Grid.RowSpan="2" VerticalScrollBarVisibility="Auto" Margin="5">
+                        <StackPanel>
+                            <!-- Interne Daten -->
+                            <GroupBox Header="Interne Daten" Margin="0,0,0,10">
+                                <Grid Margin="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                    </Grid.RowDefinitions>
+
+                                    <CheckBox x:Name="chkKassenkunde" Content="Kassenkunde" Grid.ColumnSpan="2"/>
+                                    <CheckBox x:Name="chkGesperrt" Content="Gesperrt" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right"/>
+
+                                    <TextBlock Text="Kunde seit:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtKundeSeit" Grid.Row="1" Grid.Column="1" IsReadOnly="True" Background="#f8f8f8"/>
+
+                                    <TextBlock Text="Kundengruppe:" Grid.Row="2" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cmbKundengruppe" Grid.Row="2" Grid.Column="1"/>
+
+                                    <TextBlock Text="Kundenkategorie:" Grid.Row="3" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cmbKundenkategorie" Grid.Row="3" Grid.Column="1"/>
+
+                                    <TextBlock Text="Herkunft:" Grid.Row="4" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtHerkunft" Grid.Row="4" Grid.Column="1"/>
+
+                                    <TextBlock Text="Sprache:" Grid.Row="5" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cmbSprache" Grid.Row="5" Grid.Column="1">
+                                        <ComboBoxItem Content="Deutsch" IsSelected="True"/>
+                                        <ComboBoxItem Content="Englisch"/>
+                                    </ComboBox>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Zahlungen -->
+                            <GroupBox Header="Zahlungen" Margin="0,0,0,10">
+                                <Grid Margin="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="60"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                    </Grid.RowDefinitions>
+
+                                    <CheckBox x:Name="chkMahnstopp" Content="Mahnstopp" Grid.ColumnSpan="4"/>
+
+                                    <TextBlock Text="Zahlungsziel:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtZahlungsziel" Grid.Row="1" Grid.Column="1" Width="60" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="Rabatt (%):" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtRabatt" Grid.Row="1" Grid.Column="3"/>
+
+                                    <TextBlock Text="Zahlungsart:" Grid.Row="2" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cmbZahlungsart" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3"/>
+
+                                    <TextBlock Text="Kreditlimit:" Grid.Row="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtKreditlimit" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3"/>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Statistik -->
+                            <GroupBox Header="Statistik" Margin="0,0,0,10">
+                                <Grid Margin="5">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="26"/>
+                                        <RowDefinition Height="26"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Text="Bestellungen:" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="txtAnzahlBestellungen" Grid.Column="1" VerticalAlignment="Center" FontWeight="SemiBold"/>
+
+                                    <TextBlock Text="Umsatz:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="txtGesamtUmsatz" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"
+                                               FontWeight="SemiBold" Foreground="#28a745"/>
+                                </Grid>
+                            </GroupBox>
+
+                            <!-- Eigene Felder Expander -->
+                            <Expander Header="Eigene Felder" IsExpanded="False" Margin="0,0,0,10">
+                                <DataGrid x:Name="dgEigeneFelder" AutoGenerateColumns="False" Height="150"
+                                          CanUserAddRows="False" HeadersVisibility="Column">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Feldname" Binding="{Binding FeldName}" Width="120" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Wert" Binding="{Binding Wert}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Expander>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Rechte Spalte: Kundenhistorie -->
+                    <Border Grid.Column="2" Grid.RowSpan="2" Background="White" BorderBrush="#ddd" BorderThickness="1" Margin="5">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Background="#0078D4" Padding="10,8">
+                                <TextBlock Text="Kundenhistorie" Foreground="White" FontWeight="SemiBold"/>
+                            </Border>
+                            <ListBox x:Name="lstHistorie" Grid.Row="1" BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="5">
+                                            <TextBlock Text="{Binding Titel}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Datum}" FontSize="10" Foreground="#999"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                </Grid>
             </TabItem>
 
-            <!-- Tab: Validierung -->
-            <TabItem Header="Validierung">
+            <!-- Tab: Eigene Felder / Validierung -->
+            <TabItem Header="Eigene Felder">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                    <StackPanel MaxWidth="400" HorizontalAlignment="Left">
-                        <GroupBox Header="Validierung" Margin="0,0,0,20">
+                    <StackPanel MaxWidth="500" HorizontalAlignment="Left">
+                        <GroupBox Header="Validierung (Pharma)" Margin="0,0,0,20">
                             <StackPanel Margin="10">
                                 <CheckBox x:Name="chkValAmbient" Content="Ambient" Margin="0,5,0,10"/>
                                 <CheckBox x:Name="chkValCool" Content="Cool" Margin="0,0,0,10"/>
@@ -39,30 +412,53 @@
                             </StackPanel>
                         </GroupBox>
 
-                        <TextBlock Text="Qualifiziert am" FontWeight="Normal" Margin="0,0,0,5"/>
-                        <DatePicker x:Name="dpQualifiziertAm" Width="200" HorizontalAlignment="Left" Margin="0,0,0,15"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="35"/>
+                                <RowDefinition Height="35"/>
+                                <RowDefinition Height="35"/>
+                                <RowDefinition Height="35"/>
+                            </Grid.RowDefinitions>
 
-                        <TextBlock Text="Qualifiziert von" FontWeight="Normal" Margin="0,0,0,5"/>
-                        <TextBox x:Name="txtQualifiziertVon" Height="28" Margin="0,0,0,15"/>
+                            <TextBlock Text="Qualifiziert am:" VerticalAlignment="Center"/>
+                            <DatePicker x:Name="dpQualifiziertAm" Grid.Column="1"/>
 
-                        <TextBlock Text="GDP" FontWeight="Normal" Margin="0,0,0,5"/>
-                        <TextBox x:Name="txtGDP" Height="28" Margin="0,0,0,15"/>
+                            <TextBlock Text="Qualifiziert von:" Grid.Row="1" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtQualifiziertVon" Grid.Row="1" Grid.Column="1"/>
 
-                        <TextBlock Text="GMP" FontWeight="Normal" Margin="0,0,0,5"/>
-                        <TextBox x:Name="txtGMP" Height="28" Margin="0,0,0,15"/>
+                            <TextBlock Text="GDP:" Grid.Row="2" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtGDP" Grid.Row="2" Grid.Column="1"/>
+
+                            <TextBlock Text="GMP:" Grid.Row="3" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtGMP" Grid.Row="3" Grid.Column="1"/>
+                        </Grid>
 
                         <Button Content="Validierung speichern" Click="ValidierungSpeichern_Click"
-                                Padding="15,8" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                Padding="15,8" HorizontalAlignment="Left" Margin="0,20,0,0"
                                 Background="#0078D4" Foreground="White" BorderThickness="0"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
         </TabControl>
 
-        <Border Grid.Row="2" Background="#f0f0f0" Padding="20,10" BorderBrush="#ddd" BorderThickness="0,1,0,0">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Abbrechen" Click="Zurueck_Click" Padding="20,8"/>
-            </StackPanel>
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="White" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="15,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="txtStatus" Foreground="#666" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,8,0"
+                            Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    <Button Content="Abbrechen" Click="Zurueck_Click" Padding="12,8"/>
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>

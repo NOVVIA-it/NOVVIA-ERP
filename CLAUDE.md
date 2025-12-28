@@ -73,6 +73,21 @@ dotnet run --project NovviaERP.API
 - Mandanten: Mandant_1 (NOVVIA), Mandant_2 (NOVVIA_PHARM), Mandant_3, Mandant_5 (Test)
 - User profiles stored in `%APPDATA%\NovviaERP\profile.json`
 
+### Direkter JTL-DB Zugriff (für Entwicklung/Recherche)
+```powershell
+# SQL Server Instanz: S03NOVVIA (nicht JTLWAWI!)
+# Testdatenbank - kann frei abgefragt werden
+
+# Tabellen auflisten
+sqlcmd -S "localhost\S03NOVVIA" -d "Mandant_1" -E -Q "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME LIKE '%Suchbegriff%'"
+
+# Spalten einer Tabelle
+sqlcmd -S "localhost\S03NOVVIA" -d "Mandant_1" -E -Q "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tBestellung'" -s "|" -W
+
+# Daten abfragen
+sqlcmd -S "localhost\S03NOVVIA" -d "Mandant_1" -E -Q "SELECT TOP 5 * FROM tBestellung" -s "|" -W
+```
+
 ## German Language
 The codebase uses German naming conventions:
 - Auftrag = Order, Kunde = Customer, Artikel = Article/Product

@@ -17,7 +17,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Button Content="Zurueck" Click="Zurueck_Click" Padding="10,5"/>
+                <Button Content="Zurück" Click="Zurueck_Click" Padding="10,5"/>
                 <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
                     <TextBlock x:Name="txtTitel" Text="Artikel" FontSize="20" FontWeight="SemiBold"/>
                     <TextBlock x:Name="txtSubtitel" Text="" FontSize="12" Foreground="#666"/>

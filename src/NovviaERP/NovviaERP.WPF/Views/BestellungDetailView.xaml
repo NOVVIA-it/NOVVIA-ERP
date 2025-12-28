@@ -18,7 +18,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Button Content="Zurueck" Click="Zurueck_Click" Padding="10,5" VerticalAlignment="Center"
+                <Button Content="Zurück" Click="Zurueck_Click" Padding="10,5" VerticalAlignment="Center"
                         Background="White" Foreground="#333"/>
                 <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
@@ -222,37 +222,152 @@
 
                     <!-- Tab Content Container -->
                     <Grid Grid.Row="1">
-                        <!-- Details Tab -->
+                        <!-- Details Tab (JTL-Style) -->
                         <ScrollViewer x:Name="pnlDetails" VerticalScrollBarVisibility="Auto">
-                            <StackPanel Margin="10">
-                                <!-- Kundenkommentar -->
-                                <TextBlock Text="Kundenkommentar" FontWeight="SemiBold" Foreground="#666" Margin="0,0,0,5"/>
-                                <TextBox x:Name="txtKundenkommentar" Height="100" AcceptsReturn="True"
-                                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                         Background="#fffef0" BorderBrush="#e0dfc0"/>
+                            <StackPanel Margin="8">
+                                <!-- Auftragsstatus -->
+                                <GroupBox Header="Auftragsstatus" Margin="0,0,0,8" Padding="5">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="26"/>
+                                            <RowDefinition Height="26"/>
+                                            <RowDefinition Height="26"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Vorgangsstatus:" VerticalAlignment="Center" FontSize="11"/>
+                                        <TextBox x:Name="txtDetailVorgangsstatus" Grid.Column="1" FontSize="11"
+                                                 IsReadOnly="True" Background="#f8f8f8"/>
+                                        <TextBlock Text="Vorgangsfarbe:" Grid.Row="1" VerticalAlignment="Center" FontSize="11"/>
+                                        <ComboBox x:Name="cmbVorgangsfarbe" Grid.Row="1" Grid.Column="1" FontSize="11" IsEnabled="False"/>
+                                        <TextBlock Text="Rueckhaltegrund:" Grid.Row="2" VerticalAlignment="Center" FontSize="11"/>
+                                        <TextBox x:Name="txtRueckhaltegrund" Grid.Row="2" Grid.Column="1" FontSize="11"
+                                                 IsReadOnly="True" Background="#f8f8f8"/>
+                                    </Grid>
+                                </GroupBox>
 
-                                <!-- Anmerkung -->
-                                <TextBlock Text="Anmerkung" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
-                                <TextBox x:Name="txtAnmerkung" Height="80" AcceptsReturn="True"
-                                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
+                                <!-- Steuern -->
+                                <GroupBox Header="Steuern" Margin="0,0,0,8" Padding="5">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="26"/>
+                                            <RowDefinition Height="26"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Steuerart:" VerticalAlignment="Center" FontSize="11"/>
+                                        <TextBox x:Name="txtSteuerart" Grid.Column="1" FontSize="11"
+                                                 IsReadOnly="True" Background="#f8f8f8"/>
+                                        <TextBlock Text="Sonderbehdlg.:" Grid.Row="1" VerticalAlignment="Center" FontSize="11"/>
+                                        <ComboBox x:Name="cmbSonderbehandlung" Grid.Row="1" Grid.Column="1" FontSize="11">
+                                            <ComboBoxItem Content="Keine" IsSelected="True"/>
+                                        </ComboBox>
+                                    </Grid>
+                                </GroupBox>
+
+                                <!-- Zahlung -->
+                                <GroupBox Header="Zahlung" Margin="0,0,0,8" Padding="5">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="26"/>
+                                            <RowDefinition Height="26"/>
+                                            <RowDefinition Height="26"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Zahlungsart:" VerticalAlignment="Center" FontSize="11"/>
+                                        <TextBox x:Name="txtDetailZahlungsart" Grid.Column="1" FontSize="11"
+                                                 IsReadOnly="True" Background="#f8f8f8"/>
+                                        <TextBlock Text="Zahlungsziel:" Grid.Row="1" VerticalAlignment="Center" FontSize="11"/>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                            <TextBox x:Name="txtZahlungsziel" Width="50" FontSize="11" IsReadOnly="True" Background="#f8f8f8"/>
+                                            <TextBlock Text=" Tage" VerticalAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Skonto:" Grid.Row="2" VerticalAlignment="Center" FontSize="11"/>
+                                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
+                                            <TextBox x:Name="txtSkontoProzent" Width="40" FontSize="11" IsReadOnly="True" Background="#f8f8f8"/>
+                                            <TextBlock Text=" % in " VerticalAlignment="Center" FontSize="11"/>
+                                            <TextBox x:Name="txtSkontoTage" Width="40" FontSize="11" IsReadOnly="True" Background="#f8f8f8"/>
+                                            <TextBlock Text=" Tagen" VerticalAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </GroupBox>
+
+                                <!-- Versand -->
+                                <GroupBox Header="Versand" Margin="0,0,0,8" Padding="5">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="26"/>
+                                            <RowDefinition Height="26"/>
+                                            <RowDefinition Height="26"/>
+                                            <RowDefinition Height="26"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Vorauss. Lief.:" VerticalAlignment="Center" FontSize="11"/>
+                                        <TextBox x:Name="txtVoraussLieferdatum" Grid.Column="1" FontSize="11"
+                                                 IsReadOnly="True" Background="#f8f8f8"/>
+                                        <TextBlock Text="Versandart:" Grid.Row="1" VerticalAlignment="Center" FontSize="11"/>
+                                        <TextBox x:Name="txtDetailVersandart" Grid.Row="1" Grid.Column="1" FontSize="11"
+                                                 IsReadOnly="True" Background="#f8f8f8"/>
+                                        <TextBlock Text="Zusatzgewicht:" Grid.Row="2" VerticalAlignment="Center" FontSize="11"/>
+                                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
+                                            <TextBox x:Name="txtDetailZusatzgewicht" Width="60" FontSize="11" IsReadOnly="True" Background="#f8f8f8"/>
+                                            <TextBlock Text=" kg" VerticalAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Lieferprioritaet:" Grid.Row="3" VerticalAlignment="Center" FontSize="11"/>
+                                        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
+                                            <TextBox x:Name="txtLieferprioritaet" Width="40" FontSize="11" IsReadOnly="True" Background="#f8f8f8"/>
+                                            <TextBlock Text=" (0=normal)" VerticalAlignment="Center" FontSize="11" Foreground="#999"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </GroupBox>
+
+                                <!-- Referenzen -->
+                                <GroupBox Header="Referenzen" Padding="5">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="26"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Sprache:" VerticalAlignment="Center" FontSize="11"/>
+                                        <TextBox x:Name="txtDetailSprache" Grid.Column="1" FontSize="11"
+                                                 IsReadOnly="True" Background="#f8f8f8"/>
+                                    </Grid>
+                                </GroupBox>
                             </StackPanel>
                         </ScrollViewer>
 
-                        <!-- Texte Tab -->
+                        <!-- Texte Tab (aus Verkauf.tAuftragText) -->
                         <ScrollViewer x:Name="pnlTexte" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
                             <StackPanel Margin="10">
-                                <TextBlock Text="Kopftext" FontWeight="SemiBold" Foreground="#666" Margin="0,0,0,5"/>
-                                <TextBox x:Name="txtKopftext" Height="80" AcceptsReturn="True"
+                                <TextBlock Text="Anmerkung (extern sichtbar)" FontWeight="SemiBold" Foreground="#666" Margin="0,0,0,5"/>
+                                <TextBox x:Name="txtTextAnmerkung" Height="80" AcceptsReturn="True"
                                          TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
 
-                                <TextBlock Text="Fusstext" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
-                                <TextBox x:Name="txtFusstext" Height="80" AcceptsReturn="True"
+                                <TextBlock Text="Drucktext (fuer Dokumente)" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
+                                <TextBox x:Name="txtDrucktext" Height="80" AcceptsReturn="True"
                                          TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
 
-                                <TextBlock Text="Interne Notiz" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
-                                <TextBox x:Name="txtInterneNotiz" Height="60" AcceptsReturn="True"
+                                <TextBlock Text="Hinweis (intern)" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
+                                <TextBox x:Name="txtHinweis" Height="60" AcceptsReturn="True"
                                          TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
                                          Background="#fff8f0" BorderBrush="#e0d0c0"/>
+
+                                <TextBlock Text="Vorgangsstatus" FontWeight="SemiBold" Foreground="#666" Margin="0,15,0,5"/>
+                                <TextBox x:Name="txtVorgangsstatus" Height="30" IsReadOnly="True"
+                                         Background="#f5f5f5"/>
                             </StackPanel>
                         </ScrollViewer>
 
@@ -352,7 +467,7 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Netto-VK (ges.)" Binding="{Binding Summe, StringFormat=N2}" Width="95">
+                            <DataGridTextColumn Header="Netto-VK (ges.)" Binding="{Binding SummeNetto, StringFormat=N2}" Width="95">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -496,6 +611,9 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <Button Content="Lieferschein" Click="Lieferschein_Click" Padding="12,8" Margin="0,0,8,0"/>
                     <Button Content="Rechnung" Click="Rechnung_Click" Padding="12,8" Margin="0,0,8,0"/>
+                    <Button x:Name="btnLieferantenbestellung" Content="Lieferantenbestellung" Click="Lieferantenbestellung_Click"
+                            Padding="12,8" Margin="0,0,8,0" Background="#ffc107" Foreground="#333" BorderThickness="0"
+                            ToolTip="Erstellt eine Lieferantenbestellung aus diesem Auftrag"/>
                     <Button Content="Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,8,0"
                             Background="#0078D4" Foreground="White" BorderThickness="0"/>
                     <Button Content="Abbrechen" Click="Zurueck_Click" Padding="12,8"/>

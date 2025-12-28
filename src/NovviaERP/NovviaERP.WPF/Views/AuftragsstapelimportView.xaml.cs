@@ -160,6 +160,9 @@ namespace NovviaERP.WPF.Views
                 pbProgress.Maximum = _positionen.Count;
                 pbProgress.Value = 0;
 
+                // Mindest-MHD berechnen
+                var mindestMHD = GetMindestMHD();
+
                 // Positionen nach Kunde gruppieren (ein Auftrag pro Kunde)
                 var gruppiertNachKunde = _positionen.GroupBy(p => p.AdressNr).ToList();
                 int erstellteAuftraege = 0;
@@ -174,15 +177,17 @@ namespace NovviaERP.WPF.Views
                             AdressNr = p.AdressNr,
                             ArtNr = p.ArtNr,
                             Menge = p.Menge,
-                            Preis = p.Preis
+                            Preis = p.Preis,
+                            MindestMHD = mindestMHD
                         }).ToList();
 
-                        // Auftrag erstellen
+                        // Auftrag erstellen (mit Mindest-MHD)
                         var auftragId = await _coreService.CreateAuftragFromImportAsync(
                             kundenGruppe.Key,
                             corePositionen,
                             txtZusatztext.Text,
-                            rbUeberPositionen.IsChecked == true);
+                            rbUeberPositionen.IsChecked == true,
+                            mindestMHD);
 
                         if (auftragId > 0)
                         {
@@ -233,6 +238,30 @@ namespace NovviaERP.WPF.Views
             DialogResult = false;
             Close();
         }
+
+        /// <summary>
+        /// Berechnet das Mindest-MHD aus den UI-Eingaben
+        /// </summary>
+        private DateTime? GetMindestMHD()
+        {
+            // Direktes Datum hat Vorrang
+            if (dpMindestMHD.SelectedDate.HasValue)
+                return dpMindestMHD.SelectedDate.Value;
+
+            // Offset aus Text berechnen
+            if (!string.IsNullOrWhiteSpace(txtMHDOffset.Text) &&
+                int.TryParse(txtMHDOffset.Text.Trim(), out int offset) && offset > 0)
+            {
+                var einheit = (cboMHDEinheit.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() ?? "Monate";
+
+                if (einheit == "Monate")
+                    return DateTime.Today.AddMonths(offset);
+                else // Tage
+                    return DateTime.Today.AddDays(offset);
+            }
+
+            return null;
+        }
     }
 
     public class ImportPosition
@@ -243,5 +272,6 @@ namespace NovviaERP.WPF.Views
         public string ArtikelName { get; set; } = "";
         public decimal Menge { get; set; }
         public decimal Preis { get; set; }
+        public DateTime? MindestMHD { get; set; }
     }
 }

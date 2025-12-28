@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,51 +12,208 @@ namespace NovviaERP.WPF.Views
     {
         private readonly CoreService _coreService;
         private readonly int? _kundeId;
+        private readonly int? _returnToBestellungId;
+        private CoreService.KundeDetail? _kunde;
 
-        public KundeDetailView(int? kundeId)
+        public KundeDetailView(int? kundeId, int? returnToBestellungId = null)
         {
             InitializeComponent();
             _kundeId = kundeId;
+            _returnToBestellungId = returnToBestellungId;
             _coreService = App.Services.GetRequiredService<CoreService>();
             txtTitel.Text = kundeId.HasValue ? "Kunde bearbeiten" : "Neuer Kunde";
             Loaded += async (s, e) =>
             {
-                await LadeKundeAsync();
-                await LadeValidierungAsync();
+                try
+                {
+                    await LadeReferenzdatenAsync();
+                    await LadeKundeAsync();
+                    await LadeValidierungAsync();
+                }
+                catch (Exception ex)
+                {
+                    txtStatus.Text = $"Fehler: {ex.Message}";
+                    MessageBox.Show($"Fehler beim Laden:\n\n{ex.Message}\n\n{ex.StackTrace}",
+                        "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             };
+        }
+
+        private async System.Threading.Tasks.Task LadeReferenzdatenAsync()
+        {
+            try
+            {
+                txtStatus.Text = "Lade Referenzdaten...";
+
+                // Kundengruppen
+                var kundengruppen = await _coreService.GetKundengruppenAsync();
+                cmbKundengruppe.Items.Clear();
+                cmbKundengruppe.Items.Add(new ComboBoxItem { Content = "", Tag = (int?)null });
+                foreach (var kg in kundengruppen)
+                {
+                    cmbKundengruppe.Items.Add(new ComboBoxItem { Content = kg.CName, Tag = kg.KKundenGruppe });
+                }
+
+                // Zahlungsarten
+                var zahlungsarten = await _coreService.GetZahlungsartenAsync();
+                cmbZahlungsart.Items.Clear();
+                cmbZahlungsart.Items.Add(new ComboBoxItem { Content = "", Tag = (int?)null });
+                foreach (var za in zahlungsarten)
+                {
+                    cmbZahlungsart.Items.Add(new ComboBoxItem { Content = za.CName, Tag = za.KZahlungsart });
+                }
+
+                // Laender
+                cmbLand.Items.Clear();
+                cmbLand.Items.Add("Deutschland");
+                cmbLand.Items.Add("Oesterreich");
+                cmbLand.Items.Add("Schweiz");
+                cmbLand.SelectedIndex = 0;
+
+                txtStatus.Text = "";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler bei Referenzdaten: {ex.Message}";
+                MessageBox.Show($"Fehler bei Referenzdaten:\n\n{ex.Message}\n\n{ex.StackTrace}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async System.Threading.Tasks.Task LadeKundeAsync()
         {
-            if (!_kundeId.HasValue) { txtStatus.Text = "Neuer Kunde"; return; }
+            if (!_kundeId.HasValue)
+            {
+                txtStatus.Text = "Neuer Kunde";
+                return;
+            }
 
             try
             {
-                var kunde = await _coreService.GetKundeByIdAsync(_kundeId.Value);
-                if (kunde == null) { txtStatus.Text = "Nicht gefunden"; return; }
+                txtStatus.Text = $"Lade Kundendaten (ID: {_kundeId.Value})...";
+                _kunde = await _coreService.GetKundeByIdAsync(_kundeId.Value);
+                if (_kunde == null)
+                {
+                    txtStatus.Text = $"Kunde {_kundeId.Value} nicht gefunden";
+                    MessageBox.Show($"Kunde mit ID {_kundeId.Value} wurde nicht gefunden!",
+                        "Nicht gefunden", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
-                txtStatus.Text = "";
-                pnlInhalt.Children.Clear();
-                AddField("Kd-Nr:", kunde.CKundenNr);
-                var adr = kunde.StandardAdresse;
-                AddField("Firma:", adr?.CFirma);
-                AddField("Anrede:", adr?.CAnrede);
-                AddField("Vorname:", adr?.CVorname);
-                AddField("Nachname:", adr?.CName);
-                AddField("Strasse:", adr?.CStrasse);
-                AddField("PLZ/Ort:", $"{adr?.CPLZ} {adr?.COrt}");
-                AddField("E-Mail:", adr?.CMail);
-                AddField("Telefon:", adr?.CTel);
+                txtStatus.Text = $"Kunde geladen: {_kunde.CKundenNr}";
+
+                // Header
+                txtTitel.Text = $"Kunde - {_kunde.StandardAdresse?.CFirma ?? $"{_kunde.StandardAdresse?.CVorname} {_kunde.StandardAdresse?.CName}".Trim()}";
+                txtKundenNrHeader.Text = $"Kd-Nr: {_kunde.CKundenNr}";
+
+                // Allgemeine Informationen
+                txtKundenNr.Text = _kunde.CKundenNr ?? "";
+                txtDebitorenNr.Text = _kunde.NDebitorennr > 0 ? _kunde.NDebitorennr.ToString() : "";
+
+                // Standard-Adresse in Kundendaten
+                var adr = _kunde.StandardAdresse;
+                if (adr != null)
+                {
+                    txtFirma.Text = adr.CFirma ?? "";
+                    txtFirmenzusatz.Text = adr.CZusatz ?? "";
+                    SetComboBoxByContent(cmbAnrede, adr.CAnrede);
+                    txtTitel2.Text = adr.CTitel ?? "";
+                    txtVorname.Text = adr.CVorname ?? "";
+                    txtNachname.Text = adr.CName ?? "";
+                    txtStrasse.Text = adr.CStrasse ?? "";
+                    txtAdresszusatz.Text = adr.CAdressZusatz ?? "";
+                    txtPLZ.Text = adr.CPLZ ?? "";
+                    txtOrt.Text = adr.COrt ?? "";
+                    SetComboBoxByContent(cmbLand, adr.CLand ?? "Deutschland");
+
+                    // Kontaktdaten
+                    txtEmail.Text = adr.CMail ?? "";
+                    txtTelefon.Text = adr.CTel ?? "";
+                    txtMobil.Text = adr.CMobil ?? "";
+                    txtFax.Text = adr.CFax ?? "";
+                    txtUstId.Text = adr.CUSTID ?? "";
+                }
+
+                txtWebseite.Text = _kunde.CWWW ?? "";
+                txtSteuernr.Text = _kunde.CSteuerNr ?? "";
+
+                // Interne Daten
+                chkKassenkunde.IsChecked = _kunde.CKassenKunde == "J";
+                chkGesperrt.IsChecked = _kunde.CSperre == "J";
+                txtKundeSeit.Text = _kunde.DErstellt?.ToString("dd.MM.yyyy") ?? "";
+                SetComboBoxByTag(cmbKundengruppe, _kunde.KKundenGruppe);
+                // TODO: Kundenkategorie ComboBox befuellen
+                txtHerkunft.Text = _kunde.CHerkunft ?? "";
+
+                // Zahlungen
+                chkMahnstopp.IsChecked = _kunde.NMahnstopp == 1;
+                txtZahlungsziel.Text = _kunde.NZahlungsziel?.ToString() ?? "";
+                txtRabatt.Text = _kunde.FRabatt.ToString("N2");
+                SetComboBoxByTag(cmbZahlungsart, _kunde.KZahlungsart);
+                txtKreditlimit.Text = _kunde.NKreditlimit.ToString();
+
+                // Statistik
+                txtAnzahlBestellungen.Text = _kunde.AnzahlBestellungen.ToString();
+                txtGesamtUmsatz.Text = $"{_kunde.GesamtUmsatz:N2} EUR";
+
+                // DataGrids
+                dgAdressen.ItemsSource = _kunde.Adressen;
+                dgAnsprechpartner.ItemsSource = _kunde.Ansprechpartner;
+                dgBankverbindungen.ItemsSource = _kunde.Bankverbindungen;
+                dgOnlineshop.ItemsSource = _kunde.OnlineshopKunden;
+
+                // Historie (Beispieldaten)
+                LadeHistorie();
+
+                txtStatus.Text = $"Kunde {_kunde.CKundenNr} geladen";
             }
-            catch (Exception ex) { txtStatus.Text = $"Fehler: {ex.Message}"; }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+                MessageBox.Show($"Fehler beim Laden der Kundendaten:\n\n{ex.Message}\n\n{ex.StackTrace}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        private void AddField(string label, string? value)
+        private void LadeHistorie()
         {
-            var sp = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 5) };
-            sp.Children.Add(new TextBlock { Text = label, Width = 100, FontWeight = FontWeights.SemiBold });
-            sp.Children.Add(new TextBlock { Text = value ?? "-" });
-            pnlInhalt.Children.Add(sp);
+            // TODO: Echte Historie aus DB laden
+            var historie = new List<dynamic>
+            {
+                new { Titel = "Kunde wurde erstellt", Datum = _kunde?.DErstellt?.ToString("dd.MM.yyyy HH:mm") ?? "" }
+            };
+            lstHistorie.ItemsSource = historie;
+        }
+
+        private void SetComboBoxByContent(ComboBox cmb, string? content)
+        {
+            if (string.IsNullOrEmpty(content)) return;
+            foreach (var item in cmb.Items)
+            {
+                if (item is ComboBoxItem cbi && cbi.Content?.ToString() == content)
+                {
+                    cmb.SelectedItem = item;
+                    return;
+                }
+                if (item is string s && s == content)
+                {
+                    cmb.SelectedItem = item;
+                    return;
+                }
+            }
+        }
+
+        private void SetComboBoxByTag(ComboBox cmb, int? tag)
+        {
+            if (!tag.HasValue) { cmb.SelectedIndex = 0; return; }
+            foreach (var item in cmb.Items)
+            {
+                if (item is ComboBoxItem cbi && cbi.Tag is int t && t == tag.Value)
+                {
+                    cmb.SelectedItem = item;
+                    return;
+                }
+            }
         }
 
         #region Validierung (JTL Eigene Felder)
@@ -130,10 +288,151 @@ namespace NovviaERP.WPF.Views
 
         #endregion
 
+        #region Speichern
+
+        private async void Speichern_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                txtStatus.Text = "Speichere...";
+
+                if (_kunde == null)
+                {
+                    // Neuer Kunde
+                    _kunde = new CoreService.KundeDetail();
+                }
+
+                // Kunde-Felder
+                _kunde.CWWW = txtWebseite.Text.Trim();
+                _kunde.CSteuerNr = txtSteuernr.Text.Trim();
+                _kunde.CKassenKunde = chkKassenkunde.IsChecked == true ? "J" : "N";
+                _kunde.CSperre = chkGesperrt.IsChecked == true ? "J" : "N";
+                _kunde.KKundenGruppe = (cmbKundengruppe.SelectedItem as ComboBoxItem)?.Tag as int?;
+                _kunde.CHerkunft = txtHerkunft.Text.Trim();
+                _kunde.NMahnstopp = (byte)(chkMahnstopp.IsChecked == true ? 1 : 0);
+                if (int.TryParse(txtZahlungsziel.Text, out var zz)) _kunde.NZahlungsziel = zz;
+                if (decimal.TryParse(txtRabatt.Text, out var rabatt)) _kunde.FRabatt = rabatt;
+                _kunde.KZahlungsart = (cmbZahlungsart.SelectedItem as ComboBoxItem)?.Tag as int?;
+                if (int.TryParse(txtKreditlimit.Text, out var kl)) _kunde.NKreditlimit = kl;
+
+                // Standard-Adresse
+                var adr = _kunde.StandardAdresse ?? new CoreService.AdresseDetail();
+                adr.CFirma = txtFirma.Text.Trim();
+                adr.CZusatz = txtFirmenzusatz.Text.Trim();
+                adr.CAnrede = (cmbAnrede.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                adr.CTitel = txtTitel2.Text.Trim();
+                adr.CVorname = txtVorname.Text.Trim();
+                adr.CName = txtNachname.Text.Trim();
+                adr.CStrasse = txtStrasse.Text.Trim();
+                adr.CAdressZusatz = txtAdresszusatz.Text.Trim();
+                adr.CPLZ = txtPLZ.Text.Trim();
+                adr.COrt = txtOrt.Text.Trim();
+                adr.CLand = cmbLand.SelectedItem?.ToString() ?? "Deutschland";
+                adr.CMail = txtEmail.Text.Trim();
+                adr.CTel = txtTelefon.Text.Trim();
+                adr.CMobil = txtMobil.Text.Trim();
+                adr.CFax = txtFax.Text.Trim();
+                adr.CUSTID = txtUstId.Text.Trim();
+
+                if (_kundeId.HasValue)
+                {
+                    await _coreService.UpdateKundeAsync(_kunde);
+                    // TODO: Adresse separat speichern
+                    txtStatus.Text = "Gespeichert";
+                }
+                else
+                {
+                    var neueId = await _coreService.CreateKundeAsync(_kunde, adr);
+                    txtStatus.Text = $"Kunde {neueId} erstellt";
+                }
+
+                MessageBox.Show("Kunde wurde gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "Fehler beim Speichern";
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Adressen Buttons
+
+        private void AdresseHinzufuegen_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Adresse hinzufuegen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void AdresseBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgAdressen.SelectedItem is CoreService.AdresseDetail adr)
+            {
+                MessageBox.Show($"Adresse bearbeiten: {adr.CStrasse}, {adr.COrt}\n\nNoch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private void AdresseLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Adresse loeschen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        #endregion
+
+        #region Ansprechpartner Buttons
+
+        private void AnsprechpartnerHinzufuegen_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Ansprechpartner hinzufuegen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void AnsprechpartnerBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Ansprechpartner bearbeiten - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void AnsprechpartnerLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Ansprechpartner loeschen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        #endregion
+
+        #region Bankverbindung Buttons
+
+        private void BankverbindungHinzufuegen_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Bankverbindung hinzufuegen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void BankverbindungBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Bankverbindung bearbeiten - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void BankverbindungLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Bankverbindung loeschen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        #endregion
+
         private void Zurueck_Click(object sender, RoutedEventArgs e)
         {
             if (Window.GetWindow(this) is MainWindow main)
-                main.ShowContent(App.Services.GetRequiredService<KundenView>());
+            {
+                // Wenn wir von einer Bestellung kommen, zurück zur Bestellung
+                if (_returnToBestellungId.HasValue)
+                {
+                    var bestellungView = new BestellungDetailView();
+                    bestellungView.LadeBestellung(_returnToBestellungId.Value);
+                    main.ShowContent(bestellungView);
+                }
+                else
+                {
+                    main.ShowContent(App.Services.GetRequiredService<KundenView>());
+                }
+            }
         }
     }
 }

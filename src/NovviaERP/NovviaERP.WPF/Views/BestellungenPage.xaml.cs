@@ -107,21 +107,71 @@ namespace NovviaERP.WPF.Views
             btnVersenden.IsEnabled = hasSelection;
         }
 
-        private void Rechnung_Click(object sender, RoutedEventArgs e)
+        private async void Rechnung_Click(object sender, RoutedEventArgs e)
         {
-            if (dgBestellungen.SelectedItem is CoreService.BestellungUebersicht best)
+            if (dgBestellungen.SelectedItem is not CoreService.BestellungUebersicht best) return;
+
+            var result = MessageBox.Show(
+                $"Rechnung für Auftrag {best.CBestellNr} erstellen?\n\nHinweis: Ein Lieferschein muss bereits existieren.",
+                "Rechnung erstellen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
             {
-                MessageBox.Show($"Rechnung fuer Auftrag {best.CBestellNr} erstellen\n(wird implementiert)",
-                    "Rechnung", MessageBoxButton.OK, MessageBoxImage.Information);
+                var kRechnung = await _coreService.CreateRechnungAsync(best.KBestellung);
+                var rechnungen = await _coreService.GetRechnungenAsync(best.KBestellung);
+                var neueRechnung = rechnungen.FirstOrDefault(r => r.KRechnung == kRechnung);
+
+                MessageBox.Show(
+                    $"Rechnung {neueRechnung?.CRechnungsnr ?? kRechnung.ToString()} wurde erstellt!",
+                    "Erfolg",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Fehler beim Erstellen der Rechnung:\n\n{ex.Message}",
+                    "Fehler",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
-        private void Lieferschein_Click(object sender, RoutedEventArgs e)
+        private async void Lieferschein_Click(object sender, RoutedEventArgs e)
         {
-            if (dgBestellungen.SelectedItem is CoreService.BestellungUebersicht best)
+            if (dgBestellungen.SelectedItem is not CoreService.BestellungUebersicht best) return;
+
+            var result = MessageBox.Show(
+                $"Lieferschein für Auftrag {best.CBestellNr} erstellen?\n\nAlle offenen Positionen werden übernommen.",
+                "Lieferschein erstellen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
             {
-                MessageBox.Show($"Lieferschein fuer Auftrag {best.CBestellNr} erstellen\n(wird implementiert)",
-                    "Lieferschein", MessageBoxButton.OK, MessageBoxImage.Information);
+                var kLieferschein = await _coreService.CreateLieferscheinAsync(best.KBestellung);
+                var lieferscheine = await _coreService.GetLieferscheineAsync(best.KBestellung);
+                var neuerLieferschein = lieferscheine.FirstOrDefault(l => l.KLieferschein == kLieferschein);
+
+                MessageBox.Show(
+                    $"Lieferschein {neuerLieferschein?.CLieferscheinNr ?? kLieferschein.ToString()} wurde erstellt!",
+                    "Erfolg",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Fehler beim Erstellen des Lieferscheins:\n\n{ex.Message}",
+                    "Fehler",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 

@@ -503,7 +503,7 @@
                                 <Button x:Name="btnBestandAlleAbfragen" Content="1. Bestand abfragen"
                                         Margin="20,0,0,0" Background="#5C2D91" Foreground="White"
                                         Click="BestandAlleAbfragen_Click" IsEnabled="False"/>
-                                <Button x:Name="btnBestellungUebermitteln" Content="2. Bestellung uebermitteln"
+                                <Button x:Name="btnBestellungUebermitteln" Content="2. Bestellung übermitteln"
                                         Margin="10,0,0,0" Background="#107C10" Foreground="White"
                                         Click="BestellungUebermitteln_Click" IsEnabled="False"/>
                             </StackPanel>

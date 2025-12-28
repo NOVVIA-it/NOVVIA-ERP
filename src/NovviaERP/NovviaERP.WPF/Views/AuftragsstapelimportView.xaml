@@ -45,52 +45,42 @@
                 <RowDefinition Height="28"/>
                 <RowDefinition Height="28"/>
                 <RowDefinition Height="28"/>
-                <RowDefinition Height="28"/>
-                <RowDefinition Height="28"/>
             </Grid.RowDefinitions>
 
-            <!-- Belegart -->
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="Belegart" Style="{StaticResource LabelStyle}"/>
-            <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtBelegart" Text="0200" Style="{StaticResource FieldStyle}"/>
-            <Button Grid.Row="0" Grid.Column="2" Content="..." Width="24" Height="24" Margin="3,0,0,0"/>
-            <TextBox Grid.Row="0" Grid.Column="3" x:Name="txtBelegartBez" Text="Auftrag" IsReadOnly="True"
-                     Style="{StaticResource FieldStyle}" Background="#F5F5F5"/>
-
-            <!-- Lieferbedingung -->
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="Lieferbedingung" Style="{StaticResource LabelStyle}"/>
-            <TextBox Grid.Row="1" Grid.Column="1" x:Name="txtLieferbedingung" Text="AH" Style="{StaticResource FieldStyle}"/>
-            <Button Grid.Row="1" Grid.Column="2" Content="..." Width="24" Height="24" Margin="3,0,0,0"/>
-            <TextBox Grid.Row="1" Grid.Column="3" x:Name="txtLieferbedingungBez" Text="Abholung / Mitnahme" IsReadOnly="True"
-                     Style="{StaticResource FieldStyle}" Background="#F5F5F5"/>
-
-            <!-- Zahlungsart -->
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="Zahlungsart" Style="{StaticResource LabelStyle}"/>
-            <TextBox Grid.Row="2" Grid.Column="1" x:Name="txtZahlungsart" Text="NE" Style="{StaticResource FieldStyle}"/>
-            <Button Grid.Row="2" Grid.Column="2" Content="..." Width="24" Height="24" Margin="3,0,0,0"/>
-            <TextBox Grid.Row="2" Grid.Column="3" x:Name="txtZahlungsartBez" Text="Sofort ohne Abzug" IsReadOnly="True"
-                     Style="{StaticResource FieldStyle}" Background="#F5F5F5"/>
-
             <!-- Anz. Lieferungen -->
-            <TextBlock Grid.Row="3" Grid.Column="0" Text="Anz. Lieferungen" Style="{StaticResource LabelStyle}"/>
-            <TextBox Grid.Row="3" Grid.Column="1" x:Name="txtAnzLieferungen" Text="999" Style="{StaticResource FieldStyle}" Width="60" HorizontalAlignment="Left"/>
-            <CheckBox Grid.Row="3" Grid.Column="3" x:Name="chkZahlungsartAusAdresse" Content="Zahlungsart aus Adresse verwenden"
-                      VerticalAlignment="Center"/>
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Anz. Lieferungen" Style="{StaticResource LabelStyle}"/>
+            <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtAnzLieferungen" Text="999" Style="{StaticResource FieldStyle}" Width="60" HorizontalAlignment="Left"/>
+            <TextBlock Grid.Row="0" Grid.Column="3" Text="(Zahlungsart/Lieferbedingung aus Kunde)" Foreground="#666" VerticalAlignment="Center"/>
 
             <!-- Stapelverarbeitung -->
-            <TextBlock Grid.Row="4" Grid.Column="0" Text="Stapelverarbeitung" Style="{StaticResource LabelStyle}"/>
-            <ComboBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" x:Name="cboStapelverarbeitung" Style="{StaticResource ComboStyle}">
-                <ComboBoxItem Content="verfuegbare Mengen liefern" IsSelected="True"/>
-                <ComboBoxItem Content="nur vollstaendige Auftraege"/>
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Stapelverarbeitung" Style="{StaticResource LabelStyle}"/>
+            <ComboBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" x:Name="cboStapelverarbeitung" Style="{StaticResource ComboStyle}">
+                <ComboBoxItem Content="verfügbare Mengen liefern" IsSelected="True"/>
+                <ComboBoxItem Content="nur vollständige Aufträge"/>
                 <ComboBoxItem Content="Teillieferung erlauben"/>
             </ComboBox>
 
             <!-- Adress-Nr. entspricht -->
-            <TextBlock Grid.Row="5" Grid.Column="0" Text="Adress-Nr. entspricht" Style="{StaticResource LabelStyle}"/>
-            <ComboBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="3" x:Name="cboAdressNr" Style="{StaticResource ComboStyle}">
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Adress-Nr. entspricht" Style="{StaticResource LabelStyle}"/>
+            <ComboBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" x:Name="cboAdressNr" Style="{StaticResource ComboStyle}">
                 <ComboBoxItem Content="Adress-Nr." IsSelected="True"/>
                 <ComboBoxItem Content="Kundennummer"/>
                 <ComboBoxItem Content="Externe ID"/>
             </ComboBox>
+
+            <!-- Mindest-MHD -->
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Mindest-MHD" Style="{StaticResource LabelStyle}"/>
+            <StackPanel Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Orientation="Horizontal">
+                <DatePicker x:Name="dpMindestMHD" Width="120" VerticalContentAlignment="Center"/>
+                <TextBlock Text="oder" VerticalAlignment="Center" Margin="10,0"/>
+                <TextBox x:Name="txtMHDOffset" Width="50" Style="{StaticResource FieldStyle}"
+                         ToolTip="z.B. 6M = 6 Monate, 90T = 90 Tage"/>
+                <ComboBox x:Name="cboMHDEinheit" Width="80" Style="{StaticResource ComboStyle}" Margin="5,0,0,0">
+                    <ComboBoxItem Content="Monate" IsSelected="True"/>
+                    <ComboBoxItem Content="Tage"/>
+                </ComboBox>
+                <TextBlock Text="ab heute" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="#666"/>
+            </StackPanel>
         </Grid>
 
         <!-- Excel-Import Button -->
@@ -111,8 +101,8 @@
                     <RowDefinition Height="100"/>
                 </Grid.RowDefinitions>
                 <StackPanel Orientation="Horizontal" Margin="10">
-                    <RadioButton x:Name="rbUeberPositionen" Content="ueber Positionen einfuegen" IsChecked="True" Margin="0,0,30,0"/>
-                    <RadioButton x:Name="rbUnterPositionen" Content="unter Positionen einfuegen"/>
+                    <RadioButton x:Name="rbUeberPositionen" Content="über Positionen einfügen" IsChecked="True" Margin="0,0,30,0"/>
+                    <RadioButton x:Name="rbUnterPositionen" Content="unter Positionen einfügen"/>
                 </StackPanel>
                 <TextBox Grid.Row="1" x:Name="txtZusatztext" AcceptsReturn="True" TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto" Margin="10,0,10,10"/>
