@@ -7,6 +7,7 @@ using NovviaERP.Core.Data;
 using NovviaERP.Core.Infrastructure.Jtl;
 using NovviaERP.Core.Services;
 using System.Threading.Tasks;
+using Dapper;
 
 namespace NovviaERP.WPF.Views
 {
@@ -539,9 +540,98 @@ namespace NovviaERP.WPF.Views
             MessageBox.Show("Position loeschen...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void RabattSetzen_Click(object sender, RoutedEventArgs e)
+        private async void RabattSetzen_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Rabatt setzen...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_bestellung == null || !_bestellung.Positionen.Any()) return;
+
+            // Rabatt-Dialog
+            var input = Microsoft.VisualBasic.Interaction.InputBox(
+                "Rabatt in % für alle Positionen eingeben:",
+                "Rabatt setzen",
+                "0");
+
+            if (string.IsNullOrWhiteSpace(input)) return;
+
+            if (!decimal.TryParse(input.Replace(',', '.'), System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var rabatt) || rabatt < 0 || rabatt > 100)
+            {
+                MessageBox.Show("Bitte einen gültigen Rabatt zwischen 0 und 100 eingeben.",
+                    "Validierung", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                txtStatus.Text = "Setze Rabatt...";
+
+                var dbContext = App.Services.GetRequiredService<JtlDbContext>();
+                var conn = new Microsoft.Data.SqlClient.SqlConnection(dbContext.ConnectionString);
+                await conn.OpenAsync();
+
+                // Rabatt für alle Positionen setzen
+                await conn.ExecuteAsync(@"
+                    UPDATE tBestellPos
+                    SET fRabatt = @Rabatt
+                    WHERE tBestellung_kBestellung = @BestellungId",
+                    new { Rabatt = rabatt, BestellungId = _bestellung.KBestellung });
+
+                await conn.CloseAsync();
+
+                txtStatus.Text = $"Rabatt {rabatt}% auf alle Positionen gesetzt";
+                LadeBestellung(_bestellung.KBestellung);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Setzen des Rabatts:\n{ex.Message}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void PositionRauf_Click(object sender, RoutedEventArgs e)
+        {
+            await VerschiebePositionAsync(-1);
+        }
+
+        private async void PositionRunter_Click(object sender, RoutedEventArgs e)
+        {
+            await VerschiebePositionAsync(1);
+        }
+
+        private async Task VerschiebePositionAsync(int richtung)
+        {
+            if (_bestellung == null) return;
+            if (dgPositionen.SelectedItem is not CoreService.BestellPositionDetail pos) return;
+
+            var positionen = _bestellung.Positionen.OrderBy(p => p.KBestellPos).ToList();
+            int index = positionen.FindIndex(p => p.KBestellPos == pos.KBestellPos);
+
+            int newIndex = index + richtung;
+            if (newIndex < 0 || newIndex >= positionen.Count) return;
+
+            try
+            {
+                var dbContext = App.Services.GetRequiredService<JtlDbContext>();
+                var conn = new Microsoft.Data.SqlClient.SqlConnection(dbContext.ConnectionString);
+                await conn.OpenAsync();
+
+                // Sortierung tauschen
+                var anderePos = positionen[newIndex];
+                await conn.ExecuteAsync(@"
+                    UPDATE tBestellPos SET nSort = @Sort WHERE kBestellPos = @Id",
+                    new { Sort = newIndex + 1, Id = pos.KBestellPos });
+                await conn.ExecuteAsync(@"
+                    UPDATE tBestellPos SET nSort = @Sort WHERE kBestellPos = @Id",
+                    new { Sort = index + 1, Id = anderePos.KBestellPos });
+
+                await conn.CloseAsync();
+
+                LadeBestellung(_bestellung.KBestellung);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Verschieben:\n{ex.Message}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void PreiseNeuErmitteln_Click(object sender, RoutedEventArgs e)

@@ -485,11 +485,13 @@
                             <TextBox x:Name="txtArtikelSuche" Width="120" Height="26"
                                      VerticalContentAlignment="Center" Margin="0,0,5,0"/>
                             <Button Content="Suchen" Padding="8,3" Margin="0,0,10,0" Click="ArtikelSuchen_Click"/>
-                            <Button Content="Freiposition hinzufuegen" Padding="8,3" Margin="0,0,5,0"
+                            <Button Content="Freiposition hinzufügen" Padding="8,3" Margin="0,0,5,0"
                                     Click="FreipositionHinzufuegen_Click"/>
-                            <Button Content="Loeschen" Padding="8,3" Margin="0,0,5,0" Click="PositionLoeschen_Click"/>
+                            <Button Content="Löschen" Padding="8,3" Margin="0,0,5,0" Click="PositionLoeschen_Click"/>
                             <Button Content="Rabatt (%) setzen" Padding="8,3" Margin="0,0,5,0" Click="RabattSetzen_Click"/>
-                            <Button Content="Preise neu ermitteln" Padding="8,3" Click="PreiseNeuErmitteln_Click"/>
+                            <Button Content="Preise neu ermitteln" Padding="8,3" Margin="0,0,10,0" Click="PreiseNeuErmitteln_Click"/>
+                            <Button Content="▲" Width="28" Padding="0,3" Margin="0,0,2,0" Click="PositionRauf_Click" ToolTip="Position nach oben"/>
+                            <Button Content="▼" Width="28" Padding="0,3" Click="PositionRunter_Click" ToolTip="Position nach unten"/>
                         </StackPanel>
                     </Border>
                 </Grid>
