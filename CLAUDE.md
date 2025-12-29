@@ -306,7 +306,32 @@ src/NovviaERP/
 
 2. **Automatische Nachbestellung** - Workflow für Mindestbestand → Bestellung
 
-### Letzte Code-Änderungen (29.12.2024)
+### Letzte Code-Änderungen (29.12.2024 - Session 2)
+
+**Eigene Felder - Komplett neu:**
+- NOVVIA.LieferantAttribut + NOVVIA.LieferantEigenesFeld Tabellen
+- SPs: `spLieferantAttributSpeichern`, `spLieferantEigenesFeldSpeichern`
+- Setup-Script: `Scripts/Setup-EigeneFelderLieferant.sql`
+- CoreService Methoden für alle Entitäten:
+  - Lieferant: `GetLieferantAttributeAsync`, `SaveLieferantAttributAsync`, `DeleteLieferantAttributAsync`
+  - Lieferant Werte: `GetLieferantEigeneFelderAsync`, `SaveLieferantEigenesFeldAsync`
+  - Kunde: `GetKundeAttributeAsync`, `GetKundeEigenesFeldWerteAsync`, `SaveKundeEigenesFeldAsync`
+  - Artikel: `GetArtikelAttributeAsync`, `GetArtikelEigenesFeldWerteAsync`
+  - Firma: `GetFirmaEigeneFelderAsync`
+  - Auftrag: `GetAuftragEigenesFeldWerteAsync`
+- EinstellungenView: Tabs für Lieferant (editierbar), Kunde, Artikel, Firma (JTL read-only)
+
+**VersandPage SQL Fix:**
+- Problem: `tBestellung.kLieferadresse` verweist NICHT auf `tAdresse.kAdresse`
+- Lösung: `Verkauf.tAuftragAdresse` mit `nTyp = 1` (Lieferadresse)
+- Query: `LEFT JOIN Verkauf.tAuftragAdresse la ON b.kBestellung = la.kAuftrag AND la.nTyp = 1`
+
+**JTL Adress-Struktur:**
+- `Verkauf.tAuftragAdresse`: Auftrags-Adressen (nTyp: 0=Rechnung, 1=Lieferung)
+- `tAdresse`: Kunden-Stammadressen (kKunde, nTyp, nStandard)
+- `DbeS.tLieferadresse`: Shop-Import Adressen (leer bei JTL-only)
+
+### Code-Änderungen (29.12.2024 - Session 1)
 
 **VersandPage - Komplett überarbeitet:**
 - Kompletter Versand-Workflow: Lieferschein + tVersand + Tracking in einem Schritt
