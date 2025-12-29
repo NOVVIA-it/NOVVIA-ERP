@@ -306,7 +306,41 @@ src/NovviaERP/
 
 2. **Automatische Nachbestellung** - Workflow für Mindestbestand → Bestellung
 
-### Letzte Code-Änderungen (28.12.2024)
+### Letzte Code-Änderungen (29.12.2024)
+
+**VersandPage - Komplett überarbeitet:**
+- Kompletter Versand-Workflow: Lieferschein + tVersand + Tracking in einem Schritt
+- `VersandBuchenAsync` - Automatisch: Lieferschein erstellen, tVersand anlegen, Label speichern
+- `GetShippingConfigAsync` / `SaveShippingConfigAsync` - Config aus NOVVIA.Einstellungen
+- `GetOrCreateLieferscheinAsync` - Lieferschein holen oder erstellen
+- `GetAuftragLieferadresseAsync` / `GetAuftragRechnungsadresseAsync` - Adressen laden
+- `GetVersandLabelAsync` - Label-PDF aus DB laden
+- Neuer `VersandEinstellungenDialog` - DHL/DPD/GLS/UPS Zugangsdaten konfigurieren
+- Labels werden gespeichert: DB (tVersand.bLabel) + lokal (Dokumente\NovviaERP\Labels\)
+
+**SP-NOVVIA-OrderCreateUpdateDelete.sql (NEU):**
+- `NOVVIA.spOrderCreateUpdateDelete` - CREATE/UPDATE/DELETE für Aufträge
+  - CREATE: Nächste Auftragsnummer aus tLaufendeNummern, Adressen anlegen
+  - UPDATE: Auftrag + Adressen aktualisieren
+  - DELETE: Soft-Delete (nStorno=1), Storno-Eintrag in tAuftragStorno
+- `NOVVIA.spOrderPositionAddUpdate` - ADD/UPDATE/DELETE für Positionen
+  - Lädt Artikeldaten automatisch (Name, Preis, MwSt)
+  - Ruft Verkauf.spAuftragEckdatenBerechnen auf
+
+**AuftragsstapelimportView - Excel/CSV Import:**
+- Excel-Import mit ClosedXML (flexible Spalten-Erkennung)
+- CSV-Import
+- Liest JTL-Nummernkreise aus tLaufendeNummern (kLaufendeNummer = 3)
+- Mindest-MHD Berechnung (Datum oder Offset)
+- Gruppiert Positionen nach Kunde → ein Auftrag pro Kunde
+
+**LieferantenBestellungDetailView - Einkauf komplett:**
+- Artikel suchen (ArtNr oder Lieferanten-ArtNr)
+- Lieferadresse (gleich Firma oder abweichend)
+- Wareneingang buchen
+- Eingangsrechnung erstellen (alle oder nur gelieferte Positionen)
+
+### Code-Änderungen (28.12.2024)
 
 **Einstellungen - JTL-Tabellenstruktur Fix:**
 - SQL-Queries an echte JTL-Wawi 1.11 Tabellenstruktur angepasst

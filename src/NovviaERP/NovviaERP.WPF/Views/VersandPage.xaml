@@ -1,7 +1,7 @@
-<Page x:Class="NovviaERP.WPF.Views.VersandPage"
+<UserControl x:Class="NovviaERP.WPF.Views.VersandPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Title="Versand" Background="#f0f2f5">
+      Background="#f0f2f5">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -27,6 +27,8 @@
             <TextBlock Text="bis" VerticalAlignment="Center" Margin="0,0,5,0"/>
             <DatePicker x:Name="dpBis" Width="120" Height="35" SelectedDateChanged="Filter_Changed"/>
             <Button Content="Aktualisieren" Width="100" Margin="20,0,0,0" Height="35" Click="Aktualisieren_Click"/>
+            <Button Content="Einstellungen" Width="100" Margin="10,0,0,0" Height="35" Click="Einstellungen_Click"
+                    ToolTip="Versanddienstleister konfigurieren"/>
         </StackPanel>
 
         <!-- DataGrid -->
@@ -68,18 +70,27 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Lieferschein" Width="100" Margin="0,0,15,0"
+                            Click="LieferscheinErstellen_Click" Background="#17a2b8" Foreground="White" FontWeight="Bold"
+                            ToolTip="Lieferschein fuer ausgewaehlte Auftraege erstellen"/>
                     <Button x:Name="btnDHL" Content="DHL" Width="80" Margin="0,0,5,0"
-                            Click="VersendeDHL_Click" Background="#FFCC00" FontWeight="Bold"/>
+                            Click="VersendeDHL_Click" Background="#FFCC00" FontWeight="Bold"
+                            ToolTip="Mit DHL versenden (inkl. Lieferschein + Label)"/>
                     <Button x:Name="btnDPD" Content="DPD" Width="80" Margin="0,0,5,0"
-                            Click="VersendeDPD_Click" Background="#DC0032" Foreground="White" FontWeight="Bold"/>
+                            Click="VersendeDPD_Click" Background="#DC0032" Foreground="White" FontWeight="Bold"
+                            ToolTip="Mit DPD versenden (inkl. Lieferschein + Label)"/>
                     <Button x:Name="btnGLS" Content="GLS" Width="80" Margin="0,0,5,0"
-                            Click="VersendeGLS_Click" Background="#003D7A" Foreground="White" FontWeight="Bold"/>
+                            Click="VersendeGLS_Click" Background="#003D7A" Foreground="White" FontWeight="Bold"
+                            ToolTip="Mit GLS versenden (inkl. Lieferschein + Label)"/>
                     <Button x:Name="btnUPS" Content="UPS" Width="80" Margin="0,0,20,0"
-                            Click="VersendeUPS_Click" Background="#351C15" Foreground="#FFB500" FontWeight="Bold"/>
-                    <Button Content="Tracking oeffnen" Width="120" Margin="0,0,5,0" Click="TrackingOeffnen_Click"/>
-                    <Button Content="Label drucken" Width="100" Click="LabelDrucken_Click"/>
+                            Click="VersendeUPS_Click" Background="#351C15" Foreground="#FFB500" FontWeight="Bold"
+                            ToolTip="Mit UPS versenden (inkl. Lieferschein + Label)"/>
+                    <Button Content="Tracking" Width="80" Margin="0,0,5,0" Click="TrackingOeffnen_Click"
+                            ToolTip="Tracking-URL im Browser oeffnen"/>
+                    <Button Content="Label" Width="60" Click="LabelDrucken_Click"
+                            ToolTip="Versand-Label oeffnen/drucken"/>
                 </StackPanel>
             </Grid>
         </Border>
     </Grid>
-</Page>
+</UserControl>

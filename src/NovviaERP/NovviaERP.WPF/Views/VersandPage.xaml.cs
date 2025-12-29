@@ -10,16 +10,29 @@ using NovviaERP.Core.Services;
 
 namespace NovviaERP.WPF.Views
 {
-    public partial class VersandPage : Page
+    public partial class VersandPage : UserControl
     {
         private readonly CoreService _core;
         private List<CoreService.VersandItem> _versandListe = new();
+        private ShippingConfig? _shippingConfig;
 
         public VersandPage()
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
-            Loaded += async (s, e) => await LadeVersandAsync();
+            Loaded += async (s, e) =>
+            {
+                try
+                {
+                    // Shipping-Config aus DB laden
+                    _shippingConfig = await _core.GetShippingConfigAsync();
+                    await LadeVersandAsync();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Laden der Versand-Seite: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            };
         }
 
         private async System.Threading.Tasks.Task LadeVersandAsync()
@@ -55,7 +68,7 @@ namespace NovviaERP.WPF.Views
         private void Suchen_Click(object sender, RoutedEventArgs e) => _ = LadeVersandAsync();
         private void Aktualisieren_Click(object sender, RoutedEventArgs e) => _ = LadeVersandAsync();
 
-        private void Filter_Changed(object sender, RoutedEventArgs e)
+        private void Filter_Changed(object sender, EventArgs e)
         {
             if (IsLoaded) _ = LadeVersandAsync();
         }
@@ -64,8 +77,19 @@ namespace NovviaERP.WPF.Views
         {
             if (dgVersand.SelectedItem is CoreService.VersandItem item)
             {
-                // Navigation zur Bestellungsdetail
-                NavigationService?.Navigate(new BestellungDetailPage(item.KBestellung));
+                // Navigation zur Bestellungsdetail (öffnet als neues Fenster)
+                var frame = new System.Windows.Controls.Frame();
+                frame.Navigate(new BestellungDetailPage(item.KBestellung));
+
+                var detailWindow = new Window
+                {
+                    Title = $"Bestellung {item.BestellNr}",
+                    Content = frame,
+                    Width = 1200,
+                    Height = 800,
+                    WindowStartupLocation = WindowStartupLocation.CenterScreen
+                };
+                detailWindow.ShowDialog();
             }
         }
 
@@ -87,14 +111,21 @@ namespace NovviaERP.WPF.Views
                 return;
             }
 
-            if (MessageBox.Show($"{ausgewaehlt.Count} Auftrag/Auftraege mit {carrier} versenden?",
+            if (MessageBox.Show($"{ausgewaehlt.Count} Auftrag/Auftraege mit {carrier} versenden?\n\n" +
+                "Es wird automatisch:\n" +
+                "• Lieferschein erstellt (falls noch nicht vorhanden)\n" +
+                "• Versand-Label generiert\n" +
+                "• Tracking-Nr. gespeichert",
                 "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
                 return;
 
             var erfolg = 0;
             var fehler = 0;
-            var cfg = new ShippingConfig { AbsenderName = "NOVVIA GmbH" };
-            var svc = new ShippingService(cfg);
+            var fehlerDetails = new List<string>();
+
+            // Config aus DB verwenden (bereits beim Laden geholt)
+            var cfg = _shippingConfig ?? await _core.GetShippingConfigAsync();
+            using var svc = new ShippingService(cfg);
 
             foreach (var item in ausgewaehlt)
             {
@@ -102,45 +133,120 @@ namespace NovviaERP.WPF.Views
                 {
                     txtStatus.Text = $"Versende {item.BestellNr}...";
 
-                    var best = await App.Db.GetBestellungByIdAsync(item.KBestellung);
-                    if (best?.Lieferadresse == null) continue;
+                    // Lieferadresse aus Auftrag laden
+                    var lieferadresse = await _core.GetAuftragLieferadresseAsync(item.KBestellung);
+                    if (lieferadresse == null)
+                    {
+                        fehlerDetails.Add($"{item.BestellNr}: Keine Lieferadresse");
+                        fehler++;
+                        continue;
+                    }
 
+                    // Shipment-Request erstellen
                     var req = new ShipmentRequest
                     {
-                        Referenz = best.BestellNr ?? "",
-                        EmpfaengerName = $"{best.Lieferadresse.Vorname} {best.Lieferadresse.Nachname}".Trim(),
-                        EmpfaengerStrasse = best.Lieferadresse.Strasse ?? "",
-                        EmpfaengerPLZ = best.Lieferadresse.PLZ ?? "",
-                        EmpfaengerOrt = best.Lieferadresse.Ort ?? "",
-                        EmpfaengerLand = best.Lieferadresse.Land ?? "DE",
+                        Referenz = item.BestellNr ?? "",
+                        EmpfaengerName = !string.IsNullOrEmpty(lieferadresse.CFirma)
+                            ? lieferadresse.CFirma
+                            : $"{lieferadresse.CVorname} {lieferadresse.CName}".Trim(),
+                        EmpfaengerStrasse = lieferadresse.CStrasse ?? "",
+                        EmpfaengerPLZ = lieferadresse.CPLZ ?? "",
+                        EmpfaengerOrt = lieferadresse.COrt ?? "",
+                        EmpfaengerLand = lieferadresse.CISO ?? "DE",
+                        EmpfaengerEmail = lieferadresse.CMail,
                         GewichtKg = item.Gewicht > 0 ? item.Gewicht : 1
                     };
 
-                    var result = await svc.CreateShipmentAsync(req, carrier);
-                    if (result.Success)
+                    // Label bei Carrier generieren
+                    var shipResult = await svc.CreateShipmentAsync(req, carrier);
+                    if (!shipResult.Success)
                     {
-                        await App.Db.SetTrackingAsync(item.KBestellung, result.TrackingNumber, carrier);
-                        if (result.LabelPdf != null)
+                        fehlerDetails.Add($"{item.BestellNr}: {shipResult.Error}");
+                        fehler++;
+                        continue;
+                    }
+
+                    // Kompletten Versand in DB buchen (Lieferschein + tVersand + Tracking)
+                    var versandResult = await _core.VersandBuchenAsync(
+                        item.KBestellung,
+                        carrier,
+                        shipResult.TrackingNumber,
+                        shipResult.LabelPdf,
+                        item.Gewicht > 0 ? item.Gewicht : 1);
+
+                    if (versandResult.Success)
+                    {
+                        // Label auch lokal speichern
+                        if (shipResult.LabelPdf != null)
                         {
-                            var filename = $"Label_{best.BestellNr}_{carrier}.pdf";
-                            System.IO.File.WriteAllBytes(filename, result.LabelPdf);
+                            var labelDir = System.IO.Path.Combine(
+                                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                                "NovviaERP", "Labels");
+                            System.IO.Directory.CreateDirectory(labelDir);
+                            var filename = System.IO.Path.Combine(labelDir, $"Label_{item.BestellNr}_{carrier}.pdf");
+                            System.IO.File.WriteAllBytes(filename, shipResult.LabelPdf);
                         }
                         erfolg++;
                     }
                     else
                     {
+                        fehlerDetails.Add($"{item.BestellNr}: {versandResult.Error}");
                         fehler++;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    fehlerDetails.Add($"{item.BestellNr}: {ex.Message}");
                     fehler++;
                 }
             }
 
             await LadeVersandAsync();
-            MessageBox.Show($"Versand abgeschlossen:\n{erfolg} erfolgreich\n{fehler} fehlgeschlagen",
-                "Ergebnis", MessageBoxButton.OK, erfolg > 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+
+            var msg = $"Versand abgeschlossen:\n{erfolg} erfolgreich\n{fehler} fehlgeschlagen";
+            if (fehlerDetails.Any())
+            {
+                msg += "\n\nFehler:\n" + string.Join("\n", fehlerDetails.Take(5));
+                if (fehlerDetails.Count > 5)
+                    msg += $"\n... und {fehlerDetails.Count - 5} weitere";
+            }
+            MessageBox.Show(msg, "Ergebnis", MessageBoxButton.OK,
+                erfolg > 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+        }
+
+        private async void LieferscheinErstellen_Click(object sender, RoutedEventArgs e)
+        {
+            var ausgewaehlt = dgVersand.SelectedItems.Cast<CoreService.VersandItem>()
+                .Where(x => string.IsNullOrEmpty(x.TrackingNr))
+                .ToList();
+
+            if (!ausgewaehlt.Any())
+            {
+                MessageBox.Show("Bitte mindestens einen Auftrag auswaehlen.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (MessageBox.Show($"Fuer {ausgewaehlt.Count} Auftrag/Auftraege Lieferscheine erstellen?",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            var erstellt = 0;
+            foreach (var item in ausgewaehlt)
+            {
+                try
+                {
+                    txtStatus.Text = $"Erstelle Lieferschein fuer {item.BestellNr}...";
+                    await _core.GetOrCreateLieferscheinAsync(item.KBestellung);
+                    erstellt++;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler bei {item.BestellNr}: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+
+            await LadeVersandAsync();
+            MessageBox.Show($"{erstellt} Lieferschein(e) erstellt.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void TrackingOeffnen_Click(object sender, RoutedEventArgs e)
@@ -179,7 +285,7 @@ namespace NovviaERP.WPF.Views
             };
         }
 
-        private void LabelDrucken_Click(object sender, RoutedEventArgs e)
+        private async void LabelDrucken_Click(object sender, RoutedEventArgs e)
         {
             if (dgVersand.SelectedItem is not CoreService.VersandItem item)
             {
@@ -187,7 +293,18 @@ namespace NovviaERP.WPF.Views
                 return;
             }
 
-            var filename = $"Label_{item.BestellNr}_{item.VersandDienstleister}.pdf";
+            if (string.IsNullOrEmpty(item.TrackingNr))
+            {
+                MessageBox.Show("Dieser Auftrag wurde noch nicht versendet.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Zuerst im lokalen Labels-Ordner suchen
+            var labelDir = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "NovviaERP", "Labels");
+            var filename = System.IO.Path.Combine(labelDir, $"Label_{item.BestellNr}_{item.VersandDienstleister}.pdf");
+
             if (System.IO.File.Exists(filename))
             {
                 try
@@ -201,7 +318,36 @@ namespace NovviaERP.WPF.Views
             }
             else
             {
-                MessageBox.Show($"Label-Datei nicht gefunden: {filename}", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Versuche Label aus DB zu laden
+                try
+                {
+                    var labelData = await _core.GetVersandLabelAsync(item.KBestellung);
+                    if (labelData != null && labelData.Length > 0)
+                    {
+                        System.IO.Directory.CreateDirectory(labelDir);
+                        System.IO.File.WriteAllBytes(filename, labelData);
+                        Process.Start(new ProcessStartInfo(filename) { UseShellExecute = true });
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Kein Label fuer diesen Auftrag vorhanden.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Laden des Labels: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void Einstellungen_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new VersandEinstellungenDialog(_shippingConfig ?? new ShippingConfig());
+            if (dialog.ShowDialog() == true && dialog.Config != null)
+            {
+                _shippingConfig = dialog.Config;
+                _ = _core.SaveShippingConfigAsync(dialog.Config);
+                MessageBox.Show("Versand-Einstellungen wurden gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
     }

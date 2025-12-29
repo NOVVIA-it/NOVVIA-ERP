@@ -44,7 +44,9 @@ namespace NovviaERP.Core.Services
             public string? CFirma { get; set; }
             public string? CVorname { get; set; }
             public string? CName { get; set; }  // Nachname
+            public string? CPLZ { get; set; }
             public string? COrt { get; set; }
+            public string? CISO { get; set; }  // Land ISO
             public string? CMail { get; set; }
             public string? CTel { get; set; }
             public string? CSperre { get; set; }
@@ -55,6 +57,7 @@ namespace NovviaERP.Core.Services
 
             // Berechnete Felder
             public string Anzeigename => !string.IsNullOrEmpty(CFirma) ? CFirma : $"{CVorname} {CName}".Trim();
+            public string AdressZeile => $"{CPLZ} {COrt} {CISO}".Trim();
             public bool IstGesperrt => CSperre == "Y";
         }
 
@@ -553,7 +556,7 @@ namespace NovviaERP.Core.Services
             var sql = @"
                 SELECT TOP (@Limit)
                     k.kKunde, k.cKundenNr, k.cSperre, k.kKundenGruppe, k.dErstellt,
-                    a.cFirma, a.cVorname, a.cName, a.cOrt, a.cMail, a.cTel,
+                    a.cFirma, a.cVorname, a.cName, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel,
                     kg.cName AS Kundengruppe,
                     ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto)
                             FROM tBestellung b
@@ -578,6 +581,32 @@ namespace NovviaERP.Core.Services
             sql += " ORDER BY ISNULL(a.cFirma, a.cName), a.cVorname";
 
             return await conn.QueryAsync<KundeUebersicht>(sql, new { Limit = limit, Suche = $"%{suche}%", KundengruppeId = kundengruppeId });
+        }
+
+        /// <summary>Kundensuche fuer Dialoge - gibt Liste zurueck</summary>
+        public async Task<List<KundeUebersicht>> SearchKundenAsync(string suchbegriff, int limit = 50)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@Limit)
+                    k.kKunde, k.cKundenNr, k.cSperre, k.kKundenGruppe, k.dErstellt,
+                    a.cFirma, a.cVorname, a.cName, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel,
+                    kg.cName AS Kundengruppe,
+                    0 AS Umsatz
+                FROM tkunde k
+                LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
+                LEFT JOIN tKundenGruppe kg ON kg.kKundenGruppe = k.kKundenGruppe
+                WHERE k.cSperre != 'Y'
+                  AND (k.cKundenNr LIKE @Suche
+                       OR a.cFirma LIKE @Suche
+                       OR a.cName LIKE @Suche
+                       OR a.cVorname LIKE @Suche
+                       OR a.cPLZ LIKE @Suche
+                       OR a.cOrt LIKE @Suche)
+                ORDER BY k.cKundenNr";
+
+            var result = await conn.QueryAsync<KundeUebersicht>(sql, new { Limit = limit, Suche = $"%{suchbegriff}%" });
+            return result.ToList();
         }
 
         public async Task<KundeDetail?> GetKundeByIdAsync(int kundeId)
@@ -632,57 +661,245 @@ namespace NovviaERP.Core.Services
         public async Task<int> CreateKundeAsync(KundeDetail kunde, AdresseDetail adresse)
         {
             var conn = await GetConnectionAsync();
-            using var tx = conn.BeginTransaction();
-            try
+
+            // Nächste Kundennummer
+            if (string.IsNullOrEmpty(kunde.CKundenNr))
             {
-                // Nächste Kundennummer
-                if (string.IsNullOrEmpty(kunde.CKundenNr))
-                {
-                    var maxNr = await conn.QuerySingleOrDefaultAsync<string>(
-                        "SELECT MAX(cKundenNr) FROM tkunde WHERE cKundenNr LIKE '[0-9]%'", transaction: tx);
-                    int next = 1;
-                    if (!string.IsNullOrEmpty(maxNr) && int.TryParse(maxNr, out var num)) next = num + 1;
-                    kunde.CKundenNr = next.ToString();
-                }
-
-                var kundeId = await conn.QuerySingleAsync<int>(@"
-                    INSERT INTO tkunde (cKundenNr, kKundenGruppe, fRabatt, cNewsletter, cSperre,
-                                       nZahlungsziel, kZahlungsart, nDebitorennr, nKreditlimit,
-                                       nMahnstopp, nMahnrhythmus, fSkonto, nSkontoInTagen, dErstellt)
-                    VALUES (@CKundenNr, @KKundenGruppe, @FRabatt, @CNewsletter, @CSperre,
-                            @NZahlungsziel, @KZahlungsart, @NDebitorennr, @NKreditlimit,
-                            @NMahnstopp, @NMahnrhythmus, @FSkonto, @NSkontoInTagen, GETDATE());
-                    SELECT SCOPE_IDENTITY();", kunde, tx);
-
-                // Adresse anlegen
-                adresse.KKunde = kundeId;
-                adresse.NStandard = 1;
-                await conn.ExecuteAsync(@"
-                    INSERT INTO tAdresse (kKunde, cFirma, cAnrede, cTitel, cVorname, cName, cStrasse,
-                                         cPLZ, cOrt, cLand, cISO, cBundesland, cTel, cMobil, cFax, cMail,
-                                         cZusatz, cAdressZusatz, cUSTID, nStandard, nTyp)
-                    VALUES (@KKunde, @CFirma, @CAnrede, @CTitel, @CVorname, @CName, @CStrasse,
-                            @CPLZ, @COrt, @CLand, @CISO, @CBundesland, @CTel, @CMobil, @CFax, @CMail,
-                            @CZusatz, @CAdressZusatz, @CUSTID, @NStandard, @NTyp)", adresse, tx);
-
-                tx.Commit();
-                _log.Information("Kunde {KundenNr} angelegt (ID: {Id})", kunde.CKundenNr, kundeId);
-                return kundeId;
+                var maxNr = await conn.QuerySingleOrDefaultAsync<string>(
+                    "SELECT MAX(cKundenNr) FROM tkunde WHERE cKundenNr LIKE '[0-9]%'");
+                int next = 1;
+                if (!string.IsNullOrEmpty(maxNr) && int.TryParse(maxNr, out var num)) next = num + 1;
+                kunde.CKundenNr = next.ToString();
             }
-            catch { tx.Rollback(); throw; }
+
+            // DataTable für Kunde.spKundeInsert
+            var dt = new DataTable();
+            dt.Columns.Add("kInternalId", typeof(int));
+            dt.Columns.Add("kInetKunde", typeof(int));
+            dt.Columns.Add("kKundenKategorie", typeof(int));
+            dt.Columns.Add("cKundenNr", typeof(string));
+            dt.Columns.Add("cFirma", typeof(string));
+            dt.Columns.Add("cAnrede", typeof(string));
+            dt.Columns.Add("cTitel", typeof(string));
+            dt.Columns.Add("cVorname", typeof(string));
+            dt.Columns.Add("cName", typeof(string));
+            dt.Columns.Add("cStrasse", typeof(string));
+            dt.Columns.Add("cPLZ", typeof(string));
+            dt.Columns.Add("cOrt", typeof(string));
+            dt.Columns.Add("cLand", typeof(string));
+            dt.Columns.Add("cTel", typeof(string));
+            dt.Columns.Add("cFax", typeof(string));
+            dt.Columns.Add("cEMail", typeof(string));
+            dt.Columns.Add("dErstellt", typeof(DateTime));
+            dt.Columns.Add("cMobil", typeof(string));
+            dt.Columns.Add("fRabatt", typeof(decimal));
+            dt.Columns.Add("cUSTID", typeof(string));
+            dt.Columns.Add("cNewsletter", typeof(string));
+            dt.Columns.Add("cZusatz", typeof(string));
+            dt.Columns.Add("cEbayName", typeof(string));
+            dt.Columns.Add("kBuyer", typeof(int));
+            dt.Columns.Add("cAdressZusatz", typeof(string));
+            dt.Columns.Add("cGeburtstag", typeof(string));
+            dt.Columns.Add("cWWW", typeof(string));
+            dt.Columns.Add("cSperre", typeof(string));
+            dt.Columns.Add("cPostID", typeof(string));
+            dt.Columns.Add("kKundenGruppe", typeof(int));
+            dt.Columns.Add("nZahlungsziel", typeof(int));
+            dt.Columns.Add("kSprache", typeof(int));
+            dt.Columns.Add("cISO", typeof(string));
+            dt.Columns.Add("cBundesland", typeof(string));
+            dt.Columns.Add("cHerkunft", typeof(string));
+            dt.Columns.Add("cKassenKunde", typeof(string));
+            dt.Columns.Add("cHRNr", typeof(string));
+            dt.Columns.Add("kZahlungsart", typeof(int));
+            dt.Columns.Add("nDebitorennr", typeof(int));
+            dt.Columns.Add("cSteuerNr", typeof(string));
+            dt.Columns.Add("nKreditlimit", typeof(int));
+            dt.Columns.Add("kKundenDrucktext", typeof(int));
+            dt.Columns.Add("nMahnstopp", typeof(byte));
+            dt.Columns.Add("nMahnrhythmus", typeof(int));
+            dt.Columns.Add("kFirma", typeof(byte));
+            dt.Columns.Add("fProvision", typeof(decimal));
+            dt.Columns.Add("nVertreter", typeof(byte));
+            dt.Columns.Add("fSkonto", typeof(decimal));
+            dt.Columns.Add("nSkontoInTagen", typeof(int));
+            dt.Columns.Add("dGeaendert", typeof(DateTime));
+
+            var row = dt.NewRow();
+            row["kInternalId"] = 1;
+            row["kKundenKategorie"] = kunde.KKundenKategorie ?? (object)DBNull.Value;
+            row["cKundenNr"] = kunde.CKundenNr ?? "";
+            row["cFirma"] = adresse.CFirma ?? "";
+            row["cAnrede"] = adresse.CAnrede ?? "";
+            row["cTitel"] = adresse.CTitel ?? "";
+            row["cVorname"] = adresse.CVorname ?? "";
+            row["cName"] = adresse.CName ?? "";
+            row["cStrasse"] = adresse.CStrasse ?? "";
+            row["cPLZ"] = adresse.CPLZ ?? "";
+            row["cOrt"] = adresse.COrt ?? "";
+            row["cLand"] = adresse.CLand ?? "Deutschland";
+            row["cTel"] = adresse.CTel ?? "";
+            row["cFax"] = adresse.CFax ?? "";
+            row["cEMail"] = adresse.CMail ?? "";
+            row["dErstellt"] = DateTime.Now;
+            row["cMobil"] = adresse.CMobil ?? "";
+            row["fRabatt"] = kunde.FRabatt;
+            row["cUSTID"] = adresse.CUSTID ?? "";
+            row["cNewsletter"] = kunde.CNewsletter ?? "N";
+            row["cZusatz"] = adresse.CZusatz ?? "";
+            row["cAdressZusatz"] = adresse.CAdressZusatz ?? "";
+            row["cSperre"] = kunde.CSperre ?? "N";
+            row["kKundenGruppe"] = kunde.KKundenGruppe ?? 1;
+            row["nZahlungsziel"] = kunde.NZahlungsziel ?? 14;
+            row["kSprache"] = 1;
+            row["cISO"] = adresse.CISO ?? "DE";
+            row["cBundesland"] = adresse.CBundesland ?? "";
+            row["kZahlungsart"] = kunde.KZahlungsart ?? (object)DBNull.Value;
+            row["nDebitorennr"] = kunde.NDebitorennr;
+            row["nKreditlimit"] = kunde.NKreditlimit;
+            row["nMahnstopp"] = kunde.NMahnstopp;
+            row["nMahnrhythmus"] = kunde.NMahnrhythmus;
+            row["kFirma"] = (byte)1;
+            row["fSkonto"] = kunde.FSkonto;
+            row["nSkontoInTagen"] = kunde.NSkontoInTagen;
+            row["dGeaendert"] = DateTime.Now;
+            dt.Rows.Add(row);
+
+            var p = new DynamicParameters();
+            p.Add("@Daten", dt.AsTableValuedParameter("dbo.TYPE_spkundeInsert"));
+
+            await conn.ExecuteAsync("Kunde.spKundeInsert", p, commandType: CommandType.StoredProcedure);
+
+            // Neue kKunde ermitteln
+            var kundeId = await conn.QuerySingleAsync<int>(
+                "SELECT TOP 1 kKunde FROM dbo.tKunde WHERE cKundenNr = @Nr ORDER BY kKunde DESC",
+                new { Nr = kunde.CKundenNr });
+
+            _log.Information("Kunde {KundenNr} angelegt via SP (ID: {Id})", kunde.CKundenNr, kundeId);
+            return kundeId;
         }
 
         public async Task UpdateKundeAsync(KundeDetail kunde)
         {
             var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync(@"
-                UPDATE tkunde SET
-                    kKundenGruppe = @KKundenGruppe, kKundenKategorie = @KKundenKategorie,
-                    fRabatt = @FRabatt, cNewsletter = @CNewsletter,
-                    cSperre = @CSperre, nZahlungsziel = @NZahlungsziel, kZahlungsart = @KZahlungsart,
-                    nDebitorennr = @NDebitorennr, nKreditlimit = @NKreditlimit, nMahnstopp = @NMahnstopp,
-                    nMahnrhythmus = @NMahnrhythmus, fSkonto = @FSkonto, nSkontoInTagen = @NSkontoInTagen
-                WHERE kKunde = @KKunde", kunde);
+
+            // DataTable für Kunde.spKundeUpdate - alle 61 Spalten
+            var dt = new DataTable();
+            dt.Columns.Add("kKunde", typeof(int));
+            dt.Columns.Add("kInetKunde", typeof(int));
+            dt.Columns.Add("xFlag_kInetKunde", typeof(bool));
+            dt.Columns.Add("kKundenKategorie", typeof(int));
+            dt.Columns.Add("xFlag_kKundenKategorie", typeof(bool));
+            dt.Columns.Add("cKundenNr", typeof(string));
+            dt.Columns.Add("xFlag_cKundenNr", typeof(bool));
+            dt.Columns.Add("dErstellt", typeof(DateTime));
+            dt.Columns.Add("xFlag_dErstellt", typeof(bool));
+            dt.Columns.Add("fRabatt", typeof(decimal));
+            dt.Columns.Add("xFlag_fRabatt", typeof(bool));
+            dt.Columns.Add("cNewsletter", typeof(string));
+            dt.Columns.Add("xFlag_cNewsletter", typeof(bool));
+            dt.Columns.Add("cEbayName", typeof(string));
+            dt.Columns.Add("xFlag_cEbayName", typeof(bool));
+            dt.Columns.Add("kBuyer", typeof(int));
+            dt.Columns.Add("xFlag_kBuyer", typeof(bool));
+            dt.Columns.Add("cGeburtstag", typeof(string));
+            dt.Columns.Add("xFlag_cGeburtstag", typeof(bool));
+            dt.Columns.Add("cWWW", typeof(string));
+            dt.Columns.Add("xFlag_cWWW", typeof(bool));
+            dt.Columns.Add("cSperre", typeof(string));
+            dt.Columns.Add("xFlag_cSperre", typeof(bool));
+            dt.Columns.Add("kKundenGruppe", typeof(int));
+            dt.Columns.Add("xFlag_kKundenGruppe", typeof(bool));
+            dt.Columns.Add("nZahlungsziel", typeof(int));
+            dt.Columns.Add("xFlag_nZahlungsziel", typeof(bool));
+            dt.Columns.Add("kSprache", typeof(int));
+            dt.Columns.Add("xFlag_kSprache", typeof(bool));
+            dt.Columns.Add("cHerkunft", typeof(string));
+            dt.Columns.Add("xFlag_cHerkunft", typeof(bool));
+            dt.Columns.Add("cKassenKunde", typeof(string));
+            dt.Columns.Add("xFlag_cKassenKunde", typeof(bool));
+            dt.Columns.Add("cHRNr", typeof(string));
+            dt.Columns.Add("xFlag_cHRNr", typeof(bool));
+            dt.Columns.Add("kZahlungsart", typeof(int));
+            dt.Columns.Add("xFlag_kZahlungsart", typeof(bool));
+            dt.Columns.Add("nDebitorennr", typeof(int));
+            dt.Columns.Add("xFlag_nDebitorennr", typeof(bool));
+            dt.Columns.Add("cSteuerNr", typeof(string));
+            dt.Columns.Add("xFlag_cSteuerNr", typeof(bool));
+            dt.Columns.Add("nKreditlimit", typeof(int));
+            dt.Columns.Add("xFlag_nKreditlimit", typeof(bool));
+            dt.Columns.Add("kKundenDrucktext", typeof(int));
+            dt.Columns.Add("xFlag_kKundenDrucktext", typeof(bool));
+            dt.Columns.Add("nMahnstopp", typeof(byte));
+            dt.Columns.Add("xFlag_nMahnstopp", typeof(bool));
+            dt.Columns.Add("nMahnrhythmus", typeof(int));
+            dt.Columns.Add("xFlag_nMahnrhythmus", typeof(bool));
+            dt.Columns.Add("kFirma", typeof(byte));
+            dt.Columns.Add("xFlag_kFirma", typeof(bool));
+            dt.Columns.Add("fProvision", typeof(decimal));
+            dt.Columns.Add("xFlag_fProvision", typeof(bool));
+            dt.Columns.Add("nVertreter", typeof(byte));
+            dt.Columns.Add("xFlag_nVertreter", typeof(bool));
+            dt.Columns.Add("fSkonto", typeof(decimal));
+            dt.Columns.Add("xFlag_fSkonto", typeof(bool));
+            dt.Columns.Add("nSkontoInTagen", typeof(int));
+            dt.Columns.Add("xFlag_nSkontoInTagen", typeof(bool));
+            dt.Columns.Add("dGeaendert", typeof(DateTime));
+            dt.Columns.Add("xFlag_dGeaendert", typeof(bool));
+
+            var row = dt.NewRow();
+            row["kKunde"] = kunde.KKunde;
+            row["xFlag_kInetKunde"] = false;
+            row["kKundenKategorie"] = kunde.KKundenKategorie ?? (object)DBNull.Value;
+            row["xFlag_kKundenKategorie"] = kunde.KKundenKategorie.HasValue;
+            row["xFlag_cKundenNr"] = false;
+            row["xFlag_dErstellt"] = false;
+            row["fRabatt"] = kunde.FRabatt;
+            row["xFlag_fRabatt"] = true;
+            row["cNewsletter"] = kunde.CNewsletter ?? "N";
+            row["xFlag_cNewsletter"] = true;
+            row["xFlag_cEbayName"] = false;
+            row["xFlag_kBuyer"] = false;
+            row["xFlag_cGeburtstag"] = false;
+            row["xFlag_cWWW"] = false;
+            row["cSperre"] = kunde.CSperre ?? "N";
+            row["xFlag_cSperre"] = true;
+            row["kKundenGruppe"] = kunde.KKundenGruppe ?? 1;
+            row["xFlag_kKundenGruppe"] = true;
+            row["nZahlungsziel"] = kunde.NZahlungsziel ?? 14;
+            row["xFlag_nZahlungsziel"] = true;
+            row["xFlag_kSprache"] = false;
+            row["xFlag_cHerkunft"] = false;
+            row["xFlag_cKassenKunde"] = false;
+            row["xFlag_cHRNr"] = false;
+            row["kZahlungsart"] = kunde.KZahlungsart ?? (object)DBNull.Value;
+            row["xFlag_kZahlungsart"] = kunde.KZahlungsart.HasValue;
+            row["nDebitorennr"] = kunde.NDebitorennr;
+            row["xFlag_nDebitorennr"] = true;
+            row["xFlag_cSteuerNr"] = false;
+            row["nKreditlimit"] = kunde.NKreditlimit;
+            row["xFlag_nKreditlimit"] = true;
+            row["xFlag_kKundenDrucktext"] = false;
+            row["nMahnstopp"] = kunde.NMahnstopp;
+            row["xFlag_nMahnstopp"] = true;
+            row["nMahnrhythmus"] = kunde.NMahnrhythmus;
+            row["xFlag_nMahnrhythmus"] = true;
+            row["xFlag_kFirma"] = false;
+            row["xFlag_fProvision"] = false;
+            row["xFlag_nVertreter"] = false;
+            row["fSkonto"] = kunde.FSkonto;
+            row["xFlag_fSkonto"] = true;
+            row["nSkontoInTagen"] = kunde.NSkontoInTagen;
+            row["xFlag_nSkontoInTagen"] = true;
+            row["dGeaendert"] = DateTime.Now;
+            row["xFlag_dGeaendert"] = true;
+            dt.Rows.Add(row);
+
+            var p = new DynamicParameters();
+            p.Add("@Daten", dt.AsTableValuedParameter("dbo.TYPE_spkundeUpdate"));
+            p.Add("@kBenutzer", 1);  // Standard-Benutzer
+
+            await conn.ExecuteAsync("Kunde.spKundeUpdate", p, commandType: CommandType.StoredProcedure);
         }
 
         public async Task UpdateAdresseAsync(AdresseDetail adresse)
@@ -1121,43 +1338,43 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
             var sql = @"
                 SELECT
-                    b.kBestellung,
-                    b.cBestellNr AS BestellNr,
-                    b.dErstellt AS Erstellt,
-                    ISNULL(a.cFirma, a.cName) AS KundeName,
-                    la.cOrt AS LieferOrt,
-                    ISNULL((SELECT SUM(bp.nAnzahl * ISNULL(art.fGewicht, 0))
-                            FROM tbestellpos bp
-                            LEFT JOIN tArtikel art ON bp.tArtikel_kArtikel = art.kArtikel
-                            WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS Gewicht,
-                    v.cName AS VersandartName,
-                    b.cIdentCode AS TrackingNr,
-                    b.cVersandInfo AS VersandDienstleister,
-                    b.dVersandt AS Versandt
-                FROM tBestellung b
-                LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
-                LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
-                OUTER APPLY (SELECT TOP 1 cOrt FROM Verkauf.tAuftragAdresse WHERE kAuftrag = b.kBestellung AND nTyp = 0) la
-                LEFT JOIN tVersandArt v ON b.tVersandArt_kVersandArt = v.kVersandArt
-                WHERE b.nStorno = 0
-                  AND b.dBezahlt IS NOT NULL";
+                    a.kAuftrag AS KBestellung,
+                    a.cAuftragsNr AS BestellNr,
+                    a.dErstellt AS Erstellt,
+                    ISNULL(adr.cFirma, adr.cName) AS KundeName,
+                    adr.cOrt AS LieferOrt,
+                    ISNULL((SELECT SUM(ap.fAnzahl * ISNULL(art.fGewicht, 0))
+                            FROM Verkauf.tAuftragPosition ap
+                            LEFT JOIN tArtikel art ON ap.kArtikel = art.kArtikel
+                            WHERE ap.kAuftrag = a.kAuftrag), 0) AS Gewicht,
+                    va.cName AS VersandartName,
+                    v.cIdentCode AS TrackingNr,
+                    v.cLogistiker AS VersandDienstleister,
+                    v.dVersendet AS Versandt
+                FROM Verkauf.tAuftrag a
+                LEFT JOIN Verkauf.tAuftragAdresse adr ON adr.kAuftrag = a.kAuftrag AND adr.nTyp = 1
+                LEFT JOIN dbo.tVersandArt va ON a.kVersandArt = va.kVersandArt
+                LEFT JOIN dbo.tLieferschein ls ON ls.kBestellung = a.kAuftrag
+                LEFT JOIN dbo.tVersand v ON v.kLieferschein = ls.kLieferschein
+                WHERE a.nStorno = 0
+                  AND a.nAuftragStatus >= 1";
 
             // Status-Filter: 0 = zu versenden, 1 = versendet
-            if (statusFilter == "0") sql += " AND b.dVersandt IS NULL";
-            else if (statusFilter == "1") sql += " AND b.dVersandt IS NOT NULL";
+            if (statusFilter == "0") sql += " AND v.kVersand IS NULL";
+            else if (statusFilter == "1") sql += " AND v.kVersand IS NOT NULL";
 
-            if (von.HasValue) sql += " AND b.dErstellt >= @Von";
-            if (bis.HasValue) sql += " AND b.dErstellt <= @Bis";
+            if (von.HasValue) sql += " AND a.dErstellt >= @Von";
+            if (bis.HasValue) sql += " AND a.dErstellt <= @Bis";
 
             if (!string.IsNullOrEmpty(suche))
             {
-                sql += @" AND (b.cBestellNr LIKE @Suche
-                         OR a.cFirma LIKE @Suche
-                         OR a.cName LIKE @Suche
-                         OR la.cOrt LIKE @Suche)";
+                sql += @" AND (a.cAuftragsNr LIKE @Suche
+                         OR adr.cFirma LIKE @Suche
+                         OR adr.cName LIKE @Suche
+                         OR adr.cOrt LIKE @Suche)";
             }
 
-            sql += " ORDER BY b.dErstellt DESC";
+            sql += " ORDER BY a.dErstellt DESC";
 
             return await conn.QueryAsync<VersandItem>(sql, new {
                 Suche = $"%{suche}%", Von = von, Bis = bis
@@ -1454,6 +1671,294 @@ namespace NovviaERP.Core.Services
             public DateTime? DMailVersand { get; set; }
             public string? CHinweis { get; set; }
         }
+
+        #region Versand buchen (komplett)
+
+        /// <summary>
+        /// Kompletter Versand-Workflow: Lieferschein erstellen (falls nötig), tVersand anlegen, Tracking setzen
+        /// </summary>
+        public async Task<VersandResult> VersandBuchenAsync(int kAuftrag, string carrier, string trackingNr, byte[]? labelPdf = null, decimal gewicht = 1, int kBenutzer = 1)
+        {
+            var conn = await GetConnectionAsync();
+            var result = new VersandResult { KAuftrag = kAuftrag, Carrier = carrier, TrackingNr = trackingNr };
+
+            try
+            {
+                // 1. Prüfen ob Lieferschein existiert, sonst erstellen
+                var lieferschein = await conn.QueryFirstOrDefaultAsync<(int KLieferschein, string? CLieferscheinNr)>(
+                    "SELECT kLieferschein, cLieferscheinNr FROM tLieferschein WHERE kBestellung = @kAuftrag ORDER BY dErstellt DESC",
+                    new { kAuftrag });
+
+                int kLieferschein;
+                if (lieferschein.KLieferschein == 0)
+                {
+                    // Lieferschein erstellen
+                    kLieferschein = await CreateLieferscheinAsync(kAuftrag, kBenutzer);
+                    result.LieferscheinErstellt = true;
+                }
+                else
+                {
+                    kLieferschein = lieferschein.KLieferschein;
+                }
+                result.KLieferschein = kLieferschein;
+
+                // 2. Prüfen ob bereits ein Versand existiert
+                var existingVersand = await conn.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT kVersand FROM tVersand WHERE kLieferschein = @kLieferschein",
+                    new { kLieferschein });
+
+                if (existingVersand.HasValue)
+                {
+                    // Versand aktualisieren
+                    await conn.ExecuteAsync(@"
+                        UPDATE tVersand SET
+                            cIdentCode = @trackingNr,
+                            cLogistiker = @carrier,
+                            fGewicht = @gewicht,
+                            dVersendet = GETDATE(),
+                            nStatus = 1
+                        WHERE kVersand = @kVersand",
+                        new { trackingNr, carrier, gewicht, kVersand = existingVersand.Value });
+                    result.KVersand = existingVersand.Value;
+                }
+                else
+                {
+                    // 3. tVersand Eintrag erstellen
+                    var kVersandArt = await conn.QueryFirstOrDefaultAsync<int?>(
+                        "SELECT a.kVersandArt FROM Verkauf.tAuftrag a WHERE a.kAuftrag = @kAuftrag",
+                        new { kAuftrag });
+
+                    result.KVersand = await conn.QuerySingleAsync<int>(@"
+                        INSERT INTO tVersand (kLieferschein, kBenutzer, cIdentCode, dErstellt, fGewicht, kVersandArt, cLogistiker, dVersendet, nStatus)
+                        VALUES (@kLieferschein, @kBenutzer, @trackingNr, GETDATE(), @gewicht, @kVersandArt, @carrier, GETDATE(), 1);
+                        SELECT SCOPE_IDENTITY();",
+                        new { kLieferschein, kBenutzer, trackingNr, gewicht, kVersandArt, carrier });
+                }
+
+                // 4. Label in tVersand speichern (falls vorhanden)
+                if (labelPdf != null && labelPdf.Length > 0)
+                {
+                    await conn.ExecuteAsync(
+                        "UPDATE tVersand SET bLabel = @label WHERE kVersand = @kVersand",
+                        new { label = labelPdf, kVersand = result.KVersand });
+                }
+
+                // 5. Lieferschein Tracking aktualisieren
+                await conn.ExecuteAsync(@"
+                    UPDATE tLieferschein SET
+                        cTrackingID = @trackingNr,
+                        cVersandDienstleister = @carrier,
+                        dVersandt = GETDATE()
+                    WHERE kLieferschein = @kLieferschein",
+                    new { trackingNr, carrier, kLieferschein });
+
+                // 6. Auftrag Status auf "Versendet" setzen (Status 4 = Versendet)
+                await conn.ExecuteAsync(@"
+                    UPDATE Verkauf.tAuftrag SET
+                        nKomplettAusgeliefert = 1
+                    WHERE kAuftrag = @kAuftrag",
+                    new { kAuftrag });
+
+                result.Success = true;
+            }
+            catch (Exception ex)
+            {
+                result.Success = false;
+                result.Error = ex.Message;
+                _log.Error(ex, "Fehler beim Versand buchen für Auftrag {KAuftrag}", kAuftrag);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Holt oder erstellt einen Lieferschein für einen Auftrag
+        /// </summary>
+        public async Task<int> GetOrCreateLieferscheinAsync(int kAuftrag, int kBenutzer = 1)
+        {
+            var conn = await GetConnectionAsync();
+
+            var existing = await conn.QueryFirstOrDefaultAsync<int?>(
+                "SELECT kLieferschein FROM tLieferschein WHERE kBestellung = @kAuftrag ORDER BY dErstellt DESC",
+                new { kAuftrag });
+
+            if (existing.HasValue && existing.Value > 0)
+                return existing.Value;
+
+            return await CreateLieferscheinAsync(kAuftrag, kBenutzer);
+        }
+
+        /// <summary>
+        /// Lädt die Shipping-Konfiguration aus der Datenbank
+        /// </summary>
+        public async Task<ShippingConfig> GetShippingConfigAsync()
+        {
+            var conn = await GetConnectionAsync();
+            var config = new ShippingConfig();
+
+            try
+            {
+                // Firmendaten als Absender laden
+                var firma = await conn.QueryFirstOrDefaultAsync<dynamic>(
+                    "SELECT cFirma, cStrasse, cPLZ, cOrt, cEMail FROM tFirma WHERE kFirma = 1");
+
+                if (firma != null)
+                {
+                    config.AbsenderName = firma.cFirma ?? "NOVVIA GmbH";
+                    config.AbsenderStrasse = firma.cStrasse ?? "";
+                    config.AbsenderPLZ = firma.cPLZ ?? "";
+                    config.AbsenderOrt = firma.cOrt ?? "";
+                    config.AbsenderEmail = firma.cEMail ?? "";
+                }
+
+                // Carrier-Zugangsdaten aus NOVVIA.Einstellungen laden
+                var einstellungen = await conn.QueryAsync<(string CKey, string? CValue)>(
+                    "SELECT cKey, cValue FROM NOVVIA.Einstellungen WHERE cKategorie = 'Versand'");
+
+                foreach (var e in einstellungen)
+                {
+                    switch (e.CKey)
+                    {
+                        case "DHL_User": config.DHLUser = e.CValue ?? ""; break;
+                        case "DHL_Password": config.DHLPassword = e.CValue ?? ""; break;
+                        case "DHL_Profile": config.DHLProfile = e.CValue ?? ""; break;
+                        case "DHL_BillingNumber": config.DHLBillingNumber = e.CValue ?? ""; break;
+                        case "DPD_User": config.DPDUser = e.CValue ?? ""; break;
+                        case "DPD_Password": config.DPDPassword = e.CValue ?? ""; break;
+                        case "DPD_Depot": config.DPDDepot = e.CValue ?? ""; break;
+                        case "GLS_User": config.GLSUser = e.CValue ?? ""; break;
+                        case "GLS_Password": config.GLSPassword = e.CValue ?? ""; break;
+                        case "GLS_ShipperId": config.GLSShipperId = e.CValue ?? ""; break;
+                        case "UPS_Token": config.UPSToken = e.CValue ?? ""; break;
+                        case "UPS_AccountNumber": config.UPSAccountNumber = e.CValue ?? ""; break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "Konnte Shipping-Config nicht aus DB laden, verwende Defaults");
+            }
+
+            return config;
+        }
+
+        /// <summary>
+        /// Speichert die Shipping-Konfiguration in der Datenbank
+        /// </summary>
+        public async Task SaveShippingConfigAsync(ShippingConfig config)
+        {
+            var conn = await GetConnectionAsync();
+
+            var settings = new Dictionary<string, string?>
+            {
+                { "DHL_User", config.DHLUser },
+                { "DHL_Password", config.DHLPassword },
+                { "DHL_Profile", config.DHLProfile },
+                { "DHL_BillingNumber", config.DHLBillingNumber },
+                { "DPD_User", config.DPDUser },
+                { "DPD_Password", config.DPDPassword },
+                { "DPD_Depot", config.DPDDepot },
+                { "GLS_User", config.GLSUser },
+                { "GLS_Password", config.GLSPassword },
+                { "GLS_ShipperId", config.GLSShipperId },
+                { "UPS_Token", config.UPSToken },
+                { "UPS_AccountNumber", config.UPSAccountNumber }
+            };
+
+            foreach (var kvp in settings)
+            {
+                await conn.ExecuteAsync(@"
+                    IF EXISTS (SELECT 1 FROM NOVVIA.Einstellungen WHERE cKategorie = 'Versand' AND cKey = @Key)
+                        UPDATE NOVVIA.Einstellungen SET cValue = @Value WHERE cKategorie = 'Versand' AND cKey = @Key
+                    ELSE
+                        INSERT INTO NOVVIA.Einstellungen (cKategorie, cKey, cValue) VALUES ('Versand', @Key, @Value)",
+                    new { Key = kvp.Key, Value = kvp.Value });
+            }
+        }
+
+        public class VersandResult
+        {
+            public bool Success { get; set; }
+            public int KAuftrag { get; set; }
+            public int KLieferschein { get; set; }
+            public int KVersand { get; set; }
+            public string Carrier { get; set; } = "";
+            public string TrackingNr { get; set; } = "";
+            public bool LieferscheinErstellt { get; set; }
+            public string? Error { get; set; }
+        }
+
+        /// <summary>
+        /// Lieferadresse eines Auftrags laden (nTyp = 1)
+        /// </summary>
+        public async Task<AuftragAdresse?> GetAuftragLieferadresseAsync(int kAuftrag)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryFirstOrDefaultAsync<AuftragAdresse>(@"
+                SELECT kAuftrag, kKunde, nTyp, cFirma AS CFirma, cAnrede AS CAnrede, cTitel AS CTitel,
+                       cVorname AS CVorname, cName AS CName, cStrasse AS CStrasse, cAdressZusatz AS CAdressZusatz,
+                       cPLZ AS CPLZ, cOrt AS COrt, cBundesland AS CBundesland, cLand AS CLand, cISO AS CISO,
+                       cTel AS CTel, cMobil AS CMobil, cFax AS CFax, cMail AS CMail
+                FROM Verkauf.tAuftragAdresse
+                WHERE kAuftrag = @kAuftrag AND nTyp = 1",
+                new { kAuftrag });
+        }
+
+        /// <summary>
+        /// Rechnungsadresse eines Auftrags laden (nTyp = 0)
+        /// </summary>
+        public async Task<AuftragAdresse?> GetAuftragRechnungsadresseAsync(int kAuftrag)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryFirstOrDefaultAsync<AuftragAdresse>(@"
+                SELECT kAuftrag, kKunde, nTyp, cFirma AS CFirma, cAnrede AS CAnrede, cTitel AS CTitel,
+                       cVorname AS CVorname, cName AS CName, cStrasse AS CStrasse, cAdressZusatz AS CAdressZusatz,
+                       cPLZ AS CPLZ, cOrt AS COrt, cBundesland AS CBundesland, cLand AS CLand, cISO AS CISO,
+                       cTel AS CTel, cMobil AS CMobil, cFax AS CFax, cMail AS CMail
+                FROM Verkauf.tAuftragAdresse
+                WHERE kAuftrag = @kAuftrag AND nTyp = 0",
+                new { kAuftrag });
+        }
+
+        public class AuftragAdresse
+        {
+            public int KAuftrag { get; set; }
+            public int? KKunde { get; set; }
+            public int NTyp { get; set; }
+            public string? CFirma { get; set; }
+            public string? CAnrede { get; set; }
+            public string? CTitel { get; set; }
+            public string? CVorname { get; set; }
+            public string? CName { get; set; }
+            public string? CStrasse { get; set; }
+            public string? CAdressZusatz { get; set; }
+            public string? CPLZ { get; set; }
+            public string? COrt { get; set; }
+            public string? CBundesland { get; set; }
+            public string? CLand { get; set; }
+            public string? CISO { get; set; }
+            public string? CTel { get; set; }
+            public string? CMobil { get; set; }
+            public string? CFax { get; set; }
+            public string? CMail { get; set; }
+        }
+
+        /// <summary>
+        /// Versand-Label aus DB laden (bLabel aus tVersand)
+        /// </summary>
+        public async Task<byte[]?> GetVersandLabelAsync(int kAuftrag)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryFirstOrDefaultAsync<byte[]>(@"
+                SELECT v.bLabel
+                FROM tVersand v
+                INNER JOIN tLieferschein ls ON v.kLieferschein = ls.kLieferschein
+                WHERE ls.kBestellung = @kAuftrag
+                ORDER BY v.dErstellt DESC",
+                new { kAuftrag });
+        }
+
+        #endregion
 
         /// <summary>
         /// Erstellt eine Rechnung für einen Auftrag via JTL Stored Procedure
@@ -3527,30 +4032,41 @@ namespace NovviaERP.Core.Services
         #region Auftragsstapelimport
 
         /// <summary>
-        /// Artikel nach Artikelnummer suchen
+        /// Artikel nach Artikelnummer suchen (mit TRIM und case-insensitive)
         /// </summary>
         public async Task<ArtikelRef?> GetArtikelByArtNrAsync(string artNr)
         {
             var conn = await GetConnectionAsync();
+            var searchTerm = artNr?.Trim() ?? "";
             const string sql = @"
                 SELECT TOP 1 a.kArtikel AS KArtikel, a.cArtNr AS CArtNr,
-                       ab.cName AS CName, a.fVKNetto AS FVKNetto, a.fMwSt AS FMwSt
+                       ab.cName AS CName, a.fVKNetto AS FVKNetto,
+                       ISNULL(s.fSteuersatz, 19) AS FMwSt
                 FROM dbo.tArtikel a
                 LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
-                WHERE a.cArtNr = @artNr OR a.cBarcode = @artNr";
-            return await conn.QueryFirstOrDefaultAsync<ArtikelRef>(sql, new { artNr });
+                LEFT JOIN dbo.tSteuersatz s ON a.kSteuerklasse = s.kSteuerklasse AND s.kSteuerzone = 3
+                WHERE LTRIM(RTRIM(a.cArtNr)) = @artNr COLLATE Latin1_General_CI_AS
+                   OR LTRIM(RTRIM(a.cBarcode)) = @artNr COLLATE Latin1_General_CI_AS
+                   OR LTRIM(RTRIM(a.cHAN)) = @artNr COLLATE Latin1_General_CI_AS";
+            return await conn.QueryFirstOrDefaultAsync<ArtikelRef>(sql, new { artNr = searchTerm });
         }
 
         /// <summary>
-        /// Auftrag aus Import-Daten erstellen
+        /// Auftrag aus Import-Daten erstellen (schreibt in tAuftrag + tAuftragPosition, dann spAuftragEckdatenBerechnen)
         /// </summary>
-        public async Task<int> CreateAuftragFromImportAsync(string kundenNr, List<AuftragImportPosition> positionen, string zusatztext, bool ueberPositionen, DateTime? mindestMHD = null)
+        public async Task<AuftragImportResult> CreateAuftragFromImportAsync(string kundenNr, List<AuftragImportPosition> positionen, string zusatztext, bool ueberPositionen, DateTime? mindestMHD = null)
         {
             var conn = await GetConnectionAsync();
 
-            // Kunde suchen
-            var kunde = await conn.QueryFirstOrDefaultAsync<dynamic>(
-                "SELECT kKunde, cFirma, cVorname, cName FROM dbo.tKunde WHERE cKundenNr = @nr OR CAST(kKunde AS VARCHAR) = @nr",
+            // Kunde mit Adresse suchen
+            var kunde = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
+                SELECT k.kKunde, k.kSprache, k.kKundenGruppe, k.kZahlungsart,
+                       a.cFirma, a.cAnrede, a.cTitel, a.cVorname, a.cName, a.cStrasse,
+                       a.cAdressZusatz, a.cPLZ, a.cOrt, a.cLand, a.cISO, a.cBundesland,
+                       a.cTel, a.cFax, a.cMobil, a.cMail
+                FROM dbo.tKunde k
+                LEFT JOIN dbo.tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
+                WHERE k.cKundenNr = @nr OR CAST(k.kKunde AS VARCHAR) = @nr",
                 new { nr = kundenNr });
 
             if (kunde == null)
@@ -3558,94 +4074,157 @@ namespace NovviaERP.Core.Services
                 throw new Exception($"Kunde mit Nr. {kundenNr} nicht gefunden");
             }
 
-            // Bestellnummer generieren
-            var maxNr = await conn.QueryFirstOrDefaultAsync<int?>(
-                "SELECT MAX(CAST(cBestellNr AS INT)) FROM dbo.tBestellung WHERE ISNUMERIC(cBestellNr) = 1");
-            var neueBestellNr = ((maxNr ?? 0) + 1).ToString();
+            // Auftragsnummer aus tLaufendeNummern holen (kLaufendeNummer = 3 für Aufträge)
+            var laufendeNummer = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
+                SELECT nNummer, cPrefix, cSuffix
+                FROM dbo.tLaufendeNummern
+                WHERE kLaufendeNummer = 3");
 
-            // Anmerkung mit MHD ergänzen
-            var anmerkung = zusatztext;
-            if (mindestMHD.HasValue)
-            {
-                var mhdText = $"[Mindest-MHD: {mindestMHD.Value:dd.MM.yyyy}]";
-                anmerkung = string.IsNullOrEmpty(anmerkung) ? mhdText : $"{mhdText}\n{anmerkung}";
-            }
+            int nextNr = (laufendeNummer?.nNummer ?? 10000) + 1;
 
-            // Bestellung anlegen
-            var bestellungId = await conn.QuerySingleAsync<int>(@"
-                INSERT INTO dbo.tBestellung (
-                    cBestellNr, kKunde, dErstellt, cStatus, cWaehrung,
-                    cAnmerkung, fGesamtNetto, fGesamtBrutto
+            // Nummer in tLaufendeNummern hochzählen
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tLaufendeNummern
+                SET nNummer = @nextNr
+                WHERE kLaufendeNummer = 3",
+                new { nextNr });
+
+            // Auftragsnummer zusammensetzen (mit optionalem Prefix/Suffix)
+            var prefix = (string?)laufendeNummer?.cPrefix ?? "";
+            var suffix = (string?)laufendeNummer?.cSuffix ?? "";
+            var neueAuftragsNr = $"{prefix}{nextNr}{suffix}";
+
+            // 1. Auftrag anlegen
+            var auftragId = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO Verkauf.tAuftrag (
+                    kBenutzer, kBenutzerErstellt, kKunde, cAuftragsNr, nType, dErstellt,
+                    nBeschreibung, cWaehrung, fFaktor, kFirmaHistory, kSprache,
+                    nSteuereinstellung, nHatUpload, fZusatzGewicht,
+                    cVersandlandISO, cVersandlandWaehrung, fVersandlandWaehrungFaktor,
+                    nStorno, nKomplettAusgeliefert, nLieferPrioritaet, nPremiumVersand,
+                    nIstExterneRechnung, nIstReadOnly, nArchiv, nReserviert,
+                    nAuftragStatus, fFinanzierungskosten, nPending, nSteuersonderbehandlung
                 ) VALUES (
-                    @BestellNr, @KundeId, GETDATE(), 'Offen', 'EUR',
-                    @Anmerkung, 0, 0
+                    1, 1, @KundeId, @AuftragsNr, 1, GETDATE(),
+                    0, 'EUR', 1, 1, ISNULL(@Sprache, 1),
+                    0, 0, 0,
+                    ISNULL(@LandISO, 'DE'), 'EUR', 1,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0
                 );
                 SELECT SCOPE_IDENTITY();",
                 new {
-                    BestellNr = neueBestellNr,
                     KundeId = (int)kunde.kKunde,
-                    Anmerkung = anmerkung
+                    AuftragsNr = neueAuftragsNr,
+                    Sprache = (int?)kunde.kSprache,
+                    LandISO = (string?)kunde.cISO
                 });
 
-            decimal gesamtNetto = 0;
-            decimal gesamtBrutto = 0;
-            int posNr = 1;
+            // 2. Adressen anlegen (Rechnungsadresse nTyp=0, Lieferadresse nTyp=1)
+            for (int adressTyp = 0; adressTyp <= 1; adressTyp++)
+            {
+                await conn.ExecuteAsync(@"
+                    INSERT INTO Verkauf.tAuftragAdresse (
+                        kAuftrag, kKunde, cFirma, cAnrede, cTitel, cVorname, cName,
+                        cStrasse, cPLZ, cOrt, cLand, cISO, cBundesland,
+                        cTel, cFax, cMobil, cMail, cAdressZusatz, nTyp
+                    ) VALUES (
+                        @AuftragId, @KundeId, @Firma, @Anrede, @Titel, @Vorname, @Name,
+                        @Strasse, @PLZ, @Ort, @Land, @ISO, @Bundesland,
+                        @Tel, @Fax, @Mobil, @Mail, @Zusatz, @Typ
+                    )",
+                    new {
+                        AuftragId = auftragId,
+                        KundeId = (int)kunde.kKunde,
+                        Firma = (string?)kunde.cFirma ?? "",
+                        Anrede = (string?)kunde.cAnrede ?? "",
+                        Titel = (string?)kunde.cTitel ?? "",
+                        Vorname = (string?)kunde.cVorname ?? "",
+                        Name = (string?)kunde.cName ?? "",
+                        Strasse = (string?)kunde.cStrasse ?? "",
+                        PLZ = (string?)kunde.cPLZ ?? "",
+                        Ort = (string?)kunde.cOrt ?? "",
+                        Land = (string?)kunde.cLand ?? "Deutschland",
+                        ISO = (string?)kunde.cISO ?? "DE",
+                        Bundesland = (string?)kunde.cBundesland ?? "",
+                        Tel = (string?)kunde.cTel ?? "",
+                        Fax = (string?)kunde.cFax ?? "",
+                        Mobil = (string?)kunde.cMobil ?? "",
+                        Mail = (string?)kunde.cMail ?? "",
+                        Zusatz = (string?)kunde.cAdressZusatz ?? "",
+                        Typ = adressTyp
+                    });
+            }
 
-            // Positionen anlegen
+            // 3. Positionen anlegen
+            int posSort = 0;
+            var nichtGefunden = new List<string>();
+
             foreach (var pos in positionen)
             {
                 var artikel = await GetArtikelByArtNrAsync(pos.ArtNr);
-                if (artikel == null) continue;
+                if (artikel == null)
+                {
+                    nichtGefunden.Add(pos.ArtNr);
+                    continue;
+                }
 
                 var preis = pos.Preis > 0 ? pos.Preis : artikel.FVKNetto;
                 var mwst = artikel.FMwSt;
-                var netto = preis * pos.Menge;
-                var brutto = netto * (1 + mwst / 100);
 
                 await conn.ExecuteAsync(@"
-                    INSERT INTO dbo.tBestellPos (
-                        kBestellung, kArtikel, cArtNr, cName,
-                        fAnzahl, fVKNetto, fMwSt, nPosNr
+                    INSERT INTO Verkauf.tAuftragPosition (
+                        kArtikel, kAuftrag, cArtNr, nReserviert, cName, cHinweis,
+                        fAnzahl, fEkNetto, fVkNetto, fRabatt, fMwSt, nSort,
+                        cNameStandard, nType, cEinheit, nHatUpload, fFaktor
                     ) VALUES (
-                        @BestellungId, @ArtikelId, @ArtNr, @Name,
-                        @Menge, @Preis, @MwSt, @PosNr
+                        @ArtikelId, @AuftragId, @ArtNr, 0, @Name, @Hinweis,
+                        @Menge, 0, @Preis, 0, @MwSt, @Sort,
+                        @Name, 0, 'Stk', 0, 1
                     )",
                     new {
-                        BestellungId = bestellungId,
                         ArtikelId = artikel.KArtikel,
+                        AuftragId = auftragId,
                         ArtNr = artikel.CArtNr,
-                        Name = artikel.CName,
+                        Name = artikel.CName ?? "",
+                        Hinweis = "",
                         Menge = pos.Menge,
                         Preis = preis,
                         MwSt = mwst,
-                        PosNr = posNr++
+                        Sort = posSort++
                     });
-
-                gesamtNetto += netto;
-                gesamtBrutto += brutto;
             }
 
-            // Summen aktualisieren
-            await conn.ExecuteAsync(@"
-                UPDATE dbo.tBestellung
-                SET fGesamtNetto = @Netto, fGesamtBrutto = @Brutto
-                WHERE kBestellung = @Id",
-                new { Netto = gesamtNetto, Brutto = gesamtBrutto, Id = bestellungId });
+            // Warnung loggen wenn Artikel nicht gefunden
+            if (nichtGefunden.Any())
+            {
+                _log.Warning("Auftrag {AuftragId}: {Anzahl} Artikel nicht gefunden: {Artikel}",
+                    auftragId, nichtGefunden.Count, string.Join(", ", nichtGefunden.Take(10)));
+            }
 
-            return bestellungId;
+            // 4. Eckdaten berechnen via SP
+            var dt = new DataTable();
+            dt.Columns.Add("kAuftrag", typeof(int));
+            dt.Rows.Add(auftragId);
+
+            var p = new DynamicParameters();
+            p.Add("@Auftrag", dt.AsTableValuedParameter("Verkauf.TYPE_spAuftragEckdatenBerechnen"));
+            await conn.ExecuteAsync("Verkauf.spAuftragEckdatenBerechnen", p, commandType: CommandType.StoredProcedure);
+
+            return new AuftragImportResult
+            {
+                AuftragId = auftragId,
+                PositionenAngelegt = posSort,
+                NichtGefundeneArtikel = nichtGefunden
+            };
         }
 
-        /// <summary>
-        /// Auftrag buchen/freigeben
-        /// </summary>
-        public async Task AuftragBuchenAsync(int bestellungId)
+        public class AuftragImportResult
         {
-            var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync(@"
-                UPDATE dbo.tBestellung
-                SET cStatus = 'In Bearbeitung', dGeaendert = GETDATE()
-                WHERE kBestellung = @Id",
-                new { Id = bestellungId });
+            public int AuftragId { get; set; }
+            public int PositionenAngelegt { get; set; }
+            public List<string> NichtGefundeneArtikel { get; set; } = new();
         }
 
         public class ArtikelRef

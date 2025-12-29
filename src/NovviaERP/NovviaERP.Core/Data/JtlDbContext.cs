@@ -202,14 +202,158 @@ namespace NovviaERP.Core.Data
         {
             var conn = await GetConnectionAsync();
             if (string.IsNullOrEmpty(k.KundenNr)) k.KundenNr = await GetNaechsteNummerAsync("Kunde");
-            return await conn.QuerySingleAsync<int>(@"INSERT INTO tKunde (kKundengruppe, cKundenNr, cAnrede, cVorname, cNachname, cFirma, cStrasse, cPLZ, cOrt, cLand, cTel, cMobil, cMail, cUSTID, cIBAN, cBIC, fKreditlimit, fRabatt, nZahlungsziel, fSkonto, cAktiv, dErstellt, cAnmerkung)
-                VALUES (@KundengruppeId, @KundenNr, @Anrede, @Vorname, @Nachname, @Firma, @Strasse, @PLZ, @Ort, @Land, @Telefon, @Mobil, @Email, @UStID, @IBAN, @BIC, @Kreditlimit, @Rabatt, @Zahlungsziel, @Skonto, @Aktiv, GETDATE(), @Anmerkung); SELECT SCOPE_IDENTITY();", k);
+
+            // DataTable für TYPE_spkundeInsert erstellen
+            var dt = new DataTable();
+            dt.Columns.Add("kInternalId", typeof(int));
+            dt.Columns.Add("kInetKunde", typeof(int));
+            dt.Columns.Add("kKundenKategorie", typeof(int));
+            dt.Columns.Add("cKundenNr", typeof(string));
+            dt.Columns.Add("cFirma", typeof(string));
+            dt.Columns.Add("cAnrede", typeof(string));
+            dt.Columns.Add("cTitel", typeof(string));
+            dt.Columns.Add("cVorname", typeof(string));
+            dt.Columns.Add("cName", typeof(string));  // = Nachname
+            dt.Columns.Add("cStrasse", typeof(string));
+            dt.Columns.Add("cPLZ", typeof(string));
+            dt.Columns.Add("cOrt", typeof(string));
+            dt.Columns.Add("cLand", typeof(string));
+            dt.Columns.Add("cTel", typeof(string));
+            dt.Columns.Add("cFax", typeof(string));
+            dt.Columns.Add("cEMail", typeof(string));
+            dt.Columns.Add("dErstellt", typeof(DateTime));
+            dt.Columns.Add("cMobil", typeof(string));
+            dt.Columns.Add("fRabatt", typeof(decimal));
+            dt.Columns.Add("cUSTID", typeof(string));
+            dt.Columns.Add("cNewsletter", typeof(string));
+            dt.Columns.Add("cZusatz", typeof(string));
+            dt.Columns.Add("cEbayName", typeof(string));
+            dt.Columns.Add("kBuyer", typeof(int));
+            dt.Columns.Add("cAdressZusatz", typeof(string));
+            dt.Columns.Add("cGeburtstag", typeof(string));
+            dt.Columns.Add("cWWW", typeof(string));
+            dt.Columns.Add("cSperre", typeof(string));
+            dt.Columns.Add("cPostID", typeof(string));
+            dt.Columns.Add("kKundenGruppe", typeof(int));
+            dt.Columns.Add("nZahlungsziel", typeof(int));
+            dt.Columns.Add("kSprache", typeof(int));
+            dt.Columns.Add("cISO", typeof(string));
+            dt.Columns.Add("cBundesland", typeof(string));
+            dt.Columns.Add("cHerkunft", typeof(string));
+            dt.Columns.Add("cKassenKunde", typeof(string));
+            dt.Columns.Add("cHRNr", typeof(string));
+            dt.Columns.Add("kZahlungsart", typeof(int));
+            dt.Columns.Add("nDebitorennr", typeof(int));
+            dt.Columns.Add("cSteuerNr", typeof(string));
+            dt.Columns.Add("nKreditlimit", typeof(int));
+            dt.Columns.Add("kKundenDrucktext", typeof(int));
+            dt.Columns.Add("nMahnstopp", typeof(byte));
+            dt.Columns.Add("nMahnrhythmus", typeof(int));
+            dt.Columns.Add("kFirma", typeof(byte));
+            dt.Columns.Add("fProvision", typeof(decimal));
+            dt.Columns.Add("nVertreter", typeof(byte));
+            dt.Columns.Add("fSkonto", typeof(decimal));
+            dt.Columns.Add("nSkontoInTagen", typeof(int));
+            dt.Columns.Add("dGeaendert", typeof(DateTime));
+
+            var row = dt.NewRow();
+            row["kInternalId"] = 1;
+            row["cKundenNr"] = k.KundenNr ?? "";
+            row["cFirma"] = k.Firma ?? "";
+            row["cAnrede"] = k.Anrede ?? "";
+            row["cVorname"] = k.Vorname ?? "";
+            row["cName"] = k.Nachname ?? "";
+            row["cStrasse"] = k.Strasse ?? "";
+            row["cPLZ"] = k.PLZ ?? "";
+            row["cOrt"] = k.Ort ?? "";
+            row["cLand"] = k.Land ?? "DE";
+            row["cTel"] = k.Telefon ?? "";
+            row["cMobil"] = k.Mobil ?? "";
+            row["cEMail"] = k.Email ?? "";
+            row["dErstellt"] = DateTime.Now;
+            row["fRabatt"] = k.Rabatt;
+            row["cUSTID"] = k.UStId ?? "";
+            row["kKundenGruppe"] = k.KundengruppeId > 0 ? k.KundengruppeId : 1;
+            row["nZahlungsziel"] = k.Zahlungsziel ?? 14;
+            row["kSprache"] = 1;
+            row["cISO"] = "DE";
+            row["nKreditlimit"] = 0;
+            row["fSkonto"] = 0m;
+            row["kFirma"] = (byte)1;
+            row["cSperre"] = k.Aktiv == "N" ? "Y" : "N";
+            row["dGeaendert"] = DateTime.Now;
+            dt.Rows.Add(row);
+
+            var p = new DynamicParameters();
+            p.Add("@Daten", dt.AsTableValuedParameter("dbo.TYPE_spkundeInsert"));
+
+            // SP aufrufen und neue kKunde ermitteln
+            await conn.ExecuteAsync("Kunde.spKundeInsert", p, commandType: CommandType.StoredProcedure);
+
+            // Neu erstellte kKunde abfragen
+            var newId = await conn.QuerySingleAsync<int>(
+                "SELECT TOP 1 kKunde FROM dbo.tKunde WHERE cKundenNr = @Nr ORDER BY kKunde DESC",
+                new { Nr = k.KundenNr });
+
+            return newId;
         }
 
         public async Task UpdateKundeAsync(Kunde k)
         {
             var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync(@"UPDATE tKunde SET kKundengruppe=@KundengruppeId, cAnrede=@Anrede, cVorname=@Vorname, cNachname=@Nachname, cFirma=@Firma, cStrasse=@Strasse, cPLZ=@PLZ, cOrt=@Ort, cLand=@Land, cTel=@Telefon, cMobil=@Mobil, cMail=@Email, cUSTID=@UStID, cIBAN=@IBAN, cBIC=@BIC, fKreditlimit=@Kreditlimit, fRabatt=@Rabatt, nZahlungsziel=@Zahlungsziel, fSkonto=@Skonto, cAktiv=@Aktiv, cAnmerkung=@Anmerkung WHERE kKunde=@Id", k);
+
+            // DataTable für TYPE_spkundeUpdate erstellen
+            var dt = new DataTable();
+            dt.Columns.Add("kKunde", typeof(int));
+            dt.Columns.Add("kKundenKategorie", typeof(int));
+            dt.Columns.Add("xFlag_kKundenKategorie", typeof(bool));
+            dt.Columns.Add("cKundenNr", typeof(string));
+            dt.Columns.Add("xFlag_cKundenNr", typeof(bool));
+            dt.Columns.Add("fRabatt", typeof(decimal));
+            dt.Columns.Add("xFlag_fRabatt", typeof(bool));
+            dt.Columns.Add("kKundenGruppe", typeof(int));
+            dt.Columns.Add("xFlag_kKundenGruppe", typeof(bool));
+            dt.Columns.Add("nZahlungsziel", typeof(int));
+            dt.Columns.Add("xFlag_nZahlungsziel", typeof(bool));
+            dt.Columns.Add("nKreditlimit", typeof(int));
+            dt.Columns.Add("xFlag_nKreditlimit", typeof(bool));
+            dt.Columns.Add("fSkonto", typeof(decimal));
+            dt.Columns.Add("xFlag_fSkonto", typeof(bool));
+            dt.Columns.Add("cSperre", typeof(string));
+            dt.Columns.Add("xFlag_cSperre", typeof(bool));
+            dt.Columns.Add("dGeaendert", typeof(DateTime));
+            dt.Columns.Add("xFlag_dGeaendert", typeof(bool));
+
+            var row = dt.NewRow();
+            row["kKunde"] = k.Id;
+            row["kKundenGruppe"] = k.KundengruppeId > 0 ? k.KundengruppeId : 1;
+            row["xFlag_kKundenGruppe"] = true;
+            row["fRabatt"] = k.Rabatt;
+            row["xFlag_fRabatt"] = true;
+            row["nZahlungsziel"] = k.Zahlungsziel ?? 14;
+            row["xFlag_nZahlungsziel"] = true;
+            row["nKreditlimit"] = 0;
+            row["xFlag_nKreditlimit"] = false;  // nicht ändern
+            row["fSkonto"] = 0m;
+            row["xFlag_fSkonto"] = false;  // nicht ändern
+            row["cSperre"] = k.Aktiv == "N" ? "Y" : "N";
+            row["xFlag_cSperre"] = true;
+            row["dGeaendert"] = DateTime.Now;
+            row["xFlag_dGeaendert"] = true;
+            dt.Rows.Add(row);
+
+            var p = new DynamicParameters();
+            p.Add("@Daten", dt.AsTableValuedParameter("dbo.TYPE_spkundeUpdate"));
+
+            await conn.ExecuteAsync("Kunde.spKundeUpdate", p, commandType: CommandType.StoredProcedure);
+
+            // Rechnungsadresse separat aktualisieren (keine SP nötig)
+            await conn.ExecuteAsync(
+                @"UPDATE dbo.tRechnungsadresse
+                  SET cAnrede=@Anrede, cVorname=@Vorname, cName=@Nachname, cFirma=@Firma,
+                      cStrasse=@Strasse, cPLZ=@PLZ, cOrt=@Ort, cLand=@Land,
+                      cTel=@Telefon, cMobil=@Mobil, cMail=@Email
+                  WHERE kKunde=@Id", k);
         }
 
         public async Task<bool> KundenZusammenfuehrenAsync(int behalten, int loeschen)
