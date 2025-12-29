@@ -1,9 +1,213 @@
 <Page x:Class="NovviaERP.WPF.Views.DashboardPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      Title="Dashboard" Background="#f0f2f5">
+      xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+      Title="Dashboard" Background="#F5F5F5">
+
+    <Page.Resources>
+        <!-- KPI Card Style -->
+        <Style x:Key="KpiCard" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Chart Card Style -->
+        <Style x:Key="ChartCard" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="15"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.1"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
     <Grid>
-        <TextBlock Text="Dashboard geladen!" FontSize="32"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#2196F3" Padding="20,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="NOVVIA Dashboard" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock x:Name="txtDatum" Text="29.12.2024" FontSize="12" Foreground="#BBDEFB"/>
+                </StackPanel>
+                <Button Grid.Column="1" x:Name="btnAktualisieren" Content="Aktualisieren" Padding="15,8"
+                        Background="#1976D2" Foreground="White" BorderThickness="0" Cursor="Hand"
+                        Click="BtnAktualisieren_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- KPI Cards Row -->
+        <Grid Grid.Row="1" Margin="15,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Umsatz Monat -->
+            <Border Grid.Column="0" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="Umsatz Monat" FontSize="12" Foreground="#757575"/>
+                    <TextBlock x:Name="txtUmsatzMonat" Text="0,00 EUR" FontSize="22" FontWeight="Bold" Foreground="#2196F3"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                        <TextBlock x:Name="txtUmsatzTrend" Text="+0%" FontSize="12" Foreground="#4CAF50"/>
+                        <TextBlock Text=" vs. Vormonat" FontSize="10" Foreground="#9E9E9E"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Auftraege Heute -->
+            <Border Grid.Column="1" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="Auftraege Heute" FontSize="12" Foreground="#757575"/>
+                    <TextBlock x:Name="txtAuftraegeHeute" Text="0" FontSize="22" FontWeight="Bold" Foreground="#FF9800"/>
+                    <TextBlock x:Name="txtAuftraegeOffen" Text="0 offen" FontSize="12" Foreground="#9E9E9E"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Offene Rechnungen -->
+            <Border Grid.Column="2" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="Offene Rechnungen" FontSize="12" Foreground="#757575"/>
+                    <TextBlock x:Name="txtRechnungenOffen" Text="0" FontSize="22" FontWeight="Bold" Foreground="#9C27B0"/>
+                    <TextBlock x:Name="txtRechnungenOffenWert" Text="0,00 EUR" FontSize="12" Foreground="#9E9E9E"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Ueberfaellig -->
+            <Border Grid.Column="3" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="Ueberfaellig" FontSize="12" Foreground="#757575"/>
+                    <TextBlock x:Name="txtUeberfaellig" Text="0" FontSize="22" FontWeight="Bold" Foreground="#F44336"/>
+                    <TextBlock x:Name="txtUeberfaelligWert" Text="0,00 EUR" FontSize="12" Foreground="#9E9E9E"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Versand Heute -->
+            <Border Grid.Column="4" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="Versand Heute" FontSize="12" Foreground="#757575"/>
+                    <TextBlock x:Name="txtVersandHeute" Text="0" FontSize="22" FontWeight="Bold" Foreground="#00BCD4"/>
+                    <TextBlock x:Name="txtVersandOffen" Text="0 offen" FontSize="12" Foreground="#9E9E9E"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Neue Kunden -->
+            <Border Grid.Column="5" Style="{StaticResource KpiCard}">
+                <StackPanel>
+                    <TextBlock Text="Neue Kunden" FontSize="12" Foreground="#757575"/>
+                    <TextBlock x:Name="txtNeueKunden" Text="0" FontSize="22" FontWeight="Bold" Foreground="#4CAF50"/>
+                    <TextBlock Text="diesen Monat" FontSize="12" Foreground="#9E9E9E"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Charts Row 1 -->
+        <Grid Grid.Row="2" Margin="15,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Umsatzverlauf Chart -->
+            <Border Grid.Column="0" Style="{StaticResource ChartCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Umsatzverlauf (12 Monate)" FontSize="14" FontWeight="SemiBold" Foreground="#424242" Margin="0,0,0,10"/>
+                    <lvc:CartesianChart Grid.Row="1" x:Name="chartUmsatz" LegendPosition="Hidden"/>
+                </Grid>
+            </Border>
+
+            <!-- Auftraege nach Status (Pie) -->
+            <Border Grid.Column="1" Style="{StaticResource ChartCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Auftraege nach Status" FontSize="14" FontWeight="SemiBold" Foreground="#424242" Margin="0,0,0,10"/>
+                    <lvc:PieChart Grid.Row="1" x:Name="chartStatus" LegendPosition="Right"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Charts Row 2 -->
+        <Grid Grid.Row="3" Margin="15,5,15,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Top Kunden -->
+            <Border Grid.Column="0" Style="{StaticResource ChartCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Top 5 Kunden (12 Monate)" FontSize="14" FontWeight="SemiBold" Foreground="#424242" Margin="0,0,0,10"/>
+                    <lvc:CartesianChart Grid.Row="1" x:Name="chartTopKunden" LegendPosition="Hidden"/>
+                </Grid>
+            </Border>
+
+            <!-- Top Artikel -->
+            <Border Grid.Column="1" Style="{StaticResource ChartCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Top 5 Artikel (30 Tage)" FontSize="14" FontWeight="SemiBold" Foreground="#424242" Margin="0,0,0,10"/>
+                    <lvc:CartesianChart Grid.Row="1" x:Name="chartTopArtikel" LegendPosition="Hidden"/>
+                </Grid>
+            </Border>
+
+            <!-- Zahlungseingaenge -->
+            <Border Grid.Column="2" Style="{StaticResource ChartCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Zahlungseingaenge (8 Wochen)" FontSize="14" FontWeight="SemiBold" Foreground="#424242" Margin="0,0,0,10"/>
+                    <lvc:CartesianChart Grid.Row="1" x:Name="chartZahlungen" LegendPosition="Hidden"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Loading Overlay -->
+        <Border x:Name="pnlLaden" Grid.RowSpan="4" Background="#80FFFFFF" Visibility="Collapsed">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="Lade Dashboard..." FontSize="16" Foreground="#424242"/>
+            </StackPanel>
+        </Border>
     </Grid>
 </Page>
