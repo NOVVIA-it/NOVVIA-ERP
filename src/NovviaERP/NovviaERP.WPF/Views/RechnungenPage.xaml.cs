@@ -101,7 +101,8 @@ namespace NovviaERP.WPF.Views
 
         private void Drucken_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Drucken wird noch implementiert.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (dgRechnungen.SelectedItem is not Rechnung r) return;
+            Helpers.AusgabeHelper.AusgabeRechnung(r.Id, r.RechnungsNr, Window.GetWindow(this));
         }
 
         private async void Stornieren_Click(object sender, RoutedEventArgs e)

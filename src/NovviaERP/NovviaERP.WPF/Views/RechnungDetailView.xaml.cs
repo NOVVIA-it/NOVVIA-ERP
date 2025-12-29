@@ -147,12 +147,14 @@ namespace NovviaERP.WPF.Views
 
         private void Drucken_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Drucken wird noch implementiert.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_rechnung == null) return;
+            Helpers.AusgabeHelper.AusgabeRechnung(_rechnung.Id, _rechnung.RechnungsNr, Window.GetWindow(this));
         }
 
         private void Email_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("E-Mail-Versand wird noch implementiert.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_rechnung == null) return;
+            Helpers.AusgabeHelper.AusgabeRechnung(_rechnung.Id, _rechnung.RechnungsNr, Window.GetWindow(this));
         }
 
         private async void ZahlungErfassen_Click(object sender, RoutedEventArgs e)

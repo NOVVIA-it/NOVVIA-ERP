@@ -28,6 +28,29 @@ namespace NovviaERP.Core.Services
         }
 
         #region Ausgabe-Dialog (wie JTL)
+
+        /// <summary>
+        /// Generiert PDF für Vorschau (kann mit Formular-Vorlage arbeiten)
+        /// </summary>
+        public async Task<byte[]?> GeneratePdfAsync(DokumentTyp dokumentTyp, int dokumentId, int? formularVorlageId = null)
+        {
+            // TODO: Wenn formularVorlageId gesetzt, combit List & Label verwenden
+            // Für jetzt: QuestPDF-Fallback
+            return dokumentTyp switch
+            {
+                DokumentTyp.Rechnung => await _report.GenerateRechnungPdfAsync(dokumentId),
+                DokumentTyp.Lieferschein => await _report.GenerateLieferscheinPdfAsync(dokumentId),
+                DokumentTyp.Mahnung => await _report.GenerateMahnungPdfAsync(dokumentId),
+                DokumentTyp.Angebot => await _report.GenerateAngebotPdfAsync(dokumentId),
+                DokumentTyp.Bestellung => await _report.GenerateBestellungPdfAsync(dokumentId),
+                DokumentTyp.Auftragsbestaetigung => await _report.GenerateBestellungPdfAsync(dokumentId),
+                DokumentTyp.Gutschrift => await _report.GenerateGutschriftPdfAsync(dokumentId),
+                DokumentTyp.Packliste => await _report.GeneratePacklistePdfAsync(dokumentId),
+                DokumentTyp.Versandetikett => await GetVersandetikettAsync(dokumentId),
+                _ => null
+            };
+        }
+
         /// <summary>
         /// Zeigt Ausgabe-Optionen und führt gewählte Aktion aus
         /// </summary>
@@ -35,19 +58,12 @@ namespace NovviaERP.Core.Services
         {
             var ergebnis = new AusgabeErgebnis { DokumentTyp = anfrage.DokumentTyp };
 
-            // PDF generieren
-            byte[]? pdf = anfrage.DokumentTyp switch
+            // Vorhandenes PDF verwenden oder neu generieren
+            byte[]? pdf = anfrage.VorhandenesPdf;
+            if (pdf == null || pdf.Length == 0)
             {
-                DokumentTyp.Rechnung => await _report.GenerateRechnungPdfAsync(anfrage.DokumentId),
-                DokumentTyp.Lieferschein => await _report.GenerateLieferscheinPdfAsync(anfrage.DokumentId),
-                DokumentTyp.Mahnung => await _report.GenerateMahnungPdfAsync(anfrage.DokumentId),
-                DokumentTyp.Angebot => await _report.GenerateAngebotPdfAsync(anfrage.DokumentId),
-                DokumentTyp.Bestellung => await _report.GenerateBestellungPdfAsync(anfrage.DokumentId),
-                DokumentTyp.Gutschrift => await _report.GenerateGutschriftPdfAsync(anfrage.DokumentId),
-                DokumentTyp.Packliste => await _report.GeneratePacklistePdfAsync(anfrage.DokumentId),
-                DokumentTyp.Versandetikett => await GetVersandetikettAsync(anfrage.DokumentId),
-                _ => null
-            };
+                pdf = await GeneratePdfAsync(anfrage.DokumentTyp, anfrage.DokumentId, anfrage.FormularVorlageId);
+            }
 
             if (pdf == null)
             {
@@ -379,6 +395,10 @@ namespace NovviaERP.Core.Services
         public bool Archivieren { get; set; }
         public int? EmailVorlageId { get; set; }
         public bool EmailVorschau { get; set; }
+
+        // Formular-Auswahl und vorhandenes PDF
+        public int? FormularVorlageId { get; set; }
+        public byte[]? VorhandenesPdf { get; set; }
     }
 
     public class AusgabeErgebnis

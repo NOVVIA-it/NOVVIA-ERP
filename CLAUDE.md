@@ -423,6 +423,66 @@ src/NovviaERP/
 - SOAP v1.0 und v2.0 Support
 - Cache in `NOVVIA.MSV3BestandCache` (5 Minuten TTL)
 
+### NOVVIA Benutzerrechte-System (29.12.2024)
+
+Eigenes Benutzer- und Rechtesystem unabhängig von JTL, Multi-Mandanten-fähig.
+
+**Tabellen (Schema NOVVIA.):**
+```
+NOVVIA.Modul              - Verfügbare Module (Dashboard, Kunden, Artikel, ...)
+NOVVIA.Aktion             - Verfügbare Aktionen (Lesen, Erstellen, Bearbeiten, Loeschen, ...)
+NOVVIA.Recht              - Modul + Aktion = Schlüssel (z.B. "Kunden.Bearbeiten")
+NOVVIA.Rolle              - Rollen (Admin, Alles, Verkauf, Lager, ...)
+NOVVIA.RolleRecht         - Welche Rechte hat eine Rolle
+NOVVIA.Benutzer           - Benutzerstammdaten (BCrypt Passwort-Hash)
+NOVVIA.BenutzerRolle      - Benutzer-Rollen-Zuordnung (n:m)
+NOVVIA.BenutzerRechtUeberschreibung - Individuelle Rechte-Überschreibungen
+NOVVIA.BenutzerSession    - Aktive Sitzungen mit Token
+NOVVIA.BenutzerLog        - Login-Historie und Sicherheits-Events
+```
+
+**Standard-Rollen:**
+| Rolle | Beschreibung |
+|-------|-------------|
+| Admin | Vollzugriff + Systemverwaltung (nIstAdmin=1) |
+| Alles | Alle Rechte außer Benutzer/Einstellungen-Konfigurieren |
+| Geschaeftsfuehrung | Alle lesen + Freigeben + Berichte |
+| Verkauf | Kunden, Angebote, Auftraege, Rechnungen |
+| Lager | Lager, Versand, Lieferscheine |
+| Einkauf | Lieferanten, Bestellungen, Artikel |
+| Buchhaltung | Rechnungen, Mahnungen, Zahlungen |
+| Kundenservice | Kunden (lesen/bearbeiten), Retouren |
+| Readonly | Nur Lesezugriff auf alle Module |
+
+**Dateien:**
+- `Scripts/Setup-NOVVIA-Benutzerrechte.sql` - DB-Setup
+- `Core/Services/BenutzerService.cs` - C# Service
+
+**Verwendung:**
+```csharp
+// Login
+var ergebnis = await _benutzerService.AnmeldenAsync("admin", "passwort");
+if (ergebnis.Erfolg) {
+    // Rechte prüfen
+    if (_benutzerService.HatRecht("Kunden", "Bearbeiten")) { ... }
+    if (_benutzerService.DarfLoeschen("Auftraege")) { ... }
+}
+// Logout
+await _benutzerService.AbmeldenAsync();
+```
+
+**SQL-Installation:**
+```powershell
+sqlcmd -S "localhost\S03NOVVIA" -d "Mandant_1" -E -i "Scripts\Setup-NOVVIA-Benutzerrechte.sql"
+```
+
+**Wichtige SPs:**
+- `NOVVIA.spBenutzerAnmelden` - Login mit Session-Erstellung
+- `NOVVIA.spBenutzerAbmelden` - Logout
+- `NOVVIA.spHatRecht` - Rechte-Prüfung
+- `NOVVIA.spBenutzerRechteAbfragen` - Alle Rechte eines Benutzers
+- `NOVVIA.spFehlversuchRegistrieren` - Bei falschem Passwort (Auto-Sperre nach 5x)
+
 ### Nach PC-Neustart
 
 1. Build ausführen:

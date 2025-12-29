@@ -5070,5 +5070,118 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region Formular-Auswahl (für Ausgabe-Dialog)
+
+        /// <summary>
+        /// Lädt verfügbare Formulare/Vorlagen für einen Dokumenttyp aus JTL tFormularVorlage
+        /// </summary>
+        public async Task<IEnumerable<FormularVorlageItem>> GetFormulareAsync(DokumentTyp dokumentTyp)
+        {
+            var conn = await GetConnectionAsync();
+
+            // nTyp in tFormular entspricht DokumentTyp
+            var formularTyp = dokumentTyp switch
+            {
+                DokumentTyp.Angebot => 0,
+                DokumentTyp.Bestellung => 1,  // Auftrag
+                DokumentTyp.Auftragsbestaetigung => 1,
+                DokumentTyp.Rechnung => 2,
+                DokumentTyp.Lieferschein => 3,
+                DokumentTyp.Gutschrift => 4,  // Rechnungskorrektur
+                DokumentTyp.Mahnung => 31,
+                DokumentTyp.Versandetikett => 13,
+                DokumentTyp.Packliste => 26,
+                DokumentTyp.Retourenschein => 32,
+                _ => 2  // Default: Rechnung
+            };
+
+            var sql = @"
+                SELECT fv.kFormularVorlage AS KFormularVorlage,
+                       fv.kFormular AS KFormular,
+                       ISNULL(fv.cName, f.cName) AS Name,
+                       CASE WHEN fv.nTyp = 2 THEN 1 ELSE 0 END AS IsStandard,
+                       fv.kFirma AS KFirma,
+                       fv.kSprache AS KSprache
+                FROM dbo.tFormularVorlage fv
+                INNER JOIN dbo.tFormular f ON fv.kFormular = f.kFormular
+                WHERE f.nTyp = @formularTyp
+                ORDER BY CASE WHEN fv.nTyp = 2 THEN 0 ELSE 1 END, fv.cName";
+
+            var result = await conn.QueryAsync<FormularVorlageItem>(sql, new { formularTyp });
+
+            // Wenn keine Vorlagen gefunden, generische erstellen
+            if (!result.Any())
+            {
+                return new List<FormularVorlageItem>
+                {
+                    new() { KFormularVorlage = 0, Name = "Standard (QuestPDF)", IsStandard = true }
+                };
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Lädt E-Mail-Adresse für ein Dokument
+        /// </summary>
+        public async Task<string?> GetDokumentEmailAsync(DokumentTyp dokumentTyp, int dokumentId)
+        {
+            var conn = await GetConnectionAsync();
+
+            return dokumentTyp switch
+            {
+                DokumentTyp.Rechnung => await conn.QuerySingleOrDefaultAsync<string>(
+                    @"SELECT COALESCE(b.cEmail, k.cMail)
+                      FROM dbo.tRechnung r
+                      LEFT JOIN dbo.tBestellung b ON r.kBestellung = b.kBestellung
+                      LEFT JOIN dbo.tKunde k ON b.kKunde = k.kKunde
+                      WHERE r.kRechnung = @id", new { id = dokumentId }),
+
+                DokumentTyp.Lieferschein => await conn.QuerySingleOrDefaultAsync<string>(
+                    @"SELECT COALESCE(b.cEmail, k.cMail)
+                      FROM dbo.tLieferschein l
+                      LEFT JOIN dbo.tBestellung b ON l.kBestellung = b.kBestellung
+                      LEFT JOIN dbo.tKunde k ON b.kKunde = k.kKunde
+                      WHERE l.kLieferschein = @id", new { id = dokumentId }),
+
+                DokumentTyp.Bestellung or DokumentTyp.Auftragsbestaetigung => await conn.QuerySingleOrDefaultAsync<string>(
+                    @"SELECT COALESCE(b.cEmail, k.cMail)
+                      FROM dbo.tBestellung b
+                      LEFT JOIN dbo.tKunde k ON b.kKunde = k.kKunde
+                      WHERE b.kBestellung = @id", new { id = dokumentId }),
+
+                DokumentTyp.Angebot => await conn.QuerySingleOrDefaultAsync<string>(
+                    @"SELECT COALESCE(a.cMail, k.cMail)
+                      FROM dbo.tAngebot a
+                      LEFT JOIN dbo.tKunde k ON a.kKunde = k.kKunde
+                      WHERE a.kAngebot = @id", new { id = dokumentId }),
+
+                DokumentTyp.Mahnung => await conn.QuerySingleOrDefaultAsync<string>(
+                    @"SELECT k.cMail
+                      FROM dbo.tMahnung m
+                      LEFT JOIN dbo.tKunde k ON m.kKunde = k.kKunde
+                      WHERE m.kMahnung = @id", new { id = dokumentId }),
+
+                _ => null
+            };
+        }
+
+        #endregion
+
+        #region FormularVorlageItem DTO
+        /// <summary>
+        /// Formular-Vorlage DTO für Ausgabe-Dialog
+        /// </summary>
+        public class FormularVorlageItem
+        {
+            public int KFormularVorlage { get; set; }
+            public int KFormular { get; set; }
+            public string Name { get; set; } = "";
+            public bool IsStandard { get; set; }
+            public int? KFirma { get; set; }
+            public int? KSprache { get; set; }
+        }
+        #endregion
     }
 }
