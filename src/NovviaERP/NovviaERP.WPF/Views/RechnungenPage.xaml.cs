@@ -66,7 +66,13 @@ namespace NovviaERP.WPF.Views
 
         private void DgRechnungen_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            // TODO: Rechnungsdetails anzeigen
+            if (dgRechnungen.SelectedItem is Rechnung r)
+            {
+                if (Window.GetWindow(this) is MainWindow main)
+                {
+                    main.ShowContent(new RechnungDetailView(r.Id));
+                }
+            }
         }
 
         private async void PDF_Click(object sender, RoutedEventArgs e)

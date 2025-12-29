@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Dapper;
 using Serilog;
+using NovviaERP.Core.Entities;
 
 namespace NovviaERP.Core.Services
 {
@@ -1098,6 +1099,71 @@ namespace NovviaERP.Core.Services
             });
         }
 
+        // --- Versand-Liste fuer VersandPage ---
+        public class VersandItem
+        {
+            public int KBestellung { get; set; }
+            public string? BestellNr { get; set; }
+            public DateTime Erstellt { get; set; }
+            public string? KundeName { get; set; }
+            public string? LieferOrt { get; set; }
+            public decimal Gewicht { get; set; }
+            public string? VersandartName { get; set; }
+            public string? TrackingNr { get; set; }
+            public string? VersandDienstleister { get; set; }
+            public DateTime? Versandt { get; set; }
+            public bool IsSelected { get; set; }
+        }
+
+        public async Task<IEnumerable<VersandItem>> GetVersandListeAsync(
+            string? suche = null, string? statusFilter = null, DateTime? von = null, DateTime? bis = null)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT
+                    b.kBestellung,
+                    b.cBestellNr AS BestellNr,
+                    b.dErstellt AS Erstellt,
+                    ISNULL(a.cFirma, a.cName) AS KundeName,
+                    la.cOrt AS LieferOrt,
+                    ISNULL((SELECT SUM(bp.nAnzahl * ISNULL(art.fGewicht, 0))
+                            FROM tbestellpos bp
+                            LEFT JOIN tArtikel art ON bp.tArtikel_kArtikel = art.kArtikel
+                            WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS Gewicht,
+                    v.cName AS VersandartName,
+                    b.cIdentCode AS TrackingNr,
+                    b.cVersandInfo AS VersandDienstleister,
+                    b.dVersandt AS Versandt
+                FROM tBestellung b
+                LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
+                LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
+                OUTER APPLY (SELECT TOP 1 cOrt FROM Verkauf.tAuftragAdresse WHERE kAuftrag = b.kBestellung AND nTyp = 0) la
+                LEFT JOIN tVersandArt v ON b.tVersandArt_kVersandArt = v.kVersandArt
+                WHERE b.nStorno = 0
+                  AND b.dBezahlt IS NOT NULL";
+
+            // Status-Filter: 0 = zu versenden, 1 = versendet
+            if (statusFilter == "0") sql += " AND b.dVersandt IS NULL";
+            else if (statusFilter == "1") sql += " AND b.dVersandt IS NOT NULL";
+
+            if (von.HasValue) sql += " AND b.dErstellt >= @Von";
+            if (bis.HasValue) sql += " AND b.dErstellt <= @Bis";
+
+            if (!string.IsNullOrEmpty(suche))
+            {
+                sql += @" AND (b.cBestellNr LIKE @Suche
+                         OR a.cFirma LIKE @Suche
+                         OR a.cName LIKE @Suche
+                         OR la.cOrt LIKE @Suche)";
+            }
+
+            sql += " ORDER BY b.dErstellt DESC";
+
+            return await conn.QueryAsync<VersandItem>(sql, new {
+                Suche = $"%{suche}%", Von = von, Bis = bis
+            });
+        }
+
         public async Task<BestellungDetail?> GetBestellungByIdAsync(int bestellungId)
         {
             var conn = await GetConnectionAsync();
@@ -1788,6 +1854,58 @@ namespace NovviaERP.Core.Services
                 new { kRechnung, fBetrag = betrag });
         }
 
+        /// <summary>
+        /// Lädt eine Rechnung mit allen Positionen, Kunde und Zahlungen
+        /// </summary>
+        public async Task<Rechnung?> GetRechnungMitPositionenAsync(int kRechnung)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Rechnung mit Kunde laden
+            var rechnung = await conn.QuerySingleOrDefaultAsync<Rechnung>(
+                @"SELECT kRechnung AS Id, cRechnungsnr AS RechnungsNr,
+                         kKunde AS KundeId, dErstellt AS Erstellt, dFaellig AS Faellig, dBezahlt AS Bezahlt,
+                         fNetto AS Netto, fBrutto AS Brutto, fMwSt AS MwSt, fOffen AS OffenerBetrag,
+                         nRechnungStatus AS Status, nStorno AS IstStorniert, cWaehrung AS Waehrung
+                  FROM Rechnung.tRechnung
+                  WHERE kRechnung = @kRechnung",
+                new { kRechnung });
+
+            if (rechnung == null) return null;
+
+            // Kunde laden
+            rechnung.Kunde = await conn.QuerySingleOrDefaultAsync<Kunde>(
+                @"SELECT kKunde AS Id, cKundenNr AS KundenNr, cFirma AS Firma,
+                         cVorname AS Vorname, cName AS Nachname,
+                         cStrasse AS Strasse, cPLZ AS PLZ, cOrt AS Ort, cLand AS Land,
+                         cMail AS Email, cTel AS Telefon
+                  FROM tKunde WHERE kKunde = @kundeId",
+                new { kundeId = rechnung.KundeId });
+
+            // Positionen laden
+            rechnung.Positionen = (await conn.QueryAsync<RechnungsPosition>(
+                @"SELECT kRechnungPos AS Id, kRechnung AS RechnungId, kArtikel AS ArtikelId,
+                         cArtNr AS ArtNr, cName AS Name, fAnzahl AS Menge,
+                         fVkNetto AS PreisNetto, fVkBrutto AS PreisBrutto,
+                         fMwSt AS MwStSatz, fRabatt AS Rabatt
+                  FROM Rechnung.tRechnungPosition
+                  WHERE kRechnung = @kRechnung
+                  ORDER BY nSort",
+                new { kRechnung })).ToList();
+
+            // Zahlungen laden
+            rechnung.Zahlungen = (await conn.QueryAsync<Zahlungseingang>(
+                @"SELECT kZahlungseingang AS Id, kRechnung AS RechnungId,
+                         dDatum AS Datum, fBetrag AS Betrag, cZahlungsart AS Zahlungsart,
+                         cReferenz AS Referenz
+                  FROM Rechnung.tZahlungseingang
+                  WHERE kRechnung = @kRechnung
+                  ORDER BY dDatum DESC",
+                new { kRechnung })).ToList();
+
+            return rechnung;
+        }
+
         public class RechnungInfo
         {
             public int KRechnung { get; set; }
@@ -1809,6 +1927,381 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
             return await conn.QueryAsync<VersandartRef>("SELECT kVersandArt, cName FROM tVersandArt ORDER BY cName");
+        }
+
+        #endregion
+
+        #region Eingangsrechnungen (NOVVIA Custom)
+
+        /// <summary>
+        /// Lädt Eingangsrechnungen aus JTL-native Tabelle mit Filteroptionen
+        /// </summary>
+        public async Task<IEnumerable<EingangsrechnungItem>> GetEingangsrechnungenAsync(
+            string? suche = null, int? status = null, DateTime? von = null, DateTime? bis = null)
+        {
+            var conn = await GetConnectionAsync();
+
+            var sql = @"
+                SELECT e.kEingangsrechnung AS Id, e.kLieferant AS LieferantId,
+                       ISNULL(e.cLieferant, ISNULL(l.cFirma, '')) AS LieferantName,
+                       NULL AS LieferantenBestellungId,
+                       e.cFremdbelegnummer AS RechnungsNr,
+                       ISNULL(e.dBelegdatum, e.dErstellt) AS RechnungsDatum,
+                       e.dZahlungsziel AS FaelligAm,
+                       ISNULL((SELECT SUM(p.fMenge * p.fEKNetto) FROM dbo.tEingangsrechnungPos p WHERE p.kEingangsrechnung = e.kEingangsrechnung), 0) AS Netto,
+                       ISNULL((SELECT SUM(p.fMenge * p.fEKNetto * p.fMwSt / 100) FROM dbo.tEingangsrechnungPos p WHERE p.kEingangsrechnung = e.kEingangsrechnung), 0) AS MwSt,
+                       ISNULL((SELECT SUM(p.fMenge * p.fEKNetto * (1 + p.fMwSt / 100)) FROM dbo.tEingangsrechnungPos p WHERE p.kEingangsrechnung = e.kEingangsrechnung), 0) AS Brutto,
+                       e.nStatus AS Status,
+                       CASE e.nStatus WHEN 0 THEN 'Offen' WHEN 5 THEN 'Freigegeben' WHEN 10 THEN 'Gebucht' WHEN 20 THEN 'Abgeschlossen' ELSE 'Status ' + CAST(e.nStatus AS VARCHAR) END AS StatusText,
+                       e.dBezahlt AS BezahltAm, e.cHinweise AS Bemerkung,
+                       e.cEigeneRechnungsnummer AS BestellungNr
+                FROM dbo.tEingangsrechnung e
+                LEFT JOIN dbo.tLieferant l ON e.kLieferant = l.kLieferant
+                WHERE e.nDeleted = 0";
+
+            if (!string.IsNullOrWhiteSpace(suche))
+                sql += " AND (e.cFremdbelegnummer LIKE @suche OR e.cLieferant LIKE @suche OR l.cFirma LIKE @suche)";
+            if (status.HasValue)
+                sql += " AND e.nStatus = @status";
+            if (von.HasValue)
+                sql += " AND ISNULL(e.dBelegdatum, e.dErstellt) >= @von";
+            if (bis.HasValue)
+                sql += " AND ISNULL(e.dBelegdatum, e.dErstellt) < @bis";
+
+            sql += " ORDER BY e.dErstellt DESC";
+
+            return await conn.QueryAsync<EingangsrechnungItem>(sql, new
+            {
+                suche = $"%{suche}%",
+                status,
+                von,
+                bis
+            });
+        }
+
+        public async Task<EingangsrechnungDto?> GetEingangsrechnungByIdAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryFirstOrDefaultAsync<EingangsrechnungDto>(
+                @"SELECT e.kEingangsrechnung AS Id, e.kLieferant AS LieferantId,
+                         NULL AS LieferantenBestellungId,
+                         e.cFremdbelegnummer AS RechnungsNr,
+                         ISNULL(e.dBelegdatum, e.dErstellt) AS RechnungsDatum,
+                         e.dZahlungsziel AS FaelligAm,
+                         ISNULL((SELECT SUM(p.fMenge * p.fEKNetto) FROM dbo.tEingangsrechnungPos p WHERE p.kEingangsrechnung = e.kEingangsrechnung), 0) AS Netto,
+                         ISNULL((SELECT SUM(p.fMenge * p.fEKNetto * p.fMwSt / 100) FROM dbo.tEingangsrechnungPos p WHERE p.kEingangsrechnung = e.kEingangsrechnung), 0) AS MwSt,
+                         ISNULL((SELECT SUM(p.fMenge * p.fEKNetto * (1 + p.fMwSt / 100)) FROM dbo.tEingangsrechnungPos p WHERE p.kEingangsrechnung = e.kEingangsrechnung), 0) AS Brutto,
+                         e.nStatus AS Status, e.dBezahlt AS BezahltAm,
+                         e.cHinweise AS Bemerkung
+                  FROM dbo.tEingangsrechnung e
+                  WHERE e.kEingangsrechnung = @id AND e.nDeleted = 0",
+                new { id });
+        }
+
+        /// <summary>
+        /// Lädt vollständige Eingangsrechnung-Details für Detailansicht (JTL-native)
+        /// </summary>
+        public async Task<EingangsrechnungDetail?> GetEingangsrechnungDetailAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            var rechnung = await conn.QueryFirstOrDefaultAsync<EingangsrechnungDetail>(
+                @"SELECT e.kEingangsrechnung AS Id, e.kLieferant AS LieferantId,
+                         ISNULL(e.cLieferant, l.cFirma) AS LieferantName,
+                         ISNULL(e.cStrasse, l.cStrasse) AS Strasse,
+                         ISNULL(e.cPLZ, l.cPLZ) AS PLZ,
+                         ISNULL(e.cOrt, l.cOrt) AS Ort,
+                         ISNULL(e.cLandISO, l.cLand) AS Land,
+                         ISNULL(e.cTel, l.cTelZentralle) AS Telefon,
+                         ISNULL(e.cMail, l.cEMail) AS Email,
+                         e.cFremdbelegnummer AS Fremdbelegnummer,
+                         e.cEigeneRechnungsnummer AS EigeneNummer,
+                         e.dBelegdatum AS Belegdatum,
+                         e.dZahlungsziel AS Zahlungsziel,
+                         e.cHinweise AS Hinweise,
+                         e.nStatus AS Status,
+                         e.nZahlungFreigegeben AS ZahlungFreigegeben,
+                         e.dBezahlt AS BezahltAm
+                  FROM dbo.tEingangsrechnung e
+                  LEFT JOIN dbo.tLieferant l ON e.kLieferant = l.kLieferant
+                  WHERE e.kEingangsrechnung = @id AND e.nDeleted = 0",
+                new { id });
+
+            if (rechnung != null)
+            {
+                // Enthaltene Bestellungen laden
+                rechnung.Bestellungen = (await conn.QueryAsync<string>(
+                    @"SELECT DISTINCT ISNULL(lb.cEigeneBestellnummer, 'PO-' + CAST(p.kLieferantenbestellung AS VARCHAR))
+                      FROM dbo.tEingangsrechnungPos p
+                      INNER JOIN dbo.tLieferantenBestellung lb ON p.kLieferantenbestellung = lb.kLieferantenBestellung
+                      WHERE p.kEingangsrechnung = @id AND p.kLieferantenbestellung IS NOT NULL",
+                    new { id })).ToList();
+            }
+
+            return rechnung;
+        }
+
+        /// <summary>
+        /// Lädt Eingangsrechnung-Positionen (JTL-native)
+        /// </summary>
+        public async Task<IEnumerable<EingangsrechnungPosDetail>> GetEingangsrechnungPositionenAsync(int eingangsrechnungId)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<EingangsrechnungPosDetail>(
+                @"SELECT p.kEingangsrechnungPos AS KPosition,
+                         p.kArtikel AS KArtikel,
+                         ISNULL(p.cArtNr, '') AS CArtNr,
+                         ISNULL(p.cLieferantenArtNr, '') AS CLieferantenArtNr,
+                         ISNULL(p.cName, '') AS CName,
+                         ISNULL(p.cEinheit, 'Stk') AS CEinheit,
+                         ISNULL(p.cHinweis, '') AS CHinweis,
+                         ISNULL(p.fMenge, 0) AS FMenge,
+                         ISNULL(p.fEKNetto, 0) AS FEKNetto,
+                         ISNULL(p.fMwSt, 0) AS FMwSt
+                  FROM dbo.tEingangsrechnungPos p
+                  WHERE p.kEingangsrechnung = @eingangsrechnungId
+                  ORDER BY p.kEingangsrechnungPos",
+                new { eingangsrechnungId });
+        }
+
+        /// <summary>
+        /// Aktualisiert Eingangsrechnung-Status (JTL-native)
+        /// </summary>
+        public async Task UpdateEingangsrechnungJtlAsync(int id, EingangsrechnungUpdateDto dto)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(
+                @"UPDATE dbo.tEingangsrechnung
+                  SET nStatus = @Status,
+                      nZahlungFreigegeben = @ZahlungFreigegeben,
+                      dZahlungsziel = @Zahlungsziel,
+                      cHinweise = @Hinweise
+                  WHERE kEingangsrechnung = @Id",
+                new
+                {
+                    Id = id,
+                    dto.Status,
+                    ZahlungFreigegeben = dto.ZahlungFreigegeben ? 1 : 0,
+                    dto.Zahlungsziel,
+                    dto.Hinweise
+                });
+        }
+
+        /// <summary>
+        /// Erstellt eine Eingangsrechnung aus einer Lieferantenbestellung (JTL-native Tabellen)
+        /// </summary>
+        public async Task<int> CreateEingangsrechnungFromBestellungAsync(int kLieferantenBestellung, int kLieferant, List<EingangsrechnungPosInput> positionen)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Lieferant-Name holen
+            var lieferantName = await conn.QueryFirstOrDefaultAsync<string>(
+                "SELECT cFirma FROM dbo.tLieferant WHERE kLieferant = @kLieferant",
+                new { kLieferant }) ?? "";
+
+            // Bestellnummer holen
+            var bestellNr = await conn.QueryFirstOrDefaultAsync<string>(
+                "SELECT cEigeneBestellnummer FROM dbo.tLieferantenBestellung WHERE kLieferantenBestellung = @id",
+                new { id = kLieferantenBestellung }) ?? "";
+
+            // Eingangsrechnung anlegen
+            var kEingangsrechnung = await conn.QuerySingleAsync<int>(
+                @"INSERT INTO dbo.tEingangsrechnung
+                    (kLieferant, cLieferant, dBelegdatum, dErstellt, nStatus, nDeleted,
+                     cEigeneRechnungsnummer, dZahlungsziel, nZahlungFreigegeben)
+                  OUTPUT INSERTED.kEingangsrechnung
+                  VALUES
+                    (@kLieferant, @cLieferant, GETDATE(), GETDATE(), 0, 0,
+                     @cEigeneRechnungsnummer, DATEADD(DAY, 30, GETDATE()), 0)",
+                new
+                {
+                    kLieferant,
+                    cLieferant = lieferantName,
+                    cEigeneRechnungsnummer = $"Bestell. {bestellNr}"
+                });
+
+            // Positionen anlegen
+            foreach (var pos in positionen)
+            {
+                await conn.ExecuteAsync(
+                    @"INSERT INTO dbo.tEingangsrechnungPos
+                        (kEingangsrechnung, kArtikel, cArtNr, cName, fMenge, fEKNetto, fMwSt, cEinheit)
+                      VALUES
+                        (@kEingangsrechnung, @kArtikel, @cArtNr, @cName, @fMenge, @fEKNetto, @fMwSt, 'Stk')",
+                    new
+                    {
+                        kEingangsrechnung,
+                        kArtikel = pos.KArtikel,
+                        cArtNr = pos.CArtNr,
+                        cName = pos.CName,
+                        fMenge = pos.FMenge,
+                        fEKNetto = pos.FEKNetto,
+                        fMwSt = pos.FMwSt
+                    });
+            }
+
+            return kEingangsrechnung;
+        }
+
+        public class EingangsrechnungPosInput
+        {
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CLieferantenArtNr { get; set; } = "";
+            public string CName { get; set; } = "";
+            public decimal FMenge { get; set; }
+            public decimal FEKNetto { get; set; }
+            public decimal FMwSt { get; set; }
+        }
+
+        public class EingangsrechnungDetail
+        {
+            public int Id { get; set; }
+            public int LieferantId { get; set; }
+            public string LieferantName { get; set; } = "";
+            public string Strasse { get; set; } = "";
+            public string PLZ { get; set; } = "";
+            public string Ort { get; set; } = "";
+            public string Land { get; set; } = "";
+            public string Telefon { get; set; } = "";
+            public string Email { get; set; } = "";
+            public string Fremdbelegnummer { get; set; } = "";
+            public string EigeneNummer { get; set; } = "";
+            public DateTime? Belegdatum { get; set; }
+            public DateTime? Zahlungsziel { get; set; }
+            public string Hinweise { get; set; } = "";
+            public int Status { get; set; }
+            public bool ZahlungFreigegeben { get; set; }
+            public DateTime? BezahltAm { get; set; }
+            public List<string> Bestellungen { get; set; } = new();
+        }
+
+        public class EingangsrechnungPosDetail
+        {
+            public int KPosition { get; set; }
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CLieferantenArtNr { get; set; } = "";
+            public string CName { get; set; } = "";
+            public string CEinheit { get; set; } = "";
+            public string CHinweis { get; set; } = "";
+            public decimal FMenge { get; set; }
+            public decimal FEKNetto { get; set; }
+            public decimal FMwSt { get; set; }
+        }
+
+        public class EingangsrechnungUpdateDto
+        {
+            public int Status { get; set; }
+            public bool ZahlungFreigegeben { get; set; }
+            public DateTime? Zahlungsziel { get; set; }
+            public string? Hinweise { get; set; }
+        }
+
+        public async Task<int> CreateEingangsrechnungAsync(EingangsrechnungDto dto)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Tabelle erstellen falls nicht vorhanden
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'NOVVIA' AND t.name = 'tEingangsrechnung')
+                BEGIN
+                    CREATE TABLE NOVVIA.tEingangsrechnung (
+                        kEingangsrechnung INT IDENTITY(1,1) PRIMARY KEY,
+                        kLieferant INT NOT NULL,
+                        kLieferantenBestellung INT NULL,
+                        cRechnungsNr NVARCHAR(50) NOT NULL,
+                        dRechnungsDatum DATE NOT NULL,
+                        dFaelligAm DATE NULL,
+                        fNetto DECIMAL(18,4) NOT NULL DEFAULT 0,
+                        fMwSt DECIMAL(18,4) NOT NULL DEFAULT 0,
+                        fBrutto DECIMAL(18,4) NOT NULL DEFAULT 0,
+                        nStatus INT NOT NULL DEFAULT 0,
+                        dBezahltAm DATE NULL,
+                        cBemerkung NVARCHAR(MAX) NULL,
+                        dErstellt DATETIME NOT NULL DEFAULT GETDATE(),
+                        dGeaendert DATETIME NOT NULL DEFAULT GETDATE()
+                    )
+                END");
+
+            return await conn.ExecuteScalarAsync<int>(
+                @"INSERT INTO NOVVIA.tEingangsrechnung
+                  (kLieferant, kLieferantenBestellung, cRechnungsNr, dRechnungsDatum, dFaelligAm,
+                   fNetto, fMwSt, fBrutto, nStatus, dBezahltAm, cBemerkung)
+                  OUTPUT INSERTED.kEingangsrechnung
+                  VALUES (@LieferantId, @LieferantenBestellungId, @RechnungsNr, @RechnungsDatum, @FaelligAm,
+                          @Netto, @MwSt, @Brutto, @Status, @BezahltAm, @Bemerkung)",
+                dto);
+        }
+
+        public async Task UpdateEingangsrechnungAsync(EingangsrechnungDto dto)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(
+                @"UPDATE NOVVIA.tEingangsrechnung SET
+                    kLieferant = @LieferantId,
+                    kLieferantenBestellung = @LieferantenBestellungId,
+                    cRechnungsNr = @RechnungsNr,
+                    dRechnungsDatum = @RechnungsDatum,
+                    dFaelligAm = @FaelligAm,
+                    fNetto = @Netto,
+                    fMwSt = @MwSt,
+                    fBrutto = @Brutto,
+                    nStatus = @Status,
+                    dBezahltAm = @BezahltAm,
+                    cBemerkung = @Bemerkung,
+                    dGeaendert = GETDATE()
+                  WHERE kEingangsrechnung = @Id",
+                dto);
+        }
+
+        public async Task UpdateEingangsrechnungStatusAsync(int id, int status, DateTime? bezahltAm)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(
+                @"UPDATE NOVVIA.tEingangsrechnung SET nStatus = @status, dBezahltAm = @bezahltAm, dGeaendert = GETDATE()
+                  WHERE kEingangsrechnung = @id",
+                new { id, status, bezahltAm });
+        }
+
+        public async Task DeleteEingangsrechnungAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM NOVVIA.tEingangsrechnung WHERE kEingangsrechnung = @id", new { id });
+        }
+
+        public class EingangsrechnungItem
+        {
+            public int Id { get; set; }
+            public int LieferantId { get; set; }
+            public string LieferantName { get; set; } = "";
+            public int? LieferantenBestellungId { get; set; }
+            public string? RechnungsNr { get; set; }
+            public DateTime RechnungsDatum { get; set; }
+            public DateTime? FaelligAm { get; set; }
+            public decimal Netto { get; set; }
+            public decimal MwSt { get; set; }
+            public decimal Brutto { get; set; }
+            public int Status { get; set; }
+            public string StatusText { get; set; } = "";
+            public DateTime? BezahltAm { get; set; }
+            public string? Bemerkung { get; set; }
+            public string? BestellungNr { get; set; }
+        }
+
+        public class EingangsrechnungDto
+        {
+            public int Id { get; set; }
+            public int LieferantId { get; set; }
+            public int? LieferantenBestellungId { get; set; }
+            public string RechnungsNr { get; set; } = "";
+            public DateTime RechnungsDatum { get; set; } = DateTime.Today;
+            public DateTime? FaelligAm { get; set; }
+            public decimal Netto { get; set; }
+            public decimal MwSt { get; set; }
+            public decimal Brutto { get; set; }
+            public int Status { get; set; }
+            public DateTime? BezahltAm { get; set; }
+            public string? Bemerkung { get; set; }
         }
 
         #endregion
@@ -2219,7 +2712,7 @@ namespace NovviaERP.Core.Services
             const string sql = @"
                 SELECT lb.kLieferantenBestellung AS KLieferantenBestellung,
                        ISNULL(lb.cEigeneBestellnummer, CAST(lb.kLieferantenBestellung AS VARCHAR)) AS CEigeneBestellnummer,
-                       ISNULL(l.cName, 'Unbekannt') AS CLieferantName,
+                       ISNULL(l.cFirma, 'Unbekannt') AS CLieferantName,
                        lb.dErstellt AS DErstellt,
                        (SELECT COUNT(*) FROM dbo.tLieferantenBestellungPos p WHERE p.kLieferantenBestellung = lb.kLieferantenBestellung) AS AnzahlPositionen,
                        (SELECT COUNT(*) FROM dbo.tLieferantenBestellungPos p WHERE p.kLieferantenBestellung = lb.kLieferantenBestellung AND p.fMenge > ISNULL(p.fMengeGeliefert, 0)) AS OffenePositionen
@@ -2671,6 +3164,84 @@ namespace NovviaERP.Core.Services
             }
 
             return await CreateLieferantenBestellungAsync(original);
+        }
+
+        /// <summary>
+        /// Wareneingang fuer Lieferantenbestellung buchen
+        /// Aktualisiert Lagerbestand und fMengeGeliefert
+        /// </summary>
+        public async Task WareneingangBuchenAsync(int kLieferantenBestellung, DateTime eingangsDatum, string? lieferscheinNr, List<WareneingangPosition> positionen)
+        {
+            var conn = await GetConnectionAsync();
+
+            foreach (var pos in positionen.Where(p => p.FMenge > 0))
+            {
+                // 1. fMengeGeliefert aktualisieren
+                await conn.ExecuteAsync(
+                    @"UPDATE dbo.tLieferantenBestellungPos
+                      SET fMengeGeliefert = ISNULL(fMengeGeliefert, 0) + @fMenge
+                      WHERE kLieferantenBestellungPos = @kPos",
+                    new { fMenge = pos.FMenge, kPos = pos.KLieferantenBestellungPos });
+
+                // 2. Lagerbestand erhoehen (nur wenn kArtikel > 0)
+                if (pos.KArtikel > 0)
+                {
+                    await conn.ExecuteAsync(
+                        @"UPDATE dbo.tArtikel
+                          SET fLagerbestand = ISNULL(fLagerbestand, 0) + @fMenge
+                          WHERE kArtikel = @kArtikel",
+                        new { fMenge = pos.FMenge, kArtikel = pos.KArtikel });
+
+                    // Optional: Chargen-Eintrag wenn ChargenNr angegeben
+                    if (!string.IsNullOrWhiteSpace(pos.CChargenNr))
+                    {
+                        try
+                        {
+                            await conn.ExecuteAsync(
+                                @"INSERT INTO dbo.tArtikelCharge (kArtikel, cChargenNr, dMHD, fMenge, dErstellt)
+                                  VALUES (@kArtikel, @cChargenNr, @dMHD, @fMenge, GETDATE())",
+                                new { kArtikel = pos.KArtikel, cChargenNr = pos.CChargenNr, dMHD = pos.DMHD, fMenge = pos.FMenge });
+                        }
+                        catch { /* Charge-Tabelle optional */ }
+                    }
+                }
+            }
+
+            // 3. Bestellstatus pruefen und ggf. auf "Abgeschlossen" setzen
+            var alleGeliefert = await conn.ExecuteScalarAsync<int>(
+                @"SELECT CASE WHEN EXISTS(
+                    SELECT 1 FROM dbo.tLieferantenBestellungPos
+                    WHERE kLieferantenBestellung = @kBest AND fMenge > ISNULL(fMengeGeliefert, 0)
+                  ) THEN 0 ELSE 1 END",
+                new { kBest = kLieferantenBestellung });
+
+            if (alleGeliefert == 1)
+            {
+                await conn.ExecuteAsync(
+                    "UPDATE dbo.tLieferantenBestellung SET nStatus = 50 WHERE kLieferantenBestellung = @kBest",
+                    new { kBest = kLieferantenBestellung });
+            }
+            else
+            {
+                // Teilgeliefert
+                await conn.ExecuteAsync(
+                    @"UPDATE dbo.tLieferantenBestellung
+                      SET nStatus = CASE WHEN nStatus < 30 THEN 30 ELSE nStatus END
+                      WHERE kLieferantenBestellung = @kBest",
+                    new { kBest = kLieferantenBestellung });
+            }
+
+            _log.Information("Wareneingang fuer Bestellung {KBestellung}: {Anzahl} Positionen, LS: {LieferscheinNr}",
+                kLieferantenBestellung, positionen.Count(p => p.FMenge > 0), lieferscheinNr);
+        }
+
+        public class WareneingangPosition
+        {
+            public int KLieferantenBestellungPos { get; set; }
+            public int KArtikel { get; set; }
+            public decimal FMenge { get; set; }
+            public string? CChargenNr { get; set; }
+            public DateTime? DMHD { get; set; }
         }
 
         private async Task UpdateLieferantenBestellungPositionenAsync(int kLieferantenBestellung, List<LieferantenBestellungPosition> positionen)

@@ -325,7 +325,9 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" x:Name="btnPositionLoeschen" Content="Position loeschen" Padding="10,3" Click="PositionLoeschen_Click"/>
+            <Button Grid.Column="0" x:Name="btnWareneingang" Content="Wareneingang" Padding="10,3" Click="Wareneingang_Click"
+                    Background="#28a745" Foreground="White" FontWeight="Bold" Margin="0,0,10,0"/>
+            <Button x:Name="btnPositionLoeschen" Content="Position loeschen" Padding="10,3" Click="PositionLoeschen_Click"/>
             <Button Grid.Column="1" x:Name="btnPositionHoch" Content="^" Width="25" Margin="5,0" Click="PositionHoch_Click"/>
             <Button Grid.Column="2" x:Name="btnPositionRunter" Content="v" Width="25" Click="PositionRunter_Click"/>
 
@@ -372,6 +374,8 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Ausgeben -->
@@ -405,9 +409,32 @@
                 <CheckBox Grid.Column="2" x:Name="chkFreigegeben" Content="Freigegeben" VerticalAlignment="Center" Margin="10,0"/>
 
                 <!-- Buttons -->
-                <Button Grid.Column="3" x:Name="btnSpeichern" Content="Speichern" Width="100" Height="30"
+                <Button Grid.Column="3" Content="📦 Wareneingang" Width="130" Height="30"
+                        Margin="10,0" Click="Wareneingang_Click" FontWeight="Bold"
+                        Background="#28a745" Foreground="White"/>
+                <Button Grid.Column="4" x:Name="btnEingangsrechnung" Width="140" Height="30"
+                        Margin="5,0" Background="#0078D4" Foreground="White" FontWeight="Bold">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Eingangsrechnung" VerticalAlignment="Center"/>
+                            <TextBlock Text=" ▼" VerticalAlignment="Center" FontSize="9"/>
+                        </StackPanel>
+                    </Button.Content>
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Alle Positionen" Click="EingangsrechnungAlle_Click"/>
+                            <MenuItem Header="Nur gelieferte Positionen" Click="EingangsrechnungGeliefert_Click"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <EventSetter Event="Click" Handler="EingangsrechnungDropdown_Click"/>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Grid.Column="5" x:Name="btnSpeichern" Content="Speichern" Width="100" Height="30"
                         Margin="10,0" Click="Speichern_Click" FontWeight="Bold"/>
-                <Button Grid.Column="4" x:Name="btnAbbrechen" Content="Abbrechen" Width="100" Height="30"
+                <Button Grid.Column="6" x:Name="btnAbbrechen" Content="Abbrechen" Width="100" Height="30"
                         Click="Abbrechen_Click"/>
             </Grid>
         </Grid>

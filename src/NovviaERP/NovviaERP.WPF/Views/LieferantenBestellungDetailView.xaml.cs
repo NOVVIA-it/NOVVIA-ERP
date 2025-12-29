@@ -412,6 +412,117 @@ namespace NovviaERP.WPF.Views
             DialogResult = false;
             Close();
         }
+
+        private void Wareneingang_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_positionen.Any())
+            {
+                MessageBox.Show("Keine Positionen vorhanden.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (!_bestellungId.HasValue)
+            {
+                MessageBox.Show("Bitte zuerst die Bestellung speichern.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Pruefen ob es offene Positionen gibt
+            var offenePositionen = _positionen.Where(p => p.FMenge > p.FMengeGeliefert).ToList();
+            if (!offenePositionen.Any())
+            {
+                MessageBox.Show("Alle Positionen sind bereits vollstaendig geliefert.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var lieferant = cboLieferant.SelectedItem is CoreService.LieferantRef l ? l.CFirma : "";
+            var dialog = new WareneingangDialog(_bestellungId.Value, lieferant, offenePositionen);
+
+            if (dialog.ShowDialog() == true && dialog.WurdeGebucht)
+            {
+                // Positionen neu laden
+                _ = LadeBestellungAsync(_bestellungId.Value);
+            }
+        }
+
+        private void EingangsrechnungDropdown_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.ContextMenu != null)
+            {
+                btn.ContextMenu.PlacementTarget = btn;
+                btn.ContextMenu.IsOpen = true;
+            }
+        }
+
+        private async void EingangsrechnungAlle_Click(object sender, RoutedEventArgs e)
+        {
+            await ErstelleEingangsrechnungAsync(nurGelieferte: false);
+        }
+
+        private async void EingangsrechnungGeliefert_Click(object sender, RoutedEventArgs e)
+        {
+            await ErstelleEingangsrechnungAsync(nurGelieferte: true);
+        }
+
+        private async System.Threading.Tasks.Task ErstelleEingangsrechnungAsync(bool nurGelieferte)
+        {
+            if (!_bestellungId.HasValue)
+            {
+                MessageBox.Show("Bitte zuerst die Bestellung speichern.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (!_positionen.Any())
+            {
+                MessageBox.Show("Keine Positionen vorhanden.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var relevantePositionen = nurGelieferte
+                ? _positionen.Where(p => p.FMengeGeliefert > 0).ToList()
+                : _positionen.ToList();
+
+            if (!relevantePositionen.Any())
+            {
+                MessageBox.Show("Keine Positionen fuer Eingangsrechnung vorhanden.\n(Noch keine Lieferungen gebucht)", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var msg = nurGelieferte
+                ? $"Eingangsrechnung fuer {relevantePositionen.Count} gelieferte Positionen erstellen?"
+                : $"Eingangsrechnung fuer alle {relevantePositionen.Count} Positionen erstellen?";
+
+            if (MessageBox.Show(msg, "Eingangsrechnung erstellen", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                int kLieferant = (int)cboLieferant.SelectedValue!;
+                var positionenFuerRechnung = relevantePositionen.Select(p => new CoreService.EingangsrechnungPosInput
+                {
+                    KArtikel = p.KArtikel,
+                    CArtNr = p.CArtNr,
+                    CLieferantenArtNr = p.CLieferantenArtNr,
+                    CName = p.CName,
+                    FMenge = nurGelieferte ? p.FMengeGeliefert : p.FMenge,
+                    FEKNetto = p.FEKNetto,
+                    FMwSt = p.FUST
+                }).ToList();
+
+                int rechnungId = await _coreService.CreateEingangsrechnungFromBestellungAsync(
+                    _bestellungId.Value, kLieferant, positionenFuerRechnung);
+
+                MessageBox.Show($"Eingangsrechnung {rechnungId} wurde erstellt.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Optional: Detailansicht oeffnen
+                var detailView = new EingangsrechnungDetailView(rechnungId);
+                detailView.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Erstellen der Eingangsrechnung:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 
     // ViewModel fuer Positionen mit PropertyChanged

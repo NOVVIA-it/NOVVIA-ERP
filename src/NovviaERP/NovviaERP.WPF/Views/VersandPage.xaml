@@ -1,20 +1,85 @@
-<Page x:Class="NovviaERP.WPF.Views.VersandPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Versand" Background="#f0f2f5">
-    <Grid Margin="20"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <TextBlock Text="Versand - Zu versendende Bestellungen" FontSize="28" FontWeight="Bold"/>
-        <DataGrid x:Name="dgVersand" Grid.Row="1" Margin="0,20,0,0" AutoGenerateColumns="False" IsReadOnly="True">
+<Page x:Class="NovviaERP.WPF.Views.VersandPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Versand" Background="#f0f2f5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Text="Versand" FontSize="28" FontWeight="Bold"/>
+
+        <!-- Filter -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,15">
+            <TextBox x:Name="txtSuche" Width="250" Height="35" VerticalContentAlignment="Center"
+                     Text="" ToolTip="Bestellnr, Kunde, Ort..." KeyDown="TxtSuche_KeyDown"/>
+            <Button Content="Suchen" Width="80" Margin="10,0" Height="35" Click="Suchen_Click"/>
+            <ComboBox x:Name="cmbStatus" Width="150" Height="35" SelectionChanged="Filter_Changed">
+                <ComboBoxItem Content="Alle" IsSelected="True"/>
+                <ComboBoxItem Content="Zu versenden" Tag="0"/>
+                <ComboBoxItem Content="Versendet" Tag="1"/>
+            </ComboBox>
+            <DatePicker x:Name="dpVon" Width="120" Height="35" Margin="20,0,5,0" SelectedDateChanged="Filter_Changed"/>
+            <TextBlock Text="bis" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <DatePicker x:Name="dpBis" Width="120" Height="35" SelectedDateChanged="Filter_Changed"/>
+            <Button Content="Aktualisieren" Width="100" Margin="20,0,0,0" Height="35" Click="Aktualisieren_Click"/>
+        </StackPanel>
+
+        <!-- DataGrid -->
+        <DataGrid x:Name="dgVersand" Grid.Row="2" Margin="0,10,0,0" AutoGenerateColumns="False"
+                  IsReadOnly="True" SelectionMode="Extended" CanUserAddRows="False"
+                  MouseDoubleClick="DgVersand_DoubleClick">
             <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="" Binding="{Binding IsSelected, Mode=TwoWay}" Width="30"/>
                 <DataGridTextColumn Header="Bestellnr." Binding="{Binding BestellNr}" Width="120"/>
                 <DataGridTextColumn Header="Datum" Binding="{Binding Erstellt, StringFormat=dd.MM.yyyy}" Width="100"/>
-                <DataGridTextColumn Header="Kunde" Binding="{Binding Kunde.Nachname}" Width="150"/>
-                <DataGridTextColumn Header="Ort" Binding="{Binding Lieferadresse.Ort}" Width="150"/>
-                <DataGridTemplateColumn Header="Versenden" Width="200">
-                    <DataGridTemplateColumn.CellTemplate><DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Content="DHL" Tag="{Binding Id}" Click="Versenden_Click" Margin="2"/>
-                            <Button Content="DPD" Tag="{Binding Id}" Click="Versenden_Click" Margin="2"/>
-                            <Button Content="GLS" Tag="{Binding Id}" Click="Versenden_Click" Margin="2"/>
-                        </StackPanel>
-                    </DataTemplate></DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns></DataGrid></Grid>
+                <DataGridTextColumn Header="Kunde" Binding="{Binding KundeName}" Width="180"/>
+                <DataGridTextColumn Header="Ort" Binding="{Binding LieferOrt}" Width="120"/>
+                <DataGridTextColumn Header="Gewicht" Binding="{Binding Gewicht, StringFormat=N2}" Width="80">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Versandart" Binding="{Binding VersandartName}" Width="100"/>
+                <DataGridTextColumn Header="Tracking" Binding="{Binding TrackingNr}" Width="150"/>
+                <DataGridTextColumn Header="Carrier" Binding="{Binding VersandDienstleister}" Width="80"/>
+                <DataGridTextColumn Header="Versendet" Binding="{Binding Versandt, StringFormat=dd.MM.yyyy}" Width="100"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Footer -->
+        <Border Grid.Row="3" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="0,15,0,0" Margin="0,10,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="txtStatus" Foreground="#666" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="txtAusgewaehlt" Foreground="#333" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Margin="20,0,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="btnDHL" Content="DHL" Width="80" Margin="0,0,5,0"
+                            Click="VersendeDHL_Click" Background="#FFCC00" FontWeight="Bold"/>
+                    <Button x:Name="btnDPD" Content="DPD" Width="80" Margin="0,0,5,0"
+                            Click="VersendeDPD_Click" Background="#DC0032" Foreground="White" FontWeight="Bold"/>
+                    <Button x:Name="btnGLS" Content="GLS" Width="80" Margin="0,0,5,0"
+                            Click="VersendeGLS_Click" Background="#003D7A" Foreground="White" FontWeight="Bold"/>
+                    <Button x:Name="btnUPS" Content="UPS" Width="80" Margin="0,0,20,0"
+                            Click="VersendeUPS_Click" Background="#351C15" Foreground="#FFB500" FontWeight="Bold"/>
+                    <Button Content="Tracking oeffnen" Width="120" Margin="0,0,5,0" Click="TrackingOeffnen_Click"/>
+                    <Button Content="Label drucken" Width="100" Click="LabelDrucken_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
 </Page>

@@ -41,10 +41,11 @@
             
             <!-- Warenlager -->
             <TabItem Header="🏭 Lager">
-                <Grid Margin="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="350"/></Grid.ColumnDefinitions>
+                <Grid Margin="10"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="400"/></Grid.ColumnDefinitions>
                     <Border Style="{StaticResource CardStyle}">
                         <StackPanel><TextBlock Text="Warenlager" Style="{StaticResource HeaderText}"/>
-                            <DataGrid x:Name="dgLager" Height="300" AutoGenerateColumns="False" IsReadOnly="True" SelectionChanged="Lager_SelectionChanged">
+                            <DataGrid x:Name="dgLager" Height="300" AutoGenerateColumns="False" IsReadOnly="True"
+                                      SelectionChanged="Lager_SelectionChanged" MouseDoubleClick="Lager_DoubleClick">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
                                     <DataGridTextColumn Header="Kürzel" Binding="{Binding Kuerzel}" Width="80"/>
@@ -52,12 +53,18 @@
                                     <DataGridCheckBoxColumn Header="Standard" Binding="{Binding IstStandard}" Width="70"/>
                                 </DataGrid.Columns>
                             </DataGrid>
-                            <Button Content="➕ Neues Lager" Margin="0,10,0,0" Click="NeuesLager_Click"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button Content="➕ Neu" Width="80" Click="NeuesLager_Click"/>
+                                <Button Content="✏️ Bearbeiten" Width="100" Margin="10,0,0,0" Click="LagerBearbeiten_Click"/>
+                                <Button Content="🗑️ Löschen" Width="90" Margin="10,0,0,0" Click="LagerLoeschen_Click"/>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource CardStyle}" Grid.Column="1" Margin="10,0,0,0">
                         <StackPanel><TextBlock Text="Lagerplätze" Style="{StaticResource HeaderText}"/>
-                            <DataGrid x:Name="dgLagerplaetze" Height="250" AutoGenerateColumns="False">
+                            <TextBlock x:Name="txtSelectedLager" Foreground="#666" Margin="0,0,0,10"/>
+                            <DataGrid x:Name="dgLagerplaetze" Height="250" AutoGenerateColumns="False" IsReadOnly="True"
+                                      MouseDoubleClick="Lagerplatz_DoubleClick">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
                                     <DataGridTextColumn Header="Regal" Binding="{Binding Regal}" Width="60"/>
@@ -65,7 +72,11 @@
                                     <DataGridTextColumn Header="Barcode" Binding="{Binding Barcode}" Width="100"/>
                                 </DataGrid.Columns>
                             </DataGrid>
-                            <Button Content="➕ Neuer Platz" Margin="0,10,0,0" Click="NeuerPlatz_Click"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button Content="➕ Neu" Width="80" Click="NeuerPlatz_Click"/>
+                                <Button Content="✏️ Bearbeiten" Width="100" Margin="10,0,0,0" Click="PlatzBearbeiten_Click"/>
+                                <Button Content="🗑️ Löschen" Width="90" Margin="10,0,0,0" Click="PlatzLoeschen_Click"/>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </Grid>

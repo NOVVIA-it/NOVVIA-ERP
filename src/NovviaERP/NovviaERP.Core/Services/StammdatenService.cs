@@ -58,6 +58,47 @@ namespace NovviaERP.Core.Services
             return await conn.QuerySingleAsync<int>(@"INSERT INTO tWarenLagerPlatz (kWarenLager, cName, cRegal, cFach, cEbene, cBarcode, nAktiv, nSortierung)
                 VALUES (@WarenlagerId, @Name, @Regal, @Fach, @Ebene, @Barcode, @Aktiv, @Sortierung); SELECT SCOPE_IDENTITY();", platz);
         }
+
+        public async Task UpdateWarenlagerAsync(Warenlager lager)
+        {
+            var conn = await _db.GetConnectionAsync();
+            // Falls dieses Lager als Standard gesetzt wird, andere Standard-Flags zuruecksetzen
+            if (lager.IstStandard)
+                await conn.ExecuteAsync("UPDATE tWarenLager SET nStandard = 0 WHERE kWarenLager != @Id", new { lager.Id });
+
+            await conn.ExecuteAsync(@"UPDATE tWarenLager SET cName=@Name, cKuerzel=@Kuerzel, cBeschreibung=@Beschreibung,
+                cStrasse=@Strasse, cPLZ=@PLZ, cOrt=@Ort, cLand=@Land, nStandard=@IstStandard, nAktiv=@Aktiv
+                WHERE kWarenLager=@Id", lager);
+        }
+
+        public async Task DeleteWarenlagerAsync(int id)
+        {
+            var conn = await _db.GetConnectionAsync();
+            // Pruefe ob Bestaende existieren
+            var bestaende = await conn.QuerySingleAsync<int>("SELECT COUNT(*) FROM tLagerbestand WHERE kWarenlager = @Id AND fBestand > 0", new { Id = id });
+            if (bestaende > 0)
+                throw new InvalidOperationException($"Lager kann nicht geloescht werden - es existieren noch {bestaende} Bestaende.");
+
+            // Lagerplaetze loeschen
+            await conn.ExecuteAsync("DELETE FROM tWarenLagerPlatz WHERE kWarenLager = @Id", new { Id = id });
+            // Lager loeschen
+            await conn.ExecuteAsync("DELETE FROM tWarenLager WHERE kWarenLager = @Id", new { Id = id });
+        }
+
+        public async Task UpdateLagerplatzAsync(Lagerplatz platz)
+        {
+            var conn = await _db.GetConnectionAsync();
+            await conn.ExecuteAsync(@"UPDATE tWarenLagerPlatz SET cName=@Name, cRegal=@Regal, cFach=@Fach,
+                cEbene=@Ebene, cBarcode=@Barcode, nAktiv=@Aktiv, nSortierung=@Sortierung
+                WHERE kWarenLagerPlatz=@Id", platz);
+        }
+
+        public async Task DeleteLagerplatzAsync(int id)
+        {
+            var conn = await _db.GetConnectionAsync();
+            // Pruefe ob Bestaende auf diesem Platz existieren (falls PlatzID in Lagerbestand)
+            await conn.ExecuteAsync("DELETE FROM tWarenLagerPlatz WHERE kWarenLagerPlatz = @Id", new { Id = id });
+        }
         #endregion
 
         #region Kategorien
