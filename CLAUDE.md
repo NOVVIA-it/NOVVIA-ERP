@@ -306,7 +306,30 @@ src/NovviaERP/
 
 2. **Automatische Nachbestellung** - Workflow für Mindestbestand → Bestellung
 
-### Letzte Code-Änderungen (29.12.2024 - Session 2)
+### Letzte Code-Änderungen (29.12.2024 - Session 3)
+
+**Dashboard - Grafisches Dashboard mit LiveCharts2:**
+- LiveChartsCore.SkiaSharpView.WPF 2.0.0-rc2 hinzugefügt
+- 6 KPI-Karten: Umsatz Monat, Aufträge Heute, Offene Rechnungen, Überfällig, Versand Heute, Neue Kunden
+- Umsatzverlauf (12 Monate) - Liniendiagramm
+- Aufträge nach Status - Kreisdiagramm (Offen, In Bearbeitung, Versendet, Abgeschlossen)
+- Top 5 Kunden (12 Monate) - Balkendiagramm
+- Top 5 Artikel (30 Tage) - Balkendiagramm
+- Zahlungseingänge (8 Wochen) - Säulendiagramm
+- Paralleles Laden mit Task.WhenAll
+- SQL-Abfragen inline (keine SP-Abhängigkeit)
+- Setup-Script: `Scripts/Setup-NOVVIA-Dashboard.sql` (optionale SPs)
+
+**NOVVIA Benutzerrechte-System (eigene Tabellen):**
+- Komplettes RBAC mit NOVVIA.* Schema
+- Tabellen: Modul, Aktion, Recht, Rolle, RolleRecht, Benutzer, BenutzerRolle, BenutzerRechtUeberschreibung, BenutzerSession, BenutzerLog
+- Standard-Rollen: Administrator, Verkauf, Lager, Einkauf, Buchhaltung, Alles (alle Rechte außer System-Config)
+- BCrypt Passwort-Hashing
+- Session-Management mit Token
+- Setup-Script: `Scripts/Setup-NOVVIA-Benutzerrechte.sql`
+- BenutzerService: HatRecht(), DarfLesen(), DarfBearbeiten(), etc.
+
+### Code-Änderungen (29.12.2024 - Session 2)
 
 **Eigene Felder - Komplett neu:**
 - NOVVIA.LieferantAttribut + NOVVIA.LieferantEigenesFeld Tabellen
