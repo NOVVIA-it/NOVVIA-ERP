@@ -14,6 +14,7 @@ namespace NovviaERP.WPF.Views
         private int? _selectedKundenkategorieId;
         private int? _selectedZahlungsartId;
         private int? _selectedVersandartId;
+        private int? _selectedLieferantAttributId;
 
         public EinstellungenView()
         {
@@ -426,8 +427,95 @@ namespace NovviaERP.WPF.Views
 
         private async System.Threading.Tasks.Task LadeEigeneFelderAsync()
         {
-            var felder = await _core.GetFirmaEigeneFelderAsync();
-            dgEigeneFelder.ItemsSource = felder.ToList();
+            // Lieferant Attribute (NOVVIA - editierbar)
+            var lieferantAttr = await _core.GetLieferantAttributeAsync();
+            dgLieferantAttribute.ItemsSource = lieferantAttr.ToList();
+
+            // Kunde Attribute (JTL - nur Ansicht)
+            var kundeAttr = await _core.GetKundeAttributeAsync();
+            dgKundeAttribute.ItemsSource = kundeAttr.ToList();
+
+            // Artikel Attribute (JTL - nur Ansicht)
+            var artikelAttr = await _core.GetArtikelAttributeAsync();
+            dgArtikelAttribute.ItemsSource = artikelAttr.ToList();
+
+            // Firma Eigene Felder (JTL - nur Ansicht)
+            var firmaFelder = await _core.GetFirmaEigeneFelderAsync();
+            dgFirmaEigeneFelder.ItemsSource = firmaFelder.ToList();
+        }
+
+        #endregion
+
+        #region Lieferant Attribute (NOVVIA)
+
+        private void LieferantAttributNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedLieferantAttributId = null;
+            txtLiefAttrName.Text = "";
+            txtLiefAttrBeschr.Text = "";
+            cmbLiefAttrTyp.SelectedIndex = 0;
+            txtLiefAttrSort.Text = "0";
+            txtLiefAttrName.Focus();
+        }
+
+        private async void LieferantAttributLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgLieferantAttribute.SelectedItem is not CoreService.EigenesFeldDefinition attr) return;
+
+            if (MessageBox.Show($"Attribut '{attr.CName}' wirklich loeschen?\nAlle zugeordneten Werte werden ebenfalls geloescht!",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _core.DeleteLieferantAttributAsync(attr.KAttribut);
+                await LadeEigeneFelderAsync();
+                LieferantAttributNeu_Click(sender, e);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void LieferantAttributSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtLiefAttrName.Text))
+            {
+                MessageBox.Show("Bitte einen Namen eingeben!", "Validierung", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                int.TryParse(txtLiefAttrSort.Text, out var sort);
+                var feldTyp = int.Parse((cmbLiefAttrTyp.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "1");
+
+                var attr = new CoreService.EigenesFeldDefinition
+                {
+                    KAttribut = _selectedLieferantAttributId ?? 0,
+                    CName = txtLiefAttrName.Text.Trim(),
+                    CBeschreibung = txtLiefAttrBeschr.Text.Trim(),
+                    NFeldTyp = feldTyp,
+                    NSortierung = sort,
+                    NAktiv = true
+                };
+
+                await _core.SaveLieferantAttributAsync(attr);
+                await LadeEigeneFelderAsync();
+
+                // Formular leeren
+                _selectedLieferantAttributId = null;
+                txtLiefAttrName.Text = "";
+                txtLiefAttrBeschr.Text = "";
+                cmbLiefAttrTyp.SelectedIndex = 0;
+                txtLiefAttrSort.Text = "0";
+
+                MessageBox.Show("Attribut gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         #endregion

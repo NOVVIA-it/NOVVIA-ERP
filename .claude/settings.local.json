@@ -77,7 +77,8 @@
       "Bash(Select-Object -Last 20)",
       "Bash(Start-Sleep -Seconds 1)",
       "Bash(find:*)",
-      "Bash(Start-Process 'C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\bin\\\\Debug\\\\net8.0-windows\\\\NovviaERP.WPF.exe')"
+      "Bash(Start-Process 'C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\bin\\\\Debug\\\\net8.0-windows\\\\NovviaERP.WPF.exe')",
+      "Bash(start \"\" \"C:\\\\NovviaERP\\\\src\\\\NovviaERP\\\\NovviaERP.WPF\\\\bin\\\\Debug\\\\net8.0-windows\\\\NovviaERP.WPF.exe\")"
     ]
   }
 }

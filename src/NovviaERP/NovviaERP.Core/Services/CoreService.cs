@@ -1333,48 +1333,52 @@ namespace NovviaERP.Core.Services
         }
 
         public async Task<IEnumerable<VersandItem>> GetVersandListeAsync(
-            string? suche = null, string? statusFilter = null, DateTime? von = null, DateTime? bis = null)
+            string? suche = null, string? statusFilter = null, DateTime? von = null, DateTime? bis = null, int maxRows = 500)
         {
             var conn = await GetConnectionAsync();
-            var sql = @"
-                SELECT
-                    a.kAuftrag AS KBestellung,
-                    a.cAuftragsNr AS BestellNr,
-                    a.dErstellt AS Erstellt,
-                    ISNULL(adr.cFirma, adr.cName) AS KundeName,
-                    adr.cOrt AS LieferOrt,
-                    ISNULL((SELECT SUM(ap.fAnzahl * ISNULL(art.fGewicht, 0))
-                            FROM Verkauf.tAuftragPosition ap
-                            LEFT JOIN tArtikel art ON ap.kArtikel = art.kArtikel
-                            WHERE ap.kAuftrag = a.kAuftrag), 0) AS Gewicht,
+
+            // Adresse aus Verkauf.tAuftragAdresse (nTyp=1 für Lieferadresse)
+            var sql = $@"
+                SELECT TOP {maxRows}
+                    b.kBestellung AS KBestellung,
+                    b.cBestellNr AS BestellNr,
+                    b.dErstellt AS Erstellt,
+                    ISNULL(NULLIF(la.cFirma, ''), la.cVorname + ' ' + la.cName) AS KundeName,
+                    la.cOrt AS LieferOrt,
+                    ISNULL(g.Gewicht, 0) AS Gewicht,
                     va.cName AS VersandartName,
                     v.cIdentCode AS TrackingNr,
                     v.cLogistiker AS VersandDienstleister,
                     v.dVersendet AS Versandt
-                FROM Verkauf.tAuftrag a
-                LEFT JOIN Verkauf.tAuftragAdresse adr ON adr.kAuftrag = a.kAuftrag AND adr.nTyp = 1
-                LEFT JOIN dbo.tVersandArt va ON a.kVersandArt = va.kVersandArt
-                LEFT JOIN dbo.tLieferschein ls ON ls.kBestellung = a.kAuftrag
+                FROM dbo.tBestellung b
+                LEFT JOIN Verkauf.tAuftragAdresse la ON b.kBestellung = la.kAuftrag AND la.nTyp = 1
+                LEFT JOIN dbo.tVersandArt va ON b.tVersandArt_kVersandArt = va.kVersandArt
+                LEFT JOIN dbo.tLieferschein ls ON ls.kBestellung = b.kBestellung
                 LEFT JOIN dbo.tVersand v ON v.kLieferschein = ls.kLieferschein
-                WHERE a.nStorno = 0
-                  AND a.nAuftragStatus >= 1";
+                LEFT JOIN (
+                    SELECT bp.tBestellung_kBestellung, SUM(bp.nAnzahl * ISNULL(art.fGewicht, 0)) AS Gewicht
+                    FROM dbo.tbestellpos bp
+                    LEFT JOIN tArtikel art ON bp.tArtikel_kArtikel = art.kArtikel
+                    GROUP BY bp.tBestellung_kBestellung
+                ) g ON g.tBestellung_kBestellung = b.kBestellung
+                WHERE b.nStorno = 0";
 
             // Status-Filter: 0 = zu versenden, 1 = versendet
             if (statusFilter == "0") sql += " AND v.kVersand IS NULL";
             else if (statusFilter == "1") sql += " AND v.kVersand IS NOT NULL";
 
-            if (von.HasValue) sql += " AND a.dErstellt >= @Von";
-            if (bis.HasValue) sql += " AND a.dErstellt <= @Bis";
+            if (von.HasValue) sql += " AND b.dErstellt >= @Von";
+            if (bis.HasValue) sql += " AND b.dErstellt <= @Bis";
 
             if (!string.IsNullOrEmpty(suche))
             {
-                sql += @" AND (a.cAuftragsNr LIKE @Suche
-                         OR adr.cFirma LIKE @Suche
-                         OR adr.cName LIKE @Suche
-                         OR adr.cOrt LIKE @Suche)";
+                sql += @" AND (b.cBestellNr LIKE @Suche
+                         OR la.cFirma LIKE @Suche
+                         OR la.cName LIKE @Suche
+                         OR la.cOrt LIKE @Suche)";
             }
 
-            sql += " ORDER BY a.dErstellt DESC";
+            sql += " ORDER BY b.dErstellt DESC";
 
             return await conn.QueryAsync<VersandItem>(sql, new {
                 Suche = $"%{suche}%", Von = von, Bis = bis
@@ -4785,6 +4789,284 @@ namespace NovviaERP.Core.Services
                 FROM dbo.tSteuersatz
                 WHERE kSteuerzone = 3
                 ORDER BY fSteuersatz DESC");
+        }
+
+        #endregion
+
+        #region Eigene Felder
+
+        // DTOs für Eigene Felder
+        public class EigenesFeldDefinition
+        {
+            public int KAttribut { get; set; }
+            public string CName { get; set; } = "";
+            public string? CBeschreibung { get; set; }
+            public int NFeldTyp { get; set; }  // 1=Text, 2=Int, 3=Decimal, 4=DateTime
+            public int NSortierung { get; set; }
+            public bool NAktiv { get; set; } = true;
+            public string FeldTypName => NFeldTyp switch
+            {
+                1 => "Text",
+                2 => "Ganzzahl",
+                3 => "Dezimal",
+                4 => "Datum",
+                _ => "Text"
+            };
+        }
+
+        public class EigenesFeldWert
+        {
+            public int KWert { get; set; }
+            public int KEntity { get; set; }  // z.B. kKunde, kArtikel, etc.
+            public int KAttribut { get; set; }
+            public string? CAttributName { get; set; }
+            public int NFeldTyp { get; set; }
+            public string? CWertVarchar { get; set; }
+            public int? NWertInt { get; set; }
+            public decimal? FWertDecimal { get; set; }
+            public DateTime? DWertDateTime { get; set; }
+
+            public object? Wert => NFeldTyp switch
+            {
+                1 => CWertVarchar,
+                2 => NWertInt,
+                3 => FWertDecimal,
+                4 => DWertDateTime,
+                _ => CWertVarchar
+            };
+        }
+
+        // ===== LIEFERANT Eigene Felder (NOVVIA-Tabellen) =====
+
+        public async Task<IEnumerable<EigenesFeldDefinition>> GetLieferantAttributeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<EigenesFeldDefinition>(@"
+                SELECT kLieferantAttribut AS KAttribut, cName AS CName, cBeschreibung AS CBeschreibung,
+                       nFeldTyp AS NFeldTyp, nSortierung AS NSortierung, nAktiv AS NAktiv
+                FROM NOVVIA.LieferantAttribut
+                WHERE nAktiv = 1
+                ORDER BY nSortierung, cName");
+        }
+
+        public async Task<IEnumerable<EigenesFeldWert>> GetLieferantEigeneFelderAsync(int kLieferant)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<EigenesFeldWert>(@"
+                SELECT ef.kLieferantEigenesFeld AS KWert, ef.kLieferant AS KEntity,
+                       ef.kLieferantAttribut AS KAttribut, a.cName AS CAttributName, a.nFeldTyp AS NFeldTyp,
+                       ef.cWertVarchar AS CWertVarchar, ef.nWertInt AS NWertInt,
+                       ef.fWertDecimal AS FWertDecimal, ef.dWertDateTime AS DWertDateTime
+                FROM NOVVIA.LieferantEigenesFeld ef
+                JOIN NOVVIA.LieferantAttribut a ON ef.kLieferantAttribut = a.kLieferantAttribut
+                WHERE ef.kLieferant = @kLieferant
+                ORDER BY a.nSortierung, a.cName", new { kLieferant });
+        }
+
+        public async Task SaveLieferantEigenesFeldAsync(int kLieferant, int kAttribut, object? wert)
+        {
+            var conn = await GetConnectionAsync();
+            var attr = await conn.QueryFirstOrDefaultAsync<EigenesFeldDefinition>(@"
+                SELECT nFeldTyp AS NFeldTyp FROM NOVVIA.LieferantAttribut WHERE kLieferantAttribut = @kAttribut",
+                new { kAttribut });
+
+            if (attr == null) return;
+
+            await conn.ExecuteAsync("NOVVIA.spLieferantEigenesFeldSpeichern",
+                new
+                {
+                    kLieferant,
+                    kLieferantAttribut = kAttribut,
+                    cWertVarchar = attr.NFeldTyp == 1 ? wert?.ToString() : null,
+                    nWertInt = attr.NFeldTyp == 2 ? (int?)Convert.ToInt32(wert) : null,
+                    fWertDecimal = attr.NFeldTyp == 3 ? (decimal?)Convert.ToDecimal(wert) : null,
+                    dWertDateTime = attr.NFeldTyp == 4 ? (DateTime?)wert : null
+                },
+                commandType: CommandType.StoredProcedure);
+        }
+
+        public async Task<int> SaveLieferantAttributAsync(EigenesFeldDefinition attr)
+        {
+            var conn = await GetConnectionAsync();
+            var result = await conn.QueryFirstOrDefaultAsync<int>("NOVVIA.spLieferantAttributSpeichern",
+                new
+                {
+                    kLieferantAttribut = attr.KAttribut > 0 ? (int?)attr.KAttribut : null,
+                    cName = attr.CName,
+                    cBeschreibung = attr.CBeschreibung,
+                    nFeldTyp = attr.NFeldTyp,
+                    nSortierung = attr.NSortierung,
+                    nAktiv = attr.NAktiv
+                },
+                commandType: CommandType.StoredProcedure);
+            return result;
+        }
+
+        public async Task DeleteLieferantAttributAsync(int kAttribut)
+        {
+            var conn = await GetConnectionAsync();
+            // Erst Werte löschen, dann Attribut
+            await conn.ExecuteAsync("DELETE FROM NOVVIA.LieferantEigenesFeld WHERE kLieferantAttribut = @kAttribut", new { kAttribut });
+            await conn.ExecuteAsync("DELETE FROM NOVVIA.LieferantAttribut WHERE kLieferantAttribut = @kAttribut", new { kAttribut });
+        }
+
+        // ===== KUNDE Eigene Felder (JTL SP) =====
+
+        public async Task<IEnumerable<EigenesFeldDefinition>> GetKundeAttributeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            // nBezugstyp = 3 für Kunden-Attribute
+            return await conn.QueryAsync<EigenesFeldDefinition>(@"
+                SELECT a.kAttribut AS KAttribut, s.cName AS CName, a.cBeschreibung AS CBeschreibung,
+                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       a.nSortierung AS NSortierung, 1 AS NAktiv
+                FROM dbo.tAttribut a
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                WHERE a.nIstFreifeld = 1 AND a.nBezugstyp = 3
+                ORDER BY a.nSortierung, s.cName");
+        }
+
+        public async Task<IEnumerable<EigenesFeldWert>> GetKundeEigenesFeldWerteAsync(int kKunde)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<EigenesFeldWert>(@"
+                SELECT ef.kKundeEigenesFeld AS KWert, ef.kKunde AS KEntity,
+                       ef.kAttribut AS KAttribut, s.cName AS CAttributName,
+                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       ef.cWertVarchar AS CWertVarchar, ef.nWertInt AS NWertInt,
+                       ef.fWertDecimal AS FWertDecimal, ef.dWertDateTime AS DWertDateTime
+                FROM Kunde.tKundeEigenesFeld ef
+                JOIN dbo.tAttribut a ON ef.kAttribut = a.kAttribut
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                WHERE ef.kKunde = @kKunde
+                ORDER BY a.nSortierung, s.cName", new { kKunde });
+        }
+
+        public async Task SaveKundeEigenesFeldAsync(int kKunde, string attributName, object? wert)
+        {
+            var conn = await GetConnectionAsync();
+            // JTL-Wawi verwendet TYPE für Batch-Operationen, wir machen es einfacher mit direktem SQL
+            var attr = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
+                SELECT a.kAttribut, a.kFeldTyp
+                FROM dbo.tAttribut a
+                JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                WHERE a.nIstFreifeld = 1 AND s.cName = @attributName",
+                new { attributName });
+
+            if (attr == null)
+            {
+                // Attribut neu anlegen
+                var newAttrId = await conn.QueryFirstAsync<int>(@"
+                    INSERT INTO dbo.tAttribut (nIstMehrsprachig, nIstFreifeld, nSortierung, nBezugstyp, nAusgabeweg, nIstStandard, kFeldTyp, cGruppeName, nReadOnly)
+                    VALUES (0, 1, 1, 3, 2, 0, 1, 'Kundenattribute', 0);
+                    SELECT SCOPE_IDENTITY();");
+
+                await conn.ExecuteAsync(@"
+                    INSERT INTO dbo.tAttributSprache (kAttribut, kSprache, cName) VALUES (@kAttribut, 0, @cName);
+                    INSERT INTO dbo.tAttributSprache (kAttribut, kSprache, cName) VALUES (@kAttribut, 1, @cName);",
+                    new { kAttribut = newAttrId, cName = attributName });
+
+                attr = new { kAttribut = newAttrId, kFeldTyp = 1 };
+            }
+
+            // Vorhandenen Wert löschen
+            await conn.ExecuteAsync("DELETE FROM Kunde.tKundeEigenesFeld WHERE kKunde = @kKunde AND kAttribut = @kAttribut",
+                new { kKunde, kAttribut = (int)attr.kAttribut });
+
+            // Neuen Wert einfügen
+            await conn.ExecuteAsync(@"
+                INSERT INTO Kunde.tKundeEigenesFeld (kKunde, kAttribut, cWertVarchar, nWertInt, fWertDecimal, dWertDateTime)
+                VALUES (@kKunde, @kAttribut, @cWertVarchar, @nWertInt, @fWertDecimal, @dWertDateTime)",
+                new
+                {
+                    kKunde,
+                    kAttribut = (int)attr.kAttribut,
+                    cWertVarchar = attr.kFeldTyp == 1 ? wert?.ToString() : null,
+                    nWertInt = attr.kFeldTyp == 2 ? (int?)Convert.ToInt32(wert) : null,
+                    fWertDecimal = attr.kFeldTyp == 3 ? (decimal?)Convert.ToDecimal(wert) : null,
+                    dWertDateTime = attr.kFeldTyp == 4 ? (DateTime?)wert : null
+                });
+        }
+
+        // ===== FIRMA Eigene Felder (JTL-Tabellen) =====
+
+        public async Task<IEnumerable<EigenesFeldWert>> GetFirmaEigeneFelderAsync(int kFirma = 1)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<EigenesFeldWert>(@"
+                SELECT ef.kFirmaEigenesFeld AS KWert, ef.kFirma AS KEntity,
+                       ef.kAttribut AS KAttribut, s.cName AS CAttributName,
+                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       ef.cWertVarchar AS CWertVarchar, ef.nWertInt AS NWertInt,
+                       ef.fWertDecimal AS FWertDecimal, ef.dWertDateTime AS DWertDateTime
+                FROM Firma.tFirmaEigenesFeld ef
+                JOIN dbo.tAttribut a ON ef.kAttribut = a.kAttribut
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                WHERE ef.kFirma = @kFirma
+                ORDER BY a.nSortierung, s.cName", new { kFirma });
+        }
+
+        // ===== ARTIKEL Eigene Felder (JTL-Tabellen) =====
+
+        public async Task<IEnumerable<EigenesFeldDefinition>> GetArtikelAttributeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            // nBezugstyp = 0 für Artikel-Attribute (Freifelder)
+            return await conn.QueryAsync<EigenesFeldDefinition>(@"
+                SELECT a.kAttribut AS KAttribut, s.cName AS CName, a.cBeschreibung AS CBeschreibung,
+                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       a.nSortierung AS NSortierung, 1 AS NAktiv
+                FROM dbo.tAttribut a
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                WHERE a.nIstFreifeld = 1 AND a.nBezugstyp = 0
+                ORDER BY a.nSortierung, s.cName");
+        }
+
+        public async Task<IEnumerable<EigenesFeldWert>> GetArtikelEigenesFeldWerteAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<EigenesFeldWert>(@"
+                SELECT aas.kArtikelAttribut AS KWert, aa.kArtikel AS KEntity,
+                       aa.kAttribut AS KAttribut, s.cName AS CAttributName,
+                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       aas.cWertVarchar AS CWertVarchar, aas.nWertInt AS NWertInt,
+                       aas.fWertDecimal AS FWertDecimal, aas.dWertDateTime AS DWertDateTime
+                FROM dbo.tArtikelAttribut aa
+                JOIN dbo.tArtikelAttributSprache aas ON aa.kArtikelAttribut = aas.kArtikelAttribut AND aas.kSprache = 1
+                JOIN dbo.tAttribut a ON aa.kAttribut = a.kAttribut
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                WHERE aa.kArtikel = @kArtikel AND a.nIstFreifeld = 1
+                ORDER BY a.nSortierung, s.cName", new { kArtikel });
+        }
+
+        // ===== AUFTRAG Eigene Felder (JTL-Tabellen) =====
+
+        public async Task<IEnumerable<EigenesFeldWert>> GetAuftragEigenesFeldWerteAsync(int kAuftrag)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<EigenesFeldWert>(@"
+                SELECT aa.kAuftragAttribut AS KWert, aa.kAuftrag AS KEntity,
+                       aa.kAttribut AS KAttribut, s.cName AS CAttributName,
+                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       NULL AS CWertVarchar, NULL AS NWertInt, NULL AS FWertDecimal, NULL AS DWertDateTime
+                FROM Verkauf.tAuftragAttribut aa
+                JOIN dbo.tAttribut a ON aa.kAttribut = a.kAttribut
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                WHERE aa.kAuftrag = @kAuftrag
+                ORDER BY a.nSortierung, s.cName", new { kAuftrag });
+        }
+
+        // ===== Alle verfügbaren Attribute pro Entität =====
+
+        public async Task<IEnumerable<EigenesFeldDefinition>> GetAlleAttributeAsync(string entityTyp)
+        {
+            return entityTyp.ToLower() switch
+            {
+                "lieferant" => await GetLieferantAttributeAsync(),
+                "kunde" => await GetKundeAttributeAsync(),
+                "artikel" => await GetArtikelAttributeAsync(),
+                _ => Enumerable.Empty<EigenesFeldDefinition>()
+            };
         }
 
         #endregion

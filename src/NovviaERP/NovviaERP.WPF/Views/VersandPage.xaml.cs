@@ -20,6 +20,12 @@ namespace NovviaERP.WPF.Views
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
+
+            // Default-Datum: Leer lassen (zeigt neueste 500)
+            // User kann Datum manuell setzen
+            dpVon.SelectedDate = null;
+            dpBis.SelectedDate = null;
+
             Loaded += async (s, e) =>
             {
                 try
