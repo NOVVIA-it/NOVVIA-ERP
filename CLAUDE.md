@@ -329,6 +329,32 @@ src/NovviaERP/
 - Setup-Script: `Scripts/Setup-NOVVIA-Benutzerrechte.sql`
 - BenutzerService: HatRecht(), DarfLesen(), DarfBearbeiten(), etc.
 
+**LogService - NOVVIA Audit-Log System:**
+- `LogService.cs` - Zentrale Log-Funktionen
+- Kategorien: Stammdaten, Bewegung, System
+- Severity-Levels: 0=Info, 1=Warnung, 2=Fehler
+- Methoden: LogStammdatenAsync, LogBewegungAsync, LogSystemAsync, LogFehlerAsync
+- Shortcuts: LogKundeErstelltAsync, LogAuftragErstelltAsync, LogRechnungErstelltAsync
+- Abfragen: GetLogsAsync, GetEntityLogsAsync, GetFehlerLogsAsync
+- Setup-Script: `Scripts/Setup-NOVVIA-Log.sql`
+
+**JTL-Packtisch+ / WMS:**
+- Bereits mit JTL-Wawi installiert
+- Shortcut: `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\JTL-Wawi\JTL-Packtisch+.lnk`
+- WMS: `C:\Program Files (x86)\JTL-Software\WMS.exe`
+- Automatischer Start: `packtisch -w Standard -u admin -p passwort -l Ladenlokal`
+- Parameter: `-d` DB, `-w` Profil, `-u` User, `-p` Pass, `-l` Lager
+
+**REST API (NovviaERP.API):**
+- JWT-Authentifizierung mit Swagger UI
+- AuthController: Login, Logout, ChangePassword, CheckPermission
+- KundenController: CRUD
+- BestellungenController: CRUD + Status + Rechnung/Lieferschein erstellen
+- ArtikelController: CRUD
+- DashboardController: KPIs
+- Start: `dotnet run --project NovviaERP.API`
+- Swagger: http://localhost:5000/swagger
+
 ### Code-Änderungen (29.12.2024 - Session 2)
 
 **Eigene Felder - Komplett neu:**
