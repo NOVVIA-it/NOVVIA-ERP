@@ -15,7 +15,7 @@ using SkiaSharp;
 
 namespace NovviaERP.WPF.Views
 {
-    public partial class DashboardPage : Page
+    public partial class DashboardPage : UserControl
     {
         private readonly JtlDbContext _db;
 

@@ -12,6 +12,9 @@ namespace NovviaERP.WPF.Views
             Title = $"NOVVIA ERP - {App.MandantName}";
             txtMandant.Text = App.MandantName;
             txtBenutzer.Text = App.Benutzername;
+
+            // Dashboard beim Start laden
+            Loaded += (s, e) => contentMain.Content = new DashboardPage();
         }
 
         private void ShowView<T>() where T : UserControl
@@ -27,6 +30,7 @@ namespace NovviaERP.WPF.Views
             }
         }
 
+        private void NavDashboard_Click(object sender, RoutedEventArgs e) => contentMain.Content = new DashboardPage();
         private void NavKunden_Click(object sender, RoutedEventArgs e) => ShowView<KundenView>();
         private void NavArtikel_Click(object sender, RoutedEventArgs e) => ShowView<ArtikelView>();
         private void NavBestellungen_Click(object sender, RoutedEventArgs e) => ShowView<BestellungenView>();
