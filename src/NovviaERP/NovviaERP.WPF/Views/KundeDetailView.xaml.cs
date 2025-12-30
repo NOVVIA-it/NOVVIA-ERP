@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
+using NovviaERP.Core.Data;
 using NovviaERP.Core.Services;
+using Dapper;
 
 namespace NovviaERP.WPF.Views
 {
@@ -171,8 +174,8 @@ namespace NovviaERP.WPF.Views
                 dgBankverbindungen.ItemsSource = _kunde.Bankverbindungen;
                 dgOnlineshop.ItemsSource = _kunde.OnlineshopKunden;
 
-                // Historie (Beispieldaten)
-                LadeHistorie();
+                // Aufträge, Rechnungen, Gutschriften laden
+                await LadeKundenBelegeAsync();
 
                 txtStatus.Text = $"Kunde {_kunde.CKundenNr} geladen";
             }
@@ -184,14 +187,124 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void LadeHistorie()
+        private async System.Threading.Tasks.Task LadeKundenBelegeAsync()
         {
-            // TODO: Echte Historie aus DB laden
-            var historie = new List<dynamic>
+            if (!_kundeId.HasValue) return;
+
+            try
             {
-                new { Titel = "Kunde wurde erstellt", Datum = _kunde?.DErstellt?.ToString("dd.MM.yyyy HH:mm") ?? "" }
-            };
-            lstHistorie.ItemsSource = historie;
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                var conn = await db.GetConnectionAsync();
+
+                // Aufträge laden
+                var auftraege = await conn.QueryAsync<KundeAuftragItem>(@"
+                    SELECT a.kAuftrag, a.cAuftragsNr, a.dErstellt, a.nAuftragStatus,
+                           ae.fVKNettoGesamt AS FGesamtNetto,
+                           CASE a.nAuftragStatus
+                               WHEN 1 THEN 'Offen'
+                               WHEN 2 THEN 'InBearb.'
+                               WHEN 3 THEN 'Versendet'
+                               WHEN 4 THEN 'Bezahlt'
+                               ELSE 'Sonst.'
+                           END AS StatusText
+                    FROM Verkauf.tAuftrag a
+                    LEFT JOIN Verkauf.tAuftragEckdaten ae ON a.kAuftrag = ae.kAuftrag
+                    WHERE a.kKunde = @KundeId AND a.nStorno = 0
+                    ORDER BY a.dErstellt DESC",
+                    new { KundeId = _kundeId.Value });
+                var auftraegeListe = auftraege.ToList();
+                dgAuftraege.ItemsSource = auftraegeListe;
+                txtAuftraegeAnzahl.Text = $"{auftraegeListe.Count} Auftraege";
+
+                // Rechnungen laden
+                var rechnungen = await conn.QueryAsync<KundeRechnungItem>(@"
+                    SELECT r.kRechnung, r.cRechnungsnr AS CRechnungsNr, r.dErstellt,
+                           re.fVKBruttoGesamt AS FGesamtBrutto, re.nZahlungStatus,
+                           CASE re.nZahlungStatus
+                               WHEN 1 THEN 'Offen'
+                               WHEN 2 THEN 'Bezahlt'
+                               ELSE 'Sonst.'
+                           END AS StatusText
+                    FROM Rechnung.tRechnung r
+                    LEFT JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                    WHERE r.kKunde = @KundeId AND r.nStorno = 0
+                    ORDER BY r.dErstellt DESC",
+                    new { KundeId = _kundeId.Value });
+                var rechnungenListe = rechnungen.ToList();
+                dgRechnungen.ItemsSource = rechnungenListe;
+                txtRechnungenAnzahl.Text = $"{rechnungenListe.Count} Rechnungen";
+
+                // Gutschriften laden (Rechnungskorrekturen)
+                var gutschriften = await conn.QueryAsync<KundeGutschriftItem>(@"
+                    SELECT rk.kRechnungKorrektur, rk.cKorrekturNr AS CGutschriftNr, rk.dErstellt,
+                           rk.fBruttoGesamt AS FGesamtBrutto
+                    FROM Rechnung.tRechnungKorrektur rk
+                    JOIN Rechnung.tRechnung r ON rk.kRechnung = r.kRechnung
+                    WHERE r.kKunde = @KundeId
+                    ORDER BY rk.dErstellt DESC",
+                    new { KundeId = _kundeId.Value });
+                var gutschriftenListe = gutschriften.ToList();
+                dgGutschriften.ItemsSource = gutschriftenListe;
+                txtGutschriftenAnzahl.Text = $"{gutschriftenListe.Count} Gutschriften";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der Kundenbelege: {ex.Message}");
+            }
+        }
+
+        private void DgAuftraege_DoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (dgAuftraege.SelectedItem is KundeAuftragItem auftrag)
+            {
+                if (Window.GetWindow(this) is MainWindow main)
+                {
+                    var view = new BestellungDetailView();
+                    view.LadeBestellung(auftrag.KAuftrag);
+                    main.ShowContent(view);
+                }
+            }
+        }
+
+        private void DgRechnungen_DoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (dgRechnungen.SelectedItem is KundeRechnungItem rechnung)
+            {
+                if (Window.GetWindow(this) is MainWindow main)
+                {
+                    var view = new RechnungDetailView(rechnung.KRechnung);
+                    main.ShowContent(view);
+                }
+            }
+        }
+
+        // DTOs für Kundenbelege
+        private class KundeAuftragItem
+        {
+            public int KAuftrag { get; set; }
+            public string? CAuftragsNr { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public int NAuftragStatus { get; set; }
+            public decimal FGesamtNetto { get; set; }
+            public string? StatusText { get; set; }
+        }
+
+        private class KundeRechnungItem
+        {
+            public int KRechnung { get; set; }
+            public string? CRechnungsNr { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public decimal FGesamtBrutto { get; set; }
+            public int NZahlungStatus { get; set; }
+            public string? StatusText { get; set; }
+        }
+
+        private class KundeGutschriftItem
+        {
+            public int KRechnungKorrektur { get; set; }
+            public string? CGutschriftNr { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public decimal FGesamtBrutto { get; set; }
         }
 
         private void SetComboBoxByContent(ComboBox cmb, string? content)

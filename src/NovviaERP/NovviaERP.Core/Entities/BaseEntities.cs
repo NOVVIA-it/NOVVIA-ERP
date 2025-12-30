@@ -280,6 +280,7 @@ namespace NovviaERP.Core.Entities
         [NotMapped] public string? ExterneAuftragsnummer { get => ExterneBestellNr; set => ExterneBestellNr = value; }
         [NotMapped] public int? Platform { get => PlattformId; set => PlattformId = value; }
         [NotMapped] public string? Kommentar { get => Anmerkung; set => Anmerkung = value; }
+        [NotMapped] public string? InternerKommentar { get => InterneNotiz; set => InterneNotiz = value; }
     }
 
     [Table("tBestellpos")]

@@ -66,7 +66,7 @@ namespace NovviaERP.WPF.Views
             {
                 var conn = await _db.GetConnectionAsync();
 
-                // Versuche zuerst die SP, falls nicht vorhanden direkte Abfrage
+                // JTL-Schema: Verkauf.tAuftrag, Rechnung.tRechnung, Lieferschein.tLieferschein
                 var kpis = await conn.QueryFirstOrDefaultAsync<DashboardKpis>(@"
                     DECLARE @Heute DATE = CAST(GETDATE() AS DATE);
                     DECLARE @MonatStart DATE = DATEFROMPARTS(YEAR(@Heute), MONTH(@Heute), 1);
@@ -74,17 +74,22 @@ namespace NovviaERP.WPF.Views
                     DECLARE @VormonatEnde DATE = DATEADD(DAY, -1, @MonatStart);
 
                     SELECT
-                        ISNULL((SELECT SUM(fGesamtNetto) FROM tRechnung WHERE dErstellt >= @MonatStart AND nStorno = 0), 0) AS UmsatzMonat,
-                        ISNULL((SELECT SUM(fGesamtNetto) FROM tRechnung WHERE dErstellt >= @VormonatStart AND dErstellt <= @VormonatEnde AND nStorno = 0), 0) AS UmsatzVormonat,
-                        (SELECT COUNT(*) FROM tBestellung WHERE CAST(dErstellt AS DATE) = @Heute AND nStorno = 0) AS AuftraegeHeute,
-                        (SELECT COUNT(*) FROM tBestellung WHERE nStatus IN (1,2) AND nStorno = 0) AS AuftraegeOffen,
-                        (SELECT COUNT(*) FROM tRechnung WHERE nStatus = 1 AND nStorno = 0) AS RechnungenOffen,
-                        ISNULL((SELECT SUM(fGesamtBrutto - ISNULL(fBezahlt, 0)) FROM tRechnung WHERE nStatus = 1 AND nStorno = 0), 0) AS RechnungenOffenWert,
-                        (SELECT COUNT(*) FROM tRechnung WHERE nStatus = 1 AND dFaellig < @Heute AND nStorno = 0) AS RechnungenUeberfaellig,
-                        ISNULL((SELECT SUM(fGesamtBrutto - ISNULL(fBezahlt, 0)) FROM tRechnung WHERE nStatus = 1 AND dFaellig < @Heute AND nStorno = 0), 0) AS RechnungenUeberfaelligWert,
-                        (SELECT COUNT(*) FROM tVersand WHERE CAST(dErstellt AS DATE) = @Heute) AS VersandHeute,
-                        (SELECT COUNT(*) FROM tBestellung WHERE nStatus = 2 AND nStorno = 0) AS VersandOffen,
-                        (SELECT COUNT(*) FROM tKunde WHERE CAST(dErstellt AS DATE) >= @MonatStart) AS NeueKundenMonat
+                        -- Umsatz aus Rechnung.tRechnungEckdaten
+                        ISNULL((SELECT SUM(re.fVKBruttoGesamt) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE r.dErstellt >= @MonatStart AND r.nStorno = 0), 0) AS UmsatzMonat,
+                        ISNULL((SELECT SUM(re.fVKBruttoGesamt) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE r.dErstellt >= @VormonatStart AND r.dErstellt <= @VormonatEnde AND r.nStorno = 0), 0) AS UmsatzVormonat,
+                        -- Auftraege aus Verkauf.tAuftrag
+                        (SELECT COUNT(*) FROM Verkauf.tAuftrag WHERE CAST(dErstellt AS DATE) = @Heute AND nStorno = 0) AS AuftraegeHeute,
+                        (SELECT COUNT(*) FROM Verkauf.tAuftrag WHERE nAuftragStatus IN (1,2) AND nStorno = 0) AS AuftraegeOffen,
+                        -- Rechnungen
+                        (SELECT COUNT(*) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE re.nZahlungStatus = 1 AND r.nStorno = 0) AS RechnungenOffen,
+                        ISNULL((SELECT SUM(re.fOffenerWert) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE re.nZahlungStatus = 1 AND r.nStorno = 0), 0) AS RechnungenOffenWert,
+                        (SELECT COUNT(*) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE re.nZahlungStatus = 1 AND re.dZahlungsziel < @Heute AND r.nStorno = 0) AS RechnungenUeberfaellig,
+                        ISNULL((SELECT SUM(re.fOffenerWert) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE re.nZahlungStatus = 1 AND re.dZahlungsziel < @Heute AND r.nStorno = 0), 0) AS RechnungenUeberfaelligWert,
+                        -- Versand aus Lieferschein
+                        (SELECT COUNT(*) FROM Lieferschein.tLieferschein WHERE CAST(dErstellt AS DATE) = @Heute) AS VersandHeute,
+                        (SELECT COUNT(*) FROM Verkauf.tAuftrag WHERE nAuftragStatus = 2 AND nStorno = 0) AS VersandOffen,
+                        -- Neue Kunden
+                        (SELECT COUNT(*) FROM dbo.tKunde WHERE CAST(dErstellt AS DATE) >= @MonatStart) AS NeueKundenMonat
                 ");
 
                 if (kpis != null)
@@ -144,7 +149,7 @@ namespace NovviaERP.WPF.Views
                     )
                     SELECT
                         m.MonatLabel AS Monat,
-                        ISNULL(SUM(r.fGesamtNetto), 0) AS Umsatz
+                        ISNULL(SUM(r.fBrutto), 0) AS Umsatz
                     FROM Monate m
                     LEFT JOIN tRechnung r ON r.dErstellt >= m.MonatStart AND r.dErstellt <= m.MonatEnde AND r.nStorno = 0
                     GROUP BY m.MonatLabel, m.SortDatum
@@ -259,8 +264,8 @@ namespace NovviaERP.WPF.Views
                 var daten = await conn.QueryAsync<TopKunde>(@"
                     SELECT TOP 5
                         COALESCE(k.cFirma, k.cVorname + ' ' + k.cName, k.cName) AS KundeName,
-                        SUM(r.fGesamtNetto) AS Umsatz
-                    FROM tKunde k
+                        SUM(r.fBrutto) AS Umsatz
+                    FROM dbo.tKunde k
                     JOIN tRechnung r ON k.kKunde = r.kKunde
                     WHERE r.dErstellt >= DATEADD(DAY, -365, GETDATE()) AND r.nStorno = 0
                     GROUP BY k.kKunde, k.cFirma, k.cVorname, k.cName
@@ -321,12 +326,12 @@ namespace NovviaERP.WPF.Views
                 var daten = await conn.QueryAsync<TopArtikel>(@"
                     SELECT TOP 5
                         COALESCE(ab.cName, a.cArtNr) AS ArtikelName,
-                        SUM(bp.nAnzahl) AS Menge
-                    FROM tArtikel a
-                    LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
-                    JOIN tBestellPos bp ON a.kArtikel = bp.kArtikel
-                    JOIN tBestellung b ON bp.kBestellung = b.kBestellung
-                    WHERE b.dErstellt >= DATEADD(DAY, -30, GETDATE()) AND b.nStorno = 0
+                        SUM(ap.nAnzahl) AS Menge
+                    FROM dbo.tArtikel a
+                    LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
+                    JOIN tBestellPos ap ON a.kArtikel = ap.kArtikel
+                    JOIN tBestellung au ON ap.tBestellung_kBestellung = au.kBestellung
+                    WHERE au.dErstellt >= DATEADD(DAY, -30, GETDATE()) AND au.nStorno = 0
                     GROUP BY a.kArtikel, a.cArtNr, ab.cName
                     ORDER BY Menge DESC
                 ");
@@ -391,7 +396,7 @@ namespace NovviaERP.WPF.Views
                         w.WocheLabel AS Woche,
                         ISNULL(SUM(z.fBetrag), 0) AS Betrag
                     FROM Wochen w
-                    LEFT JOIN tZahlungseingang z ON z.dZahlung >= w.WocheStart AND z.dZahlung <= w.WocheEnde
+                    LEFT JOIN dbo.tZahlung z ON z.dDatum >= w.WocheStart AND z.dDatum <= w.WocheEnde AND z.fBetrag > 0
                     GROUP BY w.WocheLabel, w.SortNr
                     ORDER BY w.SortNr DESC
                 ");

@@ -374,27 +374,92 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- Rechte Spalte: Kundenhistorie -->
+                    <!-- Rechte Spalte: Auftraege, Rechnungen, Gutschriften -->
                     <Border Grid.Column="2" Grid.RowSpan="2" Background="White" BorderBrush="#ddd" BorderThickness="1" Margin="5">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <Border Background="#0078D4" Padding="10,8">
-                                <TextBlock Text="Kundenhistorie" Foreground="White" FontWeight="SemiBold"/>
-                            </Border>
-                            <ListBox x:Name="lstHistorie" Grid.Row="1" BorderThickness="0">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Margin="5">
-                                            <TextBlock Text="{Binding Titel}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                            <TextBlock Text="{Binding Datum}" FontSize="10" Foreground="#999"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
+                        <TabControl x:Name="tcKundenDaten" BorderThickness="0">
+                            <!-- Tab: Auftraege -->
+                            <TabItem Header="Auftraege">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <DataGrid x:Name="dgAuftraege" AutoGenerateColumns="False" IsReadOnly="True"
+                                              CanUserAddRows="False" HeadersVisibility="Column" FontSize="11"
+                                              MouseDoubleClick="DgAuftraege_DoubleClick">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Nr." Binding="{Binding CAuftragsNr}" Width="70"/>
+                                            <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yy}" Width="60"/>
+                                            <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="60"/>
+                                            <DataGridTextColumn Header="Netto" Binding="{Binding FGesamtNetto, StringFormat=N2}" Width="70">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5" HorizontalAlignment="Right">
+                                        <TextBlock x:Name="txtAuftraegeAnzahl" Text="0 Auftraege" FontSize="10" Foreground="#666" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </TabItem>
+                            <!-- Tab: Rechnungen -->
+                            <TabItem Header="Rechnungen">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <DataGrid x:Name="dgRechnungen" AutoGenerateColumns="False" IsReadOnly="True"
+                                              CanUserAddRows="False" HeadersVisibility="Column" FontSize="11"
+                                              MouseDoubleClick="DgRechnungen_DoubleClick">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Nr." Binding="{Binding CRechnungsNr}" Width="70"/>
+                                            <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yy}" Width="60"/>
+                                            <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="60"/>
+                                            <DataGridTextColumn Header="Brutto" Binding="{Binding FGesamtBrutto, StringFormat=N2}" Width="70">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5" HorizontalAlignment="Right">
+                                        <TextBlock x:Name="txtRechnungenAnzahl" Text="0 Rechnungen" FontSize="10" Foreground="#666" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </TabItem>
+                            <!-- Tab: Gutschriften -->
+                            <TabItem Header="Gutschriften">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <DataGrid x:Name="dgGutschriften" AutoGenerateColumns="False" IsReadOnly="True"
+                                              CanUserAddRows="False" HeadersVisibility="Column" FontSize="11">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Nr." Binding="{Binding CGutschriftNr}" Width="70"/>
+                                            <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yy}" Width="60"/>
+                                            <DataGridTextColumn Header="Brutto" Binding="{Binding FGesamtBrutto, StringFormat=N2}" Width="70">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5" HorizontalAlignment="Right">
+                                        <TextBlock x:Name="txtGutschriftenAnzahl" Text="0 Gutschriften" FontSize="10" Foreground="#666" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </TabItem>
+                        </TabControl>
                     </Border>
                 </Grid>
             </TabItem>
