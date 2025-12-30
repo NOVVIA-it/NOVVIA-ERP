@@ -1,0 +1,129 @@
+<UserControl x:Class="NovviaERP.WPF.Controls.PositionenControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="White">
+
+    <Border BorderBrush="#ddd" BorderThickness="1" CornerRadius="4">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Grid.Row="0" Background="#d9534f" Padding="10,6">
+                <Grid>
+                    <TextBlock Text="Positionen" Foreground="White" FontWeight="SemiBold"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <TextBlock x:Name="txtAnzahl" Text="0 Positionen" Foreground="#ffcccc" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- DataGrid -->
+            <DataGrid x:Name="dgPositionen" Grid.Row="1"
+                      AutoGenerateColumns="False"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      RowBackground="White"
+                      AlternatingRowBackground="#fafafa"
+                      BorderThickness="0"
+                      CanUserAddRows="False"
+                      SelectionMode="Single"
+                      SelectionChanged="DgPositionen_SelectionChanged">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Art" Width="35" Binding="{Binding PosTypDisplay}">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="FontSize" Value="10"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Artikelnummer" Binding="{Binding ArtNr}" Width="110"/>
+                    <DataGridTextColumn Header="Menge" Binding="{Binding Menge, StringFormat=N2}" Width="70">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Padding" Value="0,0,5,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Bezeichnung" Binding="{Binding Bezeichnung}" Width="*"/>
+                    <DataGridTextColumn Header="Einheit" Binding="{Binding Einheit}" Width="50"/>
+                    <DataGridTextColumn Header="Netto" Binding="{Binding EinzelpreisNetto, StringFormat=N2}" Width="80">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Padding" Value="0,0,5,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="MwSt." Binding="{Binding MwStSatz, StringFormat={}{0:N0} %}" Width="55">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Padding" Value="0,0,5,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Rabatt" Binding="{Binding Rabatt, StringFormat={}{0:N2} %}" Width="60">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="Padding" Value="0,0,5,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Gesamt Netto" Binding="{Binding GesamtNetto, StringFormat=N2}" Width="95">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Padding" Value="0,0,5,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Toolbar -->
+            <Border x:Name="pnlToolbar" Grid.Row="2" Background="#f5f5f5" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="8,5">
+                <Grid>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox x:Name="txtArtikelSuche" Width="120" Height="26"
+                                 VerticalContentAlignment="Center" Padding="5,0"
+                                 KeyDown="TxtArtikelSuche_KeyDown"/>
+                        <Button Content="Suchen" Margin="5,0,0,0" Padding="10,4" Click="BtnSuchen_Click"/>
+                        <Button x:Name="btnFreiposition" Content="Freiposition" Margin="15,0,0,0" Padding="10,4" Click="BtnFreiposition_Click"/>
+                        <Button x:Name="btnLoeschen" Content="Löschen" Margin="5,0,0,0" Padding="10,4" Click="BtnLoeschen_Click"/>
+                        <Button x:Name="btnRabatt" Content="Rabatt (%)" Margin="15,0,0,0" Padding="10,4" Click="BtnRabatt_Click"/>
+                        <Button x:Name="btnPreiseNeu" Content="Preise neu" Margin="5,0,0,0" Padding="10,4" Click="BtnPreiseNeu_Click"/>
+                        <Button x:Name="btnHoch" Content="▲" Margin="15,0,0,0" Padding="8,4" Click="BtnHoch_Click"/>
+                        <Button x:Name="btnRunter" Content="▼" Margin="3,0,0,0" Padding="8,4" Click="BtnRunter_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Summenzeile -->
+            <Border Grid.Row="3" Background="#e8e8e8" Padding="10,8">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <TextBlock Text="Summe Netto:" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="txtSummeNetto" Text="0,00" FontWeight="Bold" FontSize="14"
+                                   Margin="10,0,5,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="EUR" VerticalAlignment="Center" Foreground="#666"/>
+
+                        <TextBlock Text="Brutto:" Margin="20,0,0,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="txtSummeBrutto" Text="0,00" FontWeight="SemiBold"
+                                   Margin="10,0,5,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="EUR" VerticalAlignment="Center" Foreground="#666"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>
