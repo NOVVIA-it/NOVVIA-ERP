@@ -164,6 +164,7 @@ namespace NovviaERP.WPF
             services.AddTransient<EigeneFelderView>();
             services.AddTransient<EinstellungenView>();
             services.AddTransient<TestView>();
+            services.AddTransient<AmeiseView>();
         }
     }
 }

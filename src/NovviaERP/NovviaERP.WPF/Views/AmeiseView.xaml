@@ -1,0 +1,325 @@
+<UserControl x:Class="NovviaERP.WPF.Views.AmeiseView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#f5f5f5">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="20,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Ameise - Import/Export" FontSize="24" FontWeight="SemiBold" Foreground="#333"/>
+                    <TextBlock Text="Daten importieren und exportieren (CSV/Excel)" FontSize="12" Foreground="#666" Margin="0,3,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="btnVorlagen" Content="Vorlagen verwalten" Padding="12,8" Margin="0,0,10,0"
+                            Click="Vorlagen_Click"/>
+                    <Button Content="Import-Historie" Padding="12,8" Click="Historie_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Haupt-Content: Tabs für Import/Export -->
+        <TabControl Grid.Row="1" Margin="20">
+
+            <!-- IMPORT Tab -->
+            <TabItem Header="Import">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Linke Spalte: Konfiguration -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Vorlage waehlen -->
+                            <Border Background="White" BorderBrush="#ddd" BorderThickness="1" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="1. Import-Vorlage" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                                    <ListBox x:Name="lstVorlagen" Height="140" SelectionChanged="Vorlage_Changed">
+                                        <ListBoxItem Content="Artikel" Tag="Artikel"/>
+                                        <ListBoxItem Content="Kunden" Tag="Kunden"/>
+                                        <ListBoxItem Content="Preise aktualisieren" Tag="Preise"/>
+                                        <ListBoxItem Content="Lagerbestaende" Tag="Bestaende"/>
+                                        <ListBoxItem Content="Lieferanten" Tag="Lieferanten"/>
+                                    </ListBox>
+                                    <TextBlock x:Name="txtVorlageInfo" Text="" Foreground="#666" FontSize="11"
+                                               Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Datei waehlen -->
+                            <Border Background="White" BorderBrush="#ddd" BorderThickness="1" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="2. Datei auswaehlen" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="txtDateiPfad" IsReadOnly="True" Height="28"
+                                                 VerticalContentAlignment="Center" Padding="8,0"/>
+                                        <Button Grid.Column="1" Content="..." Width="32" Height="28" Margin="5,0,0,0"
+                                                Click="DateiWaehlen_Click"/>
+                                    </Grid>
+                                    <TextBlock x:Name="txtDateiInfo" Text="" Foreground="#666" FontSize="11" Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Format-Optionen -->
+                            <Border Background="White" BorderBrush="#ddd" BorderThickness="1" Padding="12" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="3. Format" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="28"/>
+                                            <RowDefinition Height="28"/>
+                                            <RowDefinition Height="28"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Trennzeichen:" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cmbTrennzeichen" Grid.Column="1" SelectedIndex="0">
+                                            <ComboBoxItem Content="Semikolon (;)" Tag=";"/>
+                                            <ComboBoxItem Content="Komma (,)" Tag=","/>
+                                            <ComboBoxItem Content="Tab" Tag="&#x9;"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Encoding:" Grid.Row="1" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cmbEncoding" Grid.Row="1" Grid.Column="1" SelectedIndex="0">
+                                            <ComboBoxItem Content="UTF-8" Tag="utf-8"/>
+                                            <ComboBoxItem Content="Windows-1252" Tag="windows-1252"/>
+                                            <ComboBoxItem Content="ISO-8859-1" Tag="iso-8859-1"/>
+                                        </ComboBox>
+
+                                        <CheckBox x:Name="chkHeader" Grid.Row="2" Grid.ColumnSpan="2"
+                                                  Content="Erste Zeile = Ueberschrift" IsChecked="True"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Optionen -->
+                            <Border Background="White" BorderBrush="#ddd" BorderThickness="1" Padding="12">
+                                <StackPanel>
+                                    <TextBlock Text="4. Optionen" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                                    <CheckBox x:Name="chkUpdateExistierend" Content="Vorhandene aktualisieren" IsChecked="True" Margin="0,0,0,6"/>
+                                    <CheckBox x:Name="chkNurNeu" Content="Nur neue anlegen (kein Update)" Margin="0,0,0,6"/>
+                                    <CheckBox x:Name="chkFehlerIgnorieren" Content="Fehler ignorieren, weitermachen" Margin="0,0,0,6"/>
+                                    <CheckBox x:Name="chkTestlauf" Content="Testlauf (keine Aenderungen)" Margin="0,0,0,6"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Rechte Spalte: Mapping + Vorschau -->
+                    <Grid Grid.Column="2">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Spaltenzuordnung -->
+                        <Border Background="White" BorderBrush="#ddd" BorderThickness="1" Padding="12" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="5. Spaltenzuordnung" FontWeight="SemiBold" FontSize="13"/>
+                                    <Button Grid.Column="1" Content="Auto-Erkennung" Click="AutoMapping_Click" Padding="8,3" FontSize="11"/>
+                                </Grid>
+                                <ScrollViewer Grid.Row="1" MaxHeight="180" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
+                                    <Grid x:Name="grdMapping">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="140"/>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Zuerst Vorlage und Datei waehlen" Foreground="#888" FontStyle="Italic" Grid.ColumnSpan="3"/>
+                                    </Grid>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <!-- Vorschau -->
+                        <Border Grid.Row="1" Background="White" BorderBrush="#ddd" BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Border Background="#f8f8f8" Padding="12" BorderBrush="#ddd" BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Vorschau" FontWeight="SemiBold" FontSize="13"/>
+                                            <TextBlock x:Name="txtVorschauInfo" Text="Keine Datei" Foreground="#666" FontSize="11"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Aktualisieren" Click="VorschauLaden_Click" Padding="8,4"/>
+                                    </Grid>
+                                </Border>
+                                <DataGrid x:Name="dgVorschau" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True"
+                                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                          CanUserAddRows="False" CanUserDeleteRows="False"
+                                          RowBackground="White" AlternatingRowBackground="#fafafa"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- EXPORT Tab -->
+            <TabItem Header="Export">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Export-Optionen -->
+                    <StackPanel>
+                        <Border Background="White" BorderBrush="#ddd" BorderThickness="1" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="1. Export-Typ" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                                <ListBox x:Name="lstExportTyp" Height="120" SelectionChanged="ExportTyp_Changed">
+                                    <ListBoxItem Content="Artikel" Tag="Artikel"/>
+                                    <ListBoxItem Content="Kunden" Tag="Kunden"/>
+                                    <ListBoxItem Content="Preise" Tag="Preise"/>
+                                    <ListBoxItem Content="Lagerbestaende" Tag="Bestaende"/>
+                                    <ListBoxItem Content="Lieferanten" Tag="Lieferanten"/>
+                                </ListBox>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="White" BorderBrush="#ddd" BorderThickness="1" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="2. Filter (optional)" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                                <TextBox x:Name="txtExportFilter" Height="60" AcceptsReturn="True" TextWrapping="Wrap"
+                                         Text="" VerticalScrollBarVisibility="Auto"/>
+                                <TextBlock Text="z.B.: cAktiv = 1 AND kHersteller = 5" Foreground="#888" FontSize="10" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="White" BorderBrush="#ddd" BorderThickness="1" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <TextBlock Text="3. Format" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Trennzeichen:" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cmbExportTrennzeichen" Grid.Column="1" SelectedIndex="0">
+                                        <ComboBoxItem Content="Semikolon (;)" Tag=";"/>
+                                        <ComboBoxItem Content="Komma (,)" Tag=","/>
+                                        <ComboBoxItem Content="Tab" Tag="&#x9;"/>
+                                    </ComboBox>
+                                    <TextBlock Text="Max. Zeilen:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtExportLimit" Grid.Row="1" Grid.Column="1" Text="10000"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Content="Exportieren..." Click="Exportieren_Click" Padding="15,10"
+                                Background="#0078D4" Foreground="White" BorderThickness="0" HorizontalAlignment="Stretch"/>
+                    </StackPanel>
+
+                    <!-- Export-Vorschau -->
+                    <Border Grid.Column="2" Background="White" BorderBrush="#ddd" BorderThickness="1">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Background="#f8f8f8" Padding="12" BorderBrush="#ddd" BorderThickness="0,0,0,1">
+                                <StackPanel>
+                                    <TextBlock Text="Vorschau (erste 100 Zeilen)" FontWeight="SemiBold" FontSize="13"/>
+                                    <TextBlock x:Name="txtExportInfo" Text="" Foreground="#666" FontSize="11"/>
+                                </StackPanel>
+                            </Border>
+                            <DataGrid x:Name="dgExportVorschau" Grid.Row="1" AutoGenerateColumns="True" IsReadOnly="True"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                                      CanUserAddRows="False" RowBackground="White" AlternatingRowBackground="#fafafa"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- HISTORIE Tab -->
+            <TabItem Header="Historie">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="Aktualisieren" Click="HistorieLaden_Click" Padding="10,5"/>
+                        <Button Content="Log loeschen" Click="HistorieLoeschen_Click" Padding="10,5" Margin="10,0,0,0"/>
+                    </StackPanel>
+                    <DataGrid x:Name="dgHistorie" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Datum" Binding="{Binding Datum, StringFormat=g}" Width="140"/>
+                            <DataGridTextColumn Header="Typ" Binding="{Binding Typ}" Width="100"/>
+                            <DataGridTextColumn Header="Vorlage" Binding="{Binding Vorlage}" Width="120"/>
+                            <DataGridTextColumn Header="Datei" Binding="{Binding Datei}" Width="200"/>
+                            <DataGridTextColumn Header="Gesamt" Binding="{Binding Gesamt}" Width="70"/>
+                            <DataGridTextColumn Header="Erfolg" Binding="{Binding Erfolg}" Width="70"/>
+                            <DataGridTextColumn Header="Fehler" Binding="{Binding Fehler}" Width="70"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Background="White" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="20,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="txtStatus" Text="Bereit" Foreground="#666" VerticalAlignment="Center"/>
+                    <ProgressBar x:Name="pbProgress" Width="250" Height="16" Margin="15,0,0,0"
+                                 Visibility="Collapsed" Minimum="0" Maximum="100"/>
+                    <TextBlock x:Name="txtProgress" Text="" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#666"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button x:Name="btnAbbrechen" Content="Abbrechen" Padding="15,8" Margin="0,0,10,0"
+                            Visibility="Collapsed" Click="Abbrechen_Click"/>
+                    <Button x:Name="btnImportieren" Content="Import starten" Padding="20,10"
+                            Background="#28a745" Foreground="White" BorderThickness="0"
+                            IsEnabled="False" Click="ImportStarten_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

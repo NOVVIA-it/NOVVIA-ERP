@@ -87,7 +87,8 @@
                     <Button Style="{StaticResource NavButton}" Content="Versand" Click="NavVersand_Click"/>
 
                     <TextBlock Text="TOOLS" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
-                    <Button Style="{StaticResource NavButton}" Content="Import" Click="NavImport_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="Ameise (Import/Export)" Click="NavAmeise_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="Import (alt)" Click="NavImport_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Eigene Felder" Click="NavEigeneFelder_Click"/>
 
                     <TextBlock Text="SYSTEM" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
