@@ -98,6 +98,21 @@
                   BorderThickness="1" BorderBrush="#ddd"
                   RowBackground="White" AlternatingRowBackground="#fafafa"
                   MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged">
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Bearbeiten" Click="ContextMenu_Bearbeiten_Click"/>
+                    <MenuItem Header="Duplizieren" Click="ContextMenu_Duplizieren_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Neuen Artikel erstellen" Click="ContextMenu_NeuErstellen_Click" FontWeight="SemiBold"/>
+                    <MenuItem Header="Artikel aktualisieren" Click="ContextMenu_Aktualisieren_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Lagerbestand anpassen" Click="ContextMenu_Lagerbestand_Click"/>
+                    <MenuItem Header="Preise bearbeiten" Click="ContextMenu_Preise_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Artikel deaktivieren" Click="ContextMenu_Deaktivieren_Click"/>
+                    <MenuItem Header="Artikel löschen" Click="ContextMenu_Loeschen_Click" Foreground="Red"/>
+                </ContextMenu>
+            </DataGrid.ContextMenu>
             <DataGrid.ColumnHeaderStyle>
                 <Style TargetType="DataGridColumnHeader">
                     <Setter Property="Background" Value="#f8f8f8"/>

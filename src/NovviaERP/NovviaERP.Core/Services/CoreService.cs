@@ -5409,5 +5409,126 @@ namespace NovviaERP.Core.Services
             public int? KSprache { get; set; }
         }
         #endregion
+
+        #region Artikel-Verwaltung (CRUD)
+
+        /// <summary>
+        /// Artikel mit Mapping-Konfiguration aktualisieren
+        /// </summary>
+        public async Task UpdateArtikelMitMappingAsync(int artikelId, ArtikelMappingConfig mapping)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Standard-Werte aus Mapping anwenden
+            await conn.ExecuteAsync(@"
+                UPDATE Artikel.tArtikel SET
+                    kWarengruppe = COALESCE(kWarengruppe, @WarengruppeId),
+                    kHersteller = COALESCE(kHersteller, @HerstellerId),
+                    kLieferant = COALESCE(kLieferant, @LieferantId),
+                    kSteuerklasse = COALESCE(kSteuerklasse, @MwStKlasse),
+                    fMindestbestellmenge = COALESCE(NULLIF(fMindestbestellmenge, 0), @Mindestbestand),
+                    dAendern = GETDATE()
+                WHERE kArtikel = @ArtikelId",
+                new
+                {
+                    ArtikelId = artikelId,
+                    WarengruppeId = mapping.StandardWarengruppeId > 0 ? mapping.StandardWarengruppeId : (int?)null,
+                    HerstellerId = mapping.StandardHerstellerId > 0 ? mapping.StandardHerstellerId : (int?)null,
+                    LieferantId = mapping.StandardLieferantId > 0 ? mapping.StandardLieferantId : (int?)null,
+                    MwStKlasse = mapping.StandardMwStKlasse,
+                    Mindestbestand = mapping.MindestbestandStandard
+                });
+
+            _log.Information("Artikel {ArtikelId} mit Mapping aktualisiert", artikelId);
+        }
+
+        /// <summary>
+        /// Artikel aktiv/inaktiv setzen
+        /// </summary>
+        public async Task SetArtikelAktivAsync(int artikelId, bool aktiv)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE Artikel.tArtikel SET
+                    nAktiv = @Aktiv,
+                    dAendern = GETDATE()
+                WHERE kArtikel = @ArtikelId",
+                new { ArtikelId = artikelId, Aktiv = aktiv ? 1 : 0 });
+
+            _log.Information("Artikel {ArtikelId} auf aktiv={Aktiv} gesetzt", artikelId, aktiv);
+        }
+
+        /// <summary>
+        /// Artikel löschen (setzt Löschkennzeichen)
+        /// </summary>
+        public async Task DeleteArtikelAsync(int artikelId)
+        {
+            var conn = await GetConnectionAsync();
+
+            // JTL markiert Artikel als gelöscht statt sie wirklich zu löschen
+            await conn.ExecuteAsync(@"
+                UPDATE Artikel.tArtikel SET
+                    nAktiv = 0,
+                    cArtNr = 'DEL_' + cArtNr + '_' + CONVERT(VARCHAR(10), GETDATE(), 112),
+                    dAendern = GETDATE()
+                WHERE kArtikel = @ArtikelId",
+                new { ArtikelId = artikelId });
+
+            _log.Warning("Artikel {ArtikelId} gelöscht (deaktiviert)", artikelId);
+        }
+
+        /// <summary>
+        /// Neuen Artikel erstellen mit Mapping-Defaults
+        /// </summary>
+        public async Task<int> CreateArtikelAsync(ArtikelNeuInput input, ArtikelMappingConfig? mapping = null)
+        {
+            var conn = await GetConnectionAsync();
+            var m = mapping ?? new ArtikelMappingConfig();
+
+            var artikelId = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO Artikel.tArtikel (
+                    cArtNr, cName, cBarcode, kWarengruppe, kHersteller, kLieferant,
+                    kSteuerklasse, kMassEinheit, fVKNetto, fEKNetto, fGewicht,
+                    nAktiv, dErstellt, dAendern
+                )
+                OUTPUT INSERTED.kArtikel
+                VALUES (
+                    @ArtNr, @Name, @Barcode, @WarengruppeId, @HerstellerId, @LieferantId,
+                    @MwStKlasse, @EinheitId, @VKNetto, @EKNetto, @Gewicht,
+                    1, GETDATE(), GETDATE()
+                )",
+                new
+                {
+                    input.ArtNr,
+                    input.Name,
+                    input.Barcode,
+                    WarengruppeId = input.WarengruppeId ?? m.StandardWarengruppeId,
+                    HerstellerId = input.HerstellerId ?? m.StandardHerstellerId,
+                    LieferantId = input.LieferantId ?? m.StandardLieferantId,
+                    MwStKlasse = m.StandardMwStKlasse,
+                    EinheitId = m.StandardEinheitId,
+                    input.VKNetto,
+                    input.EKNetto,
+                    input.Gewicht
+                });
+
+            _log.Information("Artikel erstellt: {ArtikelId} - {ArtNr}", artikelId, input.ArtNr);
+            return artikelId;
+        }
+
+        public class ArtikelNeuInput
+        {
+            public string ArtNr { get; set; } = "";
+            public string Name { get; set; } = "";
+            public string? Barcode { get; set; }
+            public int? WarengruppeId { get; set; }
+            public int? HerstellerId { get; set; }
+            public int? LieferantId { get; set; }
+            public decimal VKNetto { get; set; }
+            public decimal EKNetto { get; set; }
+            public decimal Gewicht { get; set; }
+        }
+
+        #endregion
     }
 }

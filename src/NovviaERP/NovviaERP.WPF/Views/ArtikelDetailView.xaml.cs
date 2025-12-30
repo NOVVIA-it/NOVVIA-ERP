@@ -15,21 +15,66 @@ namespace NovviaERP.WPF.Views
         private readonly CoreService _coreService;
         private readonly EinkaufService _einkaufService;
         private readonly MSV3Service _msv3Service;
+        private readonly AppDataService _appData;
         private readonly int? _artikelId;
+        private readonly bool _duplizieren;
+        private readonly ArtikelMappingConfig? _mapping;
         private CoreService.ArtikelDetail? _artikel;
         private List<CoreService.HerstellerRef> _hersteller = new();
         private List<CoreService.SteuerklasseRef> _steuerklassen = new();
         private List<ArtikelMSV3Lieferant> _msv3Lieferanten = new();
 
-        public ArtikelDetailView(int? artikelId)
+        public ArtikelDetailView(int? artikelId, bool duplizieren = false, ArtikelMappingConfig? mapping = null)
         {
             InitializeComponent();
-            _artikelId = artikelId;
+            _artikelId = duplizieren ? null : artikelId;
+            _duplizieren = duplizieren;
+            _mapping = mapping;
             _coreService = App.Services.GetRequiredService<CoreService>();
             _einkaufService = App.Services.GetRequiredService<EinkaufService>();
             _msv3Service = App.Services.GetRequiredService<MSV3Service>();
-            txtTitel.Text = artikelId.HasValue ? "Artikel bearbeiten" : "Neuer Artikel";
+            _appData = App.Services.GetRequiredService<AppDataService>();
+
+            if (duplizieren)
+                txtTitel.Text = "Artikel duplizieren";
+            else if (artikelId.HasValue)
+                txtTitel.Text = "Artikel bearbeiten";
+            else
+                txtTitel.Text = "Neuer Artikel";
+
             Loaded += async (s, e) => await LadeArtikelAsync();
+
+            // Falls Vorlage zum Duplizieren, lade diese
+            if (duplizieren && artikelId.HasValue)
+                Loaded += async (s, e) => await LadeVorlageAsync(artikelId.Value);
+        }
+
+        private async System.Threading.Tasks.Task LadeVorlageAsync(int vorlageId)
+        {
+            try
+            {
+                var vorlage = await _coreService.GetArtikelByIdAsync(vorlageId);
+                if (vorlage == null) return;
+
+                // Daten übernehmen, aber ArtNr leer lassen
+                txtName.Text = vorlage.Name + " (Kopie)";
+                txtBarcode.Text = "";  // Barcode muss neu sein
+                txtBeschreibung.Text = vorlage.Beschreibung ?? "";
+                txtVKNetto.Text = vorlage.FVKNetto.ToString("N2");
+                txtEKNetto.Text = vorlage.FEKNetto.ToString("N2");
+
+                // Hersteller/Steuerklasse
+                if (vorlage.KHersteller.HasValue)
+                    cmbHersteller.SelectedValue = vorlage.KHersteller;
+                if (vorlage.KSteuerklasse.HasValue)
+                    cmbSteuerklasse.SelectedValue = vorlage.KSteuerklasse;
+
+                txtStatus.Text = $"Vorlage '{vorlage.CArtNr}' geladen - bitte neue Art-Nr. vergeben";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler beim Laden der Vorlage: {ex.Message}";
+            }
         }
 
         private async System.Threading.Tasks.Task LadeArtikelAsync()

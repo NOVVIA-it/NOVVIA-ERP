@@ -12,6 +12,7 @@ namespace NovviaERP.WPF.Views
     public partial class ArtikelView : UserControl
     {
         private readonly CoreService _coreService;
+        private readonly AppDataService _appData;
         private List<CoreService.ArtikelUebersicht> _artikel = new();
         private List<CoreService.HerstellerRef> _hersteller = new();
         private List<CoreService.WarengruppeRef> _warengruppen = new();
@@ -21,6 +22,7 @@ namespace NovviaERP.WPF.Views
         {
             InitializeComponent();
             _coreService = App.Services.GetRequiredService<CoreService>();
+            _appData = App.Services.GetRequiredService<AppDataService>();
             Loaded += async (s, e) => await InitializeAsync();
         }
 
@@ -168,5 +170,121 @@ namespace NovviaERP.WPF.Views
                 NavigateTo(new ArtikelDetailView(artikel.KArtikel));
             }
         }
+
+        #region Kontextmenü
+
+        private void ContextMenu_Bearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            Bearbeiten_Click(sender, e);
+        }
+
+        private void ContextMenu_Duplizieren_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgArtikel.SelectedItem is CoreService.ArtikelUebersicht artikel)
+            {
+                // Neuen Artikel mit Daten des ausgewählten öffnen
+                NavigateTo(new ArtikelDetailView(artikel.KArtikel, duplizieren: true));
+            }
+        }
+
+        private void ContextMenu_NeuErstellen_Click(object sender, RoutedEventArgs e)
+        {
+            // Neuen Artikel mit Mapping-Defaults erstellen
+            var mapping = _appData.GetArtikelMapping();
+            NavigateTo(new ArtikelDetailView(null, mapping: mapping));
+        }
+
+        private async void ContextMenu_Aktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgArtikel.SelectedItem is not CoreService.ArtikelUebersicht artikel)
+            {
+                txtStatus.Text = "Bitte einen Artikel auswählen";
+                return;
+            }
+
+            try
+            {
+                var mapping = _appData.GetArtikelMapping();
+                txtStatus.Text = $"Aktualisiere Artikel {artikel.CArtNr}...";
+
+                // Artikel mit Mapping-Konfiguration aktualisieren
+                await _coreService.UpdateArtikelMitMappingAsync(artikel.KArtikel, mapping);
+
+                txtStatus.Text = $"Artikel {artikel.CArtNr} aktualisiert";
+                await LadeArtikelAsync();
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        private void ContextMenu_Lagerbestand_Click(object sender, RoutedEventArgs e)
+        {
+            Lagerbestand_Click(sender, e);
+        }
+
+        private void ContextMenu_Preise_Click(object sender, RoutedEventArgs e)
+        {
+            Preise_Click(sender, e);
+        }
+
+        private async void ContextMenu_Deaktivieren_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgArtikel.SelectedItem is not CoreService.ArtikelUebersicht artikel)
+            {
+                txtStatus.Text = "Bitte einen Artikel auswählen";
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Artikel '{artikel.Name}' wirklich deaktivieren?",
+                "Artikel deaktivieren",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _coreService.SetArtikelAktivAsync(artikel.KArtikel, false);
+                txtStatus.Text = $"Artikel {artikel.CArtNr} deaktiviert";
+                await LadeArtikelAsync();
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        private async void ContextMenu_Loeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgArtikel.SelectedItem is not CoreService.ArtikelUebersicht artikel)
+            {
+                txtStatus.Text = "Bitte einen Artikel auswählen";
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Artikel '{artikel.Name}' wirklich LÖSCHEN?\n\nDiese Aktion kann nicht rückgängig gemacht werden!",
+                "Artikel löschen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _coreService.DeleteArtikelAsync(artikel.KArtikel);
+                txtStatus.Text = $"Artikel {artikel.CArtNr} gelöscht";
+                await LadeArtikelAsync();
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        #endregion
     }
 }
