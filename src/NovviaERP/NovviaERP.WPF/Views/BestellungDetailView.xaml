@@ -1,6 +1,7 @@
 <UserControl x:Class="NovviaERP.WPF.Views.BestellungDetailView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:NovviaERP.WPF.Controls"
              Background="#f5f5f5">
     <Grid>
         <Grid.RowDefinitions>
@@ -39,7 +40,7 @@
         </Border>
 
         <!-- Oberer Bereich: Auftragsdaten links, Details rechts -->
-        <Grid Grid.Row="1" Margin="10,10,10,5">
+        <Grid Grid.Row="1" Margin="10,10,10,5" MaxHeight="320">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="10"/>
@@ -159,12 +160,12 @@
                                         </Border>
                                         <TextBlock x:Name="txtRechnungsadresse" Padding="10" TextWrapping="Wrap"
                                                    MinHeight="80" FontSize="12"/>
-                                        <Border BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="5">
+                                        <Border BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="3">
                                             <StackPanel Orientation="Horizontal">
-                                                <Button Content="Auswaehlen" Padding="8,3" Margin="0,0,5,0" FontSize="11"
-                                                        Click="RechnungsadresseAuswaehlen_Click"/>
-                                                <Button Content="Bearbeiten" Padding="8,3" FontSize="11"
-                                                        Click="RechnungsadresseBearbeiten_Click"/>
+                                                <Button Content="⊕" Padding="6,2" Margin="0,0,3,0" FontSize="11"
+                                                        ToolTip="Adresse auswählen" Click="RechnungsadresseAuswaehlen_Click"/>
+                                                <Button Content="✎" Padding="6,2" FontSize="11"
+                                                        ToolTip="Adresse bearbeiten" Click="RechnungsadresseBearbeiten_Click"/>
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>
@@ -178,12 +179,12 @@
                                         </Border>
                                         <TextBlock x:Name="txtLieferadresse" Padding="10" TextWrapping="Wrap"
                                                    MinHeight="80" FontSize="12"/>
-                                        <Border BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="5">
+                                        <Border BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="3">
                                             <StackPanel Orientation="Horizontal">
-                                                <Button Content="Auswaehlen" Padding="8,3" Margin="0,0,5,0" FontSize="11"
-                                                        Click="LieferadresseAuswaehlen_Click"/>
-                                                <Button Content="Bearbeiten" Padding="8,3" FontSize="11"
-                                                        Click="LieferadresseBearbeiten_Click"/>
+                                                <Button Content="⊕" Padding="6,2" Margin="0,0,3,0" FontSize="11"
+                                                        ToolTip="Adresse auswählen" Click="LieferadresseAuswaehlen_Click"/>
+                                                <Button Content="✎" Padding="6,2" FontSize="11"
+                                                        ToolTip="Adresse bearbeiten" Click="LieferadresseBearbeiten_Click"/>
                                             </StackPanel>
                                         </Border>
                                     </StackPanel>
@@ -282,8 +283,11 @@
                                             <RowDefinition Height="26"/>
                                         </Grid.RowDefinitions>
                                         <TextBlock Text="Zahlungsart:" VerticalAlignment="Center" FontSize="11"/>
-                                        <TextBox x:Name="txtDetailZahlungsart" Grid.Column="1" FontSize="11"
-                                                 IsReadOnly="True" Background="#f8f8f8"/>
+                                        <Grid Grid.Column="1">
+                                            <TextBox x:Name="txtDetailZahlungsart" FontSize="11" IsReadOnly="True" Background="#f8f8f8"/>
+                                            <ComboBox x:Name="cmbZahlungsart" FontSize="11" Visibility="Collapsed"
+                                                      DisplayMemberPath="CName" SelectedValuePath="KZahlungsart"/>
+                                        </Grid>
                                         <TextBlock Text="Zahlungsziel:" Grid.Row="1" VerticalAlignment="Center" FontSize="11"/>
                                         <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
                                             <TextBox x:Name="txtZahlungsziel" Width="50" FontSize="11" IsReadOnly="True" Background="#f8f8f8"/>
@@ -316,8 +320,11 @@
                                         <TextBox x:Name="txtVoraussLieferdatum" Grid.Column="1" FontSize="11"
                                                  IsReadOnly="True" Background="#f8f8f8"/>
                                         <TextBlock Text="Versandart:" Grid.Row="1" VerticalAlignment="Center" FontSize="11"/>
-                                        <TextBox x:Name="txtDetailVersandart" Grid.Row="1" Grid.Column="1" FontSize="11"
-                                                 IsReadOnly="True" Background="#f8f8f8"/>
+                                        <Grid Grid.Row="1" Grid.Column="1">
+                                            <TextBox x:Name="txtDetailVersandart" FontSize="11" IsReadOnly="True" Background="#f8f8f8"/>
+                                            <ComboBox x:Name="cmbVersandart" FontSize="11" Visibility="Collapsed"
+                                                      DisplayMemberPath="CName" SelectedValuePath="KVersandart"/>
+                                        </Grid>
                                         <TextBlock Text="Zusatzgewicht:" Grid.Row="2" VerticalAlignment="Center" FontSize="11"/>
                                         <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
                                             <TextBox x:Name="txtDetailZusatzgewicht" Width="60" FontSize="11" IsReadOnly="True" Background="#f8f8f8"/>
@@ -398,104 +405,16 @@
                 <ColumnDefinition Width="250"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Positionen Grid -->
-            <Border Background="White" BorderBrush="#ddd" BorderThickness="1" CornerRadius="4">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Positionen Header -->
-                    <Border Background="#d9534f" Padding="10,6">
-                        <TextBlock Text="Positionen" Foreground="White" FontWeight="SemiBold"/>
-                    </Border>
-
-                    <!-- DataGrid -->
-                    <DataGrid x:Name="dgPositionen" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
-                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                              RowBackground="White" AlternatingRowBackground="#fafafa"
-                              BorderThickness="0" CanUserAddRows="False">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Art" Width="35">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="VerticalAlignment" Value="Center"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="Artikelnummer" Binding="{Binding CArtNr}" Width="110"/>
-                            <DataGridTextColumn Header="Menge" Binding="{Binding FAnzahl, StringFormat=N2}" Width="70">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="HorizontalAlignment" Value="Right"/>
-                                        <Setter Property="Padding" Value="0,0,5,0"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="Positionsname" Binding="{Binding CName}" Width="*"/>
-                            <DataGridTextColumn Header="Brutto-VK" Binding="{Binding FVKBrutto, StringFormat=N2}" Width="80">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="HorizontalAlignment" Value="Right"/>
-                                        <Setter Property="Padding" Value="0,0,5,0"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="MwSt." Binding="{Binding FMwSt, StringFormat={}{0:N2} %}" Width="65">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="HorizontalAlignment" Value="Right"/>
-                                        <Setter Property="Padding" Value="0,0,5,0"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="Netto-VK" Binding="{Binding FVKNetto, StringFormat=N2}" Width="80">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="HorizontalAlignment" Value="Right"/>
-                                        <Setter Property="Padding" Value="0,0,5,0"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="Rabatt (%)" Binding="{Binding FRabatt, StringFormat={}{0:N2} %}" Width="75">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="HorizontalAlignment" Value="Right"/>
-                                        <Setter Property="Padding" Value="0,0,5,0"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                            <DataGridTextColumn Header="Netto-VK (ges.)" Binding="{Binding SummeNetto, StringFormat=N2}" Width="95">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="HorizontalAlignment" Value="Right"/>
-                                        <Setter Property="FontWeight" Value="SemiBold"/>
-                                        <Setter Property="Padding" Value="0,0,5,0"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <!-- Positionen Toolbar -->
-                    <Border Grid.Row="2" Background="#f5f5f5" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="8,5">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBox x:Name="txtArtikelSuche" Width="120" Height="26"
-                                     VerticalContentAlignment="Center" Margin="0,0,5,0"/>
-                            <Button Content="Suchen" Padding="8,3" Margin="0,0,10,0" Click="ArtikelSuchen_Click"/>
-                            <Button Content="Freiposition hinzufügen" Padding="8,3" Margin="0,0,5,0"
-                                    Click="FreipositionHinzufuegen_Click"/>
-                            <Button Content="Löschen" Padding="8,3" Margin="0,0,5,0" Click="PositionLoeschen_Click"/>
-                            <Button Content="Rabatt (%) setzen" Padding="8,3" Margin="0,0,5,0" Click="RabattSetzen_Click"/>
-                            <Button Content="Preise neu ermitteln" Padding="8,3" Margin="0,0,10,0" Click="PreiseNeuErmitteln_Click"/>
-                            <Button Content="▲" Width="28" Padding="0,3" Margin="0,0,2,0" Click="PositionRauf_Click" ToolTip="Position nach oben"/>
-                            <Button Content="▼" Width="28" Padding="0,3" Click="PositionRunter_Click" ToolTip="Position nach unten"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </Border>
+            <!-- Positionen Control -->
+            <controls:PositionenControl x:Name="positionenControl"
+                IsReadOnly="False"
+                ShowToolbar="True"
+                AllowAdd="True"
+                AllowDelete="True"
+                AllowEdit="True"
+                ArtikelSuche="PositionenControl_ArtikelSuche"
+                FreipositionRequested="PositionenControl_FreipositionRequested"
+                PositionenChanged="PositionenControl_PositionenChanged"/>
 
             <!-- Rechte Seite: Zusammenfassung -->
             <Border Grid.Column="1" Background="White" BorderBrush="#ddd" BorderThickness="1" CornerRadius="4" Margin="10,0,0,0">
@@ -611,16 +530,16 @@
 
                 <!-- Buttons -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button Content="Lieferschein" Click="Lieferschein_Click" Padding="12,8" Margin="0,0,5,0"/>
-                    <Button Content="Rechnung" Click="Rechnung_Click" Padding="12,8" Margin="0,0,5,0"
+                    <Button x:Name="btnLieferschein" Content="Lieferschein" Click="Lieferschein_Click" Padding="12,8" Margin="0,0,5,0"/>
+                    <Button x:Name="btnRechnung" Content="Rechnung" Click="Rechnung_Click" Padding="12,8" Margin="0,0,5,0"
                             ToolTip="Rechnung erstellen (Lieferschein erforderlich)"/>
-                    <Button Content="Rechnung (DL)" Click="RechnungOhneVersand_Click" Padding="12,8" Margin="0,0,5,0"
+                    <Button x:Name="btnRechnungDL" Content="Rechnung (DL)" Click="RechnungOhneVersand_Click" Padding="12,8" Margin="0,0,5,0"
                             Background="#17a2b8" Foreground="White" BorderThickness="0"
                             ToolTip="Dienstleistungsrechnung ohne Lieferschein/Versand"/>
                     <Button x:Name="btnLieferantenbestellung" Content="Lieferantenbestellung" Click="Lieferantenbestellung_Click"
                             Padding="12,8" Margin="0,0,5,0" Background="#ffc107" Foreground="#333" BorderThickness="0"
                             ToolTip="Erstellt eine Lieferantenbestellung aus diesem Auftrag"/>
-                    <Button Content="Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,5,0"
+                    <Button x:Name="btnSpeichern" Content="Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,5,0"
                             Background="#0078D4" Foreground="White" BorderThickness="0"/>
                     <Button Content="Abbrechen" Click="Zurueck_Click" Padding="12,8"/>
                 </StackPanel>

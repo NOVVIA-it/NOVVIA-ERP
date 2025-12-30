@@ -250,9 +250,8 @@ namespace NovviaERP.WPF.Controls
 
         private void BtnSuchen_Click(object sender, RoutedEventArgs e)
         {
-            var suchtext = txtArtikelSuche.Text.Trim();
-            if (string.IsNullOrEmpty(suchtext)) return;
-
+            var suchtext = txtArtikelSuche.Text?.Trim() ?? "";
+            // Auch bei leerem Suchtext aufrufen (zeigt alle Artikel)
             ArtikelSuche?.Invoke(this, new ArtikelSucheEventArgs(suchtext));
         }
 
@@ -339,6 +338,7 @@ namespace NovviaERP.WPF.Controls
         private int? _artikelId;
         private string _artNr = "";
         private string _bezeichnung = "";
+        private string _hinweis = "";
         private decimal _menge = 1;
         private string _einheit = "Stk";
         private decimal _einzelpreisNetto;
@@ -351,6 +351,7 @@ namespace NovviaERP.WPF.Controls
         public int? ArtikelId { get => _artikelId; set { _artikelId = value; OnPropertyChanged(); } }
         public string ArtNr { get => _artNr; set { _artNr = value; OnPropertyChanged(); } }
         public string Bezeichnung { get => _bezeichnung; set { _bezeichnung = value; OnPropertyChanged(); } }
+        public string Hinweis { get => _hinweis; set { _hinweis = value; OnPropertyChanged(); OnPropertyChanged(nameof(HatHinweis)); } }
         public decimal Menge { get => _menge; set { _menge = value; OnPropertyChanged(); OnPropertyChanged(nameof(GesamtNetto)); OnPropertyChanged(nameof(GesamtBrutto)); } }
         public string Einheit { get => _einheit; set { _einheit = value; OnPropertyChanged(); } }
         public decimal EinzelpreisNetto { get => _einzelpreisNetto; set { _einzelpreisNetto = value; OnPropertyChanged(); OnPropertyChanged(nameof(GesamtNetto)); OnPropertyChanged(nameof(GesamtBrutto)); } }
@@ -363,6 +364,7 @@ namespace NovviaERP.WPF.Controls
         public decimal GesamtNetto => Menge * EinzelpreisNetto * (1 - Rabatt / 100);
         public decimal GesamtBrutto => GesamtNetto * (1 + MwStSatz / 100);
         public string PosTypDisplay => PosTyp switch { 0 => "", 1 => "A", 2 => "F", _ => "" };
+        public bool HatHinweis => !string.IsNullOrWhiteSpace(_hinweis);
 
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string? name = null)

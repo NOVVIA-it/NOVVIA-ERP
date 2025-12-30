@@ -1,0 +1,60 @@
+<Window x:Class="NovviaERP.WPF.Views.KundenSuchDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Kunde auswählen" Height="500" Width="800"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Suchleiste -->
+        <Grid Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="txtSuche" FontSize="14" Padding="8,6"
+                     KeyDown="TxtSuche_KeyDown"
+                     ToolTip="Suche nach Kundennummer, Firma, Name, Ort..."/>
+            <Button Grid.Column="1" Content="Suchen" Padding="15,6" Margin="10,0,0,0"
+                    Click="Suchen_Click"/>
+        </Grid>
+
+        <!-- Ergebnisliste -->
+        <DataGrid x:Name="dgKunden" Grid.Row="1" AutoGenerateColumns="False"
+                  IsReadOnly="True" SelectionMode="Single"
+                  MouseDoubleClick="DgKunden_DoubleClick"
+                  BorderThickness="1" BorderBrush="#ddd"
+                  RowBackground="White" AlternatingRowBackground="#f9f9f9"
+                  GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#eee">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Kd-Nr." Binding="{Binding CKundenNr}" Width="80"/>
+                <DataGridTextColumn Header="Firma" Binding="{Binding CFirma}" Width="180"/>
+                <DataGridTextColumn Header="Name" Binding="{Binding Anzeigename}" Width="150"/>
+                <DataGridTextColumn Header="PLZ" Binding="{Binding CPLZ}" Width="60"/>
+                <DataGridTextColumn Header="Ort" Binding="{Binding COrt}" Width="120"/>
+                <DataGridTextColumn Header="Land" Binding="{Binding CISO}" Width="50"/>
+                <DataGridTextColumn Header="Kundengruppe" Binding="{Binding Kundengruppe}" Width="100"/>
+                <DataGridTextColumn Header="Umsatz" Binding="{Binding Umsatz, StringFormat=N2}" Width="80"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Statusleiste und Buttons -->
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="txtStatus" VerticalAlignment="Center" Foreground="#666"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="Auswählen" Padding="20,8" Margin="0,0,10,0"
+                        Click="Auswaehlen_Click" IsDefault="True"
+                        Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                <Button Content="Abbrechen" Padding="15,8" Click="Abbrechen_Click" IsCancel="True"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

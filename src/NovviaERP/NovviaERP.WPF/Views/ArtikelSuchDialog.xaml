@@ -33,7 +33,10 @@
             <DataGrid x:Name="dgArtikel" AutoGenerateColumns="False" IsReadOnly="True"
                       SelectionMode="Single" MouseDoubleClick="DgArtikel_DoubleClick"
                       HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                      BorderThickness="0" RowHeight="35">
+                      BorderThickness="0" RowHeight="35"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Auto"
+                      CanUserSortColumns="True">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Art.Nr." Binding="{Binding CArtNr}" Width="100"/>
                     <DataGridTextColumn Header="Barcode" Binding="{Binding CBarcode}" Width="100"/>

@@ -67,8 +67,8 @@ namespace NovviaERP.WPF.Views
             var suchbegriff = txtSuche.Text?.Trim();
             if (string.IsNullOrEmpty(suchbegriff))
             {
-                MessageBox.Show("Bitte einen Suchbegriff eingeben.", "Info",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                // Bei leerem Suchbegriff alle Artikel anzeigen
+                await LadeArtikelAsync();
                 return;
             }
 
@@ -107,15 +107,13 @@ namespace NovviaERP.WPF.Views
         {
             if (dgArtikel.SelectedItem is not CoreService.ArtikelUebersicht artikel)
             {
-                MessageBox.Show("Bitte einen Artikel auswaehlen.", "Info",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                txtStatus.Text = "Bitte einen Artikel auswählen";
                 return;
             }
 
             if (!decimal.TryParse(txtMenge.Text, out var menge) || menge <= 0)
             {
-                MessageBox.Show("Bitte eine gueltige Menge eingeben.", "Validierung",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                txtStatus.Text = "Bitte gültige Menge eingeben";
                 txtMenge.Focus();
                 return;
             }

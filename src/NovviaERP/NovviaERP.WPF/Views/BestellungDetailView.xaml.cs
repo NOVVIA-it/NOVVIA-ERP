@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Data;
 using NovviaERP.Core.Infrastructure.Jtl;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 using System.Threading.Tasks;
 using Dapper;
 
@@ -14,15 +15,241 @@ namespace NovviaERP.WPF.Views
     public partial class BestellungDetailView : UserControl
     {
         private readonly CoreService _core;
+        private readonly JtlDbContext _db;
         private CoreService.BestellungDetail? _bestellung;
         private int _kundeId;
         private Dictionary<string, string> _origEigeneFelder = new();
         private bool _hatRechnung = false;
+        private bool _isNeuerAuftrag = false;
+        private CoreService.KundeUebersicht? _selectedKunde;
+        private List<CoreService.VersandartRef>? _versandarten;
+        private List<CoreService.KundeAdresseKurz>? _kundenAdressen;
+        private CoreService.KundeAdresseKurz? _selectedLieferadresse;
 
         public BestellungDetailView()
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
+            _db = App.Services.GetRequiredService<JtlDbContext>();
+        }
+
+        /// <summary>
+        /// Initialisiert die View für einen neuen Auftrag
+        /// </summary>
+        public async void LadeNeuerAuftrag()
+        {
+            _isNeuerAuftrag = true;
+            _bestellung = null;
+            _selectedKunde = null;
+
+            // Header
+            txtTitel.Text = "Neuer Auftrag";
+            txtBestellNr.Text = "(wird automatisch vergeben)";
+            txtKundeName.Text = "Kein Kunde ausgewählt";
+            txtStatusBadge.Text = "Neu";
+            brdStatus.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#17a2b8"));
+            txtSubtitel.Text = "Bitte wählen Sie einen Kunden und fügen Sie Positionen hinzu.";
+
+            // Felder leeren
+            txtFirma.Text = "";
+            txtFirma.IsReadOnly = false;
+            txtBestellNrDetail.Text = "(wird automatisch vergeben)";
+            txtDatum.Text = DateTime.Now.ToString("dd.MM.yyyy");
+            txtKundenNr.Text = "Klicken zum Auswählen...";
+            txtKundenNr.Cursor = Cursors.Hand;
+            txtKundengruppe.Text = "";
+            txtExterneNr.Text = "";
+            txtRechnungsNr.Text = "";
+
+            // Adressen leeren
+            txtRechnungsadresse.Text = "Bitte Kunde auswählen";
+            txtLieferadresse.Text = "Bitte Kunde auswählen";
+
+            // Details leeren
+            txtDetailVorgangsstatus.Text = "Auftrag freigegeben";
+            txtSteuerart.Text = "Steuerpflichtige Lieferung";
+            txtDetailZahlungsart.Text = "";
+            txtZahlungsziel.Text = "14";
+            txtSkontoProzent.Text = "0";
+            txtSkontoTage.Text = "0";
+            txtVoraussLieferdatum.Text = "";
+            txtDetailVersandart.Text = "";
+            txtDetailZusatzgewicht.Text = "0,000";
+            txtLieferprioritaet.Text = "0";
+
+            // Stammdaten laden und Dropdowns aktivieren
+            await LadeStammdatenFuerNeuerAuftrag();
+
+            // Positionen leeren
+            positionenControl.SetPositionen(new List<PositionViewModel>());
+
+            // Zusammenfassung
+            txtSummeNetto.Text = "0,00 EUR";
+            txtMwSt.Text = "0,00 EUR";
+            txtGesamtBrutto.Text = "0,00 EUR";
+            txtGewinn.Text = "0,00 EUR";
+            txtKosten.Text = "0,00 EUR";
+
+            // Texte-Felder editierbar machen
+            txtTextAnmerkung.IsReadOnly = false;
+            txtTextAnmerkung.Background = Brushes.White;
+            txtDrucktext.IsReadOnly = false;
+            txtDrucktext.Background = Brushes.White;
+            txtHinweis.IsReadOnly = false;
+            txtVorgangsstatus.IsReadOnly = false;
+            txtVorgangsstatus.Background = Brushes.White;
+
+            // Voraussichtliches Lieferdatum editierbar
+            txtVoraussLieferdatum.IsReadOnly = false;
+            txtVoraussLieferdatum.Background = Brushes.White;
+
+            // Vorgangsfarbe aktivieren
+            cmbVorgangsfarbe.IsEnabled = true;
+
+            // Buttons anpassen
+            btnLieferschein.IsEnabled = false;
+            btnRechnung.IsEnabled = false;
+            btnRechnungDL.IsEnabled = false;
+            btnLieferantenbestellung.IsEnabled = false;
+            btnSpeichern.Content = "Auftrag anlegen";
+
+            txtStatus.Text = "Neuer Auftrag - Bitte Kunde auswählen";
+        }
+
+        private async Task LadeStammdatenFuerNeuerAuftrag()
+        {
+            try
+            {
+                // Versandarten laden
+                _versandarten = (await _core.GetVersandartenAsync()).ToList();
+                cmbVersandart.ItemsSource = _versandarten;
+                if (_versandarten.Any())
+                    cmbVersandart.SelectedIndex = 0;
+
+                // Zahlungsarten laden
+                var zahlungsarten = (await _core.GetZahlungsartenAsync()).ToList();
+                cmbZahlungsart.ItemsSource = zahlungsarten;
+                if (zahlungsarten.Any())
+                    cmbZahlungsart.SelectedIndex = 0;
+
+                // Dropdowns sichtbar machen, TextBoxen verstecken
+                txtDetailVersandart.Visibility = Visibility.Collapsed;
+                cmbVersandart.Visibility = Visibility.Visible;
+                txtDetailZahlungsart.Visibility = Visibility.Collapsed;
+                cmbZahlungsart.Visibility = Visibility.Visible;
+
+                // Zahlungsziel editierbar machen
+                txtZahlungsziel.IsReadOnly = false;
+                txtZahlungsziel.Background = Brushes.White;
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler beim Laden der Stammdaten: {ex.Message}";
+            }
+        }
+
+        private async void KundenNrAuswaehlen_Click()
+        {
+            if (!_isNeuerAuftrag) return;
+
+            var dialog = new KundenSuchDialog();
+            dialog.Owner = Window.GetWindow(this);
+            if (dialog.ShowDialog() == true && dialog.SelectedKunde != null)
+            {
+                _selectedKunde = dialog.SelectedKunde;
+                _kundeId = _selectedKunde.KKunde;
+
+                // UI aktualisieren
+                txtKundeName.Text = $"{_selectedKunde.Anzeigename} ({_selectedKunde.CKundenNr})";
+                txtFirma.Text = _selectedKunde.CFirma ?? _selectedKunde.Anzeigename ?? "";
+                txtKundenNr.Text = _selectedKunde.CKundenNr ?? _selectedKunde.KKunde.ToString();
+                txtKundengruppe.Text = _selectedKunde.Kundengruppe ?? "";
+
+                // Adressen laden
+                _kundenAdressen = (await _core.GetKundeAdressenKurzAsync(_kundeId)).ToList();
+                var hauptAdresse = _kundenAdressen.FirstOrDefault(a => a.NStandard) ?? _kundenAdressen.FirstOrDefault();
+                if (hauptAdresse != null)
+                {
+                    _selectedLieferadresse = hauptAdresse;
+                    var adressText = FormatAdresse(_selectedKunde.CFirma,
+                        $"{_selectedKunde.CVorname} {_selectedKunde.CName}".Trim(),
+                        hauptAdresse.CStrasse, hauptAdresse.CPLZ, hauptAdresse.COrt, hauptAdresse.CISO);
+                    txtRechnungsadresse.Text = adressText;
+                    txtLieferadresse.Text = adressText;
+
+                    // MwSt basierend auf Lieferland berechnen
+                    await BerechneUndAktualisiereMwStAsync(hauptAdresse.CISO);
+                }
+
+                txtStatus.Text = $"Kunde {_selectedKunde.CKundenNr} ausgewählt";
+            }
+        }
+
+        /// <summary>
+        /// Berechnet die MwSt basierend auf dem Lieferland und aktualisiert die Positionen
+        /// </summary>
+        private async Task BerechneUndAktualisiereMwStAsync(string? lieferLandIso)
+        {
+            try
+            {
+                // Standard: Deutschland = 19% MwSt
+                // EU-Länder ohne USt-ID: 19% MwSt
+                // EU-Länder mit USt-ID: 0% MwSt (innergemeinschaftliche Lieferung)
+                // Drittländer: 0% MwSt (Ausfuhrlieferung)
+
+                decimal mwstSatz = 19.0m; // Standard Deutschland
+
+                if (!string.IsNullOrEmpty(lieferLandIso) && lieferLandIso != "DE" && lieferLandIso != "Deutschland")
+                {
+                    // EU-Länder Liste
+                    var euLaender = new[] { "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
+                        "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE" };
+
+                    if (euLaender.Contains(lieferLandIso.ToUpper()))
+                    {
+                        // EU-Land - prüfen ob Kunde USt-ID hat
+                        if (_selectedKunde != null)
+                        {
+                            var kundeDetail = await _core.GetKundeByIdAsync(_selectedKunde.KKunde);
+                            if (!string.IsNullOrEmpty(kundeDetail?.CUstIdNr))
+                            {
+                                mwstSatz = 0m; // Innergemeinschaftliche Lieferung
+                                txtSteuerart.Text = "Innergemeinschaftliche Lieferung";
+                            }
+                            else
+                            {
+                                mwstSatz = 19m; // EU ohne USt-ID
+                                txtSteuerart.Text = "Steuerpflichtige Lieferung (EU)";
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Drittland - Ausfuhrlieferung
+                        mwstSatz = 0m;
+                        txtSteuerart.Text = "Ausfuhrlieferung (Drittland)";
+                    }
+                }
+                else
+                {
+                    txtSteuerart.Text = "Steuerpflichtige Lieferung";
+                }
+
+                // Positionen aktualisieren mit neuem MwSt-Satz
+                var positionen = positionenControl.GetPositionen();
+                foreach (var pos in positionen)
+                {
+                    pos.MwStSatz = mwstSatz;
+                }
+                positionenControl.SetPositionen(positionen);
+                UpdateSummenFromControl();
+
+                txtStatus.Text = $"MwSt-Satz: {mwstSatz}% für Lieferland {lieferLandIso}";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler bei MwSt-Berechnung: {ex.Message}";
+            }
         }
 
         public async void LadeBestellung(int bestellungId)
@@ -107,8 +334,24 @@ namespace NovviaERP.WPF.Views
                 txtHinweis.Text = _bestellung.CHinweis ?? "";
                 txtVorgangsstatus.Text = _bestellung.CVorgangsstatus ?? "";
 
-                // Positionen
-                dgPositionen.ItemsSource = _bestellung.Positionen;
+                // Positionen - Convert to PositionViewModel
+                var posViewModels = (_bestellung.Positionen ?? new List<CoreService.BestellPositionDetail>())
+                    .Select((p, idx) => new PositionViewModel
+                    {
+                        Id = p.KBestellPos,
+                        ArtikelId = p.TArtikel_KArtikel,
+                        ArtNr = p.CArtNr ?? "",
+                        Bezeichnung = p.CName ?? "",
+                        Hinweis = p.CHinweis ?? "",
+                        Menge = p.FAnzahl,
+                        Einheit = p.CEinheit ?? "Stk",
+                        EinzelpreisNetto = p.FVKNetto,
+                        MwStSatz = p.FMwSt,
+                        Rabatt = p.FRabatt ?? 0,
+                        PosTyp = p.NPosTyp ?? 0,
+                        Sort = idx + 1
+                    }).ToList();
+                positionenControl.SetPositionen(posViewModels);
 
                 // Zusammenfassung - Gewichte
                 decimal artikelGewicht = 0;
@@ -212,8 +455,14 @@ namespace NovviaERP.WPF.Views
             txtDrucktext.IsReadOnly = sperren;
             txtHinweis.IsReadOnly = sperren;
 
-            // Positionen-Toolbar (als StackPanel im Footer der Positionen)
-            txtArtikelSuche.IsEnabled = !sperren;
+            // Positionen-Control
+            positionenControl.IsReadOnly = sperren;
+
+            // Buttons deaktivieren wenn Rechnung vorhanden
+            btnLieferschein.IsEnabled = !sperren;
+            btnRechnung.IsEnabled = !sperren;
+            btnRechnungDL.IsEnabled = !sperren;
+            btnSpeichern.IsEnabled = !sperren;
 
             // Header-Badge Farbe ändern wenn gesperrt
             if (sperren)
@@ -240,6 +489,14 @@ namespace NovviaERP.WPF.Views
 
         private void KundeOeffnen_Click(object sender, MouseButtonEventArgs e)
         {
+            // Im Neuer-Auftrag-Modus: Kunde auswählen
+            if (_isNeuerAuftrag)
+            {
+                KundenNrAuswaehlen_Click();
+                return;
+            }
+
+            // Im Bearbeiten-Modus: Kunde öffnen
             if (_kundeId > 0 && _bestellung != null)
             {
                 // Bestellungs-ID übergeben für Zurück-Navigation
@@ -421,8 +678,17 @@ namespace NovviaERP.WPF.Views
                 {
                     var adr = dialog.AusgewaehlteAdresse;
                     txtLieferadresse.Text = adr.Formatiert;
-                    // TODO: Adresse in Bestellung speichern
-                    txtStatus.Text = "Lieferadresse geaendert";
+
+                    // MwSt neu berechnen basierend auf neuem Lieferland
+                    var landIso = adr.Land;
+                    if (string.IsNullOrEmpty(landIso) && !string.IsNullOrEmpty(adr.PLZ))
+                    {
+                        // Versuche Land aus PLZ zu ermitteln (DE als Standard)
+                        landIso = "DE";
+                    }
+                    await BerechneUndAktualisiereMwStAsync(landIso);
+
+                    txtStatus.Text = "Lieferadresse geaendert - MwSt neu berechnet";
                 }
             }
             catch (Exception ex)
@@ -531,11 +797,12 @@ namespace NovviaERP.WPF.Views
 
         #endregion
 
-        #region Positionen-Toolbar
+        #region PositionenControl Event-Handler
 
-        private async void ArtikelSuchen_Click(object sender, RoutedEventArgs e)
+        private async void PositionenControl_ArtikelSuche(object sender, ArtikelSucheEventArgs e)
         {
-            if (_bestellung == null) return;
+            // Im Neuer-Auftrag-Modus oder bei bestehendem Auftrag ohne Rechnung
+            if (!_isNeuerAuftrag && _bestellung == null) return;
 
             if (_hatRechnung)
             {
@@ -544,15 +811,117 @@ namespace NovviaERP.WPF.Views
                 return;
             }
 
-            var suchbegriff = txtArtikelSuche.Text?.Trim();
-
-            var dialog = new ArtikelSuchDialog(suchbegriff);
+            var dialog = new ArtikelSuchDialog(e.Suchtext);
             dialog.Owner = Window.GetWindow(this);
 
             if (dialog.ShowDialog() == true && dialog.IstAusgewaehlt && dialog.AusgewaehlterArtikel != null)
             {
-                await ArtikelHinzufuegenAsync(dialog.AusgewaehlterArtikel, dialog.Menge);
+                if (_isNeuerAuftrag)
+                {
+                    // Im Neuer-Auftrag-Modus: Position direkt zur Liste hinzufügen
+                    await ArtikelZuListeHinzufuegenAsync(dialog.AusgewaehlterArtikel, dialog.Menge);
+                }
+                else
+                {
+                    // Bei bestehendem Auftrag: In Datenbank speichern
+                    await ArtikelHinzufuegenAsync(dialog.AusgewaehlterArtikel, dialog.Menge);
+                }
             }
+        }
+
+        /// <summary>
+        /// Fügt einen Artikel zur lokalen Positionsliste hinzu (für Neuer-Auftrag-Modus)
+        /// </summary>
+        private async Task ArtikelZuListeHinzufuegenAsync(CoreService.ArtikelUebersicht artikel, decimal menge)
+        {
+            try
+            {
+                var positionen = positionenControl.GetPositionen().ToList();
+
+                // Neue Position erstellen
+                var neuePos = new PositionViewModel
+                {
+                    Id = positionen.Count + 1,
+                    ArtikelId = artikel.KArtikel,
+                    ArtNr = artikel.CArtNr ?? "",
+                    Bezeichnung = artikel.Name ?? "",
+                    Menge = menge,
+                    Einheit = "Stk",
+                    EinzelpreisNetto = artikel.FVKNetto,
+                    MwStSatz = artikel.FMwSt,
+                    Rabatt = 0,
+                    PosTyp = 1,
+                    Sort = positionen.Count + 1
+                };
+
+                positionen.Add(neuePos);
+                positionenControl.SetPositionen(positionen);
+                UpdateSummenFromControl();
+
+                txtStatus.Text = $"{artikel.Name} hinzugefügt";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Hinzufügen:\n{ex.Message}", "Fehler",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void PositionenControl_FreipositionRequested(object sender, EventArgs e)
+        {
+            if (_hatRechnung)
+            {
+                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
+                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Freiposition-Dialog öffnen
+            var dialog = new FreipositionDialog();
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true)
+            {
+                var positionen = positionenControl.GetPositionen().ToList();
+
+                var neuePos = new PositionViewModel
+                {
+                    Id = positionen.Count + 1,
+                    ArtikelId = 0,
+                    ArtNr = "",
+                    Bezeichnung = dialog.Bezeichnung,
+                    Menge = dialog.Menge,
+                    Einheit = dialog.Einheit,
+                    EinzelpreisNetto = dialog.PreisNetto,
+                    MwStSatz = dialog.MwStSatz,
+                    Rabatt = 0,
+                    PosTyp = 2, // Freiposition
+                    Sort = positionen.Count + 1
+                };
+
+                positionen.Add(neuePos);
+                positionenControl.SetPositionen(positionen);
+                UpdateSummenFromControl();
+
+                txtStatus.Text = $"Freiposition '{dialog.Bezeichnung}' hinzugefügt";
+            }
+        }
+
+        private void PositionenControl_PositionenChanged(object sender, EventArgs e)
+        {
+            // Summen aus PositionenControl aktualisieren
+            UpdateSummenFromControl();
+        }
+
+        private void UpdateSummenFromControl()
+        {
+            var summeNetto = positionenControl.SummeNetto;
+            var summeBrutto = positionenControl.SummeBrutto;
+            var mwst = summeBrutto - summeNetto;
+
+            txtSummeNetto.Text = $"{summeNetto:N2} EUR";
+            txtMwSt.Text = $"{mwst:N2} EUR";
+            txtGesamtBrutto.Text = $"{summeBrutto:N2} EUR";
         }
 
         private async Task ArtikelHinzufuegenAsync(CoreService.ArtikelUebersicht artikel, decimal menge)
@@ -594,151 +963,19 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void FreipositionHinzufuegen_Click(object sender, RoutedEventArgs e)
-        {
-            if (_hatRechnung)
-            {
-                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
-                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            MessageBox.Show("Freiposition hinzufuegen...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private void PositionLoeschen_Click(object sender, RoutedEventArgs e)
-        {
-            if (_hatRechnung)
-            {
-                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
-                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            if (dgPositionen.SelectedItem == null)
-            {
-                MessageBox.Show("Bitte eine Position auswaehlen.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            MessageBox.Show("Position loeschen...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private async void RabattSetzen_Click(object sender, RoutedEventArgs e)
-        {
-            if (_bestellung == null || !_bestellung.Positionen.Any()) return;
-
-            if (_hatRechnung)
-            {
-                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
-                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            // Rabatt-Dialog
-            var input = Microsoft.VisualBasic.Interaction.InputBox(
-                "Rabatt in % für alle Positionen eingeben:",
-                "Rabatt setzen",
-                "0");
-
-            if (string.IsNullOrWhiteSpace(input)) return;
-
-            if (!decimal.TryParse(input.Replace(',', '.'), System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out var rabatt) || rabatt < 0 || rabatt > 100)
-            {
-                MessageBox.Show("Bitte einen gültigen Rabatt zwischen 0 und 100 eingeben.",
-                    "Validierung", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            try
-            {
-                txtStatus.Text = "Setze Rabatt...";
-
-                var dbContext = App.Services.GetRequiredService<JtlDbContext>();
-                var conn = new Microsoft.Data.SqlClient.SqlConnection(dbContext.ConnectionString);
-                await conn.OpenAsync();
-
-                // Rabatt für alle Positionen setzen
-                await conn.ExecuteAsync(@"
-                    UPDATE tBestellPos
-                    SET fRabatt = @Rabatt
-                    WHERE tBestellung_kBestellung = @BestellungId",
-                    new { Rabatt = rabatt, BestellungId = _bestellung.KBestellung });
-
-                await conn.CloseAsync();
-
-                txtStatus.Text = $"Rabatt {rabatt}% auf alle Positionen gesetzt";
-                LadeBestellung(_bestellung.KBestellung);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Fehler beim Setzen des Rabatts:\n{ex.Message}",
-                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private async void PositionRauf_Click(object sender, RoutedEventArgs e)
-        {
-            await VerschiebePositionAsync(-1);
-        }
-
-        private async void PositionRunter_Click(object sender, RoutedEventArgs e)
-        {
-            await VerschiebePositionAsync(1);
-        }
-
-        private async Task VerschiebePositionAsync(int richtung)
-        {
-            if (_bestellung == null) return;
-            if (_hatRechnung)
-            {
-                MessageBox.Show("Der Auftrag kann nicht bearbeitet werden, da bereits eine Rechnung erstellt wurde.",
-                    "Bearbeitung gesperrt", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            if (dgPositionen.SelectedItem is not CoreService.BestellPositionDetail pos) return;
-
-            var positionen = _bestellung.Positionen.OrderBy(p => p.KBestellPos).ToList();
-            int index = positionen.FindIndex(p => p.KBestellPos == pos.KBestellPos);
-
-            int newIndex = index + richtung;
-            if (newIndex < 0 || newIndex >= positionen.Count) return;
-
-            try
-            {
-                var dbContext = App.Services.GetRequiredService<JtlDbContext>();
-                var conn = new Microsoft.Data.SqlClient.SqlConnection(dbContext.ConnectionString);
-                await conn.OpenAsync();
-
-                // Sortierung tauschen
-                var anderePos = positionen[newIndex];
-                await conn.ExecuteAsync(@"
-                    UPDATE tBestellPos SET nSort = @Sort WHERE kBestellPos = @Id",
-                    new { Sort = newIndex + 1, Id = pos.KBestellPos });
-                await conn.ExecuteAsync(@"
-                    UPDATE tBestellPos SET nSort = @Sort WHERE kBestellPos = @Id",
-                    new { Sort = index + 1, Id = anderePos.KBestellPos });
-
-                await conn.CloseAsync();
-
-                LadeBestellung(_bestellung.KBestellung);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Fehler beim Verschieben:\n{ex.Message}",
-                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private void PreiseNeuErmitteln_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show("Preise neu ermitteln...\n\n(Funktion folgt)", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
         #endregion
 
         #region Speichern und Aktionen
 
         private async void Speichern_Click(object sender, RoutedEventArgs e)
         {
+            // Neuer Auftrag speichern
+            if (_isNeuerAuftrag)
+            {
+                await SpeichereNeuenAuftragAsync();
+                return;
+            }
+
             if (_bestellung == null) return;
 
             // Bei Rechnung nur Hinweistext speichern (keine Änderungen an Positionen/Preisen)
@@ -782,6 +1019,86 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Speichert einen neuen Auftrag in der Datenbank
+        /// </summary>
+        private async Task SpeichereNeuenAuftragAsync()
+        {
+            // Validierung ohne Popup - nur Status-Meldung
+            if (_selectedKunde == null)
+            {
+                txtStatus.Text = "Bitte zuerst Kunde auswählen";
+                return;
+            }
+
+            var positionen = positionenControl.GetPositionen();
+            if (positionen == null || !positionen.Any())
+            {
+                txtStatus.Text = "Bitte mindestens eine Position hinzufügen";
+                return;
+            }
+
+            try
+            {
+                txtStatus.Text = "Erstelle Auftrag...";
+                btnSpeichern.IsEnabled = false;
+
+                // Versandart und Zahlungsart auslesen
+                var versandart = cmbVersandart.SelectedItem as CoreService.VersandartRef;
+                var zahlungsart = cmbZahlungsart.SelectedItem as CoreService.ZahlungsartRef;
+                int.TryParse(txtZahlungsziel.Text, out var zahlungsziel);
+                if (zahlungsziel <= 0) zahlungsziel = 14;
+
+                // Positionen für CoreService vorbereiten
+                var importPositionen = positionen.Select(p => new CoreService.AuftragImportPosition
+                {
+                    ArtNr = p.ArtNr,
+                    Menge = p.Menge,
+                    Preis = p.EinzelpreisNetto
+                }).ToList();
+
+                // Auftrag über CoreService erstellen
+                var result = await _core.CreateAuftragAsync(
+                    _selectedKunde.KKunde,
+                    importPositionen,
+                    versandart?.KVersandArt ?? 10,
+                    zahlungsart?.KZahlungsart ?? 2,
+                    zahlungsziel,
+                    txtTextAnmerkung.Text,
+                    txtDrucktext.Text,
+                    txtHinweis.Text);
+
+                if (result.Success)
+                {
+                    txtStatus.Text = $"Auftrag {result.AuftragsNr} erstellt";
+                    MessageBox.Show($"Auftrag {result.AuftragsNr} wurde erfolgreich erstellt!",
+                        "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    // Zur Auftragsliste zurückkehren oder den neuen Auftrag laden
+                    _isNeuerAuftrag = false;
+                    LadeBestellung(result.AuftragId);
+                }
+                else
+                {
+                    txtStatus.Text = "Fehler beim Erstellen";
+                    var fehlerMsg = result.NichtGefundeneArtikel?.Any() == true
+                        ? $"Fehler: Folgende Artikel wurden nicht gefunden:\n{string.Join(", ", result.NichtGefundeneArtikel)}"
+                        : "Fehler beim Erstellen des Auftrags.";
+                    MessageBox.Show(fehlerMsg, "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = "Fehler";
+                MessageBox.Show($"Fehler beim Erstellen des Auftrags:\n{ex.Message}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                btnSpeichern.IsEnabled = true;
             }
         }
 

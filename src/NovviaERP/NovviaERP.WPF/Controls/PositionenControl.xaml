@@ -53,6 +53,14 @@
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Bezeichnung" Binding="{Binding Bezeichnung}" Width="*"/>
+                    <DataGridTextColumn Header="Hinweis" Binding="{Binding Hinweis}" Width="150">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#666"/>
+                                <Setter Property="FontStyle" Value="Italic"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                     <DataGridTextColumn Header="Einheit" Binding="{Binding Einheit}" Width="50"/>
                     <DataGridTextColumn Header="Netto" Binding="{Binding EinzelpreisNetto, StringFormat=N2}" Width="80">
                         <DataGridTextColumn.ElementStyle>

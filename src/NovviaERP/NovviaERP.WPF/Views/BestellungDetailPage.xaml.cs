@@ -266,7 +266,15 @@ namespace NovviaERP.WPF.Views
 
         private void Zurueck_Click(object sender, RoutedEventArgs e)
         {
-            NavigationService?.GoBack();
+            if (NavigationService?.CanGoBack == true)
+            {
+                NavigationService.GoBack();
+            }
+            else if (Window.GetWindow(this) is MainWindow main)
+            {
+                main.ShowContent(App.Services.GetRequiredService<BestellungenView>());
+            }
         }
     }
 }
+

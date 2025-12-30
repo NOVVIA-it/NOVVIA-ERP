@@ -102,6 +102,8 @@ namespace NovviaERP.Core.Services
             public string CStrasse { get; set; } = "";
             public string CPLZ { get; set; } = "";
             public string COrt { get; set; } = "";
+            public string? CLand { get; set; }
+            public string? CISO { get; set; }
             public bool NStandard { get; set; }
             public string AdressTypText => NTyp switch { 1 => "Rechnung", 2 => "Lieferung", _ => "Sonstige" };
         }
@@ -134,6 +136,7 @@ namespace NovviaERP.Core.Services
             public int? KZahlungsart { get; set; }
             public int NDebitorennr { get; set; }
             public string? CSteuerNr { get; set; }
+            public string? CUstIdNr { get; set; }
             public int NKreditlimit { get; set; }
             public byte NMahnstopp { get; set; }
             public int NMahnrhythmus { get; set; }
@@ -255,6 +258,7 @@ namespace NovviaERP.Core.Services
             public decimal FVKNetto { get; set; }
             public decimal FVKBrutto { get; set; }
             public decimal FEKNetto { get; set; }
+            public decimal FMwSt { get; set; } = 19m;
             public decimal NLagerbestand { get; set; }
             public decimal NMidestbestand { get; set; }
             public string CAktiv { get; set; } = "Y";
@@ -495,6 +499,7 @@ namespace NovviaERP.Core.Services
             public int? TArtikel_KArtikel { get; set; }
             public string? CArtNr { get; set; }
             public string? CName { get; set; }
+            public string? CHinweis { get; set; }
             public decimal FAnzahl { get; set; }
             public decimal FVKNetto { get; set; }
             public decimal? FVKBrutto { get; set; }
@@ -558,11 +563,11 @@ namespace NovviaERP.Core.Services
                     k.kKunde, k.cKundenNr, k.cSperre, k.kKundenGruppe, k.dErstellt,
                     a.cFirma, a.cVorname, a.cName, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel,
                     kg.cName AS Kundengruppe,
-                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto)
-                            FROM tBestellung b
-                            INNER JOIN tbestellpos bp ON b.kBestellung = bp.tBestellung_kBestellung
-                            WHERE b.tKunde_kKunde = k.kKunde AND b.nStorno = 0), 0) AS Umsatz
-                FROM tkunde k
+                    ISNULL((SELECT SUM(ae.fWertNetto)
+                            FROM Verkauf.tAuftrag au
+                            JOIN Verkauf.tAuftragEckdaten ae ON au.kAuftrag = ae.kAuftrag
+                            WHERE au.kKunde = k.kKunde AND au.nStorno = 0), 0) AS Umsatz
+                FROM dbo.tKunde k
                 LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
                 LEFT JOIN tKundenGruppe kg ON kg.kKundenGruppe = k.kKundenGruppe
                 WHERE 1=1";
@@ -958,15 +963,12 @@ namespace NovviaERP.Core.Services
             {
                 // Aufträge zählen
                 var anzahl = await conn.QueryFirstOrDefaultAsync<int>(
-                    "SELECT COUNT(*) FROM tBestellung WHERE tKunde_kKunde = @kundeId AND nStorno = 0", new { kundeId });
+                    "SELECT COUNT(*) FROM Verkauf.tAuftrag WHERE kKunde = @kundeId AND nStorno = 0", new { kundeId });
                 stats.AnzahlAuftraege = anzahl;
 
                 // Umsatz berechnen (wie in anderen Queries - aus Positionen)
                 var umsatz = await conn.QueryFirstOrDefaultAsync<decimal?>(@"
-                    SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100))
-                    FROM tBestellung b
-                    INNER JOIN tbestellpos bp ON b.kBestellung = bp.tBestellung_kBestellung
-                    WHERE b.tKunde_kKunde = @kundeId AND b.nStorno = 0", new { kundeId });
+                    SELECT SUM(ae.fWertBrutto) FROM Verkauf.tAuftrag a JOIN Verkauf.tAuftragEckdaten ae ON a.kAuftrag = ae.kAuftrag WHERE a.kKunde = @kundeId AND a.nStorno = 0", new { kundeId });
                 stats.UmsatzGesamt = umsatz ?? 0;
 
                 // Durchschnitt
@@ -975,19 +977,19 @@ namespace NovviaERP.Core.Services
 
                 // Erste/Letzte Bestellung
                 var datumStats = await conn.QueryFirstOrDefaultAsync<(DateTime? Erste, DateTime? Letzte)?>(@"
-                    SELECT MIN(dErstellt) AS Erste, MAX(dErstellt) AS Letzte
-                    FROM tBestellung WHERE tKunde_kKunde = @kundeId AND nStorno = 0", new { kundeId });
+                    SELECT MIN(dErstellt) AS Erste, MAX(dErstellt) AS Letzte FROM Verkauf.tAuftrag WHERE kKunde = @kundeId AND nStorno = 0", new { kundeId });
                 if (datumStats.HasValue)
                 {
                     stats.ErstBestellung = datumStats.Value.Erste;
                     stats.LetzteBestellung = datumStats.Value.Letzte;
                 }
 
-                // Offene Posten aus Rechnungen (fOffen ist in JTL direkt verfügbar)
+                // Offene Posten aus Rechnungen (JTL-Wawi 1.x Schema)
                 var offen = await conn.QueryFirstOrDefaultAsync<decimal?>(@"
-                    SELECT ISNULL(SUM(fOffen), 0)
-                    FROM tRechnung
-                    WHERE kKunde = @kundeId AND nStatus IN (1,2) AND fOffen > 0", new { kundeId });
+                    SELECT ISNULL(SUM(re.fOffenerWert), 0)
+                    FROM Rechnung.tRechnung r
+                    JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                    WHERE r.kKunde = @kundeId AND re.nZahlungStatus < 2 AND r.nStorno = 0", new { kundeId });
                 stats.OffenePosten = offen ?? 0;
             }
             catch (Exception ex)
@@ -1006,15 +1008,15 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
             return await conn.QueryAsync<KundeAuftragKurz>($@"
                 SELECT TOP {limit}
-                    b.kBestellung AS KBestellung,
-                    ISNULL(b.cBestellNr, CAST(b.kBestellung AS VARCHAR)) AS CBestellNr,
-                    b.dErstellt AS DErstellt,
-                    ISNULL(b.cStatus, 'Offen') AS CStatus,
-                    ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 + bp.fMwSt/100))
-                            FROM tBestellPos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
-                FROM tBestellung b
-                WHERE b.tKunde_kKunde = @kundeId
-                ORDER BY b.dErstellt DESC", new { kundeId });
+                    a.kAuftrag AS KBestellung,
+                    ISNULL(a.cAuftragsnr, CAST(a.kAuftrag AS VARCHAR)) AS CBestellNr,
+                    a.dErstellt AS DErstellt,
+                    CASE a.nAuftragStatus WHEN 0 THEN 'Neu' WHEN 1 THEN 'In Bearbeitung' WHEN 2 THEN 'Versandbereit' WHEN 3 THEN 'Versendet' WHEN 4 THEN 'Abgeschlossen' ELSE 'Offen' END AS CStatus,
+                    ISNULL(ae.fWertBrutto, 0) AS GesamtBrutto
+                FROM Verkauf.tAuftrag a
+                LEFT JOIN Verkauf.tAuftragEckdaten ae ON a.kAuftrag = ae.kAuftrag
+                WHERE a.kKunde = @kundeId AND a.nStorno = 0
+                ORDER BY a.dErstellt DESC", new { kundeId });
         }
 
         /// <summary>
@@ -1028,15 +1030,16 @@ namespace NovviaERP.Core.Services
                     r.kRechnung AS KRechnung,
                     ISNULL(r.cRechnungsNr, CAST(r.kRechnung AS VARCHAR)) AS CRechnungsNr,
                     r.dErstellt AS DRechnungsdatum,
-                    ISNULL(r.fBrutto, 0) AS FBetragBrutto,
-                    ISNULL(r.fBezahlt, 0) AS FBezahlt
-                FROM tRechnung r
-                WHERE r.kKunde = @kundeId
+                    ISNULL(re.fVKBruttoGesamt, 0) AS FBetragBrutto,
+                    ISNULL(re.fVKBruttoGesamt - re.fOffenerWert, 0) AS FBezahlt
+                FROM Rechnung.tRechnung r
+                JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                WHERE r.kKunde = @kundeId AND r.nStorno = 0
                 ORDER BY r.dErstellt DESC", new { kundeId });
         }
 
         /// <summary>
-        /// Adressen eines Kunden (für 360°-Ansicht)
+        /// Adressen eines Kunden (für 360°-Ansicht, JTL-Wawi 1.x Schema)
         /// </summary>
         public async Task<IEnumerable<KundeAdresseKurz>> GetKundeAdressenKurzAsync(int kundeId)
         {
@@ -1045,8 +1048,9 @@ namespace NovviaERP.Core.Services
                 SELECT kAdresse AS KAdresse, ISNULL(nTyp, 0) AS NTyp,
                        ISNULL(cName, '') + CASE WHEN cVorname IS NOT NULL THEN ', ' + cVorname ELSE '' END AS CName,
                        ISNULL(cStrasse, '') AS CStrasse, ISNULL(cPLZ, '') AS CPLZ, ISNULL(cOrt, '') AS COrt,
+                       cLand AS CLand, cISO AS CISO,
                        CASE WHEN nStandard = 1 THEN 1 ELSE 0 END AS NStandard
-                FROM tAdresse
+                FROM dbo.tAdresse
                 WHERE kKunde = @kundeId
                 ORDER BY nStandard DESC, nTyp", new { kundeId });
         }
@@ -1066,8 +1070,8 @@ namespace NovviaERP.Core.Services
             {
                 var auftraege = await conn.QueryAsync<KundeHistorieEintrag>($@"
                     SELECT TOP {limit} dErstellt AS Datum, 'Auftrag' AS Typ,
-                           'Auftrag ' + ISNULL(cBestellNr, CAST(kBestellung AS VARCHAR)) AS Beschreibung
-                    FROM tBestellung WHERE tKunde_kKunde = @kundeId
+                           'Auftrag ' + ISNULL(cAuftragsnr, CAST(kAuftrag AS VARCHAR)) AS Beschreibung
+                    FROM Verkauf.tAuftrag WHERE kKunde = @kundeId AND nStorno = 0
                     ORDER BY dErstellt DESC", new { kundeId });
                 historie.AddRange(auftraege);
             }
@@ -1079,7 +1083,7 @@ namespace NovviaERP.Core.Services
                 var rechnungen = await conn.QueryAsync<KundeHistorieEintrag>($@"
                     SELECT TOP {limit} dErstellt AS Datum, 'Rechnung' AS Typ,
                            'Rechnung ' + ISNULL(cRechnungsNr, CAST(kRechnung AS VARCHAR)) AS Beschreibung
-                    FROM tRechnung WHERE kKunde = @kundeId
+                    FROM Rechnung.tRechnung WHERE kKunde = @kundeId AND nStorno = 0
                     ORDER BY dErstellt DESC", new { kundeId });
                 historie.AddRange(rechnungen);
             }
@@ -1101,6 +1105,7 @@ namespace NovviaERP.Core.Services
                     a.nLagerbestand, a.nMidestbestand, a.cAktiv, a.cLagerArtikel, a.kHersteller,
                     ab.cName AS Name,
                     h.cName AS Hersteller,
+                    ISNULL((SELECT TOP 1 fSteuersatz FROM tSteuersatz WHERE kSteuerklasse = a.kSteuerklasse ORDER BY nPrio DESC), 19) AS FMwSt,
                     ISNULL(a.fVKNetto * (1 + ISNULL((SELECT TOP 1 fSteuersatz FROM tSteuersatz WHERE kSteuerklasse = a.kSteuerklasse ORDER BY nPrio DESC), 19) / 100), a.fVKNetto) AS FVKBrutto
                 FROM tArtikel a
                 LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
@@ -1412,6 +1417,7 @@ namespace NovviaERP.Core.Services
             bestellung.Positionen = (await conn.QueryAsync<BestellPositionDetail>(@"
                 SELECT bp.kBestellPos, bp.tArtikel_kArtikel, bp.cArtNr,
                        COALESCE(bp.cString, ab.cName, bp.cArtNr) AS CName,
+                       bp.cHinweis AS CHinweis,
                        bp.nAnzahl AS FAnzahl, bp.fVkNetto AS FVKNetto, bp.fMwSt,
                        CAST(bp.fVkNetto * (1 + bp.fMwSt / 100) AS DECIMAL(18,2)) AS FVKBrutto,
                        bp.fRabatt, bp.cEinheit, bp.nType AS NPosTyp
@@ -4045,7 +4051,8 @@ namespace NovviaERP.Core.Services
             const string sql = @"
                 SELECT TOP 1 a.kArtikel AS KArtikel, a.cArtNr AS CArtNr,
                        ab.cName AS CName, a.fVKNetto AS FVKNetto,
-                       ISNULL(s.fSteuersatz, 19) AS FMwSt
+                       ISNULL(s.fSteuersatz, 19) AS FMwSt,
+                       ISNULL(a.kSteuerklasse, 1) AS KSteuerklasse
                 FROM dbo.tArtikel a
                 LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
                 LEFT JOIN dbo.tSteuersatz s ON a.kSteuerklasse = s.kSteuerklasse AND s.kSteuerzone = 3
@@ -4062,9 +4069,9 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
 
-            // Kunde mit Adresse suchen
+            // Kunde mit Adresse suchen (inkl. JTL-Pflichtfelder)
             var kunde = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
-                SELECT k.kKunde, k.kSprache, k.kKundenGruppe, k.kZahlungsart,
+                SELECT k.kKunde, k.kSprache, k.kKundenGruppe, k.kZahlungsart, k.cKundenNr, k.nZahlungsziel,
                        a.cFirma, a.cAnrede, a.cTitel, a.cVorname, a.cName, a.cStrasse,
                        a.cAdressZusatz, a.cPLZ, a.cOrt, a.cLand, a.cISO, a.cBundesland,
                        a.cTel, a.cFax, a.cMobil, a.cMail
@@ -4098,7 +4105,7 @@ namespace NovviaERP.Core.Services
             var suffix = (string?)laufendeNummer?.cSuffix ?? "";
             var neueAuftragsNr = $"{prefix}{nextNr}{suffix}";
 
-            // 1. Auftrag anlegen
+            // 1. Auftrag anlegen (JTL-kompatibel mit allen Pflichtfeldern)
             var auftragId = await conn.QuerySingleAsync<int>(@"
                 INSERT INTO Verkauf.tAuftrag (
                     kBenutzer, kBenutzerErstellt, kKunde, cAuftragsNr, nType, dErstellt,
@@ -4107,7 +4114,8 @@ namespace NovviaERP.Core.Services
                     cVersandlandISO, cVersandlandWaehrung, fVersandlandWaehrungFaktor,
                     nStorno, nKomplettAusgeliefert, nLieferPrioritaet, nPremiumVersand,
                     nIstExterneRechnung, nIstReadOnly, nArchiv, nReserviert,
-                    nAuftragStatus, fFinanzierungskosten, nPending, nSteuersonderbehandlung
+                    nAuftragStatus, fFinanzierungskosten, nPending, nSteuersonderbehandlung,
+                    kPlattform, kVersandArt, nZahlungszielTage, kZahlungsart, cKundenNr, kKundengruppe
                 ) VALUES (
                     1, 1, @KundeId, @AuftragsNr, 1, GETDATE(),
                     0, 'EUR', 1, 1, ISNULL(@Sprache, 1),
@@ -4115,14 +4123,19 @@ namespace NovviaERP.Core.Services
                     ISNULL(@LandISO, 'DE'), 'EUR', 1,
                     0, 0, 0, 0,
                     0, 0, 0, 0,
-                    0, 0, 0, 0
+                    0, 0, 0, 0,
+                    1, 10, @Zahlungsziel, @Zahlungsart, @KundenNr, @Kundengruppe
                 );
                 SELECT SCOPE_IDENTITY();",
                 new {
                     KundeId = (int)kunde.kKunde,
                     AuftragsNr = neueAuftragsNr,
                     Sprache = (int?)kunde.kSprache,
-                    LandISO = (string?)kunde.cISO
+                    LandISO = (string?)kunde.cISO,
+                    Zahlungsziel = (int?)kunde.nZahlungsziel ?? 14,
+                    Zahlungsart = (int?)kunde.kZahlungsart ?? 2,
+                    KundenNr = (string?)kunde.cKundenNr,
+                    Kundengruppe = (int?)kunde.kKundenGruppe
                 });
 
             // 2. Adressen anlegen (Rechnungsadresse nTyp=0, Lieferadresse nTyp=1)
@@ -4176,16 +4189,20 @@ namespace NovviaERP.Core.Services
 
                 var preis = pos.Preis > 0 ? pos.Preis : artikel.FVKNetto;
                 var mwst = artikel.FMwSt;
+                // Steuerschlüssel ableiten: 3=19%, 2=7%, 1=steuerfrei
+                int steuerschluessel = mwst >= 19 ? 3 : (mwst >= 7 ? 2 : 1);
 
                 await conn.ExecuteAsync(@"
                     INSERT INTO Verkauf.tAuftragPosition (
                         kArtikel, kAuftrag, cArtNr, nReserviert, cName, cHinweis,
                         fAnzahl, fEkNetto, fVkNetto, fRabatt, fMwSt, nSort,
-                        cNameStandard, nType, cEinheit, nHatUpload, fFaktor
+                        cNameStandard, nType, cEinheit, nHatUpload, fFaktor,
+                        kSteuerklasse, kSteuerschluessel
                     ) VALUES (
                         @ArtikelId, @AuftragId, @ArtNr, 0, @Name, @Hinweis,
                         @Menge, 0, @Preis, 0, @MwSt, @Sort,
-                        @Name, 0, 'Stk', 0, 1
+                        @Name, 1, 'Stk', 0, 1,
+                        @Steuerklasse, @Steuerschluessel
                     )",
                     new {
                         ArtikelId = artikel.KArtikel,
@@ -4196,7 +4213,9 @@ namespace NovviaERP.Core.Services
                         Menge = pos.Menge,
                         Preis = preis,
                         MwSt = mwst,
-                        Sort = posSort++
+                        Sort = posSort++,
+                        Steuerklasse = artikel.KSteuerklasse,
+                        Steuerschluessel = steuerschluessel
                     });
             }
 
@@ -4219,6 +4238,194 @@ namespace NovviaERP.Core.Services
             return new AuftragImportResult
             {
                 AuftragId = auftragId,
+                AuftragsNr = neueAuftragsNr,
+                PositionenAngelegt = posSort,
+                NichtGefundeneArtikel = nichtGefunden
+            };
+        }
+
+        /// <summary>
+        /// Erstellt einen neuen Auftrag mit Kunde-ID, Positionen und optionalen Parametern
+        /// </summary>
+        public async Task<AuftragImportResult> CreateAuftragAsync(
+            int kundeId,
+            List<AuftragImportPosition> positionen,
+            int versandartId = 10,
+            int zahlungsartId = 2,
+            int zahlungsziel = 14,
+            string? anmerkung = null,
+            string? drucktext = null,
+            string? hinweis = null)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Kunde mit Adresse laden
+            var kunde = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
+                SELECT k.kKunde, k.kSprache, k.kKundenGruppe, k.kZahlungsart, k.cKundenNr, k.nZahlungsziel,
+                       a.cFirma, a.cAnrede, a.cTitel, a.cVorname, a.cName, a.cStrasse,
+                       a.cAdressZusatz, a.cPLZ, a.cOrt, a.cLand, a.cISO, a.cBundesland,
+                       a.cTel, a.cFax, a.cMobil, a.cMail
+                FROM dbo.tKunde k
+                LEFT JOIN dbo.tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
+                WHERE k.kKunde = @KundeId",
+                new { KundeId = kundeId });
+
+            if (kunde == null)
+            {
+                throw new Exception($"Kunde mit ID {kundeId} nicht gefunden");
+            }
+
+            // Auftragsnummer aus tLaufendeNummern holen
+            var laufendeNummer = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
+                SELECT nNummer, cPrefix, cSuffix FROM dbo.tLaufendeNummern WHERE kLaufendeNummer = 3");
+
+            int nextNr = (laufendeNummer?.nNummer ?? 10000) + 1;
+            await conn.ExecuteAsync(@"UPDATE dbo.tLaufendeNummern SET nNummer = @nextNr WHERE kLaufendeNummer = 3", new { nextNr });
+
+            var prefix = (string?)laufendeNummer?.cPrefix ?? "";
+            var suffix = (string?)laufendeNummer?.cSuffix ?? "";
+            var neueAuftragsNr = $"{prefix}{nextNr}{suffix}";
+
+            // Auftrag anlegen
+            var auftragId = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO Verkauf.tAuftrag (
+                    kBenutzer, kBenutzerErstellt, kKunde, cAuftragsNr, nType, dErstellt,
+                    nBeschreibung, cWaehrung, fFaktor, kFirmaHistory, kSprache,
+                    nSteuereinstellung, nHatUpload, fZusatzGewicht,
+                    cVersandlandISO, cVersandlandWaehrung, fVersandlandWaehrungFaktor,
+                    nStorno, nKomplettAusgeliefert, nLieferPrioritaet, nPremiumVersand,
+                    nIstExterneRechnung, nIstReadOnly, nArchiv, nReserviert,
+                    nAuftragStatus, fFinanzierungskosten, nPending, nSteuersonderbehandlung,
+                    kPlattform, kVersandArt, nZahlungszielTage, kZahlungsart, cKundenNr, kKundengruppe
+                ) VALUES (
+                    1, 1, @KundeId, @AuftragsNr, 1, GETDATE(),
+                    0, 'EUR', 1, 1, ISNULL(@Sprache, 1),
+                    0, 0, 0,
+                    ISNULL(@LandISO, 'DE'), 'EUR', 1,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    1, @VersandartId, @Zahlungsziel, @ZahlungsartId, @KundenNr, @Kundengruppe
+                );
+                SELECT SCOPE_IDENTITY();",
+                new {
+                    KundeId = kundeId,
+                    AuftragsNr = neueAuftragsNr,
+                    Sprache = (int?)kunde.kSprache,
+                    LandISO = (string?)kunde.cISO,
+                    Zahlungsziel = zahlungsziel,
+                    ZahlungsartId = zahlungsartId,
+                    VersandartId = versandartId,
+                    KundenNr = (string?)kunde.cKundenNr,
+                    Kundengruppe = (int?)kunde.kKundenGruppe
+                });
+
+            // Adressen anlegen
+            for (int adressTyp = 0; adressTyp <= 1; adressTyp++)
+            {
+                await conn.ExecuteAsync(@"
+                    INSERT INTO Verkauf.tAuftragAdresse (
+                        kAuftrag, kKunde, cFirma, cAnrede, cTitel, cVorname, cName,
+                        cStrasse, cPLZ, cOrt, cLand, cISO, cBundesland,
+                        cTel, cFax, cMobil, cMail, cAdressZusatz, nTyp
+                    ) VALUES (
+                        @AuftragId, @KundeId, @Firma, @Anrede, @Titel, @Vorname, @Name,
+                        @Strasse, @PLZ, @Ort, @Land, @ISO, @Bundesland,
+                        @Tel, @Fax, @Mobil, @Mail, @Zusatz, @Typ
+                    )",
+                    new {
+                        AuftragId = auftragId,
+                        KundeId = kundeId,
+                        Firma = (string?)kunde.cFirma ?? "",
+                        Anrede = (string?)kunde.cAnrede ?? "",
+                        Titel = (string?)kunde.cTitel ?? "",
+                        Vorname = (string?)kunde.cVorname ?? "",
+                        Name = (string?)kunde.cName ?? "",
+                        Strasse = (string?)kunde.cStrasse ?? "",
+                        PLZ = (string?)kunde.cPLZ ?? "",
+                        Ort = (string?)kunde.cOrt ?? "",
+                        Land = (string?)kunde.cLand ?? "Deutschland",
+                        ISO = (string?)kunde.cISO ?? "DE",
+                        Bundesland = (string?)kunde.cBundesland ?? "",
+                        Tel = (string?)kunde.cTel ?? "",
+                        Fax = (string?)kunde.cFax ?? "",
+                        Mobil = (string?)kunde.cMobil ?? "",
+                        Mail = (string?)kunde.cMail ?? "",
+                        Zusatz = (string?)kunde.cAdressZusatz ?? "",
+                        Typ = adressTyp
+                    });
+            }
+
+            // Texte speichern
+            if (!string.IsNullOrEmpty(anmerkung) || !string.IsNullOrEmpty(drucktext) || !string.IsNullOrEmpty(hinweis))
+            {
+                await conn.ExecuteAsync(@"
+                    INSERT INTO Verkauf.tAuftragText (kAuftrag, cAnmerkung, cDrucktext, cHinweis)
+                    VALUES (@AuftragId, @Anmerkung, @Drucktext, @Hinweis)",
+                    new {
+                        AuftragId = auftragId,
+                        Anmerkung = anmerkung ?? "",
+                        Drucktext = drucktext ?? "",
+                        Hinweis = hinweis ?? ""
+                    });
+            }
+
+            // Positionen anlegen
+            int posSort = 0;
+            var nichtGefunden = new List<string>();
+
+            foreach (var pos in positionen)
+            {
+                var artikel = await GetArtikelByArtNrAsync(pos.ArtNr);
+                if (artikel == null)
+                {
+                    nichtGefunden.Add(pos.ArtNr);
+                    continue;
+                }
+
+                var preis = pos.Preis > 0 ? pos.Preis : artikel.FVKNetto;
+                var mwst = artikel.FMwSt;
+                int steuerschluessel = mwst >= 19 ? 3 : (mwst >= 7 ? 2 : 1);
+
+                await conn.ExecuteAsync(@"
+                    INSERT INTO Verkauf.tAuftragPosition (
+                        kArtikel, kAuftrag, cArtNr, nReserviert, cName, cHinweis,
+                        fAnzahl, fEkNetto, fVkNetto, fRabatt, fMwSt, nSort,
+                        cNameStandard, nType, cEinheit, nHatUpload, fFaktor,
+                        kSteuerklasse, kSteuerschluessel
+                    ) VALUES (
+                        @ArtikelId, @AuftragId, @ArtNr, 0, @Name, @Hinweis,
+                        @Menge, 0, @Preis, 0, @MwSt, @Sort,
+                        @Name, 1, 'Stk', 0, 1,
+                        @Steuerklasse, @Steuerschluessel
+                    )",
+                    new {
+                        ArtikelId = artikel.KArtikel,
+                        AuftragId = auftragId,
+                        ArtNr = artikel.CArtNr,
+                        Name = artikel.CName ?? "",
+                        Hinweis = "",
+                        Menge = pos.Menge,
+                        Preis = preis,
+                        MwSt = mwst,
+                        Sort = posSort++,
+                        Steuerklasse = artikel.KSteuerklasse,
+                        Steuerschluessel = steuerschluessel
+                    });
+            }
+
+            // Eckdaten berechnen
+            var dt = new DataTable();
+            dt.Columns.Add("kAuftrag", typeof(int));
+            dt.Rows.Add(auftragId);
+            var p = new DynamicParameters();
+            p.Add("@Auftrag", dt.AsTableValuedParameter("Verkauf.TYPE_spAuftragEckdatenBerechnen"));
+            await conn.ExecuteAsync("Verkauf.spAuftragEckdatenBerechnen", p, commandType: CommandType.StoredProcedure);
+
+            return new AuftragImportResult
+            {
+                AuftragId = auftragId,
+                AuftragsNr = neueAuftragsNr,
                 PositionenAngelegt = posSort,
                 NichtGefundeneArtikel = nichtGefunden
             };
@@ -4227,8 +4434,10 @@ namespace NovviaERP.Core.Services
         public class AuftragImportResult
         {
             public int AuftragId { get; set; }
+            public string AuftragsNr { get; set; } = "";
             public int PositionenAngelegt { get; set; }
             public List<string> NichtGefundeneArtikel { get; set; } = new();
+            public bool Success => AuftragId > 0;
         }
 
         public class ArtikelRef
@@ -4238,6 +4447,7 @@ namespace NovviaERP.Core.Services
             public string CName { get; set; } = "";
             public decimal FVKNetto { get; set; }
             public decimal FMwSt { get; set; }
+            public int KSteuerklasse { get; set; } = 1;
         }
 
         public class AuftragImportPosition
@@ -4840,27 +5050,43 @@ namespace NovviaERP.Core.Services
 
         public async Task<IEnumerable<EigenesFeldDefinition>> GetLieferantAttributeAsync()
         {
-            var conn = await GetConnectionAsync();
-            return await conn.QueryAsync<EigenesFeldDefinition>(@"
-                SELECT kLieferantAttribut AS KAttribut, cName AS CName, cBeschreibung AS CBeschreibung,
-                       nFeldTyp AS NFeldTyp, nSortierung AS NSortierung, nAktiv AS NAktiv
-                FROM NOVVIA.LieferantAttribut
-                WHERE nAktiv = 1
-                ORDER BY nSortierung, cName");
+            try
+            {
+                var conn = await GetConnectionAsync();
+                return await conn.QueryAsync<EigenesFeldDefinition>(@"
+                    SELECT kLieferantAttribut AS KAttribut, cName AS CName, cBeschreibung AS CBeschreibung,
+                           nFeldTyp AS NFeldTyp, nSortierung AS NSortierung, nAktiv AS NAktiv
+                    FROM NOVVIA.LieferantAttribut
+                    WHERE nAktiv = 1
+                    ORDER BY nSortierung, cName");
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "NOVVIA.LieferantAttribut Tabelle nicht gefunden - bitte Setup-EigeneFelderLieferant.sql ausführen");
+                return Enumerable.Empty<EigenesFeldDefinition>();
+            }
         }
 
         public async Task<IEnumerable<EigenesFeldWert>> GetLieferantEigeneFelderAsync(int kLieferant)
         {
-            var conn = await GetConnectionAsync();
-            return await conn.QueryAsync<EigenesFeldWert>(@"
-                SELECT ef.kLieferantEigenesFeld AS KWert, ef.kLieferant AS KEntity,
-                       ef.kLieferantAttribut AS KAttribut, a.cName AS CAttributName, a.nFeldTyp AS NFeldTyp,
-                       ef.cWertVarchar AS CWertVarchar, ef.nWertInt AS NWertInt,
-                       ef.fWertDecimal AS FWertDecimal, ef.dWertDateTime AS DWertDateTime
-                FROM NOVVIA.LieferantEigenesFeld ef
-                JOIN NOVVIA.LieferantAttribut a ON ef.kLieferantAttribut = a.kLieferantAttribut
-                WHERE ef.kLieferant = @kLieferant
-                ORDER BY a.nSortierung, a.cName", new { kLieferant });
+            try
+            {
+                var conn = await GetConnectionAsync();
+                return await conn.QueryAsync<EigenesFeldWert>(@"
+                    SELECT ef.kLieferantEigenesFeld AS KWert, ef.kLieferant AS KEntity,
+                           ef.kLieferantAttribut AS KAttribut, a.cName AS CAttributName, a.nFeldTyp AS NFeldTyp,
+                           ef.cWertVarchar AS CWertVarchar, ef.nWertInt AS NWertInt,
+                           ef.fWertDecimal AS FWertDecimal, ef.dWertDateTime AS DWertDateTime
+                    FROM NOVVIA.LieferantEigenesFeld ef
+                    JOIN NOVVIA.LieferantAttribut a ON ef.kLieferantAttribut = a.kLieferantAttribut
+                    WHERE ef.kLieferant = @kLieferant
+                    ORDER BY a.nSortierung, a.cName", new { kLieferant });
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "NOVVIA.LieferantEigenesFeld Tabelle nicht gefunden");
+                return Enumerable.Empty<EigenesFeldWert>();
+            }
         }
 
         public async Task SaveLieferantEigenesFeldAsync(int kLieferant, int kAttribut, object? wert)

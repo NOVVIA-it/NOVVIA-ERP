@@ -92,19 +92,14 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private async void Neu_Click(object sender, RoutedEventArgs e)
+        private void Neu_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new NeueBestellungView();
-            dialog.Owner = Window.GetWindow(this);
-            if (dialog.ShowDialog() == true)
+            // Neue Auftragsansicht öffnen (wie Auftragsdarstellung)
+            if (Window.GetWindow(this) is MainWindow main)
             {
-                await LadeBestellungenAsync();
-
-                // Optional: Zur neuen Bestellung navigieren
-                if (dialog.ErstellteBestellungId.HasValue)
-                {
-                    NavigateToDetail(dialog.ErstellteBestellungId.Value);
-                }
+                var detailView = new BestellungDetailView();
+                detailView.LadeNeuerAuftrag();
+                main.ShowContent(detailView);
             }
         }
 
