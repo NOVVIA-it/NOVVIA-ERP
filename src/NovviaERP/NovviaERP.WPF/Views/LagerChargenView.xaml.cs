@@ -66,13 +66,22 @@ namespace NovviaERP.WPF.Views
 
                 dgChargen.ItemsSource = _chargen;
 
-                // Statistik
+                // Summen berechnen
+                var anzahl = _chargen.Count;
+                var summeBestand = _chargen.Sum(c => c.FBestand);
                 var gesperrt = _chargen.Count(c => c.NGesperrt);
+                var bestandGesperrt = _chargen.Where(c => c.NGesperrt).Sum(c => c.FBestand);
                 var quarantaene = _chargen.Count(c => c.NQuarantaene);
+                var bestandQuarantaene = _chargen.Where(c => c.NQuarantaene).Sum(c => c.FBestand);
                 var abgelaufen = _chargen.Count(c => c.CMHDStatus == "Abgelaufen");
 
-                txtAnzahl.Text = $"({_chargen.Count} Chargen, {gesperrt} gesperrt, {quarantaene} Quarantaene, {abgelaufen} MHD abgelaufen)";
-                txtStatus.Text = $"{_chargen.Count} Chargen geladen";
+                txtSummeChargen.Text = $"{anzahl} Chargen";
+                txtSummeBestand.Text = $"{summeBestand:N0}";
+                txtSummeGesperrt.Text = $"{bestandGesperrt:N0}";
+                txtSummeQuarantaene.Text = $"{bestandQuarantaene:N0}";
+
+                txtAnzahl.Text = $"({anzahl} Chargen, {gesperrt} gesperrt, {quarantaene} Quarantaene, {abgelaufen} MHD abgelaufen)";
+                txtStatus.Text = $"{anzahl} Chargen geladen";
             }
             catch (Exception ex)
             {

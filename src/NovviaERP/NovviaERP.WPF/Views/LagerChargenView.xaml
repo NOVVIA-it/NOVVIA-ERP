@@ -64,6 +64,11 @@
                     SelectionChanged="TabChargen_SelectionChanged">
             <!-- Tab: Chargenbestaende -->
             <TabItem Header="Chargenbestaende" Padding="15,5">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
                 <DataGrid x:Name="dgChargen" AutoGenerateColumns="False" IsReadOnly="True"
                           SelectionMode="Single" SelectionUnit="FullRow"
                           GridLinesVisibility="Horizontal" HeadersVisibility="Column"
@@ -133,6 +138,26 @@
                         <DataGridTextColumn Header="Lieferschein" Binding="{Binding CLieferscheinNr}" Width="100"/>
                     </DataGrid.Columns>
                 </DataGrid>
+
+                <!-- Summenzeile Chargen -->
+                <Border Grid.Row="1" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="txtSummeChargen" Text="0 Chargen" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <TextBlock Text="Summe Bestand:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                            <TextBlock x:Name="txtSummeBestand" Text="0" FontWeight="Bold" Width="80" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <TextBlock Text="Gesperrt:" VerticalAlignment="Center" Margin="20,0,5,0" Foreground="#ffc107"/>
+                            <TextBlock x:Name="txtSummeGesperrt" Text="0" FontWeight="SemiBold" Width="50" TextAlignment="Right" Foreground="#ffc107" VerticalAlignment="Center"/>
+                            <TextBlock Text="Quarantäne:" VerticalAlignment="Center" Margin="20,0,5,0" Foreground="#dc3545"/>
+                            <TextBlock x:Name="txtSummeQuarantaene" Text="0" FontWeight="SemiBold" Width="50" TextAlignment="Right" Foreground="#dc3545" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                </Grid>
             </TabItem>
 
             <!-- Tab: Chargenverfolgung -->

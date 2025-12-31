@@ -66,7 +66,13 @@
         </Border>
 
         <!-- Rechnungsliste -->
-        <DataGrid x:Name="dgRechnungen" Grid.Row="2" Margin="20,15,20,0"
+        <Grid Grid.Row="2" Margin="20,15,20,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+        <DataGrid x:Name="dgRechnungen"
                   AutoGenerateColumns="False" IsReadOnly="True"
                   SelectionMode="Single" SelectionUnit="FullRow"
                   GridLinesVisibility="Horizontal" HeadersVisibility="Column"
@@ -146,6 +152,26 @@
                 </DataGridTextColumn>
             </DataGrid.Columns>
         </DataGrid>
+
+            <!-- Summenzeile -->
+            <Border Grid.Row="1" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="1,0,1,1" Padding="10,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="txtSummeAnzahl" Text="0 Rechnungen" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="Summe Netto:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock x:Name="txtSummeNetto" Text="0,00" FontWeight="SemiBold" Width="90" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock Text="Brutto:" VerticalAlignment="Center" Margin="20,0,5,0"/>
+                        <TextBlock x:Name="txtSummeBrutto" Text="0,00" FontWeight="SemiBold" Width="90" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock Text="Offen:" VerticalAlignment="Center" Margin="20,0,5,0" Foreground="#dc3545"/>
+                        <TextBlock x:Name="txtSummeOffen" Text="0,00" FontWeight="Bold" Width="90" TextAlignment="Right" Foreground="#dc3545" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Statusleiste -->
         <Border Grid.Row="3" Background="#f0f0f0" Padding="20,10" BorderBrush="#ddd" BorderThickness="0,1,0,0">

@@ -40,9 +40,18 @@ namespace NovviaERP.WPF.Views
                 dgRechnungen.ItemsSource = _rechnungen;
 
                 // Summen berechnen
-                var summeOffen = _rechnungen.Where(r => !r.NStorno && !r.DBezahlt.HasValue).Sum(r => r.Offen);
-                txtAnzahl.Text = $"({_rechnungen.Count} Rechnungen, {summeOffen:N2} EUR offen)";
-                txtStatus.Text = $"{_rechnungen.Count} Rechnungen geladen";
+                var anzahl = _rechnungen.Count;
+                var summeNetto = _rechnungen.Where(r => !r.NStorno).Sum(r => r.FNetto);
+                var summeBrutto = _rechnungen.Where(r => !r.NStorno).Sum(r => r.FBrutto);
+                var summeOffen = _rechnungen.Where(r => !r.NStorno).Sum(r => r.Offen);
+
+                txtSummeAnzahl.Text = $"{anzahl} Rechnungen";
+                txtSummeNetto.Text = $"{summeNetto:N2}";
+                txtSummeBrutto.Text = $"{summeBrutto:N2}";
+                txtSummeOffen.Text = $"{summeOffen:N2}";
+
+                txtAnzahl.Text = $"({anzahl} Rechnungen, {summeOffen:N2} EUR offen)";
+                txtStatus.Text = $"{anzahl} Rechnungen geladen";
             }
             catch (Exception ex)
             {
