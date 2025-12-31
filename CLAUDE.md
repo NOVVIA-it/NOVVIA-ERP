@@ -540,11 +540,14 @@ sqlcmd -S "localhost\S03NOVVIA" -d "Mandant_1" -E -i "Scripts\Setup-NOVVIA-Benut
 - Firma Eigene Felder: Zeigt jetzt Attribut-Definitionen UND Werte
 - PHARMA Checkbox wird als "Ja/Nein" angezeigt (nicht mehr "1/0")
 
-**Lieferant Eigene Felder:**
-- Verwendet `NOVVIA.LieferantErweitert` (nicht LieferantAttribut!)
-- Lieferant-Tab zeigt statische Feldliste (Ambient, Cool, Medcan, GDP, GMP etc.)
-- Bearbeitung erfolgt pro Lieferant in der Lieferanten-Ansicht
-- Alte LieferantAttribut-Handler entfernt
+**Lieferant Eigene Felder (NOVVIA.LieferantAttribut):**
+- Setup-Script: `Scripts/Setup-EigeneFelderLieferant.sql`
+- Tabellen: `NOVVIA.LieferantAttribut` (Definitionen), `NOVVIA.LieferantEigenesFeld` (Werte)
+- SPs: `spLieferantAttributSpeichern`, `spLieferantEigenesFeldSpeichern`
+- EinstellungenView → Eigene Felder → Lieferant: CRUD für Attribute mit visuellem Feedback
+- LieferantenView → Detail → Tab "Eigene Felder": Werte pro Lieferant bearbeiten
+- FeldTypen: 1=Ganzzahl, 2=Dezimal, 3=Text, 4=Datum
+- Alte statische NOVVIA Erweiterung Sektion (Ambient, Cool, GDP, GMP) entfernt
 
 **Auftrag Löschen:**
 - Neuer "Löschen" Button (rot) in BestellungDetailView
