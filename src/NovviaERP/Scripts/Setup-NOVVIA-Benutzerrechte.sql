@@ -5,7 +5,9 @@
 -- Multi-Mandanten-faehig (Tabellen pro Mandant-DB)
 -- =====================================================
 
-USE [Mandant_1]
+-- WICHTIG: Mandant-Datenbank anpassen!
+-- USE [Mandant_1]  -- Fuer Mandant 1
+USE [Mandant_2]  -- Fuer Mandant 2
 GO
 
 -- Schema sicherstellen
@@ -83,7 +85,8 @@ BEGIN
     ('Stornieren', 'Stornieren/Gutschreiben', 90),
     ('Freigeben', 'Freigeben/Genehmigen', 100),
     ('Buchen', 'Buchen (Lager, Zahlung)', 110),
-    ('Konfigurieren', 'Einstellungen aendern', 120);
+    ('Konfigurieren', 'Einstellungen aendern', 120),
+    ('ValidierungBearbeiten', 'Pharma-Validierungsfelder bearbeiten', 130);
 
     PRINT 'Tabelle NOVVIA.Aktion erstellt und befuellt.';
 END
@@ -179,7 +182,8 @@ BEGIN
     ('Einkauf', 'Einkauf', 'Lieferanten, Bestellungen, Wareneingang', 1, 0),
     ('Buchhaltung', 'Buchhaltung', 'Rechnungen, Zahlungen, Mahnungen', 1, 0),
     ('Kundenservice', 'Kundenservice', 'Kunden, Auftraege (nur Lesen), Retouren', 1, 0),
-    ('Readonly', 'Nur Lesen', 'Lesezugriff auf alle Module', 1, 0);
+    ('Readonly', 'Nur Lesen', 'Lesezugriff auf alle Module', 1, 0),
+    ('RP', 'Responsible Person (Pharma)', 'Pharma-Validierungsfelder bei Kunden und Lieferanten bearbeiten', 1, 0);
 
     PRINT 'Tabelle NOVVIA.Rolle erstellt und befuellt.';
 END
@@ -306,6 +310,14 @@ EXEC NOVVIA.spRolleRechteZuweisen @cRolleName = 'Kundenservice', @cModulPattern 
 EXEC NOVVIA.spRolleRechteZuweisen @cRolleName = 'Geschaeftsfuehrung', @cAktionPattern = 'Lesen';
 EXEC NOVVIA.spRolleRechteZuweisen @cRolleName = 'Geschaeftsfuehrung', @cAktionPattern = 'Freigeben';
 EXEC NOVVIA.spRolleRechteZuweisen @cRolleName = 'Geschaeftsfuehrung', @cModulPattern = 'Berichte', @cAktionPattern = '%';
+
+-- RP (Responsible Person Pharma): Validierungsfelder bei Kunden und Lieferanten bearbeiten
+-- Nur diese Rolle darf ValidierungBearbeiten wenn Firma PHARMA=1 hat
+EXEC NOVVIA.spRolleRechteZuweisen @cRolleName = 'RP', @cModulPattern = 'Kunden', @cAktionPattern = 'ValidierungBearbeiten';
+EXEC NOVVIA.spRolleRechteZuweisen @cRolleName = 'RP', @cModulPattern = 'Lieferanten', @cAktionPattern = 'ValidierungBearbeiten';
+EXEC NOVVIA.spRolleRechteZuweisen @cRolleName = 'RP', @cModulPattern = 'Kunden', @cAktionPattern = 'Lesen';
+EXEC NOVVIA.spRolleRechteZuweisen @cRolleName = 'RP', @cModulPattern = 'Lieferanten', @cAktionPattern = 'Lesen';
+EXEC NOVVIA.spRolleRechteZuweisen @cRolleName = 'RP', @cModulPattern = 'Dashboard', @cAktionPattern = 'Lesen';
 GO
 
 -- =====================================================
@@ -851,6 +863,115 @@ PRINT 'SP NOVVIA.spSessionsAufraeumen erstellt.';
 GO
 
 -- =====================================================
+-- Tabelle: NOVVIA.FirmaEinstellung
+-- Firmenweite Einstellungen (z.B. PHARMA-Modus)
+-- =====================================================
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'NOVVIA' AND TABLE_NAME = 'FirmaEinstellung')
+BEGIN
+    CREATE TABLE NOVVIA.FirmaEinstellung (
+        kFirmaEinstellung INT IDENTITY(1,1) PRIMARY KEY,
+        cSchluessel NVARCHAR(100) NOT NULL UNIQUE,
+        cWert NVARCHAR(MAX) NULL,
+        cBeschreibung NVARCHAR(500) NULL,
+        dGeaendert DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+        kGeaendertVon INT NULL
+    );
+
+    -- Standard-Einstellungen
+    INSERT INTO NOVVIA.FirmaEinstellung (cSchluessel, cWert, cBeschreibung) VALUES
+    ('PHARMA', '0', 'Pharma-Modus: 1 = Aktiv, nur RP darf Validierungsfelder bearbeiten'),
+    ('FIRMENNAME', 'NOVVIA', 'Firmenname fuer Berichte und Dokumente');
+
+    PRINT 'Tabelle NOVVIA.FirmaEinstellung erstellt.';
+END
+ELSE
+    PRINT 'Tabelle NOVVIA.FirmaEinstellung existiert bereits.';
+GO
+
+-- =====================================================
+-- SP: NOVVIA.spFirmaEinstellungLesen
+-- Einstellung abfragen
+-- =====================================================
+IF EXISTS (SELECT * FROM sys.procedures WHERE schema_id = SCHEMA_ID('NOVVIA') AND name = 'spFirmaEinstellungLesen')
+    DROP PROCEDURE NOVVIA.spFirmaEinstellungLesen;
+GO
+
+CREATE PROCEDURE NOVVIA.spFirmaEinstellungLesen
+    @cSchluessel NVARCHAR(100),
+    @cWert NVARCHAR(MAX) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT @cWert = cWert FROM NOVVIA.FirmaEinstellung WHERE cSchluessel = @cSchluessel;
+END
+GO
+
+PRINT 'SP NOVVIA.spFirmaEinstellungLesen erstellt.';
+GO
+
+-- =====================================================
+-- SP: NOVVIA.spIstPharmaModusAktiv
+-- Prueft ob Pharma-Modus aktiv ist
+-- =====================================================
+IF EXISTS (SELECT * FROM sys.procedures WHERE schema_id = SCHEMA_ID('NOVVIA') AND name = 'spIstPharmaModusAktiv')
+    DROP PROCEDURE NOVVIA.spIstPharmaModusAktiv;
+GO
+
+CREATE PROCEDURE NOVVIA.spIstPharmaModusAktiv
+    @nAktiv BIT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @cWert NVARCHAR(MAX);
+    SELECT @cWert = cWert FROM NOVVIA.FirmaEinstellung WHERE cSchluessel = 'PHARMA';
+    SET @nAktiv = CASE WHEN @cWert = '1' THEN 1 ELSE 0 END;
+END
+GO
+
+PRINT 'SP NOVVIA.spIstPharmaModusAktiv erstellt.';
+GO
+
+-- =====================================================
+-- SP: NOVVIA.spDarfValidierungBearbeiten
+-- Prueft ob Benutzer Validierungsfelder bearbeiten darf
+-- Wenn PHARMA=1, braucht der Benutzer die RP-Rolle
+-- =====================================================
+IF EXISTS (SELECT * FROM sys.procedures WHERE schema_id = SCHEMA_ID('NOVVIA') AND name = 'spDarfValidierungBearbeiten')
+    DROP PROCEDURE NOVVIA.spDarfValidierungBearbeiten;
+GO
+
+CREATE PROCEDURE NOVVIA.spDarfValidierungBearbeiten
+    @kBenutzer INT,
+    @cModul NVARCHAR(50),                             -- 'Kunden' oder 'Lieferanten'
+    @nDarf BIT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @nPharmaAktiv BIT;
+    EXEC NOVVIA.spIstPharmaModusAktiv @nAktiv = @nPharmaAktiv OUTPUT;
+
+    IF @nPharmaAktiv = 0
+    BEGIN
+        -- Kein Pharma-Modus: Jeder mit Bearbeiten-Recht darf
+        EXEC NOVVIA.spHatRecht @kBenutzer = @kBenutzer,
+                              @cRechtSchluessel = @cModul + '.Bearbeiten',
+                              @nHatRecht = @nDarf OUTPUT;
+    END
+    ELSE
+    BEGIN
+        -- Pharma-Modus: Nur RP-Rolle darf Validierung bearbeiten
+        EXEC NOVVIA.spHatRecht @kBenutzer = @kBenutzer,
+                              @cRechtSchluessel = @cModul + '.ValidierungBearbeiten',
+                              @nHatRecht = @nDarf OUTPUT;
+    END
+END
+GO
+
+PRINT 'SP NOVVIA.spDarfValidierungBearbeiten erstellt.';
+GO
+
+-- =====================================================
 -- Zusammenfassung
 -- =====================================================
 PRINT '';
@@ -871,9 +992,15 @@ PRINT '  NOVVIA.BenutzerLog      - Login-Historie';
 PRINT '';
 PRINT 'Standard-Rollen:';
 PRINT '  Admin, Geschaeftsfuehrung, Verkauf, Lager, Einkauf,';
-PRINT '  Buchhaltung, Kundenservice, Readonly';
+PRINT '  Buchhaltung, Kundenservice, Readonly, RP (Responsible Person)';
+PRINT '';
+PRINT 'Pharma-Modus:';
+PRINT '  UPDATE NOVVIA.FirmaEinstellung SET cWert=''1'' WHERE cSchluessel=''PHARMA''';
+PRINT '  Wenn PHARMA=1, duerfen nur Benutzer mit RP-Rolle';
+PRINT '  Validierungsfelder bei Kunden/Lieferanten bearbeiten.';
 PRINT '';
 PRINT 'Abfrage: EXEC NOVVIA.spBenutzerRechteAbfragen @kBenutzer = 1';
 PRINT 'Pruefung: EXEC NOVVIA.spHatRecht @kBenutzer = 1, @cRechtSchluessel = ''Kunden.Bearbeiten''';
+PRINT 'Validierung: EXEC NOVVIA.spDarfValidierungBearbeiten @kBenutzer = 1, @cModul = ''Kunden''';
 PRINT '=====================================================';
 GO

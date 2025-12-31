@@ -149,9 +149,10 @@ namespace NovviaERP.WPF.Views
                     )
                     SELECT
                         m.MonatLabel AS Monat,
-                        ISNULL(SUM(r.fBrutto), 0) AS Umsatz
+                        ISNULL(SUM(re.fVKBruttoGesamt), 0) AS Umsatz
                     FROM Monate m
-                    LEFT JOIN tRechnung r ON r.dErstellt >= m.MonatStart AND r.dErstellt <= m.MonatEnde AND r.nStorno = 0
+                    LEFT JOIN Rechnung.tRechnung r ON r.dErstellt >= m.MonatStart AND r.dErstellt <= m.MonatEnde AND r.nStorno = 0
+                    LEFT JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
                     GROUP BY m.MonatLabel, m.SortDatum
                     ORDER BY m.SortDatum
                 ");
@@ -211,7 +212,7 @@ namespace NovviaERP.WPF.Views
 
                 var daten = await conn.QueryAsync<StatusDaten>(@"
                     SELECT
-                        CASE nStatus
+                        CASE nAuftragStatus
                             WHEN 1 THEN 'Offen'
                             WHEN 2 THEN 'In Bearbeitung'
                             WHEN 3 THEN 'Versendet'
@@ -219,9 +220,9 @@ namespace NovviaERP.WPF.Views
                             ELSE 'Sonstige'
                         END AS Status,
                         COUNT(*) AS Anzahl
-                    FROM tBestellung
+                    FROM Verkauf.tAuftrag
                     WHERE dErstellt >= DATEADD(DAY, -30, GETDATE()) AND nStorno = 0
-                    GROUP BY nStatus
+                    GROUP BY nAuftragStatus
                 ");
 
                 var liste = daten.ToList();
@@ -264,9 +265,10 @@ namespace NovviaERP.WPF.Views
                 var daten = await conn.QueryAsync<TopKunde>(@"
                     SELECT TOP 5
                         COALESCE(k.cFirma, k.cVorname + ' ' + k.cName, k.cName) AS KundeName,
-                        SUM(r.fBrutto) AS Umsatz
+                        SUM(re.fVKBruttoGesamt) AS Umsatz
                     FROM dbo.tKunde k
-                    JOIN tRechnung r ON k.kKunde = r.kKunde
+                    JOIN Rechnung.tRechnung r ON k.kKunde = r.kKunde
+                    JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
                     WHERE r.dErstellt >= DATEADD(DAY, -365, GETDATE()) AND r.nStorno = 0
                     GROUP BY k.kKunde, k.cFirma, k.cVorname, k.cName
                     ORDER BY Umsatz DESC
@@ -329,8 +331,8 @@ namespace NovviaERP.WPF.Views
                         SUM(ap.nAnzahl) AS Menge
                     FROM dbo.tArtikel a
                     LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
-                    JOIN tBestellPos ap ON a.kArtikel = ap.kArtikel
-                    JOIN tBestellung au ON ap.tBestellung_kBestellung = au.kBestellung
+                    JOIN Verkauf.tAuftragPosition ap ON a.kArtikel = ap.kArtikel
+                    JOIN Verkauf.tAuftrag au ON ap.kAuftrag = au.kAuftrag
                     WHERE au.dErstellt >= DATEADD(DAY, -30, GETDATE()) AND au.nStorno = 0
                     GROUP BY a.kArtikel, a.cArtNr, ab.cName
                     ORDER BY Menge DESC

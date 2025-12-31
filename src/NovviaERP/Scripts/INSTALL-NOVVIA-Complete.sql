@@ -966,11 +966,26 @@ PRINT 'Indizes OK';
 GO
 
 -- =====================================================
+-- 8. BENUTZERRECHTE-SYSTEM (SEPARAT)
+-- =====================================================
+PRINT '';
+PRINT '[8/8] Benutzerrechte-System...';
+PRINT '      HINWEIS: Benutzerrechte werden separat installiert!';
+PRINT '      Script: Setup-NOVVIA-Benutzerrechte.sql';
+PRINT '';
+PRINT '      Das Benutzerrechte-System enthaelt:';
+PRINT '      - Rollen (Admin, Verkauf, Lager, Einkauf, RP...)';
+PRINT '      - Rechte pro Modul und Aktion';
+PRINT '      - Pharma-Modus (ValidierungBearbeiten nur fuer RP)';
+PRINT '      - Session-Management und Login-Protokollierung';
+GO
+
+-- =====================================================
 -- ABSCHLUSS
 -- =====================================================
 PRINT '';
 PRINT '=====================================================';
-PRINT 'NOVVIA ERP - Installation abgeschlossen!';
+PRINT 'NOVVIA ERP - Basis-Installation abgeschlossen!';
 PRINT '=====================================================';
 PRINT '';
 PRINT 'Erstellte Objekte:';
@@ -1014,9 +1029,14 @@ PRINT '    - NOVVIA.TYPE_ArtikelEigenesFeldAnpassen';
 PRINT '    - NOVVIA.TYPE_AuftragEigenesFeldAnpassen';
 PRINT '';
 PRINT 'Naechste Schritte:';
-PRINT '  1. Admin-Benutzer anlegen (falls nicht vorhanden)';
-PRINT '  2. MSV3-Lieferanten konfigurieren (Pharma-Grosshandel)';
-PRINT '  3. ABdata-Stammdaten importieren (falls Pharma-Betrieb)';
-PRINT '  4. Worker-Dienst starten';
+PRINT '  1. Setup-NOVVIA-Benutzerrechte.sql ausfuehren (Rollen & Rechte)';
+PRINT '  2. Setup-NOVVIA-Log.sql ausfuehren (Logging-System)';
+PRINT '  3. Setup-NOVVIA-Quarantaene.sql ausfuehren (Chargen-Sperren)';
+PRINT '  4. MSV3-Lieferanten konfigurieren (Pharma-Grosshandel)';
+PRINT '  5. ABdata-Stammdaten importieren (falls Pharma-Betrieb)';
+PRINT '  6. Worker-Dienst starten';
+PRINT '';
+PRINT 'Pharma-Modus aktivieren:';
+PRINT '  UPDATE NOVVIA.FirmaEinstellung SET cWert=''1'' WHERE cSchluessel=''PHARMA''';
 PRINT '=====================================================';
 GO

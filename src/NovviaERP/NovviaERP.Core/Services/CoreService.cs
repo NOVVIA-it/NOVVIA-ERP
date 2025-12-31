@@ -6253,5 +6253,177 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region Benutzerrechte
+
+        /// <summary>
+        /// Prüft ob der Pharma-Modus aktiv ist (aus Firma-Einstellungen)
+        /// </summary>
+        public async Task<bool> IstPharmaModusAktivAsync()
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.ExecuteScalarAsync<int?>(@"
+                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'NOVVIA' AND TABLE_NAME = 'FirmaEinstellung')
+                    BEGIN
+                        SELECT CASE WHEN cWert = '1' THEN 1 ELSE 0 END
+                        FROM NOVVIA.FirmaEinstellung
+                        WHERE cSchluessel = 'PHARMA'
+                    END
+                    ELSE
+                        SELECT 0
+                ");
+                return result == 1;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"IstPharmaModusAktivAsync Fehler: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Prüft ob ein Benutzer ein bestimmtes Recht hat
+        /// </summary>
+        public async Task<bool> HatRechtAsync(int kBenutzer, string cRechtSchluessel)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QueryFirstOrDefaultAsync<int?>(@"
+                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA = 'NOVVIA' AND ROUTINE_NAME = 'spHatRecht')
+                    BEGIN
+                        DECLARE @nHatRecht BIT;
+                        EXEC NOVVIA.spHatRecht @kBenutzer = @kBenutzer, @cRechtSchluessel = @cRechtSchluessel, @nHatRecht = @nHatRecht OUTPUT;
+                        SELECT @nHatRecht;
+                    END
+                    ELSE
+                        SELECT 1
+                ", new { kBenutzer, cRechtSchluessel });
+                return result == 1;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"HatRechtAsync Fehler: {ex.Message}");
+                return true; // Bei Fehler erlauben, um Sperren zu vermeiden
+            }
+        }
+
+        /// <summary>
+        /// Prüft ob ein Benutzer Validierungsfelder bearbeiten darf (PHARMA-Modus)
+        /// </summary>
+        public async Task<bool> DarfValidierungBearbeitenAsync(int kBenutzer, string cModul)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QueryFirstOrDefaultAsync<int?>(@"
+                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA = 'NOVVIA' AND ROUTINE_NAME = 'spDarfValidierungBearbeiten')
+                    BEGIN
+                        DECLARE @nDarf BIT;
+                        EXEC NOVVIA.spDarfValidierungBearbeiten @kBenutzer = @kBenutzer, @cModul = @cModul, @nDarf = @nDarf OUTPUT;
+                        SELECT @nDarf;
+                    END
+                    ELSE
+                        SELECT 1
+                ", new { kBenutzer, cModul });
+                return result == 1;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DarfValidierungBearbeitenAsync Fehler: {ex.Message}");
+                return true; // Bei Fehler erlauben
+            }
+        }
+
+        /// <summary>
+        /// Lädt die Rollen eines Benutzers
+        /// </summary>
+        public async Task<List<BenutzerRolle>> GetBenutzerRollenAsync(int kBenutzer)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QueryAsync<BenutzerRolle>(@"
+                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'NOVVIA' AND TABLE_NAME = 'BenutzerRolle')
+                    BEGIN
+                        SELECT r.kRolle, r.cName, r.cBeschreibung, r.nAdmin, r.nAktiv
+                        FROM NOVVIA.Rolle r
+                        JOIN NOVVIA.BenutzerRolle br ON r.kRolle = br.kRolle
+                        WHERE br.kBenutzer = @kBenutzer AND r.nAktiv = 1
+                    END
+                ", new { kBenutzer });
+                return result?.ToList() ?? new List<BenutzerRolle>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetBenutzerRollenAsync Fehler: {ex.Message}");
+                return new List<BenutzerRolle>();
+            }
+        }
+
+        /// <summary>
+        /// Lädt eine Firmeneinstellung
+        /// </summary>
+        public async Task<string?> GetFirmaEinstellungAsync(string cSchluessel)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                return await conn.ExecuteScalarAsync<string?>(@"
+                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'NOVVIA' AND TABLE_NAME = 'FirmaEinstellung')
+                    BEGIN
+                        SELECT cWert FROM NOVVIA.FirmaEinstellung WHERE cSchluessel = @cSchluessel
+                    END
+                ", new { cSchluessel });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetFirmaEinstellungAsync Fehler: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Setzt eine Firmeneinstellung
+        /// </summary>
+        public async Task<bool> SetFirmaEinstellungAsync(string cSchluessel, string cWert, int? kBenutzer = null)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                await conn.ExecuteAsync(@"
+                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'NOVVIA' AND TABLE_NAME = 'FirmaEinstellung')
+                    BEGIN
+                        IF EXISTS (SELECT 1 FROM NOVVIA.FirmaEinstellung WHERE cSchluessel = @cSchluessel)
+                            UPDATE NOVVIA.FirmaEinstellung SET cWert = @cWert, dGeaendert = SYSDATETIME(), kGeaendertVon = @kBenutzer WHERE cSchluessel = @cSchluessel
+                        ELSE
+                            INSERT INTO NOVVIA.FirmaEinstellung (cSchluessel, cWert, kGeaendertVon) VALUES (@cSchluessel, @cWert, @kBenutzer)
+                    END
+                ", new { cSchluessel, cWert, kBenutzer });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SetFirmaEinstellungAsync Fehler: {ex.Message}");
+                return false;
+            }
+        }
+
+        #endregion
     }
+
+    #region Benutzerrechte DTOs
+
+    public class BenutzerRolle
+    {
+        public int KRolle { get; set; }
+        public string CName { get; set; } = "";
+        public string? CBeschreibung { get; set; }
+        public bool NAdmin { get; set; }
+        public bool NAktiv { get; set; }
+    }
+
+    #endregion
 }
