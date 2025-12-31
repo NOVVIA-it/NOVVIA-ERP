@@ -65,6 +65,69 @@ namespace NovviaERP.WPF.Views
         private async void Datum_Changed(object sender, SelectionChangedEventArgs e)
         {
             if (!IsLoaded) return;
+            // Bei manueller Datumseingabe auf "Eigener Zeitraum" wechseln
+            if (cmbZeitraum.SelectedItem is ComboBoxItem item && item.Tag?.ToString() != "eigener")
+            {
+                _skipDateUpdate = true;
+                cmbZeitraum.SelectedIndex = 8; // Eigener Zeitraum
+                _skipDateUpdate = false;
+            }
+            await LadeRechnungenAsync();
+        }
+
+        private bool _skipDateUpdate = false;
+
+        private async void Zeitraum_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded || _skipDateUpdate) return;
+
+            var tag = (cmbZeitraum.SelectedItem as ComboBoxItem)?.Tag?.ToString();
+            var heute = DateTime.Today;
+
+            switch (tag)
+            {
+                case "alle":
+                    dpVon.SelectedDate = null;
+                    dpBis.SelectedDate = null;
+                    break;
+                case "heute":
+                    dpVon.SelectedDate = heute;
+                    dpBis.SelectedDate = heute;
+                    break;
+                case "gestern":
+                    dpVon.SelectedDate = heute.AddDays(-1);
+                    dpBis.SelectedDate = heute.AddDays(-1);
+                    break;
+                case "diesewoche":
+                    var wochenstart = heute.AddDays(-(int)heute.DayOfWeek + (int)DayOfWeek.Monday);
+                    if (heute.DayOfWeek == DayOfWeek.Sunday) wochenstart = wochenstart.AddDays(-7);
+                    dpVon.SelectedDate = wochenstart;
+                    dpBis.SelectedDate = heute;
+                    break;
+                case "letztewoche":
+                    var letzteWochenstart = heute.AddDays(-(int)heute.DayOfWeek + (int)DayOfWeek.Monday - 7);
+                    if (heute.DayOfWeek == DayOfWeek.Sunday) letzteWochenstart = letzteWochenstart.AddDays(-7);
+                    dpVon.SelectedDate = letzteWochenstart;
+                    dpBis.SelectedDate = letzteWochenstart.AddDays(6);
+                    break;
+                case "diesermonat":
+                    dpVon.SelectedDate = new DateTime(heute.Year, heute.Month, 1);
+                    dpBis.SelectedDate = heute;
+                    break;
+                case "letztermonat":
+                    var letzterMonat = heute.AddMonths(-1);
+                    dpVon.SelectedDate = new DateTime(letzterMonat.Year, letzterMonat.Month, 1);
+                    dpBis.SelectedDate = new DateTime(letzterMonat.Year, letzterMonat.Month, DateTime.DaysInMonth(letzterMonat.Year, letzterMonat.Month));
+                    break;
+                case "diesesjahr":
+                    dpVon.SelectedDate = new DateTime(heute.Year, 1, 1);
+                    dpBis.SelectedDate = heute;
+                    break;
+                case "eigener":
+                    // Eigener Zeitraum - keine Aenderung an DatePickern
+                    break;
+            }
+
             await LadeRechnungenAsync();
         }
 

@@ -101,6 +101,11 @@ namespace NovviaERP.WPF.Views
             if (e.Key == Key.Enter) await LadeChargenAsync();
         }
 
+        private async void TxtVerfolgungChargenNr_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter) LadeVerfolgung_Click(sender, e);
+        }
+
         private void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var selected = dgChargen.SelectedItem as CoreService.ChargenBestand;

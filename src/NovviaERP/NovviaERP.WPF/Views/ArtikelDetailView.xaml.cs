@@ -413,6 +413,54 @@ namespace NovviaERP.WPF.Views
             }
         }
 
+        #region Chargen und Kundenpreise
+
+        private async void ChargenRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeChargenAsync();
+        }
+
+        private async System.Threading.Tasks.Task LadeChargenAsync()
+        {
+            if (!_artikelId.HasValue) return;
+
+            try
+            {
+                txtStatus.Text = "Lade Chargenbestaende...";
+                var chargen = await _coreService.GetChargenBestaendeAsync(kArtikel: _artikelId.Value);
+                dgChargen.ItemsSource = chargen;
+                txtStatus.Text = $"{chargen.Count()} Chargen geladen";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        private async void PreiseRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeKundenPreiseAsync();
+        }
+
+        private async System.Threading.Tasks.Task LadeKundenPreiseAsync()
+        {
+            if (!_artikelId.HasValue) return;
+
+            try
+            {
+                txtStatus.Text = "Lade Kundenpreise...";
+                var preise = await _coreService.GetArtikelKundengruppenPreiseAsync(_artikelId.Value);
+                dgKundenPreise.ItemsSource = preise;
+                txtStatus.Text = $"{preise.Count()} Preise geladen";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        #endregion
+
         #region Eigene Felder (Validierung)
 
         private async System.Threading.Tasks.Task LadeEigeneFelderAsync()

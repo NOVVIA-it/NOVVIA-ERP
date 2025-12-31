@@ -46,10 +46,22 @@
                          ToolTip="Rechnungsnr, Kunde, Auftrag"/>
                 <Button Content="Suchen" Click="Suchen_Click" Margin="10,0" Padding="15,5" Background="#0078D4" Foreground="White" BorderThickness="0"/>
 
-                <TextBlock Text="Von:" VerticalAlignment="Center" Margin="20,0,8,0"/>
-                <DatePicker x:Name="dpVon" Width="120" Height="32" SelectedDateChanged="Datum_Changed"/>
-                <TextBlock Text="Bis:" VerticalAlignment="Center" Margin="10,0,8,0"/>
-                <DatePicker x:Name="dpBis" Width="120" Height="32" SelectedDateChanged="Datum_Changed"/>
+                <TextBlock Text="Zeitraum:" VerticalAlignment="Center" Margin="20,0,8,0"/>
+                <ComboBox x:Name="cmbZeitraum" Width="130" Height="32" SelectionChanged="Zeitraum_Changed">
+                    <ComboBoxItem Content="Alle" Tag="alle" IsSelected="True"/>
+                    <ComboBoxItem Content="Heute" Tag="heute"/>
+                    <ComboBoxItem Content="Gestern" Tag="gestern"/>
+                    <ComboBoxItem Content="Diese Woche" Tag="diesewoche"/>
+                    <ComboBoxItem Content="Letzte Woche" Tag="letztewoche"/>
+                    <ComboBoxItem Content="Dieser Monat" Tag="diesermonat"/>
+                    <ComboBoxItem Content="Letzter Monat" Tag="letztermonat"/>
+                    <ComboBoxItem Content="Dieses Jahr" Tag="diesesjahr"/>
+                    <ComboBoxItem Content="Eigener Zeitraum" Tag="eigener"/>
+                </ComboBox>
+                <TextBlock Text="Von:" VerticalAlignment="Center" Margin="10,0,8,0"/>
+                <DatePicker x:Name="dpVon" Width="110" Height="32" SelectedDateChanged="Datum_Changed"/>
+                <TextBlock Text="Bis:" VerticalAlignment="Center" Margin="5,0,8,0"/>
+                <DatePicker x:Name="dpBis" Width="110" Height="32" SelectedDateChanged="Datum_Changed"/>
             </StackPanel>
         </Border>
 

@@ -1168,6 +1168,34 @@ namespace NovviaERP.Core.Services
             return id.HasValue ? await GetArtikelByIdAsync(id.Value) : null;
         }
 
+        /// <summary>
+        /// Kundengruppen-Preise fuer einen Artikel laden
+        /// </summary>
+        public async Task<IEnumerable<KundengruppePreis>> GetArtikelKundengruppenPreiseAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<KundengruppePreis>(@"
+                SELECT
+                    kg.cName AS CKundengruppe,
+                    pd.nAnzahlAb AS NAnzahlAb,
+                    pd.fNettoPreis AS FNettoPreis,
+                    pd.fProzent AS FProzent
+                FROM dbo.tPreis p
+                JOIN dbo.tKundenGruppe kg ON p.kKundenGruppe = kg.kKundenGruppe
+                JOIN dbo.tPreisDetail pd ON p.kPreis = pd.kPreis
+                WHERE p.kArtikel = @KArtikel
+                ORDER BY kg.cName, pd.nAnzahlAb",
+                new { KArtikel = kArtikel });
+        }
+
+        public class KundengruppePreis
+        {
+            public string? CKundengruppe { get; set; }
+            public int NAnzahlAb { get; set; }
+            public decimal FNettoPreis { get; set; }
+            public decimal FProzent { get; set; }
+        }
+
         public async Task UpdateArtikelAsync(ArtikelDetail artikel)
         {
             var conn = await GetConnectionAsync();
@@ -2441,46 +2469,98 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
 
-            // Rechnung mit Kunde laden
+            // Rechnung laden mit berechneten Werten
             var rechnung = await conn.QuerySingleOrDefaultAsync<Rechnung>(
-                @"SELECT kRechnung AS Id, cRechnungsnr AS RechnungsNr,
-                         kKunde AS KundeId, dErstellt AS Erstellt, dFaellig AS Faellig, dBezahlt AS Bezahlt,
-                         fNetto AS Netto, fBrutto AS Brutto, fMwSt AS MwSt, fOffen AS OffenerBetrag,
-                         nRechnungStatus AS Status, nStorno AS IstStorniert, cWaehrung AS Waehrung
-                  FROM Rechnung.tRechnung
-                  WHERE kRechnung = @kRechnung",
+                @"SELECT
+                    r.kRechnung AS Id,
+                    r.cRechnungsnr AS RechnungsNr,
+                    r.kKunde AS KundeId,
+                    r.dErstellt AS Erstellt,
+                    DATEADD(DAY, r.nZahlungszielTage, r.dErstellt) AS Faellig,
+                    -- Bezahlt = letztes Zahlungsdatum wenn komplett bezahlt
+                    CASE WHEN ISNULL(zahlung.Summe, 0) >= ISNULL(pos.Brutto, 0)
+                         THEN zahlung.LetztesZahlungsdatum ELSE NULL END AS Bezahlt,
+                    ISNULL(pos.Netto, 0) AS Netto,
+                    ISNULL(pos.Brutto, 0) AS Brutto,
+                    ISNULL(pos.MwSt, 0) AS MwSt,
+                    ISNULL(pos.Brutto, 0) - ISNULL(zahlung.Summe, 0) AS OffenerBetrag,
+                    r.nRechnungStatus AS Status,
+                    r.nStorno AS IstStorniert,
+                    r.cWaehrung AS Waehrung
+                FROM Rechnung.tRechnung r
+                -- Positionen aggregieren
+                LEFT JOIN (
+                    SELECT kRechnung,
+                           SUM(fVkNetto * fAnzahl * (1 - ISNULL(fRabatt,0)/100)) AS Netto,
+                           SUM(fVkNetto * fAnzahl * (1 - ISNULL(fRabatt,0)/100) * (1 + fMwSt/100)) AS Brutto,
+                           SUM(fVkNetto * fAnzahl * (1 - ISNULL(fRabatt,0)/100) * fMwSt/100) AS MwSt
+                    FROM Rechnung.tRechnungPosition
+                    GROUP BY kRechnung
+                ) pos ON r.kRechnung = pos.kRechnung
+                -- Zahlungen aggregieren
+                LEFT JOIN (
+                    SELECT kRechnung,
+                           SUM(fBetrag) AS Summe,
+                           MAX(dDatum) AS LetztesZahlungsdatum
+                    FROM dbo.tZahlung
+                    WHERE kRechnung IS NOT NULL
+                    GROUP BY kRechnung
+                ) zahlung ON r.kRechnung = zahlung.kRechnung
+                WHERE r.kRechnung = @kRechnung",
                 new { kRechnung });
 
             if (rechnung == null) return null;
 
-            // Kunde laden
+            // Kunde aus RechnungAdresse laden (nTyp=0 = Rechnungsadresse)
             rechnung.Kunde = await conn.QuerySingleOrDefaultAsync<Kunde>(
-                @"SELECT kKunde AS Id, cKundenNr AS KundenNr, cFirma AS Firma,
-                         cVorname AS Vorname, cName AS Nachname,
-                         cStrasse AS Strasse, cPLZ AS PLZ, cOrt AS Ort, cLand AS Land,
-                         cMail AS Email, cTel AS Telefon
-                  FROM tKunde WHERE kKunde = @kundeId",
-                new { kundeId = rechnung.KundeId });
+                @"SELECT
+                    ra.kKunde AS Id,
+                    r.cKundennr AS KundenNr,
+                    ra.cFirma AS Firma,
+                    ra.cVorname AS Vorname,
+                    ra.cName AS Nachname,
+                    ra.cStrasse AS Strasse,
+                    ra.cPLZ AS PLZ,
+                    ra.cOrt AS Ort,
+                    ra.cLand AS Land,
+                    ra.cMail AS Email,
+                    ra.cTel AS Telefon
+                FROM Rechnung.tRechnungAdresse ra
+                JOIN Rechnung.tRechnung r ON ra.kRechnung = r.kRechnung
+                WHERE ra.kRechnung = @kRechnung AND ra.nTyp = 0",
+                new { kRechnung });
 
             // Positionen laden
             rechnung.Positionen = (await conn.QueryAsync<RechnungsPosition>(
-                @"SELECT kRechnungPos AS Id, kRechnung AS RechnungId, kArtikel AS ArtikelId,
-                         cArtNr AS ArtNr, cName AS Name, fAnzahl AS Menge,
-                         fVkNetto AS PreisNetto, fVkBrutto AS PreisBrutto,
-                         fMwSt AS MwStSatz, fRabatt AS Rabatt
-                  FROM Rechnung.tRechnungPosition
-                  WHERE kRechnung = @kRechnung
-                  ORDER BY nSort",
+                @"SELECT
+                    kRechnungPosition AS Id,
+                    kRechnung AS RechnungId,
+                    kArtikel AS ArtikelId,
+                    cArtNr AS ArtNr,
+                    cName AS Name,
+                    fAnzahl AS Menge,
+                    fVkNetto AS PreisNetto,
+                    fVkNetto * (1 + fMwSt/100) AS PreisBrutto,
+                    fMwSt AS MwStSatz,
+                    ISNULL(fRabatt, 0) AS Rabatt
+                FROM Rechnung.tRechnungPosition
+                WHERE kRechnung = @kRechnung
+                ORDER BY nSort",
                 new { kRechnung })).ToList();
 
-            // Zahlungen laden
+            // Zahlungen laden aus dbo.tZahlung
             rechnung.Zahlungen = (await conn.QueryAsync<Zahlungseingang>(
-                @"SELECT kZahlungseingang AS Id, kRechnung AS RechnungId,
-                         dDatum AS Datum, fBetrag AS Betrag, cZahlungsart AS Zahlungsart,
-                         cReferenz AS Referenz
-                  FROM Rechnung.tZahlungseingang
-                  WHERE kRechnung = @kRechnung
-                  ORDER BY dDatum DESC",
+                @"SELECT
+                    kZahlung AS Id,
+                    kRechnung AS RechnungId,
+                    dDatum AS Datum,
+                    fBetrag AS Betrag,
+                    ISNULL(za.cName, 'Unbekannt') AS Zahlungsart,
+                    cHinweis AS Referenz
+                FROM dbo.tZahlung z
+                LEFT JOIN dbo.tZahlungsart za ON z.kZahlungsart = za.kZahlungsart
+                WHERE z.kRechnung = @kRechnung
+                ORDER BY dDatum DESC",
                 new { kRechnung })).ToList();
 
             return rechnung;
@@ -6016,12 +6096,38 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
-        /// Chargenverfolgung: Alle Bewegungen einer Charge
+        /// Chargenverfolgung: Alle Bewegungen einer Charge inkl. Wareneingang
         /// </summary>
         public async Task<IEnumerable<ChargenBewegung>> GetChargenVerfolgungAsync(string chargenNr, int? kArtikel = null)
         {
             var conn = await GetConnectionAsync();
             var sql = @"
+                -- Wareneingang als erste Bewegung
+                SELECT
+                    0 AS KChargenBewegung,
+                    we.kWarenLagerEingang AS KWarenLagerEingang,
+                    we.kArtikel AS KArtikel,
+                    a.cArtNr AS CArtNr,
+                    we.cChargenNr AS CChargenNr,
+                    'EINGANG' AS CAktion,
+                    'Wareneingang' AS CGrund,
+                    'Lieferschein: ' + ISNULL(we.cLieferscheinNr, '-') AS CHinweis,
+                    NULL AS KVonWarenLager,
+                    NULL AS CVonLagerName,
+                    wlp.kWarenLager AS KNachWarenLager,
+                    wl.cName AS CNachLagerName,
+                    we.fAnzahl AS FMenge,
+                    we.kBenutzer AS KBenutzer,
+                    we.dErstellt AS DErstellt
+                FROM dbo.tWarenLagerEingang we
+                JOIN dbo.tArtikel a ON we.kArtikel = a.kArtikel
+                LEFT JOIN dbo.tWarenLagerPlatz wlp ON we.kWarenLagerPlatz = wlp.kWarenLagerPlatz
+                LEFT JOIN dbo.tWarenLager wl ON wlp.kWarenLager = wl.kWarenLager
+                WHERE we.cChargenNr = @ChargenNr
+
+                UNION ALL
+
+                -- Folgebewegungen (Sperren, Freigeben, Quarantaene)
                 SELECT
                     cb.kChargenBewegung AS KChargenBewegung,
                     cb.kWarenLagerEingang AS KWarenLagerEingang,
@@ -6045,9 +6151,10 @@ namespace NovviaERP.Core.Services
                 WHERE cb.cChargenNr = @ChargenNr";
 
             if (kArtikel.HasValue)
-                sql += " AND cb.kArtikel = @KArtikel";
+                sql = sql.Replace("WHERE we.cChargenNr = @ChargenNr", "WHERE we.cChargenNr = @ChargenNr AND we.kArtikel = @KArtikel")
+                         .Replace("WHERE cb.cChargenNr = @ChargenNr", "WHERE cb.cChargenNr = @ChargenNr AND cb.kArtikel = @KArtikel");
 
-            sql += " ORDER BY cb.dErstellt DESC";
+            sql += " ORDER BY DErstellt DESC";
 
             return await conn.QueryAsync<ChargenBewegung>(sql, new { ChargenNr = chargenNr, KArtikel = kArtikel });
         }

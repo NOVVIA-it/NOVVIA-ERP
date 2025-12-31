@@ -144,8 +144,8 @@
                     <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
                         <TextBlock Text="Chargennummer:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <TextBox x:Name="txtVerfolgungChargenNr" Width="150" Height="32" Padding="10,5"
-                                 VerticalContentAlignment="Center"/>
-                        <Button Content="Verfolgung laden" Click="LadeVerfolgung_Click" Margin="15,0,0,0" Padding="15,5"
+                                 VerticalContentAlignment="Center" KeyDown="TxtVerfolgungChargenNr_KeyDown"/>
+                        <Button Content="Suchen" Click="LadeVerfolgung_Click" Margin="15,0,0,0" Padding="15,5"
                                 Background="#0078D4" Foreground="White" BorderThickness="0"/>
                     </StackPanel>
 
