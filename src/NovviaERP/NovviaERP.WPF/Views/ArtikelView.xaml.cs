@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
@@ -30,6 +31,9 @@ namespace NovviaERP.WPF.Views
         {
             if (_initialized) return;
             _initialized = true;
+
+            // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
+            DataGridColumnConfig.EnableColumnChooser(dgArtikel, "ArtikelView");
 
             try
             {

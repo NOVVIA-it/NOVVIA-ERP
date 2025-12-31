@@ -1395,7 +1395,7 @@ namespace NovviaERP.Core.Services
                     ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100) * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
                 FROM tBestellung b
                 LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
-                LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
+                OUTER APPLY (SELECT TOP 1 * FROM tAdresse WHERE kKunde = k.kKunde ORDER BY nStandard DESC, kAdresse) a
                 LEFT JOIN tShop s ON b.kShop = s.kShop
                 WHERE b.nStorno = 0";
 
@@ -5849,8 +5849,8 @@ namespace NovviaERP.Core.Services
                     0 AS NMahnstufe,
                     r.cAnmerkung AS CAnmerkung
                 FROM Rechnung.tRechnung r
-                LEFT JOIN Rechnung.tRechnungAdresse ra ON r.kRechnung = ra.kRechnung AND ra.nTyp = 0
-                LEFT JOIN Verkauf.tAuftragRechnung ar ON r.kRechnung = ar.kRechnung
+                OUTER APPLY (SELECT TOP 1 * FROM Rechnung.tRechnungAdresse WHERE kRechnung = r.kRechnung AND nTyp = 0) ra
+                OUTER APPLY (SELECT TOP 1 kAuftrag FROM Verkauf.tAuftragRechnung WHERE kRechnung = r.kRechnung) ar
                 LEFT JOIN Verkauf.tAuftrag a ON ar.kAuftrag = a.kAuftrag
                 LEFT JOIN (
                     SELECT kRechnung,

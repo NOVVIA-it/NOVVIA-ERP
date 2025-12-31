@@ -721,5 +721,54 @@ namespace NovviaERP.Core.Services
         public DateTime ExpiresAt { get; set; }
     }
 
+    /// <summary>
+    /// Spalten-Konfiguration für eine View
+    /// </summary>
+    public class ViewColumnSettings
+    {
+        public string ViewName { get; set; } = "";
+        public Dictionary<string, ColumnSetting> Columns { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Einstellungen für eine einzelne Spalte
+    /// </summary>
+    public class ColumnSetting
+    {
+        public bool IsVisible { get; set; } = true;
+        public double Width { get; set; } = 100;
+        public int DisplayIndex { get; set; }
+    }
+
+    /// <summary>
+    /// Alle Benutzer-View-Einstellungen
+    /// </summary>
+    public class UserViewSettings
+    {
+        public Dictionary<string, ViewColumnSettings> Views { get; set; } = new();
+
+        public ViewColumnSettings GetViewSettings(string viewName)
+        {
+            if (!Views.ContainsKey(viewName))
+                Views[viewName] = new ViewColumnSettings { ViewName = viewName };
+            return Views[viewName];
+        }
+
+        public void SetColumnVisibility(string viewName, string columnName, bool isVisible)
+        {
+            var view = GetViewSettings(viewName);
+            if (!view.Columns.ContainsKey(columnName))
+                view.Columns[columnName] = new ColumnSetting();
+            view.Columns[columnName].IsVisible = isVisible;
+        }
+
+        public bool GetColumnVisibility(string viewName, string columnName, bool defaultVisible = true)
+        {
+            if (!Views.ContainsKey(viewName)) return defaultVisible;
+            if (!Views[viewName].Columns.ContainsKey(columnName)) return defaultVisible;
+            return Views[viewName].Columns[columnName].IsVisible;
+        }
+    }
+
     #endregion
 }

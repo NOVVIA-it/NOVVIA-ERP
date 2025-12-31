@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
@@ -14,7 +15,12 @@ namespace NovviaERP.WPF.Views
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
-            Loaded += async (s, e) => await LadeBestellungenAsync();
+            Loaded += async (s, e) =>
+            {
+                // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
+                DataGridColumnConfig.EnableColumnChooser(dgBestellungen, "BestellungenView");
+                await LadeBestellungenAsync();
+            };
         }
 
         private async Task LadeBestellungenAsync()
