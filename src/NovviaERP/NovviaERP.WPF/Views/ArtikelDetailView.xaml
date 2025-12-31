@@ -249,10 +249,10 @@
                     </StackPanel>
 
                     <!-- Chargen DataGrid mit Summenzeile -->
-                    <Grid Grid.Row="2">
+                    <Grid Grid.Row="2" MinHeight="200">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="40"/>
                         </Grid.RowDefinitions>
 
                         <DataGrid x:Name="dgChargen" AutoGenerateColumns="False" IsReadOnly="True"
@@ -331,6 +331,63 @@
                             </Grid>
                         </Border>
                     </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab: Chargen-Ausgaenge (Rueckrufverfolgung) -->
+            <TabItem Header="Chargen-Ausgaenge" x:Name="tabChargenAusgaenge">
+                <Grid Margin="20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="40"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="Chargen-Ausgaenge (Rueckrufverfolgung)" FontWeight="SemiBold" FontSize="14"/>
+                        <TextBlock x:Name="txtAusgaengeAnzahl" Text="" FontSize="12" Foreground="#888" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="dgChargenAusgaenge" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" SelectionUnit="FullRow"
+                              GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                              BorderThickness="1" BorderBrush="#ddd"
+                              RowBackground="White" AlternatingRowBackground="#fafafa">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Datum" Binding="{Binding DAusgang, StringFormat=dd.MM.yyyy}" Width="90"/>
+                            <DataGridTextColumn Header="ChargenNr" Binding="{Binding CChargenNr}" Width="120" FontWeight="SemiBold"/>
+                            <DataGridTextColumn Header="MHD" Binding="{Binding DMHD, StringFormat=dd.MM.yyyy}" Width="90"/>
+                            <DataGridTextColumn Header="Menge" Binding="{Binding FMenge, StringFormat=N0}" Width="70">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Lieferschein" Binding="{Binding CLieferscheinNr}" Width="120"/>
+                            <DataGridTextColumn Header="Auftrag" Binding="{Binding CBestellNr}" Width="100"/>
+                            <DataGridTextColumn Header="Kd-Nr" Binding="{Binding CKundenNr}" Width="80"/>
+                            <DataGridTextColumn Header="Kunde" Binding="{Binding KundeName}" Width="*"/>
+                            <DataGridTextColumn Header="Ort" Binding="{Binding KundeOrt}" Width="120"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Summenzeile -->
+                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="1,0,1,1" Padding="10,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="txtAusgaengeSummeAnzahl" Text="0 Ausgaenge" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock Text="Summe Menge:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                <TextBlock x:Name="txtAusgaengeSummeMenge" Text="0" FontWeight="Bold" Width="80" TextAlignment="Right" VerticalAlignment="Center" Foreground="#0078D4"/>
+                                <TextBlock Text="Stueck" VerticalAlignment="Center" Foreground="#666" Margin="5,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
             </TabItem>
 

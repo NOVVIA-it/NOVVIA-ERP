@@ -99,48 +99,57 @@ namespace NovviaERP.WPF.Views
             var tag = (cmbZeitraum.SelectedItem as ComboBoxItem)?.Tag?.ToString();
             var heute = DateTime.Today;
 
-            switch (tag)
+            // Datum-Events unterdrücken während wir die Werte setzen
+            _skipDateUpdate = true;
+            try
             {
-                case "alle":
-                    dpVon.SelectedDate = null;
-                    dpBis.SelectedDate = null;
-                    break;
-                case "heute":
-                    dpVon.SelectedDate = heute;
-                    dpBis.SelectedDate = heute;
-                    break;
-                case "gestern":
-                    dpVon.SelectedDate = heute.AddDays(-1);
-                    dpBis.SelectedDate = heute.AddDays(-1);
-                    break;
-                case "diesewoche":
-                    var wochenstart = heute.AddDays(-(int)heute.DayOfWeek + (int)DayOfWeek.Monday);
-                    if (heute.DayOfWeek == DayOfWeek.Sunday) wochenstart = wochenstart.AddDays(-7);
-                    dpVon.SelectedDate = wochenstart;
-                    dpBis.SelectedDate = heute;
-                    break;
-                case "letztewoche":
-                    var letzteWochenstart = heute.AddDays(-(int)heute.DayOfWeek + (int)DayOfWeek.Monday - 7);
-                    if (heute.DayOfWeek == DayOfWeek.Sunday) letzteWochenstart = letzteWochenstart.AddDays(-7);
-                    dpVon.SelectedDate = letzteWochenstart;
-                    dpBis.SelectedDate = letzteWochenstart.AddDays(6);
-                    break;
-                case "diesermonat":
-                    dpVon.SelectedDate = new DateTime(heute.Year, heute.Month, 1);
-                    dpBis.SelectedDate = heute;
-                    break;
-                case "letztermonat":
-                    var letzterMonat = heute.AddMonths(-1);
-                    dpVon.SelectedDate = new DateTime(letzterMonat.Year, letzterMonat.Month, 1);
-                    dpBis.SelectedDate = new DateTime(letzterMonat.Year, letzterMonat.Month, DateTime.DaysInMonth(letzterMonat.Year, letzterMonat.Month));
-                    break;
-                case "diesesjahr":
-                    dpVon.SelectedDate = new DateTime(heute.Year, 1, 1);
-                    dpBis.SelectedDate = heute;
-                    break;
-                case "eigener":
-                    // Eigener Zeitraum - keine Aenderung an DatePickern
-                    break;
+                switch (tag)
+                {
+                    case "alle":
+                        dpVon.SelectedDate = null;
+                        dpBis.SelectedDate = null;
+                        break;
+                    case "heute":
+                        dpVon.SelectedDate = heute;
+                        dpBis.SelectedDate = heute;
+                        break;
+                    case "gestern":
+                        dpVon.SelectedDate = heute.AddDays(-1);
+                        dpBis.SelectedDate = heute.AddDays(-1);
+                        break;
+                    case "diesewoche":
+                        var wochenstart = heute.AddDays(-(int)heute.DayOfWeek + (int)DayOfWeek.Monday);
+                        if (heute.DayOfWeek == DayOfWeek.Sunday) wochenstart = wochenstart.AddDays(-7);
+                        dpVon.SelectedDate = wochenstart;
+                        dpBis.SelectedDate = heute;
+                        break;
+                    case "letztewoche":
+                        var letzteWochenstart = heute.AddDays(-(int)heute.DayOfWeek + (int)DayOfWeek.Monday - 7);
+                        if (heute.DayOfWeek == DayOfWeek.Sunday) letzteWochenstart = letzteWochenstart.AddDays(-7);
+                        dpVon.SelectedDate = letzteWochenstart;
+                        dpBis.SelectedDate = letzteWochenstart.AddDays(6);
+                        break;
+                    case "diesermonat":
+                        dpVon.SelectedDate = new DateTime(heute.Year, heute.Month, 1);
+                        dpBis.SelectedDate = heute;
+                        break;
+                    case "letztermonat":
+                        var letzterMonat = heute.AddMonths(-1);
+                        dpVon.SelectedDate = new DateTime(letzterMonat.Year, letzterMonat.Month, 1);
+                        dpBis.SelectedDate = new DateTime(letzterMonat.Year, letzterMonat.Month, DateTime.DaysInMonth(letzterMonat.Year, letzterMonat.Month));
+                        break;
+                    case "diesesjahr":
+                        dpVon.SelectedDate = new DateTime(heute.Year, 1, 1);
+                        dpBis.SelectedDate = heute;
+                        break;
+                    case "eigener":
+                        // Eigener Zeitraum - keine Aenderung an DatePickern
+                        break;
+                }
+            }
+            finally
+            {
+                _skipDateUpdate = false;
             }
 
             await LadeRechnungenAsync();

@@ -145,6 +145,10 @@ namespace NovviaERP.WPF.Views
                     // Eigene Felder laden
                     await LadeEigeneFelderAsync();
 
+                    // Chargen-Ausgänge immer laden (für Rückrufverfolgung)
+                    Controls.DataGridColumnConfig.EnableColumnChooser(dgChargenAusgaenge, "ArtikelChargenAusgaenge");
+                    await LadeChargenAusgaengeAsync();
+
                     txtStatus.Text = "Artikel geladen";
                 }
                 else
@@ -435,6 +439,7 @@ namespace NovviaERP.WPF.Views
                 await LadeKundenPreiseAsync();
                 _kundenpreiseGeladen = true;
             }
+            // Chargen-Ausgänge werden immer beim Laden des Artikels geladen
         }
 
         #region Chargen und Kundenpreise
@@ -453,11 +458,37 @@ namespace NovviaERP.WPF.Views
                 // Summen berechnen
                 var count = liste.Count;
                 var summeBestand = liste.Sum(c => c.FBestand);
-                txtChargenAnzahl.Text = $"({count} Chargen)";
-                txtChargenSummeAnzahl.Text = $"{count} Chargen";
-                txtChargenSummeBestand.Text = summeBestand.ToString("N0");
+                if (txtChargenAnzahl != null) txtChargenAnzahl.Text = $"({count} Chargen)";
+                if (txtChargenSummeAnzahl != null) txtChargenSummeAnzahl.Text = $"{count} Chargen";
+                if (txtChargenSummeBestand != null) txtChargenSummeBestand.Text = summeBestand.ToString("N0");
 
                 txtStatus.Text = $"{count} Chargen geladen";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        private async System.Threading.Tasks.Task LadeChargenAusgaengeAsync()
+        {
+            if (!_artikelId.HasValue) return;
+
+            try
+            {
+                txtStatus.Text = "Lade Chargen-Ausgaenge...";
+                var ausgaenge = await _coreService.GetChargenAusgaengeAsync(kArtikel: _artikelId.Value);
+                var liste = ausgaenge.ToList();
+                dgChargenAusgaenge.ItemsSource = liste;
+
+                // Summen berechnen
+                var count = liste.Count;
+                var summeMenge = liste.Sum(a => a.FMenge);
+                if (txtAusgaengeAnzahl != null) txtAusgaengeAnzahl.Text = $"({count} Ausgaenge)";
+                if (txtAusgaengeSummeAnzahl != null) txtAusgaengeSummeAnzahl.Text = $"{count} Ausgaenge";
+                if (txtAusgaengeSummeMenge != null) txtAusgaengeSummeMenge.Text = summeMenge.ToString("N0");
+
+                txtStatus.Text = $"{count} Chargen-Ausgaenge geladen";
             }
             catch (Exception ex)
             {

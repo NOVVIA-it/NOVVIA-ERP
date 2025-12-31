@@ -1412,8 +1412,13 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
             var sql = @"
                 SELECT TOP (@Limit)
-                    b.kBestellung, b.cBestellNr, b.cInetBestellNr, b.dErstellt, b.cStatus,
-                    b.tKunde_kKunde, b.dVersandt, b.dBezahlt, b.cIdentCode, b.nStorno, b.kShop,
+                    b.kBestellung, b.cBestellNr, b.cInetBestellNr,
+                    CASE WHEN b.dErstellt > '1900-01-02' THEN b.dErstellt ELSE NULL END AS DErstellt,
+                    b.cStatus,
+                    b.tKunde_kKunde,
+                    CASE WHEN b.dVersandt > '1900-01-02' THEN b.dVersandt ELSE NULL END AS DVersandt,
+                    CASE WHEN b.dBezahlt > '1900-01-02' THEN b.dBezahlt ELSE NULL END AS DBezahlt,
+                    b.cIdentCode, b.nStorno, b.kShop,
                     k.cKundenNr,
                     a.cName AS KundeName, a.cFirma AS KundeFirma,
                     s.cName AS ShopName,
@@ -3505,8 +3510,8 @@ namespace NovviaERP.Core.Services
                        ISNULL(ab.cName, a.cArtNr) AS CArtikelName,
                        we.fAnzahl AS FAnzahl,
                        ISNULL(we.cChargenNr, '') AS CChargenNr,
-                       we.dMHD AS DMHD,
-                       we.dErstellt AS DErstellt,
+                       CASE WHEN we.dMHD > '1900-01-02' THEN we.dMHD ELSE NULL END AS DMHD,
+                       CASE WHEN we.dErstellt > '1900-01-02' THEN we.dErstellt ELSE NULL END AS DErstellt,
                        ISNULL(we.cKommentar, '') AS CKommentar,
                        ISNULL(wl.cName, '') AS CLagerName
                 FROM dbo.tWarenlagerEingang we
@@ -6222,7 +6227,7 @@ namespace NovviaERP.Core.Services
                     a.cArtNr AS CArtNr,
                     ISNULL(ab.cName, '') AS CArtikelName,
                     we.cChargenNr AS CChargenNr,
-                    we.dMHD AS DMHD,
+                    CASE WHEN we.dMHD > '1900-01-02' THEN we.dMHD ELSE NULL END AS DMHD,
                     we.fAnzahlAktuell AS FBestand,
                     we.fAnzahl AS FEingang,
                     wlp.kWarenLager AS KWarenLager,
@@ -6431,6 +6436,73 @@ namespace NovviaERP.Core.Services
                 "RUECKBUCHUNG" => "Aus Quarantäne",
                 _ => CAktion
             };
+        }
+
+        /// <summary>
+        /// Chargen-Ausgänge für Rückrufverfolgung - welche Charge ging an welchen Kunden
+        /// </summary>
+        public class ChargenAusgang
+        {
+            public int KWarenLagerAusgang { get; set; }
+            public int KWarenLagerEingang { get; set; }
+            public string CChargenNr { get; set; } = "";
+            public DateTime? DMHD { get; set; }
+            public decimal FMenge { get; set; }
+            public DateTime DAusgang { get; set; }
+
+            // Lieferschein
+            public int? KLieferschein { get; set; }
+            public string? CLieferscheinNr { get; set; }
+            public DateTime? DLieferschein { get; set; }
+
+            // Auftrag/Bestellung
+            public int? KBestellung { get; set; }
+            public string? CBestellNr { get; set; }
+
+            // Kunde
+            public int? KKunde { get; set; }
+            public string? CKundenNr { get; set; }
+            public string? KundeName { get; set; }
+            public string? KundeOrt { get; set; }
+        }
+
+        public async Task<IEnumerable<ChargenAusgang>> GetChargenAusgaengeAsync(int? kArtikel = null, string? chargenNr = null, int limit = 500)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@Limit)
+                    wa.kWarenLagerAusgang AS KWarenLagerAusgang,
+                    wa.kWarenLagerEingang AS KWarenLagerEingang,
+                    we.cChargenNr AS CChargenNr,
+                    CASE WHEN we.dMHD > '1900-01-02' THEN we.dMHD ELSE NULL END AS DMHD,
+                    wa.fAnzahl AS FMenge,
+                    CASE WHEN wa.dErstellt > '1900-01-02' THEN wa.dErstellt ELSE NULL END AS DAusgang,
+                    ls.kLieferschein AS KLieferschein,
+                    ls.cLieferscheinNr AS CLieferscheinNr,
+                    CASE WHEN ls.dErstellt > '1900-01-02' THEN ls.dErstellt ELSE NULL END AS DLieferschein,
+                    b.kBestellung AS KBestellung,
+                    b.cBestellNr AS CBestellNr,
+                    k.kKunde AS KKunde,
+                    k.cKundenNr AS CKundenNr,
+                    ISNULL(a.cFirma, a.cVorname + ' ' + a.cName) AS KundeName,
+                    a.cOrt AS KundeOrt
+                FROM dbo.tWarenLagerAusgang wa
+                JOIN dbo.tWarenLagerEingang we ON wa.kWarenLagerEingang = we.kWarenLagerEingang
+                LEFT JOIN Verkauf.tLieferscheinPos lp ON wa.kLieferscheinPos = lp.kLieferscheinPos
+                LEFT JOIN Verkauf.tLieferschein ls ON lp.kLieferschein = ls.kLieferschein
+                LEFT JOIN dbo.tBestellung b ON ls.kBestellung = b.kBestellung
+                LEFT JOIN dbo.tKunde k ON b.kKunde = k.kKunde
+                LEFT JOIN dbo.tAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                WHERE 1=1";
+
+            if (kArtikel.HasValue)
+                sql += " AND wa.kArtikel = @KArtikel";
+            if (!string.IsNullOrEmpty(chargenNr))
+                sql += " AND we.cChargenNr = @ChargenNr";
+
+            sql += " ORDER BY wa.dErstellt DESC";
+
+            return await conn.QueryAsync<ChargenAusgang>(sql, new { Limit = limit, KArtikel = kArtikel, ChargenNr = chargenNr });
         }
 
         #endregion

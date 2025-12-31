@@ -110,11 +110,13 @@ namespace NovviaERP.WPF.Views
             if (_selectedKunde != null)
             {
                 await Lade360GradAnsichtAsync(_selectedKunde);
+                pnlTabs.Visibility = Visibility.Visible;
             }
             else
             {
                 pnlDetails.Visibility = Visibility.Collapsed;
                 pnlNoSelection.Visibility = Visibility.Visible;
+                pnlTabs.Visibility = Visibility.Collapsed;
             }
         }
 

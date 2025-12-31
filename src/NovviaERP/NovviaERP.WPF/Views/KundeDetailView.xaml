@@ -38,11 +38,10 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="350"/>
-                        <ColumnDefinition Width="280"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="220"/>
                     </Grid.RowDefinitions>
 
                     <!-- Linke Spalte: Allgemeine Infos + Kundendaten -->
@@ -267,8 +266,8 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- Mittlere Spalte: Interne Daten + Zahlungen -->
-                    <ScrollViewer Grid.Column="1" Grid.RowSpan="2" VerticalScrollBarVisibility="Auto" Margin="5">
+                    <!-- Rechte Spalte: Interne Daten + Zahlungen -->
+                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Margin="5">
                         <StackPanel>
                             <!-- Interne Daten -->
                             <GroupBox Header="Interne Daten" Margin="0,0,0,10">
@@ -374,8 +373,8 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- Rechte Spalte: Auftraege, Rechnungen, Gutschriften -->
-                    <Border Grid.Column="2" Grid.RowSpan="2" Background="White" BorderBrush="#ddd" BorderThickness="1" Margin="5">
+                    <!-- Unterer Bereich: Auftraege, Rechnungen, Gutschriften -->
+                    <Border Grid.Row="1" Grid.ColumnSpan="2" Background="White" BorderBrush="#ddd" BorderThickness="1" Margin="5,0,5,5">
                         <TabControl x:Name="tcKundenDaten" BorderThickness="0">
                             <!-- Tab: Auftraege -->
                             <TabItem Header="Auftraege">
