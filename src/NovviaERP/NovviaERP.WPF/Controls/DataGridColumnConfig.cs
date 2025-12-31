@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
 
@@ -15,6 +16,8 @@ namespace NovviaERP.WPF.Controls
         private static UserViewSettings? _settings;
         private static int? _currentUserId;
         private static AppDataService? _appData;
+        private static DispatcherTimer? _saveTimer;
+        private static readonly Dictionary<string, (DataGrid Grid, string ViewName)> _pendingSaves = new();
 
         private static string SettingsKey => $"view_settings_{App.BenutzerId}";
 
@@ -47,13 +50,21 @@ namespace NovviaERP.WPF.Controls
         /// </summary>
         public static void ApplySettings(DataGrid grid, string viewName)
         {
+            var viewSettings = Settings.GetViewSettings(viewName);
             foreach (var column in grid.Columns)
             {
                 var header = column.Header?.ToString();
                 if (string.IsNullOrEmpty(header)) continue;
 
-                var isVisible = Settings.GetColumnVisibility(viewName, header, true);
+                // Sichtbarkeit
+                var isVisible = Settings.GetColumnVisibility(viewName, header, column.Visibility == Visibility.Visible);
                 column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+
+                // Spaltenbreite
+                if (viewSettings.Columns.TryGetValue(header, out var colSettings) && colSettings.Width > 0)
+                {
+                    column.Width = new DataGridLength(colSettings.Width);
+                }
             }
         }
 
@@ -67,6 +78,60 @@ namespace NovviaERP.WPF.Controls
 
             // Kontext-Menü für Spalten-Header
             grid.ColumnHeaderStyle = CreateHeaderStyle(grid, viewName);
+
+            // Spaltenbreiten speichern wenn geändert
+            grid.ColumnReordered += (s, e) => SaveColumnWidths(grid, viewName);
+            grid.Loaded += (s, e) =>
+            {
+                // Breiten speichern nach dem Laden (um initiale Breiten zu haben)
+                foreach (DataGridColumn col in grid.Columns)
+                {
+                    // Breiten-Änderung überwachen mittels DependencyProperty
+                    var dpd = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                        DataGridColumn.ActualWidthProperty, typeof(DataGridColumn));
+                    dpd?.AddValueChanged(col, (sender, args) => SaveColumnWidths(grid, viewName));
+                }
+            };
+        }
+
+        private static void SaveColumnWidths(DataGrid grid, string viewName)
+        {
+            // Debounce: Erst nach 500ms speichern
+            _pendingSaves[viewName] = (grid, viewName);
+
+            if (_saveTimer == null)
+            {
+                _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+                _saveTimer.Tick += (s, e) =>
+                {
+                    _saveTimer.Stop();
+                    foreach (var (g, vn) in _pendingSaves.Values)
+                    {
+                        DoSaveColumnWidths(g, vn);
+                    }
+                    _pendingSaves.Clear();
+                };
+            }
+
+            _saveTimer.Stop();
+            _saveTimer.Start();
+        }
+
+        private static void DoSaveColumnWidths(DataGrid grid, string viewName)
+        {
+            var viewSettings = Settings.GetViewSettings(viewName);
+            foreach (var column in grid.Columns)
+            {
+                var header = column.Header?.ToString();
+                if (string.IsNullOrEmpty(header)) continue;
+
+                if (!viewSettings.Columns.ContainsKey(header))
+                    viewSettings.Columns[header] = new ColumnSetting();
+
+                viewSettings.Columns[header].Width = column.ActualWidth;
+                viewSettings.Columns[header].IsVisible = column.Visibility == Visibility.Visible;
+            }
+            SaveSettings();
         }
 
         private static Style CreateHeaderStyle(DataGrid grid, string viewName)

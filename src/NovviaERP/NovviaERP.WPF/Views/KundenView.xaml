@@ -78,15 +78,23 @@
             <DataGrid x:Name="dgKunden" Grid.Row="2" Margin="10,10,10,0"
                       AutoGenerateColumns="False" IsReadOnly="True"
                       SelectionMode="Single" SelectionUnit="FullRow"
-                      GridLinesVisibility="None" HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal" HeadersVisibility="Column"
                       BorderThickness="1" BorderBrush="#ddd"
                       RowBackground="White" AlternatingRowBackground="#fafafa"
                       MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Kd-Nr" Binding="{Binding CKundenNr}" Width="70"/>
+                    <DataGridTextColumn Header="Kd-Nr" Binding="{Binding CKundenNr}" Width="80"/>
+                    <DataGridTextColumn Header="Firma" Binding="{Binding CFirma}" Width="180"/>
+                    <DataGridTextColumn Header="Vorname" Binding="{Binding CVorname}" Width="90" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Nachname" Binding="{Binding CName}" Width="100" Visibility="Collapsed"/>
                     <DataGridTextColumn Header="Firma/Name" Binding="{Binding Anzeigename}" Width="*"/>
+                    <DataGridTextColumn Header="PLZ" Binding="{Binding CPLZ}" Width="60"/>
                     <DataGridTextColumn Header="Ort" Binding="{Binding COrt}" Width="100"/>
+                    <DataGridTextColumn Header="Land" Binding="{Binding CISO}" Width="45"/>
+                    <DataGridTextColumn Header="E-Mail" Binding="{Binding CMail}" Width="180" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Telefon" Binding="{Binding CTel}" Width="120" Visibility="Collapsed"/>
                     <DataGridTextColumn Header="Gruppe" Binding="{Binding Kundengruppe}" Width="90"/>
+                    <DataGridTextColumn Header="Strasse" Binding="{Binding CStrasse}" Width="150" Visibility="Collapsed"/>
                     <DataGridTemplateColumn Header="" Width="30">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>

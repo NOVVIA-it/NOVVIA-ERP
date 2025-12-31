@@ -151,6 +151,25 @@
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
                 <DataGridTextColumn Header="Anmerkung" Binding="{Binding CAnmerkung}" Width="200"/>
+                <DataGridTextColumn Header="Rechnungstext" Binding="{Binding CRechnungstext}" Width="250" Visibility="Collapsed"/>
+                <!-- Rechnungsadresse -->
+                <DataGridTextColumn Header="Re-Firma" Binding="{Binding ReFirma}" Width="150" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Name" Binding="{Binding ReName}" Width="120" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Vorname" Binding="{Binding ReVorname}" Width="100" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Strasse" Binding="{Binding ReStrasse}" Width="150" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-PLZ" Binding="{Binding RePlz}" Width="60" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Ort" Binding="{Binding ReOrt}" Width="120" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Land" Binding="{Binding ReLand}" Width="50" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Mail" Binding="{Binding ReMail}" Width="180" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Tel" Binding="{Binding ReTel}" Width="120" Visibility="Collapsed"/>
+                <!-- Lieferadresse -->
+                <DataGridTextColumn Header="Li-Firma" Binding="{Binding LiFirma}" Width="150" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Name" Binding="{Binding LiName}" Width="120" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Vorname" Binding="{Binding LiVorname}" Width="100" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Strasse" Binding="{Binding LiStrasse}" Width="150" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-PLZ" Binding="{Binding LiPlz}" Width="60" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Ort" Binding="{Binding LiOrt}" Width="120" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Land" Binding="{Binding LiLand}" Width="50" Visibility="Collapsed"/>
             </DataGrid.Columns>
         </DataGrid>
 

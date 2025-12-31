@@ -13,6 +13,7 @@
         <!-- Header -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10">
             <TextBlock Text="Lieferantenbestellungen" FontSize="24" FontWeight="Bold"/>
+            <TextBlock x:Name="txtAnzahlHeader" Text="" FontSize="14" Foreground="#888" VerticalAlignment="Center" Margin="15,0,0,0"/>
         </StackPanel>
 
         <!-- Toolbar -->
@@ -44,52 +45,101 @@
             <Button x:Name="btnAktualisieren" Content="Aktualisieren" Padding="15,5" Margin="15,0,0,0" Click="Aktualisieren_Click"/>
         </StackPanel>
 
-        <!-- DataGrid -->
-        <DataGrid Grid.Row="2" x:Name="dgBestellungen" Margin="10,0" AutoGenerateColumns="False"
-                  IsReadOnly="True" SelectionMode="Single" SelectionUnit="FullRow"
-                  GridLinesVisibility="Horizontal" AlternatingRowBackground="#F5F5F5"
-                  MouseDoubleClick="Bestellungen_DoubleClick">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" Binding="{Binding KLieferantenBestellung}" Width="60"/>
-                <DataGridTextColumn Header="Lieferant" Binding="{Binding LieferantName}" Width="200"/>
-                <DataGridTextColumn Header="Eigene Bestellnr." Binding="{Binding CEigeneBestellnummer}" Width="120"/>
-                <DataGridTextColumn Header="Fremdbelegnr." Binding="{Binding CFremdbelegnummer}" Width="120"/>
-                <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="100">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding NStatus}" Value="5">
-                                    <Setter Property="Background" Value="#E3F2FD"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding NStatus}" Value="10">
-                                    <Setter Property="Background" Value="#FFF3E0"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding NStatus}" Value="20">
-                                    <Setter Property="Background" Value="#FFECB3"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding NStatus}" Value="50">
-                                    <Setter Property="Background" Value="#C8E6C9"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding NStatus}" Value="100">
-                                    <Setter Property="Background" Value="#FFCDD2"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="Erstellt" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="90"/>
-                <DataGridTextColumn Header="Lieferdatum" Binding="{Binding DLieferdatum, StringFormat=dd.MM.yyyy}" Width="90"/>
-                <DataGridTextColumn Header="Positionen" Binding="{Binding AnzahlPositionen}" Width="70"/>
-                <DataGridTextColumn Header="Netto-EK" Binding="{Binding NettoGesamt, StringFormat=N2}" Width="100">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="TextAlignment" Value="Right"/>
-                            <Setter Property="FontWeight" Value="Bold"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+        <!-- DataGrid mit Summenzeile -->
+        <Grid Grid.Row="2" Margin="10,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <DataGrid x:Name="dgBestellungen" AutoGenerateColumns="False"
+                      IsReadOnly="True" SelectionMode="Single" SelectionUnit="FullRow"
+                      GridLinesVisibility="Horizontal" AlternatingRowBackground="#F5F5F5"
+                      BorderThickness="1" BorderBrush="#ddd"
+                      MouseDoubleClick="Bestellungen_DoubleClick">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="ID" Binding="{Binding KLieferantenBestellung}" Width="60"/>
+                    <DataGridTextColumn Header="Lieferant" Binding="{Binding LieferantName}" Width="200"/>
+                    <DataGridTextColumn Header="Eigene Bestellnr." Binding="{Binding CEigeneBestellnummer}" Width="120"/>
+                    <DataGridTextColumn Header="Fremdbelegnr." Binding="{Binding CFremdbelegnummer}" Width="120"/>
+                    <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="100">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="5">
+                                        <Setter Property="Background" Value="#E3F2FD"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="10">
+                                        <Setter Property="Background" Value="#FFF3E0"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="20">
+                                        <Setter Property="Background" Value="#FFECB3"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="50">
+                                        <Setter Property="Background" Value="#C8E6C9"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="100">
+                                        <Setter Property="Background" Value="#FFCDD2"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Erstellt" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="90"/>
+                    <DataGridTextColumn Header="Lieferdatum" Binding="{Binding DLieferdatum, StringFormat=dd.MM.yyyy}" Width="90"/>
+                    <DataGridTextColumn Header="Positionen" Binding="{Binding AnzahlPositionen}" Width="70"/>
+                    <DataGridTextColumn Header="Netto-EK" Binding="{Binding NettoGesamt, StringFormat=N2}" Width="100">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextAlignment" Value="Right"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <!-- Texte -->
+                    <DataGridTextColumn Header="Int. Kommentar" Binding="{Binding CInternerKommentar}" Width="200" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Druckanmerkung" Binding="{Binding CDruckAnmerkung}" Width="200" Visibility="Collapsed"/>
+                    <!-- Rechnungsadresse -->
+                    <DataGridTextColumn Header="Ra-Firma" Binding="{Binding RaFirma}" Width="150" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Ra-Name" Binding="{Binding RaName}" Width="120" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Ra-Vorname" Binding="{Binding RaVorname}" Width="100" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Ra-Strasse" Binding="{Binding RaStrasse}" Width="150" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Ra-PLZ" Binding="{Binding RaPlz}" Width="60" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Ra-Ort" Binding="{Binding RaOrt}" Width="120" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Ra-Land" Binding="{Binding RaLand}" Width="50" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Ra-Tel" Binding="{Binding RaTel}" Width="120" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="Ra-Mail" Binding="{Binding RaMail}" Width="180" Visibility="Collapsed"/>
+                    <!-- Lieferadresse -->
+                    <DataGridTextColumn Header="La-Firma" Binding="{Binding LaFirma}" Width="150" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="La-Name" Binding="{Binding LaName}" Width="120" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="La-Vorname" Binding="{Binding LaVorname}" Width="100" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="La-Strasse" Binding="{Binding LaStrasse}" Width="150" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="La-PLZ" Binding="{Binding LaPlz}" Width="60" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="La-Ort" Binding="{Binding LaOrt}" Width="120" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="La-Land" Binding="{Binding LaLand}" Width="50" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="La-Tel" Binding="{Binding LaTel}" Width="120" Visibility="Collapsed"/>
+                    <DataGridTextColumn Header="La-Mail" Binding="{Binding LaMail}" Width="180" Visibility="Collapsed"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Summenzeile -->
+            <Border Grid.Row="1" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="1,0,1,1" Padding="10,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="txtSummeAnzahl" Text="0 Bestellungen" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="Summe Positionen:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock x:Name="txtSummePositionen" Text="0" FontWeight="SemiBold" Width="60" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock Text="Summe Netto-EK:" VerticalAlignment="Center" Margin="20,0,5,0"/>
+                        <TextBlock x:Name="txtSummeNettoEK" Text="0,00" FontWeight="Bold" Width="100" TextAlignment="Right" VerticalAlignment="Center" Foreground="#0078D4"/>
+                        <TextBlock Text="EUR" VerticalAlignment="Center" Foreground="#666" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Statusbar -->
         <StatusBar Grid.Row="3">

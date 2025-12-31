@@ -44,6 +44,7 @@ namespace NovviaERP.Core.Services
             public string? CFirma { get; set; }
             public string? CVorname { get; set; }
             public string? CName { get; set; }  // Nachname
+            public string? CStrasse { get; set; }
             public string? CPLZ { get; set; }
             public string? COrt { get; set; }
             public string? CISO { get; set; }  // Land ISO
@@ -406,6 +407,29 @@ namespace NovviaERP.Core.Services
             public string? ShopName { get; set; }
             public byte NStorno { get; set; }
 
+            // Rechnungsadresse
+            public string? ReFirma { get; set; }
+            public string? ReName { get; set; }
+            public string? ReVorname { get; set; }
+            public string? ReStrasse { get; set; }
+            public string? RePlz { get; set; }
+            public string? ReOrt { get; set; }
+            public string? ReLand { get; set; }
+            public string? ReMail { get; set; }
+            public string? ReTel { get; set; }
+
+            // Lieferadresse
+            public string? LiFirma { get; set; }
+            public string? LiName { get; set; }
+            public string? LiVorname { get; set; }
+            public string? LiStrasse { get; set; }
+            public string? LiPlz { get; set; }
+            public string? LiOrt { get; set; }
+            public string? LiLand { get; set; }
+
+            // Texte
+            public string? CAnmerkung { get; set; }
+
             public bool Storniert => NStorno == 1;
             public bool Versendet => DVersandt.HasValue;
             public bool Bezahlt => DBezahlt.HasValue;
@@ -563,7 +587,7 @@ namespace NovviaERP.Core.Services
             var sql = @"
                 SELECT TOP (@Limit)
                     k.kKunde, k.cKundenNr, k.cSperre, k.kKundenGruppe, k.dErstellt,
-                    a.cFirma, a.cVorname, a.cName, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel,
+                    a.cFirma, a.cVorname, a.cName, a.cStrasse, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel,
                     kg.cName AS Kundengruppe,
                     ISNULL((SELECT SUM(ae.fWertNetto)
                             FROM Verkauf.tAuftrag au
@@ -597,7 +621,7 @@ namespace NovviaERP.Core.Services
             var sql = @"
                 SELECT TOP (@Limit)
                     k.kKunde, k.cKundenNr, k.cSperre, k.kKundenGruppe, k.dErstellt,
-                    a.cFirma, a.cVorname, a.cName, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel,
+                    a.cFirma, a.cVorname, a.cName, a.cStrasse, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel,
                     kg.cName AS Kundengruppe,
                     0 AS Umsatz
                 FROM tkunde k
@@ -1104,8 +1128,8 @@ namespace NovviaERP.Core.Services
             var sql = @"
                 SELECT TOP (@Limit)
                     a.kArtikel, a.cArtNr, a.cBarcode, a.fVKNetto, a.fEKNetto,
-                    ISNULL(a.fLagerbestand, 0) AS NLagerbestand,
-                    ISNULL(a.fMindestbestand, 0) AS NMidestbestand,
+                    ISNULL(lb.fLagerbestand, 0) AS NLagerbestand,
+                    ISNULL(a.nMidestbestand, 0) AS NMidestbestand,
                     a.cAktiv, a.cLagerArtikel, a.kHersteller,
                     ab.cName AS Name,
                     h.cName AS Hersteller,
@@ -1114,12 +1138,13 @@ namespace NovviaERP.Core.Services
                 FROM tArtikel a
                 LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
                 LEFT JOIN tHersteller h ON a.kHersteller = h.kHersteller
+                LEFT JOIN tlagerbestand lb ON a.kArtikel = lb.kArtikel
                 WHERE a.nDelete = 0";
 
             if (nurAktive) sql += " AND a.cAktiv = 'Y'";
             if (herstellerId.HasValue) sql += " AND a.kHersteller = @HerstellerId";
             if (warengruppeId.HasValue) sql += " AND a.kWarengruppe = @WarengruppeId";
-            if (nurUnterMindestbestand) sql += " AND ISNULL(a.fLagerbestand, 0) < ISNULL(a.fMindestbestand, 0)";
+            if (nurUnterMindestbestand) sql += " AND ISNULL(lb.fLagerbestand, 0) < ISNULL(a.nMidestbestand, 0)";
             if (!string.IsNullOrEmpty(suche))
             {
                 sql += @" AND (a.cArtNr LIKE @Suche
@@ -1137,10 +1162,10 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
 
             var artikel = await conn.QuerySingleOrDefaultAsync<ArtikelDetail>(@"
-                SELECT a.kArtikel, a.cArtNr, a.cBarcode, a.cHAN, a.cISBN, a.cUPC, a.cASIN, a.cGTIN, a.nSort,
+                SELECT a.kArtikel, a.cArtNr, a.cBarcode, a.cBarcode AS CGTIN, a.cHAN, a.cISBN, a.cUPC, a.cASIN, a.nSort,
                        a.fVKNetto, a.fUVP, a.fEKNetto,
-                       ISNULL(a.fLagerbestand, 0) AS NLagerbestand,
-                       ISNULL(a.fMindestbestand, 0) AS NMidestbestand,
+                       ISNULL(lb.fLagerbestand, 0) AS NLagerbestand,
+                       ISNULL(a.nMidestbestand, 0) AS NMidestbestand,
                        a.cLagerArtikel, a.cAktiv, a.cTopArtikel, a.cNeu, a.cTeilbar,
                        a.fGewicht, a.fArtGewicht, a.fBreite, a.fHoehe, a.fLaenge, a.fPackeinheit,
                        a.kSteuerklasse, a.kHersteller, a.kWarengruppe, a.kVersandklasse,
@@ -1154,6 +1179,7 @@ namespace NovviaERP.Core.Services
                 LEFT JOIN tHersteller h ON a.kHersteller = h.kHersteller
                 LEFT JOIN tSteuerklasse sk ON a.kSteuerklasse = sk.kSteuerklasse
                 LEFT JOIN tWarengruppe wg ON a.kWarengruppe = wg.kWarengruppe
+                LEFT JOIN tlagerbestand lb ON a.kArtikel = lb.kArtikel
                 WHERE a.kArtikel = @Id", new { Id = artikelId });
 
             if (artikel == null) return null;
@@ -1276,7 +1302,7 @@ namespace NovviaERP.Core.Services
             {
                 await conn.ExecuteAsync(@"
                     UPDATE tArtikel SET
-                        cArtNr = @CArtNr, cBarcode = @CBarcode, cHAN = @CHAN, cISBN = @CISBN, cGTIN = @CGTIN, nSort = @NSort,
+                        cArtNr = @CArtNr, cBarcode = @CBarcode, cHAN = @CHAN, cISBN = @CISBN, nSort = @NSort,
                         fVKNetto = @FVKNetto, fUVP = @FUVP, fEKNetto = @FEKNetto,
                         nMidestbestand = @NMidestbestand, cLagerArtikel = @CLagerArtikel,
                         fGewicht = @FGewicht, fBreite = @FBreite, fHoehe = @FHoehe, fLaenge = @FLaenge,
@@ -1391,11 +1417,21 @@ namespace NovviaERP.Core.Services
                     k.cKundenNr,
                     a.cName AS KundeName, a.cFirma AS KundeFirma,
                     s.cName AS ShopName,
+                    b.cAnmerkung AS CAnmerkung,
+                    -- Rechnungsadresse
+                    re.cFirma AS ReFirma, re.cName AS ReName, re.cVorname AS ReVorname,
+                    re.cStrasse AS ReStrasse, re.cPLZ AS RePlz, re.cOrt AS ReOrt, re.cLand AS ReLand,
+                    re.cMail AS ReMail, re.cTel AS ReTel,
+                    -- Lieferadresse
+                    li.cFirma AS LiFirma, li.cName AS LiName, li.cVorname AS LiVorname,
+                    li.cStrasse AS LiStrasse, li.cPLZ AS LiPlz, li.cOrt AS LiOrt, li.cLand AS LiLand,
                     ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtNetto,
                     ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100) * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
                 FROM tBestellung b
                 LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
                 OUTER APPLY (SELECT TOP 1 * FROM tAdresse WHERE kKunde = k.kKunde ORDER BY nStandard DESC, kAdresse) a
+                OUTER APPLY (SELECT TOP 1 * FROM Verkauf.tAuftragAdresse WHERE kAuftrag = b.kBestellung AND nTyp = 0) re
+                OUTER APPLY (SELECT TOP 1 * FROM Verkauf.tAuftragAdresse WHERE kAuftrag = b.kBestellung AND nTyp = 1) li
                 LEFT JOIN tShop s ON b.kShop = s.kShop
                 WHERE b.nStorno = 0";
 
@@ -3647,12 +3683,23 @@ namespace NovviaERP.Core.Services
                        lb.kLieferantenBestellung, lb.kLieferant, l.cFirma AS LieferantName,
                        lb.cEigeneBestellnummer, lb.cFremdbelegnummer, lb.nStatus,
                        lb.dErstellt, lb.dLieferdatum,
+                       lb.cInternerKommentar, lb.cDruckAnmerkung,
                        (SELECT SUM(p.fMenge * p.fEKNetto) FROM dbo.tLieferantenBestellungPos p
                         WHERE p.kLieferantenBestellung = lb.kLieferantenBestellung) AS NettoGesamt,
                        (SELECT COUNT(*) FROM dbo.tLieferantenBestellungPos p
-                        WHERE p.kLieferantenBestellung = lb.kLieferantenBestellung) AS AnzahlPositionen
+                        WHERE p.kLieferantenBestellung = lb.kLieferantenBestellung) AS AnzahlPositionen,
+                       -- Rechnungsadresse
+                       ra.cFirma AS RaFirma, ra.cNachname AS RaName, ra.cVorname AS RaVorname,
+                       ra.cStrasse AS RaStrasse, ra.cPLZ AS RaPlz, ra.cOrt AS RaOrt, ra.cLandISO AS RaLand,
+                       ra.cTel AS RaTel, ra.cMail AS RaMail,
+                       -- Lieferadresse
+                       la.cFirma AS LaFirma, la.cNachname AS LaName, la.cVorname AS LaVorname,
+                       la.cStrasse AS LaStrasse, la.cPLZ AS LaPlz, la.cOrt AS LaOrt, la.cLandISO AS LaLand,
+                       la.cTel AS LaTel, la.cMail AS LaMail
                 FROM dbo.tLieferantenBestellung lb
                 LEFT JOIN dbo.tLieferant l ON l.kLieferant = lb.kLieferant
+                LEFT JOIN dbo.tLieferantenBestellungRA ra ON ra.kLieferantenBestellungRA = lb.kLieferantenBestellungRA
+                LEFT JOIN dbo.tLieferantenBestellungLA la ON la.kLieferantenBestellungLA = lb.kLieferantenBestellungLA
                 WHERE lb.nDeleted = 0
                   AND (@kLieferant IS NULL OR lb.kLieferant = @kLieferant)
                   AND (@status IS NULL OR lb.nStatus = @status)
@@ -4095,6 +4142,32 @@ namespace NovviaERP.Core.Services
             public DateTime? DLieferdatum { get; set; }
             public decimal NettoGesamt { get; set; }
             public int AnzahlPositionen { get; set; }
+
+            // Texte
+            public string? CInternerKommentar { get; set; }
+            public string? CDruckAnmerkung { get; set; }
+
+            // Rechnungsadresse
+            public string? RaFirma { get; set; }
+            public string? RaName { get; set; }
+            public string? RaVorname { get; set; }
+            public string? RaStrasse { get; set; }
+            public string? RaPlz { get; set; }
+            public string? RaOrt { get; set; }
+            public string? RaLand { get; set; }
+            public string? RaTel { get; set; }
+            public string? RaMail { get; set; }
+
+            // Lieferadresse
+            public string? LaFirma { get; set; }
+            public string? LaName { get; set; }
+            public string? LaVorname { get; set; }
+            public string? LaStrasse { get; set; }
+            public string? LaPlz { get; set; }
+            public string? LaOrt { get; set; }
+            public string? LaLand { get; set; }
+            public string? LaTel { get; set; }
+            public string? LaMail { get; set; }
 
             public string StatusText => NStatus switch
             {
@@ -5847,9 +5920,19 @@ namespace NovviaERP.Core.Services
                     ar.kAuftrag AS KAuftrag,
                     ISNULL(zahlung.Summe, 0) AS FBezahlt,
                     0 AS NMahnstufe,
-                    r.cAnmerkung AS CAnmerkung
+                    rt.cAnmerkung AS CAnmerkung,
+                    rt.cRechnungstext AS CRechnungstext,
+                    -- Rechnungsadresse
+                    ra.cFirma AS ReFirma, ra.cName AS ReName, ra.cVorname AS ReVorname,
+                    ra.cStrasse AS ReStrasse, ra.cPLZ AS RePlz, ra.cOrt AS ReOrt, ra.cLand AS ReLand,
+                    ra.cMail AS ReMail, ra.cTel AS ReTel,
+                    -- Lieferadresse
+                    la.cFirma AS LiFirma, la.cName AS LiName, la.cVorname AS LiVorname,
+                    la.cStrasse AS LiStrasse, la.cPLZ AS LiPlz, la.cOrt AS LiOrt, la.cLand AS LiLand
                 FROM Rechnung.tRechnung r
+                LEFT JOIN Rechnung.tRechnungText rt ON r.kRechnung = rt.kRechnung
                 OUTER APPLY (SELECT TOP 1 * FROM Rechnung.tRechnungAdresse WHERE kRechnung = r.kRechnung AND nTyp = 0) ra
+                OUTER APPLY (SELECT TOP 1 * FROM Rechnung.tRechnungAdresse WHERE kRechnung = r.kRechnung AND nTyp = 1) la
                 OUTER APPLY (SELECT TOP 1 kAuftrag FROM Verkauf.tAuftragRechnung WHERE kRechnung = r.kRechnung) ar
                 LEFT JOIN Verkauf.tAuftrag a ON ar.kAuftrag = a.kAuftrag
                 LEFT JOIN (
@@ -5920,6 +6003,27 @@ namespace NovviaERP.Core.Services
             public decimal FBezahlt { get; set; }
             public int NMahnstufe { get; set; }
             public string? CAnmerkung { get; set; }
+            public string? CRechnungstext { get; set; }
+
+            // Rechnungsadresse
+            public string? ReFirma { get; set; }
+            public string? ReName { get; set; }
+            public string? ReVorname { get; set; }
+            public string? ReStrasse { get; set; }
+            public string? RePlz { get; set; }
+            public string? ReOrt { get; set; }
+            public string? ReLand { get; set; }
+            public string? ReMail { get; set; }
+            public string? ReTel { get; set; }
+
+            // Lieferadresse
+            public string? LiFirma { get; set; }
+            public string? LiName { get; set; }
+            public string? LiVorname { get; set; }
+            public string? LiStrasse { get; set; }
+            public string? LiPlz { get; set; }
+            public string? LiOrt { get; set; }
+            public string? LiLand { get; set; }
 
             public decimal Offen => FBrutto - FBezahlt;
             public string Status => NStorno ? "Storniert" : (DBezahlt.HasValue ? "Bezahlt" : (DFaellig < DateTime.Today ? "Überfällig" : "Offen"));

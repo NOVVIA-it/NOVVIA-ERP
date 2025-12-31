@@ -53,8 +53,14 @@
             </StackPanel>
         </Border>
 
-        <!-- Bestellungsliste -->
-        <DataGrid x:Name="dgBestellungen" Grid.Row="2" Margin="20,15,20,0"
+        <!-- Bestellungsliste mit Summenzeile -->
+        <Grid Grid.Row="2" Margin="20,15,20,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+        <DataGrid x:Name="dgBestellungen"
                   AutoGenerateColumns="False" IsReadOnly="True"
                   SelectionMode="Single" SelectionUnit="FullRow"
                   GridLinesVisibility="Horizontal" HeadersVisibility="Column"
@@ -113,9 +119,49 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Shop" Binding="{Binding CShop}" Width="100"/>
+                <DataGridTextColumn Header="Shop" Binding="{Binding ShopName}" Width="100"/>
+                <!-- Rechnungsadresse -->
+                <DataGridTextColumn Header="Re-Firma" Binding="{Binding ReFirma}" Width="150" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Name" Binding="{Binding ReName}" Width="120" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Vorname" Binding="{Binding ReVorname}" Width="100" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Strasse" Binding="{Binding ReStrasse}" Width="150" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-PLZ" Binding="{Binding RePlz}" Width="60" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Ort" Binding="{Binding ReOrt}" Width="120" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Land" Binding="{Binding ReLand}" Width="50" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Mail" Binding="{Binding ReMail}" Width="180" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Re-Tel" Binding="{Binding ReTel}" Width="120" Visibility="Collapsed"/>
+                <!-- Lieferadresse -->
+                <DataGridTextColumn Header="Li-Firma" Binding="{Binding LiFirma}" Width="150" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Name" Binding="{Binding LiName}" Width="120" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Vorname" Binding="{Binding LiVorname}" Width="100" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Strasse" Binding="{Binding LiStrasse}" Width="150" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-PLZ" Binding="{Binding LiPlz}" Width="60" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Ort" Binding="{Binding LiOrt}" Width="120" Visibility="Collapsed"/>
+                <DataGridTextColumn Header="Li-Land" Binding="{Binding LiLand}" Width="50" Visibility="Collapsed"/>
+                <!-- Texte -->
+                <DataGridTextColumn Header="Anmerkung" Binding="{Binding CAnmerkung}" Width="200" Visibility="Collapsed"/>
             </DataGrid.Columns>
         </DataGrid>
+
+            <!-- Summenzeile -->
+            <Border Grid.Row="1" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="1,0,1,1" Padding="10,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="txtSummeAnzahl" Text="0 Bestellungen" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="Summe Netto:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock x:Name="txtSummeNetto" Text="0,00" FontWeight="SemiBold" Width="100" TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBlock Text="EUR" VerticalAlignment="Center" Foreground="#666" Margin="5,0,20,0"/>
+                        <TextBlock Text="Brutto:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock x:Name="txtSummeBrutto" Text="0,00" FontWeight="Bold" Width="100" TextAlignment="Right" VerticalAlignment="Center" Foreground="#0078D4"/>
+                        <TextBlock Text="EUR" VerticalAlignment="Center" Foreground="#666" Margin="5,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Statusleiste -->
         <Border Grid.Row="3" Background="#f0f0f0" Padding="20,10" BorderBrush="#ddd" BorderThickness="0,1,0,0">

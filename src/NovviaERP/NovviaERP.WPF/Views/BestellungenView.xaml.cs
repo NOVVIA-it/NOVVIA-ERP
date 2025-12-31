@@ -40,6 +40,13 @@ namespace NovviaERP.WPF.Views
                 dgBestellungen.ItemsSource = liste;
                 txtAnzahl.Text = $"({liste.Count} Bestellungen)";
                 txtStatus.Text = $"{liste.Count} Bestellungen geladen";
+
+                // Summen berechnen
+                var summeNetto = liste.Sum(b => b.GesamtNetto);
+                var summeBrutto = liste.Sum(b => b.GesamtBrutto);
+                txtSummeAnzahl.Text = $"{liste.Count} Bestellungen";
+                txtSummeNetto.Text = summeNetto.ToString("N2");
+                txtSummeBrutto.Text = summeBrutto.ToString("N2");
             }
             catch (Exception ex)
             {

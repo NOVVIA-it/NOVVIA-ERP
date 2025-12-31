@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
@@ -18,7 +19,12 @@ namespace NovviaERP.WPF.Views
         {
             InitializeComponent();
             _coreService = App.Services.GetRequiredService<CoreService>();
-            Loaded += async (s, e) => await LadeDataAsync();
+            Loaded += async (s, e) =>
+            {
+                // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
+                DataGridColumnConfig.EnableColumnChooser(dgBestellungen, "LieferantenBestellungPage");
+                await LadeDataAsync();
+            };
         }
 
         private async System.Threading.Tasks.Task LadeDataAsync()
@@ -62,11 +68,20 @@ namespace NovviaERP.WPF.Views
                 }
 
                 var bestellungen = await _coreService.GetLieferantenBestellungenAsync(kLieferant, status);
-                dgBestellungen.ItemsSource = bestellungen;
+                var liste = bestellungen.ToList();
+                dgBestellungen.ItemsSource = liste;
 
-                var count = bestellungen.Count();
+                var count = liste.Count;
                 txtAnzahl.Text = $"{count} Bestellung{(count != 1 ? "en" : "")}";
+                txtAnzahlHeader.Text = $"({count} Bestellungen)";
                 txtStatus.Text = "Bereit";
+
+                // Summen berechnen
+                var summePositionen = liste.Sum(b => b.AnzahlPositionen);
+                var summeNettoEK = liste.Sum(b => b.NettoGesamt);
+                txtSummeAnzahl.Text = $"{count} Bestellungen";
+                txtSummePositionen.Text = summePositionen.ToString();
+                txtSummeNettoEK.Text = summeNettoEK.ToString("N2");
             }
             catch (Exception ex)
             {

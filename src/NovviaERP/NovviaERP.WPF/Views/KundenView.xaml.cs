@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
@@ -23,6 +24,9 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
+                // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
+                DataGridColumnConfig.EnableColumnChooser(dgKunden, "KundenView");
+
                 // Kundengruppen laden
                 var gruppen = (await _core.GetKundengruppenAsync()).ToList();
                 cboKundengruppe.Items.Clear();
