@@ -128,6 +128,10 @@ namespace NovviaERP.WPF
             // Core Service (Kunden, Artikel, Bestellungen)
             services.AddSingleton(sp => new CoreService(ConnectionString!));
 
+            // Zahlungs-Services
+            services.AddSingleton(sp => new ZahlungsabgleichService(sp.GetRequiredService<JtlDbContext>()));
+            services.AddSingleton(sp => new SepaService(sp.GetRequiredService<JtlDbContext>()));
+
             // AppData Service (lokale Einstellungen, Mappings, Cache)
             services.AddSingleton<AppDataService>();
 
