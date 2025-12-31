@@ -922,9 +922,16 @@ CREATE PROCEDURE NOVVIA.spIstPharmaModusAktiv
 AS
 BEGIN
     SET NOCOUNT ON;
-    DECLARE @cWert NVARCHAR(MAX);
-    SELECT @cWert = cWert FROM NOVVIA.FirmaEinstellung WHERE cSchluessel = 'PHARMA';
-    SET @nAktiv = CASE WHEN @cWert = '1' THEN 1 ELSE 0 END;
+
+    -- Pharma-Flag aus JTL Firma eigene Felder lesen (nicht aus NOVVIA.FirmaEinstellung)
+    SELECT @nAktiv = CASE WHEN f.nWertInt = 1 THEN 1 ELSE 0 END
+    FROM Firma.tFirmaEigenesFeld f
+    JOIN dbo.tAttributSprache a ON f.kAttribut = a.kAttribut AND a.kSprache = 0
+    WHERE a.cName = 'Pharma';
+
+    -- Falls nicht gefunden, default 0
+    IF @nAktiv IS NULL
+        SET @nAktiv = 0;
 END
 GO
 

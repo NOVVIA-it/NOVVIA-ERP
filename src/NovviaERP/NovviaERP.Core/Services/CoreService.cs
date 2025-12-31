@@ -6257,7 +6257,7 @@ namespace NovviaERP.Core.Services
         #region Benutzerrechte
 
         /// <summary>
-        /// Prüft ob der Pharma-Modus aktiv ist (aus Firma-Einstellungen)
+        /// Prüft ob der Pharma-Modus aktiv ist (aus JTL Firma eigene Felder)
         /// </summary>
         public async Task<bool> IstPharmaModusAktivAsync()
         {
@@ -6265,14 +6265,10 @@ namespace NovviaERP.Core.Services
             {
                 var conn = await GetConnectionAsync();
                 var result = await conn.ExecuteScalarAsync<int?>(@"
-                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'NOVVIA' AND TABLE_NAME = 'FirmaEinstellung')
-                    BEGIN
-                        SELECT CASE WHEN cWert = '1' THEN 1 ELSE 0 END
-                        FROM NOVVIA.FirmaEinstellung
-                        WHERE cSchluessel = 'PHARMA'
-                    END
-                    ELSE
-                        SELECT 0
+                    SELECT CASE WHEN f.nWertInt = 1 THEN 1 ELSE 0 END
+                    FROM Firma.tFirmaEigenesFeld f
+                    JOIN dbo.tAttributSprache a ON f.kAttribut = a.kAttribut AND a.kSprache = 0
+                    WHERE a.cName = 'Pharma'
                 ");
                 return result == 1;
             }
