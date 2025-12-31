@@ -160,8 +160,68 @@
                 </Grid>
             </TabItem>
 
-            <!-- Tab: Chargenverfolgung -->
-            <TabItem Header="Chargenverfolgung" Padding="15,5">
+            <!-- Tab: Chargen-Ausgaenge (Rueckrufverfolgung) -->
+            <TabItem Header="Chargen-Ausgaenge" Padding="15,5" x:Name="tabAusgaenge">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
+                        <TextBlock Text="Chargennummer:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox x:Name="txtAusgaengeChargenNr" Width="150" Height="32" Padding="10,5"
+                                 VerticalContentAlignment="Center" KeyDown="TxtAusgaengeChargenNr_KeyDown"/>
+                        <Button Content="Suchen" Click="LadeAusgaenge_Click" Margin="15,0,0,0" Padding="15,5"
+                                Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                        <TextBlock Text="(Fuer Chargenrueckruf - zeigt alle Kunden die diese Charge erhalten haben)"
+                                   VerticalAlignment="Center" Margin="20,0,0,0" Foreground="#666" FontStyle="Italic"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="dgAusgaenge" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" SelectionUnit="FullRow"
+                              GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                              RowBackground="White" AlternatingRowBackground="#fafafa">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Datum" Binding="{Binding DAusgang, StringFormat=dd.MM.yyyy}" Width="90"/>
+                            <DataGridTextColumn Header="ChargenNr" Binding="{Binding CChargenNr}" Width="120" FontWeight="SemiBold"/>
+                            <DataGridTextColumn Header="MHD" Binding="{Binding DMHD, StringFormat=dd.MM.yyyy}" Width="90"/>
+                            <DataGridTextColumn Header="Menge" Binding="{Binding FMenge, StringFormat=N0}" Width="70">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Lieferschein" Binding="{Binding CLieferscheinNr}" Width="120"/>
+                            <DataGridTextColumn Header="Auftrag" Binding="{Binding CBestellNr}" Width="100"/>
+                            <DataGridTextColumn Header="Kd-Nr" Binding="{Binding CKundenNr}" Width="80"/>
+                            <DataGridTextColumn Header="Kunde" Binding="{Binding KundeName}" Width="200"/>
+                            <DataGridTextColumn Header="Ort" Binding="{Binding KundeOrt}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Summenzeile Ausgaenge -->
+                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="txtAusgaengeAnzahl" Text="0 Ausgaenge" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock Text="Summe Menge:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                <TextBlock x:Name="txtAusgaengeSummeMenge" Text="0" FontWeight="Bold" Width="80" TextAlignment="Right" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab: Chargenverfolgung (interne Bewegungen) -->
+            <TabItem Header="Interne Bewegungen" Padding="15,5">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -183,9 +243,17 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy HH:mm}" Width="130"/>
                             <DataGridTextColumn Header="Aktion" Binding="{Binding AktionText}" Width="120"/>
-                            <DataGridTextColumn Header="Grund" Binding="{Binding CGrund}" Width="200"/>
-                            <DataGridTextColumn Header="Von Lager" Binding="{Binding CVonLagerName}" Width="120"/>
-                            <DataGridTextColumn Header="Nach Lager" Binding="{Binding CNachLagerName}" Width="120"/>
+                            <DataGridTextColumn Header="Menge" Binding="{Binding FMenge, StringFormat=N0}" Width="80">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Grund" Binding="{Binding CGrund}" Width="180"/>
+                            <DataGridTextColumn Header="Von Lager" Binding="{Binding CVonLagerName}" Width="100"/>
+                            <DataGridTextColumn Header="Nach Lager" Binding="{Binding CNachLagerName}" Width="100"/>
                             <DataGridTextColumn Header="Hinweis" Binding="{Binding CHinweis}" Width="*"/>
                         </DataGrid.Columns>
                     </DataGrid>

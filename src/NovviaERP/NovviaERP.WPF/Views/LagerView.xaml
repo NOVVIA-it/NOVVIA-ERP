@@ -43,7 +43,7 @@
                 <Button Content="Suchen" Click="Suchen_Click" Margin="10,0" Padding="15,5" Background="#0078D4" Foreground="White" BorderThickness="0"/>
 
                 <CheckBox x:Name="chkNurMitBestand" Content="Nur mit Bestand" VerticalAlignment="Center" Margin="20,0,0,0"
-                          Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+                          IsChecked="True" Checked="Filter_Changed" Unchecked="Filter_Changed"/>
                 <CheckBox x:Name="chkUnterMindest" Content="Unter Mindestbestand" VerticalAlignment="Center" Margin="15,0,0,0"
                           Checked="Filter_Changed" Unchecked="Filter_Changed"/>
             </StackPanel>

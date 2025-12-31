@@ -6488,11 +6488,11 @@ namespace NovviaERP.Core.Services
                     a.cOrt AS KundeOrt
                 FROM dbo.tWarenLagerAusgang wa
                 JOIN dbo.tWarenLagerEingang we ON wa.kWarenLagerEingang = we.kWarenLagerEingang
-                LEFT JOIN Verkauf.tLieferscheinPos lp ON wa.kLieferscheinPos = lp.kLieferscheinPos
-                LEFT JOIN Verkauf.tLieferschein ls ON lp.kLieferschein = ls.kLieferschein
+                LEFT JOIN dbo.tLieferscheinPos lp ON wa.kLieferscheinPos = lp.kLieferscheinPos
+                LEFT JOIN dbo.tLieferschein ls ON lp.kLieferschein = ls.kLieferschein
                 LEFT JOIN dbo.tBestellung b ON ls.kBestellung = b.kBestellung
-                LEFT JOIN dbo.tKunde k ON b.kKunde = k.kKunde
-                LEFT JOIN dbo.tAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                LEFT JOIN dbo.tKunde k ON b.tKunde_kKunde = k.kKunde
+                LEFT JOIN dbo.tAdresse a ON b.tAdresse_kAdresse = a.kAdresse
                 WHERE 1=1";
 
             if (kArtikel.HasValue)

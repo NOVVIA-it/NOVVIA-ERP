@@ -123,6 +123,41 @@ namespace NovviaERP.WPF.Views
             if (e.Key == Key.Enter) LadeVerfolgung_Click(sender, e);
         }
 
+        private async void TxtAusgaengeChargenNr_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter) LadeAusgaenge_Click(sender, e);
+        }
+
+        private async void LadeAusgaenge_Click(object sender, RoutedEventArgs e)
+        {
+            var chargenNr = txtAusgaengeChargenNr.Text.Trim();
+            if (string.IsNullOrEmpty(chargenNr))
+            {
+                MessageBox.Show("Bitte Chargennummer eingeben.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                txtStatus.Text = "Lade Chargen-Ausgaenge...";
+                var ausgaenge = (await _core.GetChargenAusgaengeAsync(chargenNr: chargenNr)).ToList();
+                dgAusgaenge.ItemsSource = ausgaenge;
+
+                // Summen berechnen
+                var anzahl = ausgaenge.Count;
+                var summeMenge = ausgaenge.Sum(a => a.FMenge);
+                txtAusgaengeAnzahl.Text = $"{anzahl} Ausgaenge";
+                txtAusgaengeSummeMenge.Text = summeMenge.ToString("N0");
+
+                txtStatus.Text = $"{anzahl} Ausgaenge fuer Charge {chargenNr} geladen";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var selected = dgChargen.SelectedItem as CoreService.ChargenBestand;
@@ -140,11 +175,20 @@ namespace NovviaERP.WPF.Views
             // Nur reagieren wenn Tab gewechselt wird (nicht bei anderen SelectionChanged Events)
             if (e.Source != tabChargen) return;
 
-            // Wenn Verfolgung-Tab ausgewaehlt und eine Charge markiert ist
-            if (tabChargen.SelectedIndex == 1 && dgChargen.SelectedItem is CoreService.ChargenBestand charge)
+            if (dgChargen.SelectedItem is CoreService.ChargenBestand charge)
             {
-                txtVerfolgungChargenNr.Text = charge.CChargenNr;
-                LadeVerfolgung_Click(sender, e);
+                // Chargen-Ausgaenge Tab (Index 1)
+                if (tabChargen.SelectedIndex == 1)
+                {
+                    txtAusgaengeChargenNr.Text = charge.CChargenNr;
+                    LadeAusgaenge_Click(sender, e);
+                }
+                // Interne Bewegungen Tab (Index 2)
+                else if (tabChargen.SelectedIndex == 2)
+                {
+                    txtVerfolgungChargenNr.Text = charge.CChargenNr;
+                    LadeVerfolgung_Click(sender, e);
+                }
             }
         }
 
@@ -152,9 +196,10 @@ namespace NovviaERP.WPF.Views
         {
             if (dgChargen.SelectedItem is CoreService.ChargenBestand charge)
             {
-                txtVerfolgungChargenNr.Text = charge.CChargenNr;
+                // Doppelklick zeigt Chargen-Ausgaenge (Rueckrufverfolgung)
+                txtAusgaengeChargenNr.Text = charge.CChargenNr;
                 tabChargen.SelectedIndex = 1;
-                LadeVerfolgung_Click(sender, e);
+                LadeAusgaenge_Click(sender, e);
             }
         }
 
@@ -162,9 +207,10 @@ namespace NovviaERP.WPF.Views
         {
             if (dgChargen.SelectedItem is CoreService.ChargenBestand charge)
             {
-                txtVerfolgungChargenNr.Text = charge.CChargenNr;
+                // Zeigt Chargen-Ausgaenge (Rueckrufverfolgung)
+                txtAusgaengeChargenNr.Text = charge.CChargenNr;
                 tabChargen.SelectedIndex = 1;
-                LadeVerfolgung_Click(sender, e);
+                LadeAusgaenge_Click(sender, e);
             }
         }
 
