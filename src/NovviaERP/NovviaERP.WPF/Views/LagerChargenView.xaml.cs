@@ -53,13 +53,15 @@ namespace NovviaERP.WPF.Views
                 var nurGesperrt = chkNurGesperrt.IsChecked == true;
                 var nurQuarantaene = chkNurQuarantaene.IsChecked == true;
                 var nurAbgelaufen = chkNurAbgelaufen.IsChecked == true;
+                var nurMitBestand = chkNurMitBestand.IsChecked == true;
 
                 _chargen = (await _core.GetChargenBestaendeAsync(
                     kWarenlager: kWarenlager,
                     suche: string.IsNullOrEmpty(suche) ? null : suche,
                     nurGesperrt: nurGesperrt,
                     nurQuarantaene: nurQuarantaene,
-                    nurAbgelaufen: nurAbgelaufen
+                    nurAbgelaufen: nurAbgelaufen,
+                    nurMitBestand: nurMitBestand
                 )).ToList();
 
                 dgChargen.ItemsSource = _chargen;

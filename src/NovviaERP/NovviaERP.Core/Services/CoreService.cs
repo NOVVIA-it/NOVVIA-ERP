@@ -6101,6 +6101,7 @@ namespace NovviaERP.Core.Services
             bool nurGesperrt = false,
             bool nurQuarantaene = false,
             bool nurAbgelaufen = false,
+            bool nurMitBestand = true,
             int limit = 500)
         {
             var conn = await GetConnectionAsync();
@@ -6136,8 +6137,10 @@ namespace NovviaERP.Core.Services
                 LEFT JOIN dbo.tWarenLager wl ON wlp.kWarenLager = wl.kWarenLager
                 LEFT JOIN NOVVIA.ChargenStatus cs ON we.kWarenLagerEingang = cs.kWarenLagerEingang
                 WHERE we.cChargenNr IS NOT NULL
-                  AND we.cChargenNr <> ''
-                  AND we.fAnzahlAktuell > 0";
+                  AND we.cChargenNr <> ''";
+
+            if (nurMitBestand)
+                sql += " AND we.fAnzahlAktuell > 0";
 
             if (kArtikel.HasValue)
                 sql += " AND we.kArtikel = @KArtikel";

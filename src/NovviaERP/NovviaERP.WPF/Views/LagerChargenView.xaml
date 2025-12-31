@@ -47,6 +47,8 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                    <CheckBox x:Name="chkNurMitBestand" Content="Nur mit Bestand" VerticalAlignment="Center" Margin="0,0,15,0"
+                              IsChecked="True" Checked="Filter_Changed" Unchecked="Filter_Changed"/>
                     <CheckBox x:Name="chkNurGesperrt" Content="Nur Gesperrte" VerticalAlignment="Center" Margin="0,0,15,0"
                               Checked="Filter_Changed" Unchecked="Filter_Changed"/>
                     <CheckBox x:Name="chkNurQuarantaene" Content="Nur Quarantaene" VerticalAlignment="Center" Margin="0,0,15,0"
@@ -106,10 +108,10 @@
                                                 <Setter Property="Background" Value="#28a745"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding NGesperrt}" Value="True">
-                                                        <Setter Property="Background" Value="#dc3545"/>
+                                                        <Setter Property="Background" Value="#ffc107"/>
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding NQuarantaene}" Value="True">
-                                                        <Setter Property="Background" Value="#6c757d"/>
+                                                        <Setter Property="Background" Value="#dc3545"/>
                                                     </DataTrigger>
                                                     <MultiDataTrigger>
                                                         <MultiDataTrigger.Conditions>
