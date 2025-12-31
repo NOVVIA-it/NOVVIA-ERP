@@ -23,6 +23,9 @@ namespace NovviaERP.WPF.Views
         private List<CoreService.HerstellerRef> _hersteller = new();
         private List<CoreService.SteuerklasseRef> _steuerklassen = new();
         private List<ArtikelMSV3Lieferant> _msv3Lieferanten = new();
+        private bool _chargenGeladen = false;
+        private bool _kundenpreiseGeladen = false;
+        private List<KundengruppePreisEdit> _kundenpreiseListe = new();
 
         public ArtikelDetailView(int? artikelId, bool duplizieren = false, ArtikelMappingConfig? mapping = null)
         {
@@ -413,12 +416,26 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        #region Chargen und Kundenpreise
-
-        private async void ChargenRefresh_Click(object sender, RoutedEventArgs e)
+        private async void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            await LadeChargenAsync();
+            if (e.Source != tabControl) return;
+
+            var selectedTab = tabControl.SelectedItem as TabItem;
+            if (selectedTab == null) return;
+
+            if (selectedTab == tabChargen && !_chargenGeladen && _artikelId.HasValue)
+            {
+                await LadeChargenAsync();
+                _chargenGeladen = true;
+            }
+            else if (selectedTab == tabKundenpreise && !_kundenpreiseGeladen && _artikelId.HasValue)
+            {
+                await LadeKundenPreiseAsync();
+                _kundenpreiseGeladen = true;
+            }
         }
+
+        #region Chargen und Kundenpreise
 
         private async System.Threading.Tasks.Task LadeChargenAsync()
         {
@@ -437,24 +454,64 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private async void PreiseRefresh_Click(object sender, RoutedEventArgs e)
-        {
-            await LadeKundenPreiseAsync();
-        }
-
         private async System.Threading.Tasks.Task LadeKundenPreiseAsync()
         {
             if (!_artikelId.HasValue) return;
 
             try
             {
-                txtStatus.Text = "Lade Kundenpreise...";
+                txtStatus.Text = "Lade Kundengruppen und Preise...";
+
+                // Alle Kundengruppen laden
+                var kundengruppen = await _coreService.GetKundengruppenAsync();
+
+                // Vorhandene Preise laden
                 var preise = await _coreService.GetArtikelKundengruppenPreiseAsync(_artikelId.Value);
-                dgKundenPreise.ItemsSource = preise;
-                txtStatus.Text = $"{preise.Count()} Preise geladen";
+                var preisDict = preise.ToDictionary(p => p.KKundengruppe);
+
+                // Liste mit allen Kundengruppen erstellen (auch ohne Preis)
+                _kundenpreiseListe = kundengruppen.Select(kg => new KundengruppePreisEdit
+                {
+                    KKundengruppe = kg.KKundenGruppe,
+                    CKundengruppe = kg.CName ?? $"Gruppe {kg.KKundenGruppe}",
+                    FNettoPreis = preisDict.TryGetValue(kg.KKundenGruppe, out var p) ? p.FNettoPreis : null,
+                    FProzent = preisDict.TryGetValue(kg.KKundenGruppe, out var p2) ? p2.FProzent : null
+                }).ToList();
+
+                dgKundenPreise.ItemsSource = _kundenpreiseListe;
+                txtStatus.Text = $"{kundengruppen.Count()} Kundengruppen geladen";
             }
             catch (Exception ex)
             {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        private async void KundenpreiseSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_artikelId.HasValue)
+            {
+                MessageBox.Show("Bitte zuerst den Artikel speichern!", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                txtStatus.Text = "Speichere Kundenpreise...";
+
+                // Nur Einträge mit Preis speichern
+                var zuSpeichern = _kundenpreiseListe
+                    .Where(p => p.FNettoPreis.HasValue || p.FProzent.HasValue)
+                    .ToList();
+
+                await _coreService.SaveArtikelKundengruppenPreiseAsync(_artikelId.Value, zuSpeichern);
+
+                txtStatus.Text = $"{zuSpeichern.Count} Kundenpreise gespeichert";
+                MessageBox.Show("Kundenpreise wurden gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
                 txtStatus.Text = $"Fehler: {ex.Message}";
             }
         }
@@ -538,5 +595,14 @@ namespace NovviaERP.WPF.Views
         public string PreisText { get; set; } = "";
         public int Bestand { get; set; }
         public SolidColorBrush BestandFarbe { get; set; } = new SolidColorBrush(Colors.Gray);
+    }
+
+    // Hilfsklasse fuer editierbare Kundengruppen-Preise
+    public class KundengruppePreisEdit
+    {
+        public int KKundengruppe { get; set; }
+        public string CKundengruppe { get; set; } = "";
+        public decimal? FNettoPreis { get; set; }
+        public decimal? FProzent { get; set; }
     }
 }

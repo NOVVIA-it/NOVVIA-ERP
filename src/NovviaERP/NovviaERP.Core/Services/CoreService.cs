@@ -1176,6 +1176,7 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
             return await conn.QueryAsync<KundengruppePreis>(@"
                 SELECT
+                    kg.kKundenGruppe AS KKundengruppe,
                     kg.cName AS CKundengruppe,
                     pd.nAnzahlAb AS NAnzahlAb,
                     pd.fNettoPreis AS FNettoPreis,
@@ -1188,8 +1189,73 @@ namespace NovviaERP.Core.Services
                 new { KArtikel = kArtikel });
         }
 
+        /// <summary>
+        /// Kundengruppen-Preise fuer einen Artikel speichern
+        /// </summary>
+        public async Task SaveArtikelKundengruppenPreiseAsync(int kArtikel, IEnumerable<dynamic> preise)
+        {
+            var conn = await GetConnectionAsync();
+            using var tx = conn.BeginTransaction();
+
+            try
+            {
+                foreach (var preis in preise)
+                {
+                    int kKundengruppe = (int)preis.KKundengruppe;
+                    decimal? fNettoPreis = preis.FNettoPreis as decimal?;
+                    decimal? fProzent = preis.FProzent as decimal?;
+
+                    // Pruefen ob Preis existiert
+                    var kPreis = await conn.QueryFirstOrDefaultAsync<int?>(
+                        "SELECT kPreis FROM dbo.tPreis WHERE kArtikel = @kArtikel AND kKundenGruppe = @kKundengruppe",
+                        new { kArtikel, kKundengruppe }, tx);
+
+                    if (fNettoPreis.HasValue || fProzent.HasValue)
+                    {
+                        if (kPreis.HasValue)
+                        {
+                            // Update existierenden Preis
+                            await conn.ExecuteAsync(@"
+                                UPDATE pd SET fNettoPreis = @fNettoPreis, fProzent = @fProzent
+                                FROM dbo.tPreisDetail pd
+                                WHERE pd.kPreis = @kPreis AND pd.nAnzahlAb = 0",
+                                new { kPreis = kPreis.Value, fNettoPreis = fNettoPreis ?? 0, fProzent = fProzent ?? 0 }, tx);
+                        }
+                        else
+                        {
+                            // Neuen Preis anlegen
+                            var newKPreis = await conn.QuerySingleAsync<int>(@"
+                                INSERT INTO dbo.tPreis (kArtikel, kKundenGruppe)
+                                OUTPUT INSERTED.kPreis
+                                VALUES (@kArtikel, @kKundengruppe)",
+                                new { kArtikel, kKundengruppe }, tx);
+
+                            await conn.ExecuteAsync(@"
+                                INSERT INTO dbo.tPreisDetail (kPreis, nAnzahlAb, fNettoPreis, fProzent)
+                                VALUES (@kPreis, 0, @fNettoPreis, @fProzent)",
+                                new { kPreis = newKPreis, fNettoPreis = fNettoPreis ?? 0, fProzent = fProzent ?? 0 }, tx);
+                        }
+                    }
+                    else if (kPreis.HasValue)
+                    {
+                        // Preis loeschen wenn keine Werte mehr
+                        await conn.ExecuteAsync("DELETE FROM dbo.tPreisDetail WHERE kPreis = @kPreis", new { kPreis = kPreis.Value }, tx);
+                        await conn.ExecuteAsync("DELETE FROM dbo.tPreis WHERE kPreis = @kPreis", new { kPreis = kPreis.Value }, tx);
+                    }
+                }
+
+                tx.Commit();
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
         public class KundengruppePreis
         {
+            public int KKundengruppe { get; set; }
             public string? CKundengruppe { get; set; }
             public int NAnzahlAb { get; set; }
             public decimal FNettoPreis { get; set; }
