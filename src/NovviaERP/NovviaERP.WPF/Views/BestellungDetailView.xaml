@@ -541,6 +541,9 @@
                             ToolTip="Erstellt eine Lieferantenbestellung aus diesem Auftrag"/>
                     <Button x:Name="btnSpeichern" Content="Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,5,0"
                             Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    <Button x:Name="btnLoeschen" Content="Löschen" Click="Loeschen_Click" Padding="12,8" Margin="0,0,5,0"
+                            Background="#dc3545" Foreground="White" BorderThickness="0"
+                            ToolTip="Auftrag löschen (nur möglich wenn kein Lieferschein/Rechnung)"/>
                     <Button Content="Abbrechen" Click="Zurueck_Click" Padding="12,8"/>
                 </StackPanel>
             </Grid>

@@ -1584,6 +1584,71 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
+        /// Prüft ob ein Auftrag gelöscht werden kann (kein Lieferschein und keine Rechnung)
+        /// </summary>
+        public async Task<(bool CanDelete, string Reason)> CanDeleteAuftragAsync(int kAuftrag)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Prüfen ob Lieferschein existiert (kBestellung = kAuftrag in JTL)
+            var hasLieferschein = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM dbo.tLieferschein WHERE kBestellung = @kAuftrag",
+                new { kAuftrag }) > 0;
+
+            if (hasLieferschein)
+                return (false, "Auftrag hat bereits einen Lieferschein");
+
+            // Prüfen ob Rechnung existiert
+            var hasRechnung = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM Verkauf.tAuftragRechnung WHERE kAuftrag = @kAuftrag",
+                new { kAuftrag }) > 0;
+
+            if (hasRechnung)
+                return (false, "Auftrag hat bereits eine Rechnung");
+
+            return (true, "");
+        }
+
+        /// <summary>
+        /// Löscht einen Auftrag komplett (nur wenn kein Lieferschein und keine Rechnung)
+        /// </summary>
+        public async Task<(bool Success, string Message)> DeleteAuftragAsync(int kAuftrag)
+        {
+            var (canDelete, reason) = await CanDeleteAuftragAsync(kAuftrag);
+            if (!canDelete)
+                return (false, reason);
+
+            var conn = await GetConnectionAsync();
+
+            try
+            {
+                // Auftragsnummer für Meldung holen
+                var auftragNr = await conn.ExecuteScalarAsync<string>(
+                    "SELECT cAuftragsnr FROM Verkauf.tAuftrag WHERE kAuftrag = @kAuftrag",
+                    new { kAuftrag });
+
+                // Lösche in der richtigen Reihenfolge (abhängige Tabellen zuerst)
+                await conn.ExecuteAsync("DELETE FROM Verkauf.tAuftragPositionEckdaten WHERE kAuftragPosition IN (SELECT kAuftragPosition FROM Verkauf.tAuftragPosition WHERE kAuftrag = @kAuftrag)", new { kAuftrag });
+                await conn.ExecuteAsync("DELETE FROM Verkauf.tAuftragPosition WHERE kAuftrag = @kAuftrag", new { kAuftrag });
+                await conn.ExecuteAsync("DELETE FROM Verkauf.tAuftragEckdaten WHERE kAuftrag = @kAuftrag", new { kAuftrag });
+                await conn.ExecuteAsync("DELETE FROM Verkauf.tAuftragText WHERE kAuftrag = @kAuftrag", new { kAuftrag });
+                await conn.ExecuteAsync("DELETE FROM Verkauf.tAuftragAttributSprache WHERE kAuftragAttribut IN (SELECT kAuftragAttribut FROM Verkauf.tAuftragAttribut WHERE kAuftrag = @kAuftrag)", new { kAuftrag });
+                await conn.ExecuteAsync("DELETE FROM Verkauf.tAuftragAttribut WHERE kAuftrag = @kAuftrag", new { kAuftrag });
+                await conn.ExecuteAsync("DELETE FROM Verkauf.tAuftragAdresse WHERE kAuftrag = @kAuftrag", new { kAuftrag });
+                await conn.ExecuteAsync("DELETE FROM Verkauf.tAuftrag WHERE kAuftrag = @kAuftrag", new { kAuftrag });
+
+                _log.Information("Auftrag {AuftragNr} (ID: {KAuftrag}) erfolgreich gelöscht", auftragNr, kAuftrag);
+                return (true, $"Auftrag {auftragNr} wurde erfolgreich gelöscht");
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Fehler beim Löschen von Auftrag {KAuftrag}", kAuftrag);
+                return (false, $"Fehler beim Löschen: {ex.Message}");
+            }
+        }
+
+
+        /// <summary>
         /// Erstellt einen Lieferschein für eine Bestellung via JTL Stored Procedures
         /// </summary>
         /// <param name="kBestellung">Bestellungs-ID</param>
@@ -5011,15 +5076,15 @@ namespace NovviaERP.Core.Services
             public int KAttribut { get; set; }
             public string CName { get; set; } = "";
             public string? CBeschreibung { get; set; }
-            public int NFeldTyp { get; set; }  // 1=Text, 2=Int, 3=Decimal, 4=DateTime
+            public int NFeldTyp { get; set; }  // 1=Int, 2=Decimal, 3=Text, 4=DateTime (aus tFeldTyp.nDatenTyp)
             public int NSortierung { get; set; }
             public bool NAktiv { get; set; } = true;
             public string FeldTypName => NFeldTyp switch
             {
-                1 => "Text",
-                2 => "Ganzzahl",
-                3 => "Dezimal",
-                4 => "Datum",
+                1 => "Ganzzahl",   // nDatenTyp 0 = Int
+                2 => "Dezimal",    // nDatenTyp 1 = Decimal
+                3 => "Text",       // nDatenTyp 2 = Text/Varchar
+                4 => "Datum",      // nDatenTyp 3 = DateTime
                 _ => "Text"
             };
         }
@@ -5038,12 +5103,37 @@ namespace NovviaERP.Core.Services
 
             public object? Wert => NFeldTyp switch
             {
-                1 => CWertVarchar,
-                2 => NWertInt,
-                3 => FWertDecimal,
-                4 => DWertDateTime,
+                1 => NWertInt,         // nDatenTyp 0 = Int
+                2 => FWertDecimal,     // nDatenTyp 1 = Decimal
+                3 => CWertVarchar,     // nDatenTyp 2 = Text
+                4 => DWertDateTime,    // nDatenTyp 3 = DateTime
                 _ => CWertVarchar
             };
+
+            // Formatierte Anzeige des Werts (für Checkbox: Ja/Nein)
+            public string WertAnzeige
+            {
+                get
+                {
+                    return NFeldTyp switch
+                    {
+                        1 => NWertInt switch  // Ganzzahl - könnte Checkbox sein (0/1)
+                        {
+                            1 => "Ja",
+                            0 => "Nein",
+                            _ => NWertInt?.ToString() ?? ""
+                        },
+                        2 => FWertDecimal?.ToString("N2") ?? "",
+                        3 => CWertVarchar ?? "",
+                        4 => DWertDateTime?.ToString("dd.MM.yyyy") ?? "",
+                        _ => CWertVarchar ?? ""
+                    };
+                }
+            }
+
+            // Checkbox-Wert (true/false) für DataGridCheckBoxColumn
+            public bool IstCheckbox => NFeldTyp == 1 && (NWertInt == 0 || NWertInt == 1);
+            public bool CheckboxWert => NWertInt == 1;
         }
 
         // ===== LIEFERANT Eigene Felder (NOVVIA-Tabellen) =====
@@ -5144,10 +5234,11 @@ namespace NovviaERP.Core.Services
             // nBezugstyp = 3 für Kunden-Attribute
             return await conn.QueryAsync<EigenesFeldDefinition>(@"
                 SELECT a.kAttribut AS KAttribut, s.cName AS CName, a.cBeschreibung AS CBeschreibung,
-                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       CASE ft.nDatenTyp WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 ELSE 3 END AS NFeldTyp,
                        a.nSortierung AS NSortierung, 1 AS NAktiv
                 FROM dbo.tAttribut a
-                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                LEFT JOIN dbo.tFeldTyp ft ON a.kFeldTyp = ft.kFeldTyp
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache IN (0, 1)
                 WHERE a.nIstFreifeld = 1 AND a.nBezugstyp = 3
                 ORDER BY a.nSortierung, s.cName");
         }
@@ -5158,12 +5249,13 @@ namespace NovviaERP.Core.Services
             return await conn.QueryAsync<EigenesFeldWert>(@"
                 SELECT ef.kKundeEigenesFeld AS KWert, ef.kKunde AS KEntity,
                        ef.kAttribut AS KAttribut, s.cName AS CAttributName,
-                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       CASE ft.nDatenTyp WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 ELSE 3 END AS NFeldTyp,
                        ef.cWertVarchar AS CWertVarchar, ef.nWertInt AS NWertInt,
                        ef.fWertDecimal AS FWertDecimal, ef.dWertDateTime AS DWertDateTime
                 FROM Kunde.tKundeEigenesFeld ef
                 JOIN dbo.tAttribut a ON ef.kAttribut = a.kAttribut
-                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                LEFT JOIN dbo.tFeldTyp ft ON a.kFeldTyp = ft.kFeldTyp
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache IN (0, 1)
                 WHERE ef.kKunde = @kKunde
                 ORDER BY a.nSortierung, s.cName", new { kKunde });
         }
@@ -5175,7 +5267,7 @@ namespace NovviaERP.Core.Services
             var attr = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
                 SELECT a.kAttribut, a.kFeldTyp
                 FROM dbo.tAttribut a
-                JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache IN (0, 1)
                 WHERE a.nIstFreifeld = 1 AND s.cName = @attributName",
                 new { attributName });
 
@@ -5222,12 +5314,13 @@ namespace NovviaERP.Core.Services
             return await conn.QueryAsync<EigenesFeldWert>(@"
                 SELECT ef.kFirmaEigenesFeld AS KWert, ef.kFirma AS KEntity,
                        ef.kAttribut AS KAttribut, s.cName AS CAttributName,
-                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       CASE ft.nDatenTyp WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 ELSE 3 END AS NFeldTyp,
                        ef.cWertVarchar AS CWertVarchar, ef.nWertInt AS NWertInt,
                        ef.fWertDecimal AS FWertDecimal, ef.dWertDateTime AS DWertDateTime
                 FROM Firma.tFirmaEigenesFeld ef
                 JOIN dbo.tAttribut a ON ef.kAttribut = a.kAttribut
-                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                LEFT JOIN dbo.tFeldTyp ft ON a.kFeldTyp = ft.kFeldTyp
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache IN (0, 1)
                 WHERE ef.kFirma = @kFirma
                 ORDER BY a.nSortierung, s.cName", new { kFirma });
         }
@@ -5240,10 +5333,11 @@ namespace NovviaERP.Core.Services
             // nBezugstyp = 0 für Artikel-Attribute (Freifelder)
             return await conn.QueryAsync<EigenesFeldDefinition>(@"
                 SELECT a.kAttribut AS KAttribut, s.cName AS CName, a.cBeschreibung AS CBeschreibung,
-                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       CASE ft.nDatenTyp WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 ELSE 3 END AS NFeldTyp,
                        a.nSortierung AS NSortierung, 1 AS NAktiv
                 FROM dbo.tAttribut a
-                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                LEFT JOIN dbo.tFeldTyp ft ON a.kFeldTyp = ft.kFeldTyp
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache IN (0, 1)
                 WHERE a.nIstFreifeld = 1 AND a.nBezugstyp = 0
                 ORDER BY a.nSortierung, s.cName");
         }
@@ -5254,13 +5348,14 @@ namespace NovviaERP.Core.Services
             return await conn.QueryAsync<EigenesFeldWert>(@"
                 SELECT aas.kArtikelAttribut AS KWert, aa.kArtikel AS KEntity,
                        aa.kAttribut AS KAttribut, s.cName AS CAttributName,
-                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       CASE ft.nDatenTyp WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 ELSE 3 END AS NFeldTyp,
                        aas.cWertVarchar AS CWertVarchar, aas.nWertInt AS NWertInt,
                        aas.fWertDecimal AS FWertDecimal, aas.dWertDateTime AS DWertDateTime
                 FROM dbo.tArtikelAttribut aa
-                JOIN dbo.tArtikelAttributSprache aas ON aa.kArtikelAttribut = aas.kArtikelAttribut AND aas.kSprache = 1
+                JOIN dbo.tArtikelAttributSprache aas ON aa.kArtikelAttribut = aas.kArtikelAttribut AND aas.kSprache IN (0, 1)
                 JOIN dbo.tAttribut a ON aa.kAttribut = a.kAttribut
-                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                LEFT JOIN dbo.tFeldTyp ft ON a.kFeldTyp = ft.kFeldTyp
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache IN (0, 1)
                 WHERE aa.kArtikel = @kArtikel AND a.nIstFreifeld = 1
                 ORDER BY a.nSortierung, s.cName", new { kArtikel });
         }
@@ -5273,10 +5368,11 @@ namespace NovviaERP.Core.Services
             // nBezugstyp = 4 für Auftrags-Attribute
             return await conn.QueryAsync<EigenesFeldDefinition>(@"
                 SELECT a.kAttribut AS KAttribut, s.cName AS CName, a.cBeschreibung AS CBeschreibung,
-                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       CASE ft.nDatenTyp WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 ELSE 3 END AS NFeldTyp,
                        a.nSortierung AS NSortierung, 1 AS NAktiv
                 FROM dbo.tAttribut a
-                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                LEFT JOIN dbo.tFeldTyp ft ON a.kFeldTyp = ft.kFeldTyp
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache IN (0, 1)
                 WHERE a.nIstFreifeld = 1 AND a.nBezugstyp = 4
                 ORDER BY a.nSortierung, s.cName");
         }
@@ -5287,13 +5383,31 @@ namespace NovviaERP.Core.Services
             return await conn.QueryAsync<EigenesFeldWert>(@"
                 SELECT aa.kAuftragAttribut AS KWert, aa.kAuftrag AS KEntity,
                        aa.kAttribut AS KAttribut, s.cName AS CAttributName,
-                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       CASE ft.nDatenTyp WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 ELSE 3 END AS NFeldTyp,
                        NULL AS CWertVarchar, NULL AS NWertInt, NULL AS FWertDecimal, NULL AS DWertDateTime
                 FROM Verkauf.tAuftragAttribut aa
                 JOIN dbo.tAttribut a ON aa.kAttribut = a.kAttribut
-                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                LEFT JOIN dbo.tFeldTyp ft ON a.kFeldTyp = ft.kFeldTyp
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache IN (0, 1)
                 WHERE aa.kAuftrag = @kAuftrag
                 ORDER BY a.nSortierung, s.cName", new { kAuftrag });
+        }
+
+        // ===== FIRMA Eigene Felder (JTL-Tabellen) =====
+
+        public async Task<IEnumerable<EigenesFeldDefinition>> GetFirmaAttributeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            // nBezugstyp = 2 für Firma-Attribute
+            return await conn.QueryAsync<EigenesFeldDefinition>(@"
+                SELECT a.kAttribut AS KAttribut, s.cName AS CName, a.cBeschreibung AS CBeschreibung,
+                       CASE ft.nDatenTyp WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 ELSE 3 END AS NFeldTyp,
+                       a.nSortierung AS NSortierung, 1 AS NAktiv
+                FROM dbo.tAttribut a
+                LEFT JOIN dbo.tFeldTyp ft ON a.kFeldTyp = ft.kFeldTyp
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache IN (0, 1)
+                WHERE a.nIstFreifeld = 1 AND a.nBezugstyp = 2
+                ORDER BY a.nSortierung, s.cName");
         }
 
         // ===== Alle verfügbaren Attribute pro Entität =====
@@ -5306,6 +5420,7 @@ namespace NovviaERP.Core.Services
                 "kunde" => await GetKundeAttributeAsync(),
                 "artikel" => await GetArtikelAttributeAsync(),
                 "auftrag" => await GetAuftragAttributeAsync(),
+                "firma" => await GetFirmaAttributeAsync(),
                 _ => Enumerable.Empty<EigenesFeldDefinition>()
             };
         }

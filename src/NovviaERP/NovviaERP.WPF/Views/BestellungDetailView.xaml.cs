@@ -487,6 +487,40 @@ namespace NovviaERP.WPF.Views
             }
         }
 
+        private async void Loeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_bestellung == null)
+            {
+                MessageBox.Show("Kein Auftrag geladen.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var (canDelete, reason) = await _core.CanDeleteAuftragAsync(_bestellung.KBestellung);
+            if (!canDelete)
+            {
+                MessageBox.Show("Auftrag kann nicht gelöscht werden:\n\n" + reason, "Löschen nicht möglich", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show("Möchten Sie den Auftrag " + _bestellung.CBestellNr + " wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!", "Auftrag löschen?", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            var (success, message) = await _core.DeleteAuftragAsync(_bestellung.KBestellung);
+
+            if (success)
+            {
+                MessageBox.Show(message, "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                Zurueck_Click(sender, e);
+            }
+            else
+            {
+                MessageBox.Show("Fehler beim Löschen:\n\n" + message, "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
         private void KundeOeffnen_Click(object sender, MouseButtonEventArgs e)
         {
             // Im Neuer-Auftrag-Modus: Kunde auswählen

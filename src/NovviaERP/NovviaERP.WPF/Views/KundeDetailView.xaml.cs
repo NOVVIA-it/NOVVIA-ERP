@@ -175,9 +175,10 @@ namespace NovviaERP.WPF.Views
                 dgOnlineshop.ItemsSource = _kunde.OnlineshopKunden;
 
                 // Aufträge, Rechnungen, Gutschriften laden
+                txtStatus.Text = "Lade Belege...";
                 await LadeKundenBelegeAsync();
 
-                txtStatus.Text = $"Kunde {_kunde.CKundenNr} geladen";
+                txtStatus.Text = $"Kunde {_kunde.CKundenNr} geladen - {dgAuftraege.Items.Count} Aufträge, {dgRechnungen.Items.Count} Rechnungen";
             }
             catch (Exception ex)
             {
@@ -198,8 +199,9 @@ namespace NovviaERP.WPF.Views
 
                 // Aufträge laden
                 var auftraege = await conn.QueryAsync<KundeAuftragItem>(@"
-                    SELECT a.kAuftrag, a.cAuftragsNr, a.dErstellt, a.nAuftragStatus,
-                           ae.fVKNettoGesamt AS FGesamtNetto,
+                    SELECT a.kAuftrag AS KAuftrag, a.cAuftragsNr AS CAuftragsNr,
+                           a.dErstellt AS DErstellt, a.nAuftragStatus AS NAuftragStatus,
+                           ISNULL(ae.fWertNetto, 0) AS FGesamtNetto,
                            CASE a.nAuftragStatus
                                WHEN 1 THEN 'Offen'
                                WHEN 2 THEN 'InBearb.'
@@ -218,9 +220,11 @@ namespace NovviaERP.WPF.Views
 
                 // Rechnungen laden
                 var rechnungen = await conn.QueryAsync<KundeRechnungItem>(@"
-                    SELECT r.kRechnung, r.cRechnungsnr AS CRechnungsNr, r.dErstellt,
-                           re.fVKBruttoGesamt AS FGesamtBrutto, re.nZahlungStatus,
-                           CASE re.nZahlungStatus
+                    SELECT r.kRechnung AS KRechnung, r.cRechnungsnr AS CRechnungsNr,
+                           r.dErstellt AS DErstellt,
+                           ISNULL(re.fVkBruttoGesamt, 0) AS FGesamtBrutto,
+                           ISNULL(re.nZahlungStatus, 0) AS NZahlungStatus,
+                           CASE ISNULL(re.nZahlungStatus, 0)
                                WHEN 1 THEN 'Offen'
                                WHEN 2 THEN 'Bezahlt'
                                ELSE 'Sonst.'
@@ -234,14 +238,15 @@ namespace NovviaERP.WPF.Views
                 dgRechnungen.ItemsSource = rechnungenListe;
                 txtRechnungenAnzahl.Text = $"{rechnungenListe.Count} Rechnungen";
 
-                // Gutschriften laden (Rechnungskorrekturen)
+                // Gutschriften laden (aus dbo.tgutschrift)
                 var gutschriften = await conn.QueryAsync<KundeGutschriftItem>(@"
-                    SELECT rk.kRechnungKorrektur, rk.cKorrekturNr AS CGutschriftNr, rk.dErstellt,
-                           rk.fBruttoGesamt AS FGesamtBrutto
-                    FROM Rechnung.tRechnungKorrektur rk
-                    JOIN Rechnung.tRechnung r ON rk.kRechnung = r.kRechnung
-                    WHERE r.kKunde = @KundeId
-                    ORDER BY rk.dErstellt DESC",
+                    SELECT g.kGutschrift AS KGutschrift,
+                           g.cGutschriftNr AS CGutschriftNr,
+                           g.dErstellt AS DErstellt,
+                           ISNULL(g.fPreis, 0) AS FGesamtBrutto
+                    FROM dbo.tgutschrift g
+                    WHERE g.kKunde = @KundeId AND g.nStorno = 0
+                    ORDER BY g.dErstellt DESC",
                     new { KundeId = _kundeId.Value });
                 var gutschriftenListe = gutschriften.ToList();
                 dgGutschriften.ItemsSource = gutschriftenListe;
@@ -250,22 +255,15 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der Kundenbelege: {ex.Message}");
+                txtStatus.Text = $"Fehler Belege: {ex.Message}";
+                MessageBox.Show($"Fehler beim Laden der Belege:\n\n{ex.Message}\n\nStackTrace:\n{ex.StackTrace?.Substring(0, Math.Min(500, ex.StackTrace?.Length ?? 0))}",
+                    "Fehler Belege", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void DgAuftraege_DoubleClick(object sender, MouseButtonEventArgs e)
+        private void AuftragNr_Click(object sender, MouseButtonEventArgs e)
         {
-            OeffneAuftrag();
-        }
-
-        private void AuftragOeffnen_Click(object sender, RoutedEventArgs e)
-        {
-            OeffneAuftrag();
-        }
-
-        private void OeffneAuftrag()
-        {
-            if (dgAuftraege.SelectedItem is KundeAuftragItem auftrag)
+            if (sender is TextBlock tb && tb.DataContext is KundeAuftragItem auftrag)
             {
                 if (Window.GetWindow(this) is MainWindow main)
                 {
@@ -276,25 +274,62 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void DgRechnungen_DoubleClick(object sender, MouseButtonEventArgs e)
+        private void OeffneAuftrag()
         {
-            OeffneRechnung();
+            var selected = dgAuftraege.SelectedItem;
+            if (selected == null)
+            {
+                MessageBox.Show("Bitte einen Auftrag auswählen", "Info");
+                return;
+            }
+
+            if (selected is KundeAuftragItem auftrag)
+            {
+                if (Window.GetWindow(this) is MainWindow main)
+                {
+                    var view = new BestellungDetailView();
+                    view.LadeBestellung(auftrag.KAuftrag);
+                    main.ShowContent(view);
+                }
+            }
+            else
+            {
+                MessageBox.Show($"Unbekannter Typ: {selected.GetType().Name}", "Debug");
+            }
         }
 
-        private void RechnungOeffnen_Click(object sender, RoutedEventArgs e)
+        private void RechnungNr_Click(object sender, MouseButtonEventArgs e)
         {
-            OeffneRechnung();
-        }
-
-        private void OeffneRechnung()
-        {
-            if (dgRechnungen.SelectedItem is KundeRechnungItem rechnung)
+            if (sender is TextBlock tb && tb.DataContext is KundeRechnungItem rechnung)
             {
                 if (Window.GetWindow(this) is MainWindow main)
                 {
                     var view = new RechnungDetailView(rechnung.KRechnung);
                     main.ShowContent(view);
                 }
+            }
+        }
+
+        private void OeffneRechnung()
+        {
+            var selected = dgRechnungen.SelectedItem;
+            if (selected == null)
+            {
+                MessageBox.Show("Bitte eine Rechnung auswählen", "Info");
+                return;
+            }
+
+            if (selected is KundeRechnungItem rechnung)
+            {
+                if (Window.GetWindow(this) is MainWindow main)
+                {
+                    var view = new RechnungDetailView(rechnung.KRechnung);
+                    main.ShowContent(view);
+                }
+            }
+            else
+            {
+                MessageBox.Show($"Unbekannter Typ: {selected.GetType().Name}", "Debug");
             }
         }
 
@@ -321,7 +356,7 @@ namespace NovviaERP.WPF.Views
 
         private class KundeGutschriftItem
         {
-            public int KRechnungKorrektur { get; set; }
+            public int KGutschrift { get; set; }
             public string? CGutschriftNr { get; set; }
             public DateTime? DErstellt { get; set; }
             public decimal FGesamtBrutto { get; set; }

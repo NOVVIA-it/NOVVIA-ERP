@@ -157,5 +157,24 @@ namespace NovviaERP.WPF.Views
                 txtStatus.Text = $"Fehler 360°: {ex.Message}";
             }
         }
+
+        private void AuftragNr_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is TextBlock tb && tb.DataContext is CoreService.KundeAuftragKurz auftrag)
+            {
+                var view = new BestellungDetailView();
+                view.LadeBestellung(auftrag.KBestellung);
+                NavigateTo(view);
+            }
+        }
+
+        private void RechnungNr_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is TextBlock tb && tb.DataContext is CoreService.KundeRechnungKurz rechnung)
+            {
+                var view = new RechnungDetailView(rechnung.KRechnung);
+                NavigateTo(view);
+            }
+        }
     }
 }

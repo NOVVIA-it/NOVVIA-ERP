@@ -428,24 +428,58 @@ namespace NovviaERP.WPF.Views
         private async System.Threading.Tasks.Task LadeEigeneFelderAsync()
         {
             // Lieferant Attribute (NOVVIA - editierbar)
-            var lieferantAttr = await _core.GetLieferantAttributeAsync();
-            dgLieferantAttribute.ItemsSource = lieferantAttr.ToList();
+            try
+            {
+                var lieferantAttr = await _core.GetLieferantAttributeAsync();
+                var liste = lieferantAttr.ToList();
+                dgLieferantAttribute.ItemsSource = liste;
+                System.Diagnostics.Debug.WriteLine($"Lieferant Attribute geladen: {liste.Count} Einträge");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Lieferant Attribute FEHLER: {ex.Message}");
+                // NOVVIA.LieferantAttribut Tabelle fehlt - bitte Setup-EigeneFelderLieferant.sql ausführen
+            }
 
             // Kunde Attribute (JTL - nur Ansicht)
-            var kundeAttr = await _core.GetKundeAttributeAsync();
-            dgKundeAttribute.ItemsSource = kundeAttr.ToList();
+            try
+            {
+                var kundeAttr = await _core.GetKundeAttributeAsync();
+                dgKundeAttribute.ItemsSource = kundeAttr.ToList();
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Kunde Attribute: {ex.Message}"); }
 
             // Artikel Attribute (JTL - nur Ansicht)
-            var artikelAttr = await _core.GetArtikelAttributeAsync();
-            dgArtikelAttribute.ItemsSource = artikelAttr.ToList();
+            try
+            {
+                var artikelAttr = await _core.GetArtikelAttributeAsync();
+                dgArtikelAttribute.ItemsSource = artikelAttr.ToList();
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Artikel Attribute: {ex.Message}"); }
 
             // Auftrag Attribute (JTL - nur Ansicht)
-            var auftragAttr = await _core.GetAuftragAttributeAsync();
-            dgAuftragAttribute.ItemsSource = auftragAttr.ToList();
+            try
+            {
+                var auftragAttr = await _core.GetAuftragAttributeAsync();
+                dgAuftragAttribute.ItemsSource = auftragAttr.ToList();
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Auftrag Attribute: {ex.Message}"); }
 
-            // Firma Eigene Felder (JTL - nur Ansicht)
-            var firmaFelder = await _core.GetFirmaEigeneFelderAsync();
-            dgFirmaEigeneFelder.ItemsSource = firmaFelder.ToList();
+            // Firma Attribute (Definitionen)
+            try
+            {
+                var firmaAttr = await _core.GetFirmaAttributeAsync();
+                dgFirmaAttribute.ItemsSource = firmaAttr.ToList();
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Firma Attribute: {ex.Message}"); }
+
+            // Firma Eigene Felder (Werte) - explizit mit kFirma=1 aufrufen für EigenesFeldWert
+            try
+            {
+                var firmaFelder = await _core.GetFirmaEigeneFelderAsync(1);
+                dgFirmaEigeneFelder.ItemsSource = firmaFelder.ToList();
+            }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Firma Felder: {ex.Message}"); }
         }
 
         #endregion
@@ -460,6 +494,27 @@ namespace NovviaERP.WPF.Views
             cmbLiefAttrTyp.SelectedIndex = 0;
             txtLiefAttrSort.Text = "0";
             txtLiefAttrName.Focus();
+        }
+
+        private void LieferantAttributBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgLieferantAttribute.SelectedItem is CoreService.EigenesFeldDefinition attr)
+            {
+                _selectedLieferantAttributId = attr.KAttribut;
+                txtLiefAttrName.Text = attr.CName ?? "";
+                txtLiefAttrBeschr.Text = attr.CBeschreibung ?? "";
+                // Typ auswählen (1=Text, 2=Ganzzahl, 3=Dezimal, 4=Datum)
+                cmbLiefAttrTyp.SelectedIndex = attr.NFeldTyp switch
+                {
+                    1 => 0, // Text
+                    2 => 1, // Ganzzahl
+                    3 => 2, // Dezimal
+                    4 => 3, // Datum
+                    _ => 0
+                };
+                txtLiefAttrSort.Text = attr.NSortierung.ToString();
+                txtLiefAttrName.Focus();
+            }
         }
 
         private async void LieferantAttributLoeschen_Click(object sender, RoutedEventArgs e)

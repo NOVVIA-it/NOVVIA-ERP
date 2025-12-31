@@ -214,7 +214,14 @@
                                   GridLinesVisibility="None" HeadersVisibility="Column" BorderThickness="0"
                                   RowBackground="White" AlternatingRowBackground="#fafafa" FontSize="11">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Nr" Binding="{Binding CBestellNr}" Width="70"/>
+                                <DataGridTemplateColumn Header="Nr" Width="70">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding CBestellNr}" Foreground="#0066CC" Cursor="Hand"
+                                                       TextDecorations="Underline" MouseLeftButtonUp="AuftragNr_Click"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yy}" Width="65"/>
                                 <DataGridTextColumn Header="Status" Binding="{Binding CStatus}" Width="80"/>
                                 <DataGridTextColumn Header="Betrag" Binding="{Binding GesamtBrutto, StringFormat=N2}" Width="70">
@@ -234,7 +241,14 @@
                                   GridLinesVisibility="None" HeadersVisibility="Column" BorderThickness="0"
                                   RowBackground="White" AlternatingRowBackground="#fafafa" FontSize="11">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Nr" Binding="{Binding CRechnungsNr}" Width="80"/>
+                                <DataGridTemplateColumn Header="Nr" Width="80">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding CRechnungsNr}" Foreground="#0066CC" Cursor="Hand"
+                                                       TextDecorations="Underline" MouseLeftButtonUp="RechnungNr_Click"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Datum" Binding="{Binding DRechnungsdatum, StringFormat=dd.MM.yy}" Width="65"/>
                                 <DataGridTextColumn Header="Betrag" Binding="{Binding FBetragBrutto, StringFormat=N2}" Width="70">
                                     <DataGridTextColumn.ElementStyle>

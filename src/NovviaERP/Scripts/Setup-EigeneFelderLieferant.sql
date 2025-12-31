@@ -5,7 +5,7 @@
 -- daher legen wir diese in NOVVIA-Schema an.
 -- =====================================================
 
-USE [Mandant_1]
+USE [eazybusiness]
 GO
 
 -- Schema sicherstellen
