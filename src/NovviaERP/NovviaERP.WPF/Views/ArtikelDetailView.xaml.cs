@@ -114,6 +114,8 @@ namespace NovviaERP.WPF.Views
                     txtBarcode.Text = _artikel.CBarcode;
                     txtHAN.Text = _artikel.CHAN;
                     txtSuchbegriffe.Text = _artikel.CSuchbegriffe;
+                    txtGTIN.Text = _artikel.CGTIN;
+                    txtSortierung.Text = _artikel.NSort.ToString();
 
                     // Beschreibung
                     txtName.Text = _artikel.Name;
@@ -366,6 +368,8 @@ namespace NovviaERP.WPF.Views
                 _artikel.CBarcode = txtBarcode.Text.Trim();
                 _artikel.CHAN = txtHAN.Text.Trim();
                 _artikel.CSuchbegriffe = txtSuchbegriffe.Text.Trim();
+                _artikel.CGTIN = txtGTIN.Text.Trim();
+                _artikel.NSort = int.TryParse(txtSortierung.Text, out var sort) ? sort : 0;
 
                 _artikel.Name = txtName.Text.Trim();
                 _artikel.Beschreibung = txtBeschreibung.Text.Trim();

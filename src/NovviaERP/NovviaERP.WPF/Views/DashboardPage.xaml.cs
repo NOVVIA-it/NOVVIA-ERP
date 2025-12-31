@@ -210,19 +210,20 @@ namespace NovviaERP.WPF.Views
             {
                 var conn = await _db.GetConnectionAsync();
 
+                // JTL-Status: Prüfen ob Lieferschein/Rechnung existiert
                 var daten = await conn.QueryAsync<StatusDaten>(@"
-                    SELECT
-                        CASE nAuftragStatus
-                            WHEN 1 THEN 'Offen'
-                            WHEN 2 THEN 'In Bearbeitung'
-                            WHEN 3 THEN 'Versendet'
-                            WHEN 4 THEN 'Bezahlt'
-                            ELSE 'Sonstige'
-                        END AS Status,
-                        COUNT(*) AS Anzahl
-                    FROM Verkauf.tAuftrag
-                    WHERE dErstellt >= DATEADD(DAY, -30, GETDATE()) AND nStorno = 0
-                    GROUP BY nAuftragStatus
+                    SELECT Status, COUNT(*) AS Anzahl FROM (
+                        SELECT
+                            CASE
+                                WHEN EXISTS (SELECT 1 FROM Rechnung.tRechnung r WHERE r.kAuftrag = a.kAuftrag AND r.nStorno = 0) THEN 'Abgerechnet'
+                                WHEN EXISTS (SELECT 1 FROM Lieferschein.tLieferschein ls WHERE ls.kAuftrag = a.kAuftrag) THEN 'Versendet'
+                                WHEN a.nAuftragStatus = 0 THEN 'Offen'
+                                ELSE 'Sonstige'
+                            END AS Status
+                        FROM Verkauf.tAuftrag a
+                        WHERE a.dErstellt >= DATEADD(DAY, -90, GETDATE()) AND a.nStorno = 0
+                    ) t
+                    GROUP BY Status
                 ");
 
                 var liste = daten.ToList();

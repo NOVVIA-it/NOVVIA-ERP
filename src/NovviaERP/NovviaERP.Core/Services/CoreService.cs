@@ -281,6 +281,8 @@ namespace NovviaERP.Core.Services
             public string? CUPC { get; set; }
             public string? CASIN { get; set; }
             public string? CEpid { get; set; }
+            public string? CGTIN { get; set; }
+            public int NSort { get; set; }
 
             // Beschreibung (aus tArtikelBeschreibung)
             public string? Name { get; set; }
@@ -1133,7 +1135,7 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
 
             var artikel = await conn.QuerySingleOrDefaultAsync<ArtikelDetail>(@"
-                SELECT a.kArtikel, a.cArtNr, a.cBarcode, a.cHAN, a.cISBN, a.cUPC, a.cASIN,
+                SELECT a.kArtikel, a.cArtNr, a.cBarcode, a.cHAN, a.cISBN, a.cUPC, a.cASIN, a.cGTIN, a.nSort,
                        a.fVKNetto, a.fUVP, a.fEKNetto, a.nLagerbestand, a.nMidestbestand,
                        a.cLagerArtikel, a.cAktiv, a.cTopArtikel, a.cNeu, a.cTeilbar,
                        a.fGewicht, a.fArtGewicht, a.fBreite, a.fHoehe, a.fLaenge, a.fPackeinheit,
@@ -1270,7 +1272,7 @@ namespace NovviaERP.Core.Services
             {
                 await conn.ExecuteAsync(@"
                     UPDATE tArtikel SET
-                        cArtNr = @CArtNr, cBarcode = @CBarcode, cHAN = @CHAN, cISBN = @CISBN,
+                        cArtNr = @CArtNr, cBarcode = @CBarcode, cHAN = @CHAN, cISBN = @CISBN, cGTIN = @CGTIN, nSort = @NSort,
                         fVKNetto = @FVKNetto, fUVP = @FUVP, fEKNetto = @FEKNetto,
                         nMidestbestand = @NMidestbestand, cLagerArtikel = @CLagerArtikel,
                         fGewicht = @FGewicht, fBreite = @FBreite, fHoehe = @FHoehe, fLaenge = @FLaenge,
