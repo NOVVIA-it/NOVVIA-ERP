@@ -14,7 +14,6 @@ namespace NovviaERP.WPF.Views
         private int? _selectedKundenkategorieId;
         private int? _selectedZahlungsartId;
         private int? _selectedVersandartId;
-        private int? _selectedLieferantAttributId;
 
         public EinstellungenView()
         {
@@ -427,19 +426,20 @@ namespace NovviaERP.WPF.Views
 
         private async System.Threading.Tasks.Task LadeEigeneFelderAsync()
         {
-            // Lieferant Attribute (NOVVIA - editierbar)
-            try
+            // Lieferant Erweitert - statische Feldliste anzeigen
+            var lieferantFelder = new[]
             {
-                var lieferantAttr = await _core.GetLieferantAttributeAsync();
-                var liste = lieferantAttr.ToList();
-                dgLieferantAttribute.ItemsSource = liste;
-                System.Diagnostics.Debug.WriteLine($"Lieferant Attribute geladen: {liste.Count} Einträge");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Lieferant Attribute FEHLER: {ex.Message}");
-                // NOVVIA.LieferantAttribut Tabelle fehlt - bitte Setup-EigeneFelderLieferant.sql ausführen
-            }
+                new { Feldname = "nAmbient", Beschreibung = "Liefert Ambient-Produkte", Typ = "Checkbox" },
+                new { Feldname = "nCool", Beschreibung = "Liefert Kühlware", Typ = "Checkbox" },
+                new { Feldname = "nMedcan", Beschreibung = "Liefert Medizinal-Cannabis", Typ = "Checkbox" },
+                new { Feldname = "nTierarznei", Beschreibung = "Liefert Tierarzneimittel", Typ = "Checkbox" },
+                new { Feldname = "dQualifiziertAm", Beschreibung = "Datum der Qualifizierung", Typ = "Datum" },
+                new { Feldname = "cQualifiziertVon", Beschreibung = "Wer hat qualifiziert", Typ = "Text" },
+                new { Feldname = "cQualifikationsDocs", Beschreibung = "Pfad zu Dokumenten", Typ = "Text" },
+                new { Feldname = "cGDP", Beschreibung = "Good Distribution Practice", Typ = "Text" },
+                new { Feldname = "cGMP", Beschreibung = "Good Manufacturing Practice", Typ = "Text" }
+            };
+            dgLieferantErweitertFelder.ItemsSource = lieferantFelder;
 
             // Kunde Attribute (JTL - nur Ansicht)
             try
@@ -484,99 +484,9 @@ namespace NovviaERP.WPF.Views
 
         #endregion
 
-        #region Lieferant Attribute (NOVVIA)
-
-        private void LieferantAttributNeu_Click(object sender, RoutedEventArgs e)
-        {
-            _selectedLieferantAttributId = null;
-            txtLiefAttrName.Text = "";
-            txtLiefAttrBeschr.Text = "";
-            cmbLiefAttrTyp.SelectedIndex = 0;
-            txtLiefAttrSort.Text = "0";
-            txtLiefAttrName.Focus();
-        }
-
-        private void LieferantAttributBearbeiten_Click(object sender, RoutedEventArgs e)
-        {
-            if (dgLieferantAttribute.SelectedItem is CoreService.EigenesFeldDefinition attr)
-            {
-                _selectedLieferantAttributId = attr.KAttribut;
-                txtLiefAttrName.Text = attr.CName ?? "";
-                txtLiefAttrBeschr.Text = attr.CBeschreibung ?? "";
-                // Typ auswählen (1=Text, 2=Ganzzahl, 3=Dezimal, 4=Datum)
-                cmbLiefAttrTyp.SelectedIndex = attr.NFeldTyp switch
-                {
-                    1 => 0, // Text
-                    2 => 1, // Ganzzahl
-                    3 => 2, // Dezimal
-                    4 => 3, // Datum
-                    _ => 0
-                };
-                txtLiefAttrSort.Text = attr.NSortierung.ToString();
-                txtLiefAttrName.Focus();
-            }
-        }
-
-        private async void LieferantAttributLoeschen_Click(object sender, RoutedEventArgs e)
-        {
-            if (dgLieferantAttribute.SelectedItem is not CoreService.EigenesFeldDefinition attr) return;
-
-            if (MessageBox.Show($"Attribut '{attr.CName}' wirklich loeschen?\nAlle zugeordneten Werte werden ebenfalls geloescht!",
-                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-
-            try
-            {
-                await _core.DeleteLieferantAttributAsync(attr.KAttribut);
-                await LadeEigeneFelderAsync();
-                LieferantAttributNeu_Click(sender, e);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private async void LieferantAttributSpeichern_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(txtLiefAttrName.Text))
-            {
-                MessageBox.Show("Bitte einen Namen eingeben!", "Validierung", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            try
-            {
-                int.TryParse(txtLiefAttrSort.Text, out var sort);
-                var feldTyp = int.Parse((cmbLiefAttrTyp.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "1");
-
-                var attr = new CoreService.EigenesFeldDefinition
-                {
-                    KAttribut = _selectedLieferantAttributId ?? 0,
-                    CName = txtLiefAttrName.Text.Trim(),
-                    CBeschreibung = txtLiefAttrBeschr.Text.Trim(),
-                    NFeldTyp = feldTyp,
-                    NSortierung = sort,
-                    NAktiv = true
-                };
-
-                await _core.SaveLieferantAttributAsync(attr);
-                await LadeEigeneFelderAsync();
-
-                // Formular leeren
-                _selectedLieferantAttributId = null;
-                txtLiefAttrName.Text = "";
-                txtLiefAttrBeschr.Text = "";
-                cmbLiefAttrTyp.SelectedIndex = 0;
-                txtLiefAttrSort.Text = "0";
-
-                MessageBox.Show("Attribut gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
+        #region Lieferant Erweitert (NOVVIA)
+        // LieferantErweitert wird pro Lieferant in LieferantenView.xaml.cs bearbeitet
+        // Hier wird nur die Feldliste angezeigt
         #endregion
     }
 }

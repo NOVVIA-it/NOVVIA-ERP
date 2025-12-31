@@ -5143,12 +5143,14 @@ namespace NovviaERP.Core.Services
             try
             {
                 var conn = await GetConnectionAsync();
-                return await conn.QueryAsync<EigenesFeldDefinition>(@"
+                // Alle Lieferant-Attribute laden (ohne nAktiv Filter, da Benutzer evtl. noch keine aktiven hat)
+                var result = await conn.QueryAsync<EigenesFeldDefinition>(@"
                     SELECT kLieferantAttribut AS KAttribut, cName AS CName, cBeschreibung AS CBeschreibung,
-                           nFeldTyp AS NFeldTyp, nSortierung AS NSortierung, nAktiv AS NAktiv
+                           nFeldTyp AS NFeldTyp, nSortierung AS NSortierung, ISNULL(nAktiv, 1) AS NAktiv
                     FROM NOVVIA.LieferantAttribut
-                    WHERE nAktiv = 1
                     ORDER BY nSortierung, cName");
+                _log.Information("NOVVIA.LieferantAttribut: {Count} Einträge gefunden", result.Count());
+                return result;
             }
             catch (Exception ex)
             {
