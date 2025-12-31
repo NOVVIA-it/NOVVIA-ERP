@@ -949,20 +949,24 @@ BEGIN
     SET NOCOUNT ON;
 
     DECLARE @nPharmaAktiv BIT;
+    DECLARE @cRechtSchluessel NVARCHAR(100);
+
     EXEC NOVVIA.spIstPharmaModusAktiv @nAktiv = @nPharmaAktiv OUTPUT;
 
     IF @nPharmaAktiv = 0
     BEGIN
         -- Kein Pharma-Modus: Jeder mit Bearbeiten-Recht darf
+        SET @cRechtSchluessel = @cModul + '.Bearbeiten';
         EXEC NOVVIA.spHatRecht @kBenutzer = @kBenutzer,
-                              @cRechtSchluessel = @cModul + '.Bearbeiten',
+                              @cRechtSchluessel = @cRechtSchluessel,
                               @nHatRecht = @nDarf OUTPUT;
     END
     ELSE
     BEGIN
         -- Pharma-Modus: Nur RP-Rolle darf Validierung bearbeiten
+        SET @cRechtSchluessel = @cModul + '.ValidierungBearbeiten';
         EXEC NOVVIA.spHatRecht @kBenutzer = @kBenutzer,
-                              @cRechtSchluessel = @cModul + '.ValidierungBearbeiten',
+                              @cRechtSchluessel = @cRechtSchluessel,
                               @nHatRecht = @nDarf OUTPUT;
     END
 END
