@@ -532,6 +532,47 @@ sqlcmd -S "localhost\S03NOVVIA" -d "Mandant_1" -E -i "Scripts\Setup-NOVVIA-Benut
 - `NOVVIA.spBenutzerRechteAbfragen` - Alle Rechte eines Benutzers
 - `NOVVIA.spFehlversuchRegistrieren` - Bei falschem Passwort (Auto-Sperre nach 5x)
 
+### Code-Änderungen (31.12.2024)
+
+**Eigene Felder - Verbesserungen:**
+- `GetFirmaAttributeAsync()` - Firma Attribut-Definitionen laden (nBezugstyp = 2)
+- `WertAnzeige` Property in `EigenesFeldWert` - formatierte Anzeige (Checkbox → Ja/Nein)
+- Firma Eigene Felder: Zeigt jetzt Attribut-Definitionen UND Werte
+- PHARMA Checkbox wird als "Ja/Nein" angezeigt (nicht mehr "1/0")
+
+**Lieferant Eigene Felder:**
+- Verwendet `NOVVIA.LieferantErweitert` (nicht LieferantAttribut!)
+- Lieferant-Tab zeigt statische Feldliste (Ambient, Cool, Medcan, GDP, GMP etc.)
+- Bearbeitung erfolgt pro Lieferant in der Lieferanten-Ansicht
+- Alte LieferantAttribut-Handler entfernt
+
+**Auftrag Löschen:**
+- Neuer "Löschen" Button (rot) in BestellungDetailView
+- `CanDeleteAuftragAsync()` - Prüft ob Lieferschein/Rechnung existiert
+- `DeleteAuftragAsync()` - Löscht Auftrag mit allen verknüpften Daten
+- Nur möglich wenn KEIN Lieferschein und KEINE Rechnung vorhanden
+
+**Kundenansicht - Klickbare Nummern:**
+- Auftragsnummern in Kunden-360°-Ansicht sind klickbar
+- Rechnungsnummern in Kunden-360°-Ansicht sind klickbar
+- Navigation direkt zu BestellungDetailView / RechnungDetailView
+
+**Menü bereinigt:**
+- "Import (alt)" entfernt
+- "Eigene Felder" (standalone) entfernt
+- "TEST" entfernt
+
+**SQL Fixes:**
+- JOINs in CoreService.cs formatiert (Leerzeichen zwischen Tabellennamen und JOINs)
+- FeldTypName Mapping korrigiert: 1=Ganzzahl, 2=Dezimal, 3=Text, 4=Datum
+
+**Wichtige Dateien geändert:**
+- `CoreService.cs` - GetFirmaAttributeAsync, WertAnzeige, Delete-Methoden
+- `EinstellungenView.xaml/cs` - Firma/Lieferant Tabs überarbeitet
+- `BestellungDetailView.xaml/cs` - Löschen-Button + Handler
+- `KundenView.xaml/cs` - Klickbare Auftrag/Rechnungsnummern
+- `MainWindow.xaml` - Menü bereinigt
+
 ### Nach PC-Neustart
 
 1. Build ausführen:
