@@ -84,6 +84,7 @@
 
                     <TextBlock Text="LOGISTIK" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
                     <Button Style="{StaticResource NavButton}" Content="Lager" Click="NavLager_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="Chargen" Click="NavChargen_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Versand" Click="NavVersand_Click"/>
 
                     <TextBlock Text="TOOLS" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>

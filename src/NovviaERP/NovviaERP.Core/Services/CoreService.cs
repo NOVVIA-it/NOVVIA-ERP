@@ -3264,6 +3264,7 @@ namespace NovviaERP.Core.Services
             const string sql = @"
                 SELECT kWarenLager AS KWarenLager, cName AS CName
                 FROM dbo.tWarenLager
+                WHERE nAktiv = 1
                 ORDER BY cName";
             return await conn.QueryAsync<WarenlagerRef>(sql);
         }
@@ -5659,6 +5660,489 @@ namespace NovviaERP.Core.Services
             public decimal VKNetto { get; set; }
             public decimal EKNetto { get; set; }
             public decimal Gewicht { get; set; }
+        }
+
+        #endregion
+
+        #region Rechnungen Übersicht
+
+        /// <summary>
+        /// Alle Rechnungen laden mit optionalen Filtern
+        /// </summary>
+        public async Task<IEnumerable<RechnungUebersicht>> GetAllRechnungenAsync(
+            string? suche = null,
+            int? status = null,
+            DateTime? vonDatum = null,
+            DateTime? bisDatum = null,
+            int limit = 500)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@Limit)
+                    r.kRechnung AS KRechnung,
+                    r.cRechnungsnr AS CRechnungsNr,
+                    r.dErstellt AS DErstellt,
+                    DATEADD(DAY, r.nZahlungszielTage, r.dErstellt) AS DFaellig,
+                    CASE WHEN ISNULL(zahlung.Summe, 0) >= ISNULL(pos.Brutto, 0) THEN r.dErstellt ELSE NULL END AS DBezahlt,
+                    ISNULL(pos.Netto, 0) AS FNetto,
+                    ISNULL(pos.Brutto, 0) AS FBrutto,
+                    r.nStorno AS NStorno,
+                    0 AS NTyp,
+                    ISNULL(ra.cVorname + ' ', '') + ISNULL(ra.cName, '') AS KundeName,
+                    ISNULL(ra.cFirma, '') AS KundeFirma,
+                    r.kKunde AS KKunde,
+                    a.cAuftragsNr AS CAuftragNr,
+                    ar.kAuftrag AS KAuftrag,
+                    ISNULL(zahlung.Summe, 0) AS FBezahlt,
+                    0 AS NMahnstufe
+                FROM Rechnung.tRechnung r
+                LEFT JOIN Rechnung.tRechnungAdresse ra ON r.kRechnung = ra.kRechnung AND ra.nTyp = 0
+                LEFT JOIN Verkauf.tAuftragRechnung ar ON r.kRechnung = ar.kRechnung
+                LEFT JOIN Verkauf.tAuftrag a ON ar.kAuftrag = a.kAuftrag
+                LEFT JOIN (
+                    SELECT kRechnung,
+                           SUM(fAnzahl * fVkNetto * (1 - fRabatt/100)) AS Netto,
+                           SUM(fAnzahl * fVkNetto * (1 - fRabatt/100) * (1 + fMwSt/100)) AS Brutto
+                    FROM Rechnung.tRechnungPosition
+                    GROUP BY kRechnung
+                ) pos ON r.kRechnung = pos.kRechnung
+                LEFT JOIN (
+                    SELECT kRechnung, SUM(fBetrag) AS Summe
+                    FROM dbo.tZahlung
+                    WHERE kRechnung IS NOT NULL
+                    GROUP BY kRechnung
+                ) zahlung ON r.kRechnung = zahlung.kRechnung
+                WHERE r.nIstProforma = 0";
+
+            if (!string.IsNullOrEmpty(suche))
+                sql += @" AND (r.cRechnungsnr LIKE @Suche
+                          OR ra.cFirma LIKE @Suche
+                          OR ra.cName LIKE @Suche
+                          OR a.cAuftragsNr LIKE @Suche)";
+
+            if (status.HasValue)
+            {
+                if (status == 0) // Offen
+                    sql += " AND ISNULL(zahlung.Summe, 0) < ISNULL(pos.Brutto, 0) AND r.nStorno = 0";
+                else if (status == 1) // Bezahlt
+                    sql += " AND ISNULL(zahlung.Summe, 0) >= ISNULL(pos.Brutto, 0)";
+                else if (status == 2) // Überfällig
+                    sql += " AND ISNULL(zahlung.Summe, 0) < ISNULL(pos.Brutto, 0) AND r.nStorno = 0 AND DATEADD(DAY, r.nZahlungszielTage, r.dErstellt) < GETDATE()";
+                else if (status == 3) // Storniert
+                    sql += " AND r.nStorno = 1";
+            }
+
+            if (vonDatum.HasValue)
+                sql += " AND r.dErstellt >= @VonDatum";
+            if (bisDatum.HasValue)
+                sql += " AND r.dErstellt <= @BisDatum";
+
+            sql += " ORDER BY r.dErstellt DESC";
+
+            return await conn.QueryAsync<RechnungUebersicht>(sql, new
+            {
+                Limit = limit,
+                Suche = $"%{suche}%",
+                VonDatum = vonDatum,
+                BisDatum = bisDatum
+            });
+        }
+
+        public class RechnungUebersicht
+        {
+            public int KRechnung { get; set; }
+            public string CRechnungsNr { get; set; } = "";
+            public DateTime DErstellt { get; set; }
+            public DateTime? DFaellig { get; set; }
+            public DateTime? DBezahlt { get; set; }
+            public decimal FNetto { get; set; }
+            public decimal FBrutto { get; set; }
+            public bool NStorno { get; set; }
+            public int NTyp { get; set; }
+            public string KundeName { get; set; } = "";
+            public string KundeFirma { get; set; } = "";
+            public int KKunde { get; set; }
+            public string? CAuftragNr { get; set; }
+            public int? KAuftrag { get; set; }
+            public decimal FBezahlt { get; set; }
+            public int NMahnstufe { get; set; }
+
+            public decimal Offen => FBrutto - FBezahlt;
+            public string Status => NStorno ? "Storniert" : (DBezahlt.HasValue ? "Bezahlt" : (DFaellig < DateTime.Today ? "Überfällig" : "Offen"));
+            public string StatusFarbe => NStorno ? "#dc3545" : (DBezahlt.HasValue ? "#28a745" : (DFaellig < DateTime.Today ? "#dc3545" : "#ffc107"));
+            public string TypName => NTyp switch { 0 => "Rechnung", 1 => "Rechnung", 2 => "Gutschrift", _ => "Rechnung" };
+        }
+
+        #endregion
+
+        #region Lager Übersicht
+
+        /// <summary>
+        /// Lagerbestände laden mit optionalen Filtern
+        /// </summary>
+        public async Task<IEnumerable<LagerbestandUebersicht>> GetLagerbestaendeAsync(
+            int? kWarenlager = null,
+            string? suche = null,
+            bool nurMitBestand = false,
+            int limit = 1000)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@Limit)
+                    a.kArtikel AS KArtikel,
+                    a.cArtNr AS CArtNr,
+                    ISNULL(ab.cName, '') AS CName,
+                    ISNULL(a.cBarcode, '') AS CBarcode,
+                    wl.kWarenLager AS KWarenLager,
+                    wl.cName AS CLagerName,
+                    ISNULL(lbp.fBestand, 0) AS FVerfuegbar,
+                    ISNULL(lb.fInAuftraegen, 0) AS FReserviert,
+                    ISNULL(lbp.fBestand, 0) + ISNULL(lb.fInAuftraegen, 0) AS FGesamt,
+                    ISNULL(a.nMidestbestand, 0) AS FMindestbestand,
+                    h.cName AS CHersteller
+                FROM dbo.tArtikel a
+                LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 AND ab.kPlattform = 1
+                LEFT JOIN dbo.tHersteller h ON a.kHersteller = h.kHersteller
+                LEFT JOIN dbo.tlagerbestand lb ON a.kArtikel = lb.kArtikel
+                CROSS JOIN dbo.tWarenLager wl
+                LEFT JOIN dbo.vLagerbestandProLager lbp ON a.kArtikel = lbp.kArtikel AND wl.kWarenLager = lbp.kWarenlager
+                WHERE a.cAktiv = 'Y' AND wl.nAktiv = 1";
+
+            if (kWarenlager.HasValue)
+                sql += " AND wl.kWarenLager = @KWarenlager";
+
+            if (!string.IsNullOrEmpty(suche))
+                sql += @" AND (a.cArtNr LIKE @Suche
+                          OR ab.cName LIKE @Suche
+                          OR a.cBarcode LIKE @Suche)";
+
+            if (nurMitBestand)
+                sql += " AND ISNULL(lbp.fBestand, 0) > 0";
+
+            sql += " ORDER BY a.cArtNr";
+
+            return await conn.QueryAsync<LagerbestandUebersicht>(sql, new
+            {
+                Limit = limit,
+                KWarenlager = kWarenlager,
+                Suche = $"%{suche}%"
+            });
+        }
+
+        /// <summary>
+        /// Lagerbewegungen laden (Eingänge und Ausgänge)
+        /// </summary>
+        public async Task<IEnumerable<LagerbewegungUebersicht>> GetLagerbewegungenAsync(
+            int? kArtikel = null,
+            int? kWarenlager = null,
+            DateTime? vonDatum = null,
+            int limit = 200)
+        {
+            var conn = await GetConnectionAsync();
+            // Kombiniere Wareneingänge und Warenausgänge
+            var sql = @"
+                SELECT TOP (@Limit) * FROM (
+                    -- Wareneingänge (positiv)
+                    SELECT
+                        we.kWarenLagerEingang AS KLog,
+                        we.kArtikel AS KArtikel,
+                        a.cArtNr AS CArtNr,
+                        ISNULL(ab.cName, '') AS CArtikelName,
+                        wl.kWarenLager AS KWarenLager,
+                        wl.cName AS CLagerName,
+                        we.fAnzahl AS FMenge,
+                        'Wareneingang' AS CGrund,
+                        'Eingang' AS CTyp,
+                        we.dErstellt AS DErstellt,
+                        ISNULL(we.cKommentar, we.cLieferscheinNr) AS CHinweis
+                    FROM dbo.tWarenLagerEingang we
+                    JOIN dbo.tArtikel a ON we.kArtikel = a.kArtikel
+                    LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 AND ab.kPlattform = 1
+                    LEFT JOIN dbo.tWarenLagerPlatz wlp ON we.kWarenLagerPlatz = wlp.kWarenLagerPlatz
+                    LEFT JOIN dbo.tWarenLager wl ON wlp.kWarenLager = wl.kWarenLager
+                    WHERE we.fAnzahl <> 0
+
+                    UNION ALL
+
+                    -- Warenausgänge (negativ)
+                    SELECT
+                        wa.kWarenLagerAusgang AS KLog,
+                        wa.kArtikel AS KArtikel,
+                        a.cArtNr AS CArtNr,
+                        ISNULL(ab.cName, '') AS CArtikelName,
+                        wl.kWarenLager AS KWarenLager,
+                        wl.cName AS CLagerName,
+                        -wa.fAnzahl AS FMenge,
+                        'Warenausgang' AS CGrund,
+                        'Ausgang' AS CTyp,
+                        wa.dErstellt AS DErstellt,
+                        wa.cKommentar AS CHinweis
+                    FROM dbo.tWarenLagerAusgang wa
+                    JOIN dbo.tArtikel a ON wa.kArtikel = a.kArtikel
+                    LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 AND ab.kPlattform = 1
+                    LEFT JOIN dbo.tWarenLagerPlatz wlp ON wa.kWarenLagerPlatz = wlp.kWarenLagerPlatz
+                    LEFT JOIN dbo.tWarenLager wl ON wlp.kWarenLager = wl.kWarenLager
+                    WHERE wa.fAnzahl <> 0
+                ) bewegungen
+                WHERE 1=1";
+
+            if (kArtikel.HasValue)
+                sql += " AND kArtikel = @KArtikel";
+            if (kWarenlager.HasValue)
+                sql += " AND kWarenLager = @KWarenlager";
+            if (vonDatum.HasValue)
+                sql += " AND dErstellt >= @VonDatum";
+
+            sql += " ORDER BY dErstellt DESC";
+
+            return await conn.QueryAsync<LagerbewegungUebersicht>(sql, new
+            {
+                Limit = limit,
+                KArtikel = kArtikel,
+                KWarenlager = kWarenlager,
+                VonDatum = vonDatum
+            });
+        }
+
+        public class LagerbestandUebersicht
+        {
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CName { get; set; } = "";
+            public string CBarcode { get; set; } = "";
+            public int KWarenLager { get; set; }
+            public string CLagerName { get; set; } = "";
+            public decimal FVerfuegbar { get; set; }
+            public decimal FReserviert { get; set; }
+            public decimal FGesamt { get; set; }
+            public decimal FMindestbestand { get; set; }
+            public string? CHersteller { get; set; }
+
+            public bool IstUnterMindestbestand => FMindestbestand > 0 && FVerfuegbar < FMindestbestand;
+        }
+
+        public class LagerbewegungUebersicht
+        {
+            public int KLog { get; set; }
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CArtikelName { get; set; } = "";
+            public int KWarenLager { get; set; }
+            public string CLagerName { get; set; } = "";
+            public decimal FMenge { get; set; }
+            public string? CGrund { get; set; }
+            public string? CTyp { get; set; }
+            public DateTime DErstellt { get; set; }
+            public string? CHinweis { get; set; }
+
+            public string MengeText => FMenge >= 0 ? $"+{FMenge:N0}" : FMenge.ToString("N0");
+            public string MengeFarbe => FMenge >= 0 ? "#28a745" : "#dc3545";
+        }
+
+        #endregion
+
+        #region Chargen-Management
+
+        /// <summary>
+        /// Chargenbestände laden mit optionalen Filtern
+        /// </summary>
+        public async Task<IEnumerable<ChargenBestand>> GetChargenBestaendeAsync(
+            int? kArtikel = null,
+            int? kWarenlager = null,
+            string? suche = null,
+            bool nurGesperrt = false,
+            bool nurQuarantaene = false,
+            bool nurAbgelaufen = false,
+            int limit = 500)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@Limit)
+                    we.kWarenLagerEingang AS KWarenLagerEingang,
+                    we.kArtikel AS KArtikel,
+                    a.cArtNr AS CArtNr,
+                    ISNULL(ab.cName, '') AS CArtikelName,
+                    we.cChargenNr AS CChargenNr,
+                    we.dMHD AS DMHD,
+                    we.fAnzahlAktuell AS FBestand,
+                    we.fAnzahl AS FEingang,
+                    wlp.kWarenLager AS KWarenLager,
+                    ISNULL(wl.cName, 'Unbekannt') AS CLagerName,
+                    we.dErstellt AS DEingang,
+                    we.cLieferscheinNr AS CLieferscheinNr,
+                    ISNULL(cs.nGesperrt, 0) AS NGesperrt,
+                    ISNULL(cs.nQuarantaene, 0) AS NQuarantaene,
+                    cs.cSperrgrund AS CSperrgrund,
+                    cs.dGesperrtAm AS DGesperrtAm,
+                    CASE
+                        WHEN we.dMHD IS NULL THEN 'Kein MHD'
+                        WHEN we.dMHD < GETDATE() THEN 'Abgelaufen'
+                        WHEN we.dMHD < DATEADD(DAY, 30, GETDATE()) THEN 'Bald ablaufend'
+                        ELSE 'OK'
+                    END AS CMHDStatus,
+                    DATEDIFF(DAY, GETDATE(), we.dMHD) AS NTageRestMHD
+                FROM dbo.tWarenLagerEingang we
+                JOIN dbo.tArtikel a ON we.kArtikel = a.kArtikel
+                LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 AND ab.kPlattform = 1
+                LEFT JOIN dbo.tWarenLagerPlatz wlp ON we.kWarenLagerPlatz = wlp.kWarenLagerPlatz
+                LEFT JOIN dbo.tWarenLager wl ON wlp.kWarenLager = wl.kWarenLager
+                LEFT JOIN NOVVIA.ChargenStatus cs ON we.kWarenLagerEingang = cs.kWarenLagerEingang
+                WHERE we.cChargenNr IS NOT NULL
+                  AND we.cChargenNr <> ''
+                  AND we.fAnzahlAktuell > 0";
+
+            if (kArtikel.HasValue)
+                sql += " AND we.kArtikel = @KArtikel";
+            if (kWarenlager.HasValue)
+                sql += " AND wlp.kWarenLager = @KWarenlager";
+            if (!string.IsNullOrEmpty(suche))
+                sql += @" AND (we.cChargenNr LIKE @Suche OR a.cArtNr LIKE @Suche OR ab.cName LIKE @Suche)";
+            if (nurGesperrt)
+                sql += " AND ISNULL(cs.nGesperrt, 0) = 1";
+            if (nurQuarantaene)
+                sql += " AND ISNULL(cs.nQuarantaene, 0) = 1";
+            if (nurAbgelaufen)
+                sql += " AND we.dMHD < GETDATE()";
+
+            sql += " ORDER BY we.dMHD, we.cChargenNr";
+
+            return await conn.QueryAsync<ChargenBestand>(sql, new
+            {
+                Limit = limit,
+                KArtikel = kArtikel,
+                KWarenlager = kWarenlager,
+                Suche = $"%{suche}%"
+            });
+        }
+
+        /// <summary>
+        /// Chargenverfolgung: Alle Bewegungen einer Charge
+        /// </summary>
+        public async Task<IEnumerable<ChargenBewegung>> GetChargenVerfolgungAsync(string chargenNr, int? kArtikel = null)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT
+                    cb.kChargenBewegung AS KChargenBewegung,
+                    cb.kWarenLagerEingang AS KWarenLagerEingang,
+                    cb.kArtikel AS KArtikel,
+                    a.cArtNr AS CArtNr,
+                    cb.cChargenNr AS CChargenNr,
+                    cb.cAktion AS CAktion,
+                    cb.cGrund AS CGrund,
+                    cb.cHinweis AS CHinweis,
+                    cb.kVonWarenLager AS KVonWarenLager,
+                    wlVon.cName AS CVonLagerName,
+                    cb.kNachWarenLager AS KNachWarenLager,
+                    wlNach.cName AS CNachLagerName,
+                    cb.fMenge AS FMenge,
+                    cb.kBenutzer AS KBenutzer,
+                    cb.dErstellt AS DErstellt
+                FROM NOVVIA.ChargenBewegung cb
+                JOIN dbo.tArtikel a ON cb.kArtikel = a.kArtikel
+                LEFT JOIN dbo.tWarenLager wlVon ON cb.kVonWarenLager = wlVon.kWarenLager
+                LEFT JOIN dbo.tWarenLager wlNach ON cb.kNachWarenLager = wlNach.kWarenLager
+                WHERE cb.cChargenNr = @ChargenNr";
+
+            if (kArtikel.HasValue)
+                sql += " AND cb.kArtikel = @KArtikel";
+
+            sql += " ORDER BY cb.dErstellt DESC";
+
+            return await conn.QueryAsync<ChargenBewegung>(sql, new { ChargenNr = chargenNr, KArtikel = kArtikel });
+        }
+
+        /// <summary>
+        /// Charge sperren
+        /// </summary>
+        public async Task ChargeSperre(int kWarenLagerEingang, string sperrgrund, string? sperrvermerk, int kBenutzer)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("EXEC NOVVIA.spChargeSperre @kWarenLagerEingang, @cSperrgrund, @cSperrvermerk, @kBenutzer",
+                new { kWarenLagerEingang, cSperrgrund = sperrgrund, cSperrvermerk = sperrvermerk, kBenutzer });
+        }
+
+        /// <summary>
+        /// Charge freigeben
+        /// </summary>
+        public async Task ChargeFreigabe(int kWarenLagerEingang, string? hinweis, int kBenutzer)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("EXEC NOVVIA.spChargeFreigabe @kWarenLagerEingang, @cHinweis, @kBenutzer",
+                new { kWarenLagerEingang, cHinweis = hinweis, kBenutzer });
+        }
+
+        /// <summary>
+        /// Charge in Quarantäne verschieben
+        /// </summary>
+        public async Task ChargeInQuarantaene(int kWarenLagerEingang, string grund, int kBenutzer)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("EXEC NOVVIA.spChargeQuarantaene @kWarenLagerEingang, @cGrund, @kBenutzer",
+                new { kWarenLagerEingang, cGrund = grund, kBenutzer });
+        }
+
+        /// <summary>
+        /// Charge aus Quarantäne zurückholen
+        /// </summary>
+        public async Task ChargeAusQuarantaene(int kWarenLagerEingang, string? hinweis, int kBenutzer)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("EXEC NOVVIA.spChargeAusQuarantaene @kWarenLagerEingang, @cHinweis, @kBenutzer",
+                new { kWarenLagerEingang, cHinweis = hinweis, kBenutzer });
+        }
+
+        public class ChargenBestand
+        {
+            public int KWarenLagerEingang { get; set; }
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CArtikelName { get; set; } = "";
+            public string CChargenNr { get; set; } = "";
+            public DateTime? DMHD { get; set; }
+            public decimal FBestand { get; set; }
+            public decimal FEingang { get; set; }
+            public int KWarenLager { get; set; }
+            public string CLagerName { get; set; } = "";
+            public DateTime DEingang { get; set; }
+            public string? CLieferscheinNr { get; set; }
+            public bool NGesperrt { get; set; }
+            public bool NQuarantaene { get; set; }
+            public string? CSperrgrund { get; set; }
+            public DateTime? DGesperrtAm { get; set; }
+            public string CMHDStatus { get; set; } = "";
+            public int? NTageRestMHD { get; set; }
+
+            public string Status => NQuarantaene ? "Quarantäne" : (NGesperrt ? "Gesperrt" : (CMHDStatus == "Abgelaufen" ? "MHD abgelaufen" : "Frei"));
+            public string StatusFarbe => NQuarantaene ? "#6c757d" : (NGesperrt ? "#dc3545" : (CMHDStatus == "Abgelaufen" ? "#ffc107" : "#28a745"));
+        }
+
+        public class ChargenBewegung
+        {
+            public int KChargenBewegung { get; set; }
+            public int KWarenLagerEingang { get; set; }
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CChargenNr { get; set; } = "";
+            public string CAktion { get; set; } = "";
+            public string? CGrund { get; set; }
+            public string? CHinweis { get; set; }
+            public int? KVonWarenLager { get; set; }
+            public string? CVonLagerName { get; set; }
+            public int? KNachWarenLager { get; set; }
+            public string? CNachLagerName { get; set; }
+            public decimal? FMenge { get; set; }
+            public int KBenutzer { get; set; }
+            public DateTime DErstellt { get; set; }
+
+            public string AktionText => CAktion switch
+            {
+                "GESPERRT" => "Gesperrt",
+                "FREIGEGEBEN" => "Freigegeben",
+                "QUARANTAENE" => "In Quarantäne",
+                "RUECKBUCHUNG" => "Aus Quarantäne",
+                _ => CAktion
+            };
         }
 
         #endregion
