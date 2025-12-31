@@ -18,13 +18,14 @@ namespace NovviaERP.WPF.Views
         private readonly EinkaufService _einkaufService;
         private readonly MSV3Service _msv3Service;
         private readonly ABdataService _abdataService;
+        private readonly CoreService _coreService;
 
         private List<LieferantUebersicht> _lieferanten = new();
         private List<LieferantenBestellungUebersicht> _bestellungen = new();
         private LieferantUebersicht? _selectedLieferant;
         private LieferantStammdaten? _selectedLiefStammdaten;
-        private LieferantErweitert? _selectedLiefErweitert;
         private MSV3Lieferant? _selectedLiefMSV3;
+        private List<LieferantEigenesFeldViewModel> _lieferantEigeneFelder = new();
         private bool _isEditMode = false;
 
         public LieferantenView()
@@ -34,6 +35,7 @@ namespace NovviaERP.WPF.Views
             _einkaufService = App.Services.GetRequiredService<EinkaufService>();
             _msv3Service = App.Services.GetRequiredService<MSV3Service>();
             _abdataService = App.Services.GetRequiredService<ABdataService>();
+            _coreService = App.Services.GetRequiredService<CoreService>();
 
             Loaded += async (s, e) => await InitializeAsync();
         }
@@ -103,14 +105,15 @@ namespace NovviaERP.WPF.Views
 
                 // Vollständige Stammdaten laden
                 await LadeLieferantStammdatenAsync(lieferant.KLieferant);
-                await LadeLieferantErweitertAsync(lieferant.KLieferant);
                 await LadeLieferantMSV3ConfigAsync(lieferant.KLieferant);
+                await LadeLieferantEigeneFelderAsync(lieferant.KLieferant);
             }
             else
             {
                 _selectedLieferant = null;
                 _selectedLiefStammdaten = null;
-                _selectedLiefErweitert = null;
+                _lieferantEigeneFelder.Clear();
+                dgLieferantEigeneFelder.ItemsSource = null;
                 pnlLieferantDetail.Visibility = Visibility.Collapsed;
             }
         }
@@ -181,76 +184,6 @@ namespace NovviaERP.WPF.Views
             var formatted = string.Join(" ", Enumerable.Range(0, (clean.Length + 3) / 4)
                 .Select(i => clean.Substring(i * 4, Math.Min(4, clean.Length - i * 4))));
             return formatted;
-        }
-
-        private async Task LadeLieferantErweitertAsync(int kLieferant)
-        {
-            try
-            {
-                _selectedLiefErweitert = await _einkaufService.GetLieferantErweitertAsync(kLieferant);
-
-                if (_selectedLiefErweitert != null)
-                {
-                    // Produktkategorien
-                    chkLiefAmbient.IsChecked = _selectedLiefErweitert.Ambient;
-                    chkLiefCool.IsChecked = _selectedLiefErweitert.Cool;
-                    chkLiefMedcan.IsChecked = _selectedLiefErweitert.Medcan;
-                    chkLiefTierarznei.IsChecked = _selectedLiefErweitert.Tierarznei;
-
-                    // Qualifizierung
-                    dpLiefQualifiziertAm.SelectedDate = _selectedLiefErweitert.QualifiziertAm;
-                    txtLiefQualifiziertVon.Text = _selectedLiefErweitert.QualifiziertVon ?? "";
-                    txtLiefGDP.Text = _selectedLiefErweitert.GDP ?? "";
-                    txtLiefGMP.Text = _selectedLiefErweitert.GMP ?? "";
-                }
-                else
-                {
-                    // Neuer Datensatz - Felder leeren
-                    _selectedLiefErweitert = new LieferantErweitert { KLieferant = kLieferant };
-                    chkLiefAmbient.IsChecked = false;
-                    chkLiefCool.IsChecked = false;
-                    chkLiefMedcan.IsChecked = false;
-                    chkLiefTierarznei.IsChecked = false;
-                    dpLiefQualifiziertAm.SelectedDate = null;
-                    txtLiefQualifiziertVon.Text = "";
-                    txtLiefGDP.Text = "";
-                    txtLiefGMP.Text = "";
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der NOVVIA-Erweiterung: {ex.Message}");
-            }
-        }
-
-        private async void LieferantErweitertSpeichern_Click(object sender, RoutedEventArgs e)
-        {
-            if (_selectedLieferant == null || _selectedLiefErweitert == null)
-            {
-                MessageBox.Show("Bitte zuerst einen Lieferanten auswählen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            try
-            {
-                // Werte aus UI übernehmen
-                _selectedLiefErweitert.KLieferant = _selectedLieferant.KLieferant;
-                _selectedLiefErweitert.Ambient = chkLiefAmbient.IsChecked ?? false;
-                _selectedLiefErweitert.Cool = chkLiefCool.IsChecked ?? false;
-                _selectedLiefErweitert.Medcan = chkLiefMedcan.IsChecked ?? false;
-                _selectedLiefErweitert.Tierarznei = chkLiefTierarznei.IsChecked ?? false;
-                _selectedLiefErweitert.QualifiziertAm = dpLiefQualifiziertAm.SelectedDate;
-                _selectedLiefErweitert.QualifiziertVon = txtLiefQualifiziertVon.Text;
-                _selectedLiefErweitert.GDP = txtLiefGDP.Text;
-                _selectedLiefErweitert.GMP = txtLiefGMP.Text;
-
-                await _einkaufService.SaveLieferantErweitertAsync(_selectedLiefErweitert);
-                MessageBox.Show("NOVVIA-Erweiterungsdaten gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Fehler beim Speichern: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
         }
 
         private void LiefEmail_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -1726,6 +1659,92 @@ namespace NovviaERP.WPF.Views
 
         #endregion
 
+        #region Eigene Felder (NOVVIA)
+
+        private async Task LadeLieferantEigeneFelderAsync(int kLieferant)
+        {
+            try
+            {
+                // Alle verfügbaren Attribute laden
+                var attribute = (await _coreService.GetLieferantAttributeAsync()).ToList();
+
+                if (!attribute.Any())
+                {
+                    txtLiefEFHinweis.Text = "Keine Attribute definiert (Einstellungen → Eigene Felder → Lieferant)";
+                    _lieferantEigeneFelder.Clear();
+                    dgLieferantEigeneFelder.ItemsSource = null;
+                    return;
+                }
+
+                txtLiefEFHinweis.Text = "";
+
+                // Bestehende Werte für diesen Lieferanten laden
+                var werte = (await _coreService.GetLieferantEigeneFelderAsync(kLieferant)).ToList();
+
+                // ViewModel erstellen: Für jedes Attribut ein Eintrag
+                _lieferantEigeneFelder = attribute.Select(attr =>
+                {
+                    var wert = werte.FirstOrDefault(w => w.KAttribut == attr.KAttribut);
+                    return new LieferantEigenesFeldViewModel
+                    {
+                        KAttribut = attr.KAttribut,
+                        KLieferant = kLieferant,
+                        CAttributName = attr.CName,
+                        NFeldTyp = attr.NFeldTyp,
+                        CWertVarchar = wert?.CWertVarchar,
+                        NWertInt = wert?.NWertInt,
+                        FWertDecimal = wert?.FWertDecimal,
+                        DWertDateTime = wert?.DWertDateTime
+                    };
+                }).ToList();
+
+                dgLieferantEigeneFelder.ItemsSource = _lieferantEigeneFelder;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der Eigenen Felder: {ex.Message}");
+                txtLiefEFHinweis.Text = "Fehler beim Laden - bitte Setup-Script ausführen";
+            }
+        }
+
+        private async void LieferantEigeneFelderSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedLieferant == null || !_lieferantEigeneFelder.Any())
+            {
+                MessageBox.Show("Kein Lieferant ausgewählt.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                foreach (var feld in _lieferantEigeneFelder)
+                {
+                    // Wert aus WertBearbeitung parsen basierend auf Feldtyp
+                    object? wert = feld.NFeldTyp switch
+                    {
+                        1 => int.TryParse(feld.WertBearbeitung, out var i) ? i : (int?)null,
+                        2 => decimal.TryParse(feld.WertBearbeitung, out var d) ? d : (decimal?)null,
+                        3 => feld.WertBearbeitung,
+                        4 => DateTime.TryParse(feld.WertBearbeitung, out var dt) ? dt : (DateTime?)null,
+                        _ => feld.WertBearbeitung
+                    };
+
+                    await _coreService.SaveLieferantEigenesFeldAsync(feld.KLieferant, feld.KAttribut, wert);
+                }
+
+                MessageBox.Show("Eigene Felder gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Neu laden
+                await LadeLieferantEigeneFelderAsync(_selectedLieferant.KLieferant);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
         #region Helpers
 
         /// <summary>
@@ -1768,6 +1787,66 @@ namespace NovviaERP.WPF.Views
         {
             if (string.IsNullOrEmpty(value)) return "";
             return value.Length <= maxLength ? value : value.Substring(0, maxLength - 2) + "..";
+        }
+    }
+
+    /// <summary>
+    /// ViewModel für Lieferant Eigene Felder in der Detailansicht
+    /// </summary>
+    public class LieferantEigenesFeldViewModel
+    {
+        public int KAttribut { get; set; }
+        public int KLieferant { get; set; }
+        public string CAttributName { get; set; } = "";
+        public int NFeldTyp { get; set; }
+        public string? CWertVarchar { get; set; }
+        public int? NWertInt { get; set; }
+        public decimal? FWertDecimal { get; set; }
+        public DateTime? DWertDateTime { get; set; }
+
+        public string FeldTypName => NFeldTyp switch
+        {
+            1 => "Ganzzahl",
+            2 => "Dezimal",
+            3 => "Text",
+            4 => "Datum",
+            _ => "Text"
+        };
+
+        public string WertAnzeige => NFeldTyp switch
+        {
+            1 => NWertInt?.ToString() ?? "",
+            2 => FWertDecimal?.ToString("N2") ?? "",
+            3 => CWertVarchar ?? "",
+            4 => DWertDateTime?.ToString("dd.MM.yyyy") ?? "",
+            _ => CWertVarchar ?? ""
+        };
+
+        public string WertBearbeitung
+        {
+            get => WertAnzeige;
+            set
+            {
+                // Wert wird beim Speichern geparst
+                switch (NFeldTyp)
+                {
+                    case 1:
+                        if (int.TryParse(value, out var i)) NWertInt = i;
+                        break;
+                    case 2:
+                        if (decimal.TryParse(value, out var d)) FWertDecimal = d;
+                        break;
+                    case 3:
+                        CWertVarchar = value;
+                        break;
+                    case 4:
+                        if (DateTime.TryParse(value, out var dt)) DWertDateTime = dt;
+                        break;
+                    default:
+                        CWertVarchar = value;
+                        break;
+                }
+            }
         }
     }
 }

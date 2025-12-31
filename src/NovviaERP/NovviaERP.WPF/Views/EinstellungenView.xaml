@@ -343,30 +343,71 @@
             <!-- Eigene Felder Tab -->
             <TabItem Header="Eigene Felder">
                 <TabControl Margin="10">
-                    <!-- Lieferant Erweitert (NOVVIA) -->
+                    <!-- Lieferant Eigene Felder (NOVVIA) -->
                     <TabItem Header="Lieferant">
                         <Grid Margin="10">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <TextBlock Text="Lieferant Erweiterte Felder (NOVVIA.LieferantErweitert)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <Button Content="Neu" Width="80" Click="LieferantAttributNeu_Click" Margin="0,0,5,0"/>
+                                <Button Content="Bearbeiten" Width="80" Click="LieferantAttributBearbeiten_Click" Margin="0,0,5,0"/>
+                                <Button Content="Loeschen" Width="80" Click="LieferantAttributLoeschen_Click"/>
+                                <TextBlock x:Name="txtLieferantHinweis" Text="" VerticalAlignment="Center" Foreground="Orange" Margin="15,0,0,0"/>
+                            </StackPanel>
 
-                            <TextBlock Grid.Row="1" TextWrapping="Wrap" Foreground="#666" Margin="0,0,0,15">
-                                Die erweiterten Lieferant-Felder werden pro Lieferant in der Lieferanten-Ansicht bearbeitet.
-                                Folgende Felder sind verfuegbar:
-                            </TextBlock>
-
-                            <DataGrid x:Name="dgLieferantErweitertFelder" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True"
+                            <DataGrid x:Name="dgLieferantAttribute" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
                                       SelectionMode="Single" CanUserAddRows="False">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Feldname" Binding="{Binding Feldname}" Width="200"/>
-                                    <DataGridTextColumn Header="Beschreibung" Binding="{Binding Beschreibung}" Width="300"/>
-                                    <DataGridTextColumn Header="Typ" Binding="{Binding Typ}" Width="100"/>
+                                    <DataGridTextColumn Header="ID" Binding="{Binding KAttribut}" Width="50"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                                    <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="250"/>
+                                    <DataGridTextColumn Header="Typ" Binding="{Binding FeldTypName}" Width="100"/>
+                                    <DataGridTextColumn Header="Sort" Binding="{Binding NSortierung}" Width="60"/>
                                 </DataGrid.Columns>
                             </DataGrid>
+
+                            <!-- Bearbeitungsbereich -->
+                            <Border Grid.Row="2" BorderBrush="#ddd" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="80"/>
+                                        <ColumnDefinition Width="180"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="200"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="50"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Text="Name:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtLiefAttrName" Grid.Column="1"/>
+
+                                    <TextBlock Text="Beschreibung:" VerticalAlignment="Center" Grid.Column="3"/>
+                                    <TextBox x:Name="txtLiefAttrBeschr" Grid.Column="4"/>
+
+                                    <TextBlock Text="Typ:" VerticalAlignment="Center" Grid.Column="6"/>
+                                    <ComboBox x:Name="cmbLiefAttrTyp" Grid.Column="7" SelectedIndex="0">
+                                        <ComboBoxItem Content="Text" Tag="3"/>
+                                        <ComboBoxItem Content="Ganzzahl" Tag="1"/>
+                                        <ComboBoxItem Content="Dezimal" Tag="2"/>
+                                        <ComboBoxItem Content="Datum" Tag="4"/>
+                                    </ComboBox>
+
+                                    <TextBlock Text="Sort:" VerticalAlignment="Center" Grid.Column="9"/>
+                                    <TextBox x:Name="txtLiefAttrSort" Grid.Column="10" Text="0"/>
+
+                                    <Button Content="Speichern" Grid.Column="11" Width="100" HorizontalAlignment="Left" Margin="20,0,0,0" Click="LieferantAttributSpeichern_Click"/>
+                                </Grid>
+                            </Border>
                         </Grid>
                     </TabItem>
 

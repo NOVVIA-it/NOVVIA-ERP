@@ -14,6 +14,7 @@ namespace NovviaERP.WPF.Views
         private int? _selectedKundenkategorieId;
         private int? _selectedZahlungsartId;
         private int? _selectedVersandartId;
+        private int? _selectedLieferantAttributId;
 
         public EinstellungenView()
         {
@@ -426,20 +427,19 @@ namespace NovviaERP.WPF.Views
 
         private async System.Threading.Tasks.Task LadeEigeneFelderAsync()
         {
-            // Lieferant Erweitert - statische Feldliste anzeigen
-            var lieferantFelder = new[]
+            // Lieferant Attribute (NOVVIA - editierbar)
+            try
             {
-                new { Feldname = "nAmbient", Beschreibung = "Liefert Ambient-Produkte", Typ = "Checkbox" },
-                new { Feldname = "nCool", Beschreibung = "Liefert Kühlware", Typ = "Checkbox" },
-                new { Feldname = "nMedcan", Beschreibung = "Liefert Medizinal-Cannabis", Typ = "Checkbox" },
-                new { Feldname = "nTierarznei", Beschreibung = "Liefert Tierarzneimittel", Typ = "Checkbox" },
-                new { Feldname = "dQualifiziertAm", Beschreibung = "Datum der Qualifizierung", Typ = "Datum" },
-                new { Feldname = "cQualifiziertVon", Beschreibung = "Wer hat qualifiziert", Typ = "Text" },
-                new { Feldname = "cQualifikationsDocs", Beschreibung = "Pfad zu Dokumenten", Typ = "Text" },
-                new { Feldname = "cGDP", Beschreibung = "Good Distribution Practice", Typ = "Text" },
-                new { Feldname = "cGMP", Beschreibung = "Good Manufacturing Practice", Typ = "Text" }
-            };
-            dgLieferantErweitertFelder.ItemsSource = lieferantFelder;
+                var lieferantAttr = await _core.GetLieferantAttributeAsync();
+                var liste = lieferantAttr.ToList();
+                dgLieferantAttribute.ItemsSource = liste;
+                txtLieferantHinweis.Text = liste.Count == 0 ? "Keine Attribute. Bitte 'Neu' klicken um Felder anzulegen." : "";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Lieferant Attribute: {ex.Message}");
+                txtLieferantHinweis.Text = "Tabelle fehlt - bitte Setup-EigeneFelderLieferant.sql ausführen";
+            }
 
             // Kunde Attribute (JTL - nur Ansicht)
             try
@@ -484,9 +484,109 @@ namespace NovviaERP.WPF.Views
 
         #endregion
 
-        #region Lieferant Erweitert (NOVVIA)
-        // LieferantErweitert wird pro Lieferant in LieferantenView.xaml.cs bearbeitet
-        // Hier wird nur die Feldliste angezeigt
+        #region Lieferant Attribute (NOVVIA)
+
+        private void LieferantAttributNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedLieferantAttributId = null;
+            txtLiefAttrName.Text = "";
+            txtLiefAttrBeschr.Text = "";
+            cmbLiefAttrTyp.SelectedIndex = 0;
+            txtLiefAttrSort.Text = "0";
+            txtLieferantHinweis.Text = "Neues Attribut - Name eingeben und Speichern klicken";
+            txtLieferantHinweis.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+            txtLiefAttrName.Focus();
+        }
+
+        private void LieferantAttributBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgLieferantAttribute.SelectedItem is CoreService.EigenesFeldDefinition attr)
+            {
+                _selectedLieferantAttributId = attr.KAttribut;
+                txtLiefAttrName.Text = attr.CName ?? "";
+                txtLiefAttrBeschr.Text = attr.CBeschreibung ?? "";
+                // Typ auswählen (1=Ganzzahl, 2=Dezimal, 3=Text, 4=Datum)
+                cmbLiefAttrTyp.SelectedIndex = attr.NFeldTyp switch
+                {
+                    3 => 0, // Text
+                    1 => 1, // Ganzzahl
+                    2 => 2, // Dezimal
+                    4 => 3, // Datum
+                    _ => 0
+                };
+                txtLiefAttrSort.Text = attr.NSortierung.ToString();
+                txtLieferantHinweis.Text = $"Bearbeite: {attr.CName}";
+                txtLieferantHinweis.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
+                txtLiefAttrName.Focus();
+            }
+            else
+            {
+                MessageBox.Show("Bitte zuerst ein Attribut in der Liste auswählen!", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private async void LieferantAttributLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgLieferantAttribute.SelectedItem is not CoreService.EigenesFeldDefinition attr) return;
+
+            if (MessageBox.Show($"Attribut '{attr.CName}' wirklich loeschen?\nAlle zugeordneten Werte werden ebenfalls geloescht!",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _core.DeleteLieferantAttributAsync(attr.KAttribut);
+                await LadeEigeneFelderAsync();
+                LieferantAttributNeu_Click(sender, e);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void LieferantAttributSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtLiefAttrName.Text))
+            {
+                MessageBox.Show("Bitte einen Namen eingeben!", "Validierung", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                int.TryParse(txtLiefAttrSort.Text, out var sort);
+                var feldTyp = int.Parse((cmbLiefAttrTyp.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "3");
+
+                var attr = new CoreService.EigenesFeldDefinition
+                {
+                    KAttribut = _selectedLieferantAttributId ?? 0,
+                    CName = txtLiefAttrName.Text.Trim(),
+                    CBeschreibung = txtLiefAttrBeschr.Text.Trim(),
+                    NFeldTyp = feldTyp,
+                    NSortierung = sort,
+                    NAktiv = true
+                };
+
+                await _core.SaveLieferantAttributAsync(attr);
+                await LadeEigeneFelderAsync();
+
+                // Formular leeren
+                _selectedLieferantAttributId = null;
+                txtLiefAttrName.Text = "";
+                txtLiefAttrBeschr.Text = "";
+                cmbLiefAttrTyp.SelectedIndex = 0;
+                txtLiefAttrSort.Text = "0";
+                txtLieferantHinweis.Text = "";
+                txtLieferantHinweis.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Orange);
+
+                MessageBox.Show("Attribut gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         #endregion
     }
 }

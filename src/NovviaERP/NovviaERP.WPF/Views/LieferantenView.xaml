@@ -292,50 +292,49 @@
                                                     <TextBlock x:Name="txtLiefDropshippingFP" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
                                                 </Grid>
 
-                                                <Separator Margin="0,10"/>
-
-                                                <!-- NOVVIA Erweiterung -->
-                                                <TextBlock Text="NOVVIA Erweiterung" FontWeight="SemiBold" Margin="0,5,0,10" Foreground="#0078D4"/>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="100"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="28"/>
-                                                        <RowDefinition Height="28"/>
-                                                        <RowDefinition Height="28"/>
-                                                        <RowDefinition Height="28"/>
-                                                        <RowDefinition Height="28"/>
-                                                    </Grid.RowDefinitions>
-
-                                                    <TextBlock Text="Kategorien:" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                        <CheckBox x:Name="chkLiefAmbient" Content="Ambient" Margin="0,0,15,0"/>
-                                                        <CheckBox x:Name="chkLiefCool" Content="Cool" Margin="0,0,15,0"/>
-                                                        <CheckBox x:Name="chkLiefMedcan" Content="Medcan" Margin="0,0,15,0"/>
-                                                        <CheckBox x:Name="chkLiefTierarznei" Content="Tierarznei"/>
-                                                    </StackPanel>
-
-                                                    <TextBlock Text="Qualifiziert am:" Grid.Row="1" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <DatePicker x:Name="dpLiefQualifiziertAm" Grid.Row="1" Grid.Column="1" Width="120" HorizontalAlignment="Left"/>
-
-                                                    <TextBlock Text="Qualifiziert von:" Grid.Row="2" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBox x:Name="txtLiefQualifiziertVon" Grid.Row="2" Grid.Column="1" Width="200" HorizontalAlignment="Left"/>
-
-                                                    <TextBlock Text="GDP:" Grid.Row="3" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBox x:Name="txtLiefGDP" Grid.Row="3" Grid.Column="1"/>
-
-                                                    <TextBlock Text="GMP:" Grid.Row="4" VerticalAlignment="Center" Foreground="Gray"/>
-                                                    <TextBox x:Name="txtLiefGMP" Grid.Row="4" Grid.Column="1"/>
-                                                </Grid>
-
-                                                <Button Content="NOVVIA-Daten speichern" Margin="0,15,0,0"
-                                                        Background="#0078D4" Foreground="White"
-                                                        HorizontalAlignment="Left" Width="160"
-                                                        Click="LieferantErweitertSpeichern_Click"/>
                                             </StackPanel>
                                         </ScrollViewer>
+                                    </TabItem>
+
+                                    <!-- Tab: Eigene Felder -->
+                                    <TabItem Header="Eigene Felder">
+                                        <Grid Margin="5">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Text="Eigene Felder für diesen Lieferanten" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+                                            <DataGrid x:Name="dgLieferantEigeneFelder" Grid.Row="1" AutoGenerateColumns="False"
+                                                      CanUserAddRows="False" CanUserDeleteRows="False" GridLinesVisibility="Horizontal">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Feld" Binding="{Binding CAttributName}" Width="120" IsReadOnly="True"/>
+                                                    <DataGridTemplateColumn Header="Wert" Width="*">
+                                                        <DataGridTemplateColumn.CellTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding WertAnzeige}" VerticalAlignment="Center" Margin="5,0"/>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellTemplate>
+                                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                                            <DataTemplate>
+                                                                <TextBox Text="{Binding WertBearbeitung, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                         BorderThickness="0" Padding="5,2"/>
+                                                            </DataTemplate>
+                                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                                    </DataGridTemplateColumn>
+                                                    <DataGridTextColumn Header="Typ" Binding="{Binding FeldTypName}" Width="80" IsReadOnly="True"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+
+                                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                                                <Button Content="Eigene Felder speichern" Background="#0078D4" Foreground="White"
+                                                        Padding="15,8" Click="LieferantEigeneFelderSpeichern_Click"/>
+                                                <TextBlock x:Name="txtLiefEFHinweis" Text="" Margin="15,0,0,0"
+                                                           VerticalAlignment="Center" Foreground="Orange"/>
+                                            </StackPanel>
+                                        </Grid>
                                     </TabItem>
 
                                     <!-- Tab: MSV3 -->

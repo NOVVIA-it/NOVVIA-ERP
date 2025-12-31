@@ -23,7 +23,7 @@ BEGIN
         kLieferantAttribut INT IDENTITY(1,1) PRIMARY KEY,
         cName NVARCHAR(255) NOT NULL,
         cBeschreibung NVARCHAR(500) NULL,
-        nFeldTyp INT NOT NULL DEFAULT 1,  -- 1=Text, 2=Int, 3=Decimal, 4=DateTime
+        nFeldTyp INT NOT NULL DEFAULT 3,  -- 1=Ganzzahl, 2=Dezimal, 3=Text, 4=Datum
         nSortierung INT NOT NULL DEFAULT 0,
         nAktiv BIT NOT NULL DEFAULT 1,
         dErstellt DATETIME NOT NULL DEFAULT GETDATE(),
@@ -129,7 +129,7 @@ CREATE PROCEDURE NOVVIA.spLieferantAttributSpeichern
     @kLieferantAttribut INT = NULL,  -- NULL = Neu
     @cName NVARCHAR(255),
     @cBeschreibung NVARCHAR(500) = NULL,
-    @nFeldTyp INT = 1,
+    @nFeldTyp INT = 3,  -- Default: Text
     @nSortierung INT = 0,
     @nAktiv BIT = 1
 AS
@@ -171,11 +171,11 @@ IF NOT EXISTS (SELECT 1 FROM NOVVIA.LieferantAttribut WHERE cName = 'Kundennumme
 BEGIN
     INSERT INTO NOVVIA.LieferantAttribut (cName, cBeschreibung, nFeldTyp, nSortierung)
     VALUES
-        ('Kundennummer', 'Unsere Kundennummer beim Lieferanten', 1, 1),
-        ('Zahlungsziel', 'Zahlungsziel in Tagen', 2, 2),
-        ('Skonto', 'Skonto in Prozent', 3, 3),
-        ('Vertragsbeginn', 'Datum des Vertragsbeginns', 4, 4),
-        ('Notizen', 'Interne Notizen', 1, 5);
+        ('Kundennummer', 'Unsere Kundennummer beim Lieferanten', 3, 1),   -- Text
+        ('Zahlungsziel', 'Zahlungsziel in Tagen', 1, 2),                  -- Ganzzahl
+        ('Skonto', 'Skonto in Prozent', 2, 3),                            -- Dezimal
+        ('Vertragsbeginn', 'Datum des Vertragsbeginns', 4, 4),            -- Datum
+        ('Notizen', 'Interne Notizen', 3, 5);                             -- Text
 
     PRINT 'Beispiel-Attribute für Lieferanten angelegt.';
 END
