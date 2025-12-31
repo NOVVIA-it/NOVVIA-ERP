@@ -150,6 +150,7 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
+                <DataGridTextColumn Header="Anmerkung" Binding="{Binding CAnmerkung}" Width="200"/>
             </DataGrid.Columns>
         </DataGrid>
 

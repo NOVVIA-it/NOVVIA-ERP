@@ -1104,7 +1104,9 @@ namespace NovviaERP.Core.Services
             var sql = @"
                 SELECT TOP (@Limit)
                     a.kArtikel, a.cArtNr, a.cBarcode, a.fVKNetto, a.fEKNetto,
-                    a.nLagerbestand, a.nMidestbestand, a.cAktiv, a.cLagerArtikel, a.kHersteller,
+                    ISNULL(a.fLagerbestand, 0) AS NLagerbestand,
+                    ISNULL(a.fMindestbestand, 0) AS NMidestbestand,
+                    a.cAktiv, a.cLagerArtikel, a.kHersteller,
                     ab.cName AS Name,
                     h.cName AS Hersteller,
                     ISNULL((SELECT TOP 1 fSteuersatz FROM tSteuersatz WHERE kSteuerklasse = a.kSteuerklasse ORDER BY nPrio DESC), 19) AS FMwSt,
@@ -1117,7 +1119,7 @@ namespace NovviaERP.Core.Services
             if (nurAktive) sql += " AND a.cAktiv = 'Y'";
             if (herstellerId.HasValue) sql += " AND a.kHersteller = @HerstellerId";
             if (warengruppeId.HasValue) sql += " AND a.kWarengruppe = @WarengruppeId";
-            if (nurUnterMindestbestand) sql += " AND a.nLagerbestand < a.nMidestbestand";
+            if (nurUnterMindestbestand) sql += " AND ISNULL(a.fLagerbestand, 0) < ISNULL(a.fMindestbestand, 0)";
             if (!string.IsNullOrEmpty(suche))
             {
                 sql += @" AND (a.cArtNr LIKE @Suche
@@ -1136,7 +1138,9 @@ namespace NovviaERP.Core.Services
 
             var artikel = await conn.QuerySingleOrDefaultAsync<ArtikelDetail>(@"
                 SELECT a.kArtikel, a.cArtNr, a.cBarcode, a.cHAN, a.cISBN, a.cUPC, a.cASIN, a.cGTIN, a.nSort,
-                       a.fVKNetto, a.fUVP, a.fEKNetto, a.nLagerbestand, a.nMidestbestand,
+                       a.fVKNetto, a.fUVP, a.fEKNetto,
+                       ISNULL(a.fLagerbestand, 0) AS NLagerbestand,
+                       ISNULL(a.fMindestbestand, 0) AS NMidestbestand,
                        a.cLagerArtikel, a.cAktiv, a.cTopArtikel, a.cNeu, a.cTeilbar,
                        a.fGewicht, a.fArtGewicht, a.fBreite, a.fHoehe, a.fLaenge, a.fPackeinheit,
                        a.kSteuerklasse, a.kHersteller, a.kWarengruppe, a.kVersandklasse,
@@ -5842,7 +5846,8 @@ namespace NovviaERP.Core.Services
                     a.cAuftragsNr AS CAuftragNr,
                     ar.kAuftrag AS KAuftrag,
                     ISNULL(zahlung.Summe, 0) AS FBezahlt,
-                    0 AS NMahnstufe
+                    0 AS NMahnstufe,
+                    r.cAnmerkung AS CAnmerkung
                 FROM Rechnung.tRechnung r
                 LEFT JOIN Rechnung.tRechnungAdresse ra ON r.kRechnung = ra.kRechnung AND ra.nTyp = 0
                 LEFT JOIN Verkauf.tAuftragRechnung ar ON r.kRechnung = ar.kRechnung
@@ -5914,6 +5919,7 @@ namespace NovviaERP.Core.Services
             public int? KAuftrag { get; set; }
             public decimal FBezahlt { get; set; }
             public int NMahnstufe { get; set; }
+            public string? CAnmerkung { get; set; }
 
             public decimal Offen => FBrutto - FBezahlt;
             public string Status => NStorno ? "Storniert" : (DBezahlt.HasValue ? "Bezahlt" : (DFaellig < DateTime.Today ? "Überfällig" : "Offen"));
