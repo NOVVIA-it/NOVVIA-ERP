@@ -439,6 +439,10 @@ namespace NovviaERP.WPF.Views
             var artikelAttr = await _core.GetArtikelAttributeAsync();
             dgArtikelAttribute.ItemsSource = artikelAttr.ToList();
 
+            // Auftrag Attribute (JTL - nur Ansicht)
+            var auftragAttr = await _core.GetAuftragAttributeAsync();
+            dgAuftragAttribute.ItemsSource = auftragAttr.ToList();
+
             // Firma Eigene Felder (JTL - nur Ansicht)
             var firmaFelder = await _core.GetFirmaEigeneFelderAsync();
             dgFirmaEigeneFelder.ItemsSource = firmaFelder.ToList();

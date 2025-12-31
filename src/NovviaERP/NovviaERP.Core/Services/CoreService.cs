@@ -5267,6 +5267,20 @@ namespace NovviaERP.Core.Services
 
         // ===== AUFTRAG Eigene Felder (JTL-Tabellen) =====
 
+        public async Task<IEnumerable<EigenesFeldDefinition>> GetAuftragAttributeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            // nBezugstyp = 4 für Auftrags-Attribute
+            return await conn.QueryAsync<EigenesFeldDefinition>(@"
+                SELECT a.kAttribut AS KAttribut, s.cName AS CName, a.cBeschreibung AS CBeschreibung,
+                       CASE a.kFeldTyp WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 ELSE 1 END AS NFeldTyp,
+                       a.nSortierung AS NSortierung, 1 AS NAktiv
+                FROM dbo.tAttribut a
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                WHERE a.nIstFreifeld = 1 AND a.nBezugstyp = 4
+                ORDER BY a.nSortierung, s.cName");
+        }
+
         public async Task<IEnumerable<EigenesFeldWert>> GetAuftragEigenesFeldWerteAsync(int kAuftrag)
         {
             var conn = await GetConnectionAsync();
@@ -5291,6 +5305,7 @@ namespace NovviaERP.Core.Services
                 "lieferant" => await GetLieferantAttributeAsync(),
                 "kunde" => await GetKundeAttributeAsync(),
                 "artikel" => await GetArtikelAttributeAsync(),
+                "auftrag" => await GetAuftragAttributeAsync(),
                 _ => Enumerable.Empty<EigenesFeldDefinition>()
             };
         }

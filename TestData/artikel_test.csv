@@ -1,0 +1,4 @@
+Artikelnummer;Name;Beschreibung;VK_Brutto;EK_Netto;Bestand
+TEST-001;Testartikel 1;Dies ist ein Testartikel;19.99;10.00;100
+TEST-002;Testartikel 2;Noch ein Testartikel;29.99;15.00;50
+TEST-003;Testartikel 3;Dritter Testartikel;39.99;20.00;25

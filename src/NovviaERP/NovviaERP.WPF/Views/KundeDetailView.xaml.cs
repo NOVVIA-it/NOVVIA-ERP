@@ -255,6 +255,16 @@ namespace NovviaERP.WPF.Views
 
         private void DgAuftraege_DoubleClick(object sender, MouseButtonEventArgs e)
         {
+            OeffneAuftrag();
+        }
+
+        private void AuftragOeffnen_Click(object sender, RoutedEventArgs e)
+        {
+            OeffneAuftrag();
+        }
+
+        private void OeffneAuftrag()
+        {
             if (dgAuftraege.SelectedItem is KundeAuftragItem auftrag)
             {
                 if (Window.GetWindow(this) is MainWindow main)
@@ -267,6 +277,16 @@ namespace NovviaERP.WPF.Views
         }
 
         private void DgRechnungen_DoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            OeffneRechnung();
+        }
+
+        private void RechnungOeffnen_Click(object sender, RoutedEventArgs e)
+        {
+            OeffneRechnung();
+        }
+
+        private void OeffneRechnung()
         {
             if (dgRechnungen.SelectedItem is KundeRechnungItem rechnung)
             {

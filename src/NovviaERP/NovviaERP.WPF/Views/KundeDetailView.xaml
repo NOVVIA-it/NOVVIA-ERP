@@ -386,6 +386,7 @@
                                     </Grid.RowDefinitions>
                                     <DataGrid x:Name="dgAuftraege" AutoGenerateColumns="False" IsReadOnly="True"
                                               CanUserAddRows="False" HeadersVisibility="Column" FontSize="11"
+                                              SelectionMode="Single" SelectionUnit="FullRow"
                                               MouseDoubleClick="DgAuftraege_DoubleClick">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Nr." Binding="{Binding CAuftragsNr}" Width="70"/>
@@ -400,8 +401,10 @@
                                             </DataGridTextColumn>
                                         </DataGrid.Columns>
                                     </DataGrid>
-                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5" HorizontalAlignment="Right">
-                                        <TextBlock x:Name="txtAuftraegeAnzahl" Text="0 Auftraege" FontSize="10" Foreground="#666" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5">
+                                        <Button Content="Oeffnen" Padding="6,2" FontSize="10" Click="AuftragOeffnen_Click"/>
+                                        <TextBlock x:Name="txtAuftraegeAnzahl" Text="0 Auftraege" FontSize="10" Foreground="#666"
+                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
                             </TabItem>
@@ -414,6 +417,7 @@
                                     </Grid.RowDefinitions>
                                     <DataGrid x:Name="dgRechnungen" AutoGenerateColumns="False" IsReadOnly="True"
                                               CanUserAddRows="False" HeadersVisibility="Column" FontSize="11"
+                                              SelectionMode="Single" SelectionUnit="FullRow"
                                               MouseDoubleClick="DgRechnungen_DoubleClick">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Nr." Binding="{Binding CRechnungsNr}" Width="70"/>
@@ -428,8 +432,10 @@
                                             </DataGridTextColumn>
                                         </DataGrid.Columns>
                                     </DataGrid>
-                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5" HorizontalAlignment="Right">
-                                        <TextBlock x:Name="txtRechnungenAnzahl" Text="0 Rechnungen" FontSize="10" Foreground="#666" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5">
+                                        <Button Content="Oeffnen" Padding="6,2" FontSize="10" Click="RechnungOeffnen_Click"/>
+                                        <TextBlock x:Name="txtRechnungenAnzahl" Text="0 Rechnungen" FontSize="10" Foreground="#666"
+                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
                                     </StackPanel>
                                 </Grid>
                             </TabItem>

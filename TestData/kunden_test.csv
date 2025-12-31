@@ -1,0 +1,4 @@
+Kundennummer;Firma;Vorname;Nachname;Strasse;PLZ;Ort;Email
+K-001;Test GmbH;Max;Mustermann;Teststrasse 1;12345;Berlin;max@test.de
+K-002;Demo AG;Anna;Schmidt;Demoweg 5;54321;Hamburg;anna@demo.de
+K-003;;Peter;Mueller;Privatweg 10;11111;Muenchen;peter@mail.de

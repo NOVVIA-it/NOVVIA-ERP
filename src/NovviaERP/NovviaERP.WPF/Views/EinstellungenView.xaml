@@ -454,6 +454,28 @@
                         </Grid>
                     </TabItem>
 
+                    <!-- Auftrag Attribute (JTL - nur Ansicht) -->
+                    <TabItem Header="Auftrag">
+                        <Grid Margin="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Auftrags-Attribute / Freifelder (JTL-Wawi - nur Ansicht)" FontStyle="Italic" Foreground="Gray" Margin="0,0,0,10"/>
+
+                            <DataGrid x:Name="dgAuftragAttribute" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                                      SelectionMode="Single" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="ID" Binding="{Binding KAttribut}" Width="60"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                                    <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="250"/>
+                                    <DataGridTextColumn Header="Typ" Binding="{Binding FeldTypName}" Width="100"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </TabItem>
+
                     <!-- Firma Eigene Felder (JTL - nur Ansicht) -->
                     <TabItem Header="Firma">
                         <Grid Margin="10">
