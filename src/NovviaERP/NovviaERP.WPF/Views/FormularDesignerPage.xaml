@@ -20,7 +20,8 @@
 
             <!-- Formulare -->
             <TextBlock Text="Formulare" FontWeight="Bold" Margin="10"/>
-            <ListBox Grid.Row="1" x:Name="FormularListe" Margin="10,0" 
+            <ListBox Grid.Row="1" x:Name="FormularListe" Margin="10,0"
+                     ItemsSource="{Binding Formulare}"
                      SelectedItem="{Binding SelectedFormular}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>

@@ -203,6 +203,7 @@ namespace NovviaERP.WPF
             services.AddTransient<TestView>();
             services.AddTransient<AmeiseView>();
             services.AddTransient<EdifactPage>();
+            services.AddTransient<WorkflowPage>();
         }
     }
 }

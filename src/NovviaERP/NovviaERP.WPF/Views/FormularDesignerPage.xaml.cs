@@ -52,21 +52,41 @@ namespace NovviaERP.WPF.Views
         #region Load Data
         private async void LoadFormulare()
         {
-            var conn = await _db.GetConnectionAsync();
-            var formulare = await conn.QueryAsync<FormularDefinition>(
-                "SELECT * FROM tFormular WHERE nAktiv = 1 ORDER BY cTyp, cName");
-            
-            Formulare.Clear();
-            foreach (var f in formulare) Formulare.Add(f);
+            try
+            {
+                var conn = await _db.GetConnectionAsync();
+                var formulare = await conn.QueryAsync<FormularDefinition>(
+                    "SELECT kFormular AS Id, cName AS Name, cTyp AS Typ, cPapierFormat AS PapierFormat, cElementeJson AS ElementeJson FROM NOVVIA.Formular WHERE nAktiv = 1 ORDER BY cTyp, cName");
 
-            // Standard-Formulare hinzufügen falls leer
+                Formulare.Clear();
+                foreach (var f in formulare)
+                {
+                    // Icon basierend auf Typ setzen
+                    f.Icon = f.Typ switch
+                    {
+                        "Rechnung" => "📄",
+                        "Lieferschein" => "📦",
+                        "Etikett" => "🏷️",
+                        "Mahnung" => "⚠️",
+                        "Pickliste" => "📋",
+                        _ => "📄"
+                    };
+                    Formulare.Add(f);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden: {ex.Message}");
+            }
+
+            // Standard-Formulare hinzufuegen falls leer
             if (Formulare.Count == 0)
             {
                 Formulare.Add(new FormularDefinition { Name = "Rechnung", Typ = "Rechnung", Icon = "📄" });
                 Formulare.Add(new FormularDefinition { Name = "Lieferschein", Typ = "Lieferschein", Icon = "📦" });
                 Formulare.Add(new FormularDefinition { Name = "Mahnung", Typ = "Mahnung", Icon = "⚠️" });
-                Formulare.Add(new FormularDefinition { Name = "Versandetikett", Typ = "Versandetikett", Icon = "🏷️" });
-                Formulare.Add(new FormularDefinition { Name = "Artikeletikett", Typ = "Artikeletikett", Icon = "🔖" });
+                Formulare.Add(new FormularDefinition { Name = "Versandetikett", Typ = "Etikett", Icon = "🏷️" });
+                Formulare.Add(new FormularDefinition { Name = "Artikeletikett", Typ = "Etikett", Icon = "🔖" });
                 Formulare.Add(new FormularDefinition { Name = "Pickliste", Typ = "Pickliste", Icon = "📋" });
             }
         }
@@ -342,13 +362,13 @@ namespace NovviaERP.WPF.Views
             if (SelectedFormular.Id == 0)
             {
                 SelectedFormular.Id = await conn.QuerySingleAsync<int>(@"
-                    INSERT INTO tFormular (cName, cTyp, cPapierFormat, cElementeJson, nAktiv)
+                    INSERT INTO NOVVIA.Formular (cName, cTyp, cPapierFormat, cElementeJson, nAktiv)
                     VALUES (@Name, @Typ, @PapierFormat, @ElementeJson, 1); SELECT SCOPE_IDENTITY();",
                     SelectedFormular);
             }
             else
             {
-                await conn.ExecuteAsync(@"UPDATE tFormular SET cElementeJson = @ElementeJson WHERE kFormular = @Id",
+                await conn.ExecuteAsync(@"UPDATE NOVVIA.Formular SET cElementeJson = @ElementeJson, dGeaendert = GETDATE() WHERE kFormular = @Id",
                     SelectedFormular);
             }
 
@@ -362,7 +382,7 @@ namespace NovviaERP.WPF.Views
 
             var conn = await _db.GetConnectionAsync();
             var formular = await conn.QuerySingleOrDefaultAsync<FormularDefinition>(
-                "SELECT * FROM tFormular WHERE kFormular = @Id", new { Id = SelectedFormular.Id });
+                "SELECT kFormular AS Id, cName AS Name, cTyp AS Typ, cPapierFormat AS PapierFormat, cElementeJson AS ElementeJson FROM NOVVIA.Formular WHERE kFormular = @Id", new { Id = SelectedFormular.Id });
 
             if (formular != null && !string.IsNullOrEmpty(formular.ElementeJson))
             {
