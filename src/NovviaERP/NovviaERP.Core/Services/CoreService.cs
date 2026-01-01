@@ -7606,6 +7606,348 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region Textmeldungen
+
+        public class Textmeldung
+        {
+            public int KTextmeldung { get; set; }
+            public string CTitel { get; set; } = "";
+            public string CText { get; set; } = "";
+            public int NTyp { get; set; } // 0=Info, 1=Warnung, 2=Wichtig
+            public bool NBereichEinkauf { get; set; }
+            public bool NBereichVerkauf { get; set; }
+            public bool NBereichStammdaten { get; set; }
+            public bool NBereichDokumente { get; set; }
+            public bool NBereichOnline { get; set; }
+            public bool NAktiv { get; set; } = true;
+            public DateTime? DGueltigVon { get; set; }
+            public DateTime? DGueltigBis { get; set; }
+            public bool NPopupAnzeigen { get; set; } = true;
+            public DateTime DErstellt { get; set; }
+
+            public string TypBezeichnung => NTyp switch
+            {
+                0 => "Info",
+                1 => "Warnung",
+                2 => "Wichtig",
+                _ => "Info"
+            };
+
+            public string BereicheText
+            {
+                get
+                {
+                    var bereiche = new List<string>();
+                    if (NBereichEinkauf) bereiche.Add("Einkauf");
+                    if (NBereichVerkauf) bereiche.Add("Verkauf");
+                    if (NBereichStammdaten) bereiche.Add("Stammdaten");
+                    if (NBereichDokumente) bereiche.Add("Dokumente");
+                    if (NBereichOnline) bereiche.Add("Online");
+                    return bereiche.Count > 0 ? string.Join(", ", bereiche) : "-";
+                }
+            }
+        }
+
+        public class EntityTextmeldung
+        {
+            public int KEntityTextmeldung { get; set; }
+            public int KTextmeldung { get; set; }
+            public string CEntityTyp { get; set; } = "";
+            public int KEntity { get; set; }
+            public DateTime DErstellt { get; set; }
+
+            // Joined fields
+            public string? CTitel { get; set; }
+            public string? CText { get; set; }
+            public int NTyp { get; set; }
+            public bool NPopupAnzeigen { get; set; }
+        }
+
+        /// <summary>
+        /// Lädt alle Textmeldungen
+        /// </summary>
+        public async Task<List<Textmeldung>> GetTextmeldungenAsync()
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QueryAsync<Textmeldung>(@"
+                    SELECT kTextmeldung, cTitel, cText, nTyp,
+                           nBereichEinkauf, nBereichVerkauf, nBereichStammdaten,
+                           nBereichDokumente, nBereichOnline,
+                           nAktiv, dGueltigVon, dGueltigBis, nPopupAnzeigen, dErstellt
+                    FROM NOVVIA.Textmeldung
+                    ORDER BY cTitel
+                ");
+                return result.ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetTextmeldungenAsync Fehler: {ex.Message}");
+                return new List<Textmeldung>();
+            }
+        }
+
+        /// <summary>
+        /// Lädt Textmeldungen für eine Entität (Kunde, Artikel, Lieferant)
+        /// </summary>
+        public async Task<List<EntityTextmeldung>> GetEntityTextmeldungenAsync(string entityTyp, int kEntity, string? bereich = null)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var sql = @"
+                    SELECT et.kEntityTextmeldung, et.kTextmeldung, et.cEntityTyp, et.kEntity, et.dErstellt,
+                           t.cTitel, t.cText, t.nTyp, t.nPopupAnzeigen
+                    FROM NOVVIA.EntityTextmeldung et
+                    INNER JOIN NOVVIA.Textmeldung t ON et.kTextmeldung = t.kTextmeldung
+                    WHERE et.cEntityTyp = @entityTyp AND et.kEntity = @kEntity
+                      AND t.nAktiv = 1
+                      AND (t.dGueltigVon IS NULL OR t.dGueltigVon <= CAST(GETDATE() AS DATE))
+                      AND (t.dGueltigBis IS NULL OR t.dGueltigBis >= CAST(GETDATE() AS DATE))
+                ";
+
+                // Filter nach Bereich wenn angegeben
+                if (!string.IsNullOrEmpty(bereich))
+                {
+                    sql += bereich switch
+                    {
+                        "Einkauf" => " AND t.nBereichEinkauf = 1",
+                        "Verkauf" => " AND t.nBereichVerkauf = 1",
+                        "Stammdaten" => " AND t.nBereichStammdaten = 1",
+                        "Dokumente" => " AND t.nBereichDokumente = 1",
+                        "Online" => " AND t.nBereichOnline = 1",
+                        _ => ""
+                    };
+                }
+
+                sql += " ORDER BY t.nTyp DESC, t.cTitel";
+
+                var result = await conn.QueryAsync<EntityTextmeldung>(sql, new { entityTyp, kEntity });
+                return result.ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetEntityTextmeldungenAsync Fehler: {ex.Message}");
+                return new List<EntityTextmeldung>();
+            }
+        }
+
+        /// <summary>
+        /// Lädt Textmeldungen für Popup-Anzeige
+        /// </summary>
+        public async Task<List<EntityTextmeldung>> GetPopupTextmeldungenAsync(string entityTyp, int kEntity, string bereich)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var bereichFilter = bereich switch
+                {
+                    "Einkauf" => "t.nBereichEinkauf = 1",
+                    "Verkauf" => "t.nBereichVerkauf = 1",
+                    "Stammdaten" => "t.nBereichStammdaten = 1",
+                    "Dokumente" => "t.nBereichDokumente = 1",
+                    "Online" => "t.nBereichOnline = 1",
+                    _ => "1=1"
+                };
+
+                var result = await conn.QueryAsync<EntityTextmeldung>($@"
+                    SELECT et.kEntityTextmeldung, et.kTextmeldung, et.cEntityTyp, et.kEntity,
+                           t.cTitel, t.cText, t.nTyp, t.nPopupAnzeigen
+                    FROM NOVVIA.EntityTextmeldung et
+                    INNER JOIN NOVVIA.Textmeldung t ON et.kTextmeldung = t.kTextmeldung
+                    WHERE et.cEntityTyp = @entityTyp AND et.kEntity = @kEntity
+                      AND t.nAktiv = 1 AND t.nPopupAnzeigen = 1
+                      AND (t.dGueltigVon IS NULL OR t.dGueltigVon <= CAST(GETDATE() AS DATE))
+                      AND (t.dGueltigBis IS NULL OR t.dGueltigBis >= CAST(GETDATE() AS DATE))
+                      AND {bereichFilter}
+                    ORDER BY t.nTyp DESC
+                ", new { entityTyp, kEntity });
+                return result.ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetPopupTextmeldungenAsync Fehler: {ex.Message}");
+                return new List<EntityTextmeldung>();
+            }
+        }
+
+        /// <summary>
+        /// Erstellt eine neue Textmeldung
+        /// </summary>
+        public async Task<int> CreateTextmeldungAsync(Textmeldung meldung, int? kBenutzer = null)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QuerySingleAsync<int>(@"
+                    INSERT INTO NOVVIA.Textmeldung (cTitel, cText, nTyp,
+                        nBereichEinkauf, nBereichVerkauf, nBereichStammdaten, nBereichDokumente, nBereichOnline,
+                        nAktiv, dGueltigVon, dGueltigBis, nPopupAnzeigen, kErstelltVon)
+                    VALUES (@CTitel, @CText, @NTyp,
+                        @NBereichEinkauf, @NBereichVerkauf, @NBereichStammdaten, @NBereichDokumente, @NBereichOnline,
+                        @NAktiv, @DGueltigVon, @DGueltigBis, @NPopupAnzeigen, @kBenutzer);
+                    SELECT SCOPE_IDENTITY();
+                ", new
+                {
+                    meldung.CTitel,
+                    meldung.CText,
+                    meldung.NTyp,
+                    meldung.NBereichEinkauf,
+                    meldung.NBereichVerkauf,
+                    meldung.NBereichStammdaten,
+                    meldung.NBereichDokumente,
+                    meldung.NBereichOnline,
+                    meldung.NAktiv,
+                    meldung.DGueltigVon,
+                    meldung.DGueltigBis,
+                    meldung.NPopupAnzeigen,
+                    kBenutzer
+                });
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CreateTextmeldungAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Aktualisiert eine Textmeldung
+        /// </summary>
+        public async Task UpdateTextmeldungAsync(Textmeldung meldung, int? kBenutzer = null)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                await conn.ExecuteAsync(@"
+                    UPDATE NOVVIA.Textmeldung SET
+                        cTitel = @CTitel, cText = @CText, nTyp = @NTyp,
+                        nBereichEinkauf = @NBereichEinkauf, nBereichVerkauf = @NBereichVerkauf,
+                        nBereichStammdaten = @NBereichStammdaten, nBereichDokumente = @NBereichDokumente,
+                        nBereichOnline = @NBereichOnline,
+                        nAktiv = @NAktiv, dGueltigVon = @DGueltigVon, dGueltigBis = @DGueltigBis,
+                        nPopupAnzeigen = @NPopupAnzeigen,
+                        dGeaendert = SYSDATETIME(), kGeaendertVon = @kBenutzer
+                    WHERE kTextmeldung = @KTextmeldung
+                ", new
+                {
+                    meldung.CTitel,
+                    meldung.CText,
+                    meldung.NTyp,
+                    meldung.NBereichEinkauf,
+                    meldung.NBereichVerkauf,
+                    meldung.NBereichStammdaten,
+                    meldung.NBereichDokumente,
+                    meldung.NBereichOnline,
+                    meldung.NAktiv,
+                    meldung.DGueltigVon,
+                    meldung.DGueltigBis,
+                    meldung.NPopupAnzeigen,
+                    meldung.KTextmeldung,
+                    kBenutzer
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateTextmeldungAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Löscht eine Textmeldung
+        /// </summary>
+        public async Task DeleteTextmeldungAsync(int kTextmeldung)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                // CASCADE löscht auch EntityTextmeldung Einträge
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.Textmeldung WHERE kTextmeldung = @kTextmeldung",
+                    new { kTextmeldung });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DeleteTextmeldungAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Weist eine Textmeldung einer Entität zu
+        /// </summary>
+        public async Task<int> AddEntityTextmeldungAsync(int kTextmeldung, string entityTyp, int kEntity, int? kBenutzer = null)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                // Prüfen ob schon vorhanden
+                var exists = await conn.ExecuteScalarAsync<int>(@"
+                    SELECT COUNT(*) FROM NOVVIA.EntityTextmeldung
+                    WHERE kTextmeldung = @kTextmeldung AND cEntityTyp = @entityTyp AND kEntity = @kEntity
+                ", new { kTextmeldung, entityTyp, kEntity });
+
+                if (exists > 0) return 0; // Bereits zugewiesen
+
+                var result = await conn.QuerySingleAsync<int>(@"
+                    INSERT INTO NOVVIA.EntityTextmeldung (kTextmeldung, cEntityTyp, kEntity, kErstelltVon)
+                    VALUES (@kTextmeldung, @entityTyp, @kEntity, @kBenutzer);
+                    SELECT SCOPE_IDENTITY();
+                ", new { kTextmeldung, entityTyp, kEntity, kBenutzer });
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"AddEntityTextmeldungAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Entfernt eine Textmeldung von einer Entität
+        /// </summary>
+        public async Task RemoveEntityTextmeldungAsync(int kEntityTextmeldung)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.EntityTextmeldung WHERE kEntityTextmeldung = @kEntityTextmeldung",
+                    new { kEntityTextmeldung });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RemoveEntityTextmeldungAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Lädt Entitäten die eine bestimmte Textmeldung haben
+        /// </summary>
+        public async Task<List<EntityTextmeldung>> GetTextmeldungEntitiesAsync(int kTextmeldung)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QueryAsync<EntityTextmeldung>(@"
+                    SELECT kEntityTextmeldung, kTextmeldung, cEntityTyp, kEntity, dErstellt
+                    FROM NOVVIA.EntityTextmeldung
+                    WHERE kTextmeldung = @kTextmeldung
+                    ORDER BY cEntityTyp, kEntity
+                ", new { kTextmeldung });
+                return result.ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetTextmeldungEntitiesAsync Fehler: {ex.Message}");
+                return new List<EntityTextmeldung>();
+            }
+        }
+
+        #endregion
     }
 
     #region Benutzerrechte DTOs
