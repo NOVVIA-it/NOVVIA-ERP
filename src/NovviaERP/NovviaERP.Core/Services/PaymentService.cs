@@ -491,9 +491,13 @@ namespace NovviaERP.Core.Services
         public string? MollieRedirectUrl { get; set; }
         public string? MollieWebhookUrl { get; set; }
 
-        // Sparkasse/HBCI
-        public string SparkasseBLZ { get; set; } = "";
-        public string SparkasseKonto { get; set; } = "";
+        // Bank / FinTS (HBCI)
+        public string BankName { get; set; } = "";
+        public string BankBLZ { get; set; } = "";
+        public string BankKontonummer { get; set; } = "";
+        public string BankIBAN { get; set; } = "";
+        public string BankBIC { get; set; } = "";
+        public string BankFinTSUrl { get; set; } = "https://banking-sn3.s-fints-pt-sn.de/fints30";
 
         // Allgemein
         public string? FirmaName { get; set; }

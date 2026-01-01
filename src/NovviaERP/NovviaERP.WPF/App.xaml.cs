@@ -116,7 +116,31 @@ namespace NovviaERP.WPF
             services.AddTransient<DruckerService>();
             services.AddTransient<ShippingService>();
             services.AddTransient<WooCommerceService>();
+
+            // PaymentConfig aus JSON-Datei laden oder Standard verwenden
+            var paymentConfigPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "NovviaERP", "payment-config.json");
+            PaymentConfig paymentConfig;
+            if (File.Exists(paymentConfigPath))
+            {
+                try
+                {
+                    var json = File.ReadAllText(paymentConfigPath);
+                    paymentConfig = System.Text.Json.JsonSerializer.Deserialize<PaymentConfig>(json) ?? new PaymentConfig();
+                }
+                catch
+                {
+                    paymentConfig = new PaymentConfig();
+                }
+            }
+            else
+            {
+                paymentConfig = new PaymentConfig();
+            }
+            services.AddSingleton(paymentConfig);
             services.AddTransient<PaymentService>();
+
             services.AddTransient<StammdatenService>();
             services.AddTransient<WorkflowService>();
 

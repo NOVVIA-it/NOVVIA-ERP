@@ -3620,6 +3620,136 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
+        /// Lager-Uebersicht fuer Einstellungen (mit Anzahl Plaetze)
+        /// </summary>
+        public async Task<List<LagerUebersicht>> GetLagerUebersichtAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<LagerUebersicht>(@"
+                SELECT wl.kWarenLager, wl.cName, wl.cKuerzel, wl.cLagerTyp,
+                       CAST(wl.nAktiv AS BIT) AS NAktiv,
+                       (SELECT COUNT(*) FROM tWarenLagerPlatz WHERE kWarenLager = wl.kWarenLager) AS AnzahlPlaetze,
+                       wl.cStrasse, wl.cPLZ, wl.cOrt, wl.cLand,
+                       RTRIM(ISNULL(wl.cAnsprechpartnerVorname, '') + ' ' + ISNULL(wl.cAnsprechpartnerName, '')) AS CAnsprechpartner,
+                       wl.cAnsprechpartnerTel AS CTelefon,
+                       wl.cAnsprechpartnerEMail AS CEmail
+                FROM tWarenLager wl
+                ORDER BY wl.cName")).ToList();
+        }
+
+        /// <summary>
+        /// Neues Warenlager anlegen
+        /// </summary>
+        public async Task<int> CreateWarenlagerAsync(string name, string kuerzel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleAsync<int>(@"
+                INSERT INTO tWarenLager (cName, cKuerzel, nAktiv, kFirma)
+                VALUES (@Name, @Kuerzel, 1, 1);
+                SELECT SCOPE_IDENTITY();",
+                new { Name = name, Kuerzel = kuerzel });
+        }
+
+        /// <summary>
+        /// Warenlager aktualisieren (JTL-Style mit Adresse)
+        /// </summary>
+        public async Task UpdateWarenlagerAsync(int kWarenLager, string name, string kuerzel, bool aktiv,
+            string? lagerTyp = null, string? strasse = null, string? plz = null, string? ort = null, string? land = null,
+            string? ansprechpartnerName = null, string? telefon = null, string? email = null)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE tWarenLager
+                SET cName = @Name,
+                    cKuerzel = @Kuerzel,
+                    nAktiv = @Aktiv,
+                    cLagerTyp = COALESCE(@LagerTyp, cLagerTyp),
+                    cStrasse = COALESCE(@Strasse, cStrasse),
+                    cPLZ = COALESCE(@PLZ, cPLZ),
+                    cOrt = COALESCE(@Ort, cOrt),
+                    cLand = COALESCE(@Land, cLand),
+                    cAnsprechpartnerName = COALESCE(@AnsprechpartnerName, cAnsprechpartnerName),
+                    cAnsprechpartnerTel = COALESCE(@Telefon, cAnsprechpartnerTel),
+                    cAnsprechpartnerEMail = COALESCE(@Email, cAnsprechpartnerEMail)
+                WHERE kWarenLager = @Id",
+                new
+                {
+                    Id = kWarenLager,
+                    Name = name,
+                    Kuerzel = kuerzel,
+                    Aktiv = aktiv ? 1 : 0,
+                    LagerTyp = lagerTyp,
+                    Strasse = strasse,
+                    PLZ = plz,
+                    Ort = ort,
+                    Land = land,
+                    AnsprechpartnerName = ansprechpartnerName,
+                    Telefon = telefon,
+                    Email = email
+                });
+        }
+
+        /// <summary>
+        /// Warenlager loeschen (nur wenn leer)
+        /// </summary>
+        public async Task DeleteWarenlagerAsync(int kWarenLager)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Pruefen ob Bestaende vorhanden
+            var bestand = await conn.QuerySingleOrDefaultAsync<int>(
+                "SELECT COUNT(*) FROM tLagerbestand WHERE kWarenLager = @Id", new { Id = kWarenLager });
+
+            if (bestand > 0)
+                throw new InvalidOperationException($"Das Lager kann nicht geloescht werden. Es enthaelt noch {bestand} Bestandspositionen.");
+
+            // Erst Lagerplaetze loeschen
+            await conn.ExecuteAsync("DELETE FROM tWarenLagerPlatz WHERE kWarenLager = @Id", new { Id = kWarenLager });
+
+            // Dann Lager loeschen
+            await conn.ExecuteAsync("DELETE FROM tWarenLager WHERE kWarenLager = @Id", new { Id = kWarenLager });
+        }
+
+        /// <summary>
+        /// Neuen Lagerplatz anlegen
+        /// </summary>
+        public async Task<int> CreateWarenlagerPlatzAsync(int kWarenLager, string name)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleAsync<int>(@"
+                INSERT INTO tWarenLagerPlatz (kWarenLager, cName, nSort)
+                VALUES (@KWarenLager, @Name, 0);
+                SELECT SCOPE_IDENTITY();",
+                new { KWarenLager = kWarenLager, Name = name });
+        }
+
+        public class LagerUebersicht
+        {
+            public int KWarenLager { get; set; }
+            public string? CName { get; set; }
+            public string? CKuerzel { get; set; }
+            public string? CLagerTyp { get; set; }
+            public bool NAktiv { get; set; }
+            public int AnzahlPlaetze { get; set; }
+
+            // Adresse (JTL-Style)
+            public string? CStrasse { get; set; }
+            public string? CPLZ { get; set; }
+            public string? COrt { get; set; }
+            public string? CLand { get; set; }
+
+            // Ansprechpartner
+            public string? CAnsprechpartner { get; set; }  // Zusammengesetzt aus Vorname+Name
+            public string? CTelefon { get; set; }
+            public string? CEmail { get; set; }
+
+            // JTL-Style Optionen (Flags - in tWarenLager nicht direkt vorhanden,
+            // aber wir koennten sie in NOVVIA.LagerEinstellung speichern)
+            public bool NBestandGesperrt { get; set; }
+            public bool NAuslieferungGesperrt { get; set; }
+        }
+
+        /// <summary>
         /// Offene Lieferantenbestellungen laden (für Wareneingang-Referenz)
         /// </summary>
         public async Task<IEnumerable<OffeneLieferantenBestellung>> GetOffeneLieferantenBestellungenAsync()
@@ -6242,6 +6372,10 @@ namespace NovviaERP.Core.Services
             int limit = 1000)
         {
             var conn = await GetConnectionAsync();
+
+            // Quarantaene-Lager ausschliessen (ausser explizit angefordert)
+            var quarantaeneLager = await GetQuarantaeneLagerIdAsync();
+
             var sql = @"
                 SELECT TOP (@Limit)
                     a.kArtikel AS KArtikel,
@@ -6263,8 +6397,11 @@ namespace NovviaERP.Core.Services
                 LEFT JOIN dbo.vLagerbestandProLager lbp ON a.kArtikel = lbp.kArtikel AND wl.kWarenLager = lbp.kWarenlager
                 WHERE a.cAktiv = 'Y' AND wl.nAktiv = 1";
 
+            // Quarantaene-Lager ausschliessen, ausser es wird explizit angefordert
             if (kWarenlager.HasValue)
                 sql += " AND wl.kWarenLager = @KWarenlager";
+            else
+                sql += " AND wl.kWarenLager <> @QuarantaeneLager";
 
             if (!string.IsNullOrEmpty(suche))
                 sql += @" AND (a.cArtNr LIKE @Suche
@@ -6280,6 +6417,7 @@ namespace NovviaERP.Core.Services
             {
                 Limit = limit,
                 KWarenlager = kWarenlager,
+                QuarantaeneLager = quarantaeneLager,
                 Suche = $"%{suche}%"
             });
         }
@@ -6572,6 +6710,105 @@ namespace NovviaERP.Core.Services
                 new { Schluessel = SETTING_QUARANTAENE_LAGER, Wert = kWarenLager.ToString() });
         }
 
+        /// <summary>Alle NOVVIA Einstellungen laden</summary>
+        public async Task<NovviaEinstellungen> GetNovviaEinstellungenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            var settings = await conn.QueryAsync<(string Schluessel, string Wert)>(
+                "SELECT cSchluessel, cWert FROM NOVVIA.FirmaEinstellung");
+
+            var dict = settings.ToDictionary(s => s.Schluessel, s => s.Wert);
+
+            return new NovviaEinstellungen
+            {
+                PharmaModus = dict.TryGetValue("PHARMA", out var p) && p == "1",
+                QuarantaeneLagerId = dict.TryGetValue(SETTING_QUARANTAENE_LAGER, out var q) && int.TryParse(q, out var qId) ? qId : DEFAULT_QUARANTAENE_LAGER,
+                AutoMatchSchwelle = dict.TryGetValue("Zahlungsabgleich.AutoMatchSchwelle", out var a) && int.TryParse(a, out var aVal) ? aVal : 90,
+                Firmenname = dict.TryGetValue("FIRMENNAME", out var f) ? f : "",
+                LogoPfad = dict.TryGetValue("LOGO_PFAD", out var l) ? l : null
+            };
+        }
+
+        /// <summary>Alle NOVVIA Einstellungen speichern</summary>
+        public async Task SaveNovviaEinstellungenAsync(NovviaEinstellungen e)
+        {
+            var conn = await GetConnectionAsync();
+
+            var settings = new[]
+            {
+                ("PHARMA", e.PharmaModus ? "1" : "0", "Pharma-Modus: 1 = Aktiv"),
+                (SETTING_QUARANTAENE_LAGER, e.QuarantaeneLagerId.ToString(), "Quarantaene-Lager (kWarenLager)"),
+                ("Zahlungsabgleich.AutoMatchSchwelle", e.AutoMatchSchwelle.ToString(), "Auto-Matching Schwelle (0-100%)"),
+                ("FIRMENNAME", e.Firmenname ?? "", "Firmenname fuer Berichte"),
+                ("LOGO_PFAD", e.LogoPfad ?? "", "Pfad zum Firmenlogo (PNG/JPG)")
+            };
+
+            foreach (var (schluessel, wert, beschreibung) in settings)
+            {
+                await conn.ExecuteAsync(@"
+                    MERGE INTO NOVVIA.FirmaEinstellung AS target
+                    USING (SELECT @Schluessel AS cSchluessel) AS source
+                    ON target.cSchluessel = source.cSchluessel
+                    WHEN MATCHED THEN UPDATE SET cWert = @Wert, dGeaendert = GETDATE()
+                    WHEN NOT MATCHED THEN INSERT (cSchluessel, cWert, cBeschreibung, dErstellt)
+                        VALUES (@Schluessel, @Wert, @Beschreibung, GETDATE());",
+                    new { Schluessel = schluessel, Wert = wert, Beschreibung = beschreibung });
+            }
+        }
+
+        public class NovviaEinstellungen
+        {
+            public bool PharmaModus { get; set; }
+            public int QuarantaeneLagerId { get; set; } = 3;
+            public int AutoMatchSchwelle { get; set; } = 90;
+            public string? Firmenname { get; set; }
+            public string? LogoPfad { get; set; }  // Pfad zum Firmenlogo (PNG/JPG)
+        }
+
+        #endregion
+
+        #region Benutzer-Einstellungen (Spalten, UI-State)
+
+        /// <summary>
+        /// Benutzer-Einstellung laden (z.B. Spaltenreihenfolge)
+        /// </summary>
+        public async Task<string?> GetBenutzerEinstellungAsync(int kBenutzer, string schluessel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleOrDefaultAsync<string>(
+                "SELECT cWert FROM NOVVIA.BenutzerEinstellung WHERE kBenutzer = @KBenutzer AND cSchluessel = @Schluessel",
+                new { KBenutzer = kBenutzer, Schluessel = schluessel });
+        }
+
+        /// <summary>
+        /// Benutzer-Einstellung speichern
+        /// </summary>
+        public async Task SaveBenutzerEinstellungAsync(int kBenutzer, string schluessel, string wert)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                MERGE INTO NOVVIA.BenutzerEinstellung AS target
+                USING (SELECT @KBenutzer AS kBenutzer, @Schluessel AS cSchluessel) AS source
+                ON target.kBenutzer = source.kBenutzer AND target.cSchluessel = source.cSchluessel
+                WHEN MATCHED THEN UPDATE SET cWert = @Wert, dGeaendert = GETDATE()
+                WHEN NOT MATCHED THEN INSERT (kBenutzer, cSchluessel, cWert)
+                    VALUES (@KBenutzer, @Schluessel, @Wert);",
+                new { KBenutzer = kBenutzer, Schluessel = schluessel, Wert = wert });
+        }
+
+        /// <summary>
+        /// Alle Benutzer-Einstellungen fuer einen View laden
+        /// </summary>
+        public async Task<Dictionary<string, string>> GetBenutzerEinstellungenAsync(int kBenutzer, string viewPrefix)
+        {
+            var conn = await GetConnectionAsync();
+            var results = await conn.QueryAsync<(string Schluessel, string Wert)>(
+                "SELECT cSchluessel, cWert FROM NOVVIA.BenutzerEinstellung WHERE kBenutzer = @KBenutzer AND cSchluessel LIKE @Prefix + '%'",
+                new { KBenutzer = kBenutzer, Prefix = viewPrefix });
+
+            return results.ToDictionary(r => r.Schluessel, r => r.Wert);
+        }
+
         #endregion
 
         /// <summary>
@@ -6593,11 +6830,20 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
-        /// Charge in Quarantaene-Lager verschieben - JTL-konform per Lagerplatztransfer
+        /// Charge in Quarantaene-Lager verschieben - JTL-konform per SP dbo.spPlatzUmbuchen
         /// </summary>
         public async Task ChargeInQuarantaene(int kWarenLagerEingang, string grund, int kBenutzer)
         {
             var conn = await GetConnectionAsync();
+
+            // Charge-Daten laden
+            var charge = await conn.QueryFirstOrDefaultAsync<(int KArtikel, decimal FAnzahl, int KWarenLagerPlatz, string? CChargenNr, DateTime? DMHD)>(@"
+                SELECT kArtikel, fAnzahlAktuell, kWarenLagerPlatz, cChargenNr, dMHD
+                FROM tWarenLagerEingang WHERE kWarenLagerEingang = @Id",
+                new { Id = kWarenLagerEingang });
+
+            if (charge.KArtikel == 0)
+                throw new InvalidOperationException($"WarenLagerEingang {kWarenLagerEingang} nicht gefunden.");
 
             // Quarantaene-Lager aus Einstellungen lesen
             var quarantaeneLager = await GetQuarantaeneLagerIdAsync();
@@ -6606,73 +6852,134 @@ namespace NovviaERP.Core.Services
                 new { KWarenLager = quarantaeneLager });
 
             if (quarantaenePlatz == null)
-            {
-                // Quarantaene-Lagerplatz anlegen falls nicht vorhanden
-                quarantaenePlatz = await conn.QuerySingleAsync<int>(@"
-                    INSERT INTO tWarenLagerPlatz (kWarenLager, cName, cKuerzel, dErstellt, nSort)
-                    VALUES (@KWarenLager, 'Quarantaene', 'QUA', GETDATE(), 0);
-                    SELECT SCOPE_IDENTITY();",
-                    new { KWarenLager = quarantaeneLager });
-            }
+                throw new InvalidOperationException($"Kein Lagerplatz im Quarantaene-Lager (kWarenLager={quarantaeneLager}) gefunden. Bitte zuerst anlegen.");
 
-            // Ursprungslagerplatz merken (im Kommentar speichern)
-            var original = await conn.QueryFirstOrDefaultAsync<(int KWarenLagerPlatz, string? Kommentar)>(
-                "SELECT kWarenLagerPlatz, cKommentar FROM tWarenLagerEingang WHERE kWarenLagerEingang = @Id",
-                new { Id = kWarenLagerEingang });
-
-            // Umlagerung durchfuehren
+            // Ursprungslagerplatz in NOVVIA.ChargenBewegung protokollieren
             await conn.ExecuteAsync(@"
-                UPDATE tWarenLagerEingang
-                SET kWarenLagerPlatz = @QuarantaenePlatz,
-                    cKommentar = @Kommentar
-                WHERE kWarenLagerEingang = @Id",
+                INSERT INTO NOVVIA.ChargenBewegung (kWarenLagerEingang, kArtikel, cChargenNr, cAktion, cGrund, cHinweis, kVonWarenLager, kNachWarenLager, fMenge, kBenutzer, dErstellt)
+                SELECT @KWarenLagerEingang, @KArtikel, @CChargenNr, 'Quarantaene', @Grund, NULL,
+                       wlp_alt.kWarenLager, @QuarantaeneLager, @FAnzahl, @KBenutzer, GETDATE()
+                FROM tWarenLagerPlatz wlp_alt WHERE wlp_alt.kWarenLagerPlatz = @KWarenLagerPlatzAlt",
                 new {
-                    Id = kWarenLagerEingang,
-                    QuarantaenePlatz = quarantaenePlatz,
-                    Kommentar = $"QUARANTAENE|{original.KWarenLagerPlatz}|{grund}"
+                    KWarenLagerEingang = kWarenLagerEingang,
+                    KArtikel = charge.KArtikel,
+                    CChargenNr = charge.CChargenNr,
+                    Grund = grund,
+                    QuarantaeneLager = quarantaeneLager,
+                    FAnzahl = charge.FAnzahl,
+                    KBenutzer = kBenutzer,
+                    KWarenLagerPlatzAlt = charge.KWarenLagerPlatz
+                });
+
+            // JTL SP aufrufen: dbo.spPlatzUmbuchen
+            // kBuchungsart = 60 (Lagerumbuchung)
+            var kommentar = $"Quarantaene: {grund}";
+            await conn.ExecuteAsync(@"
+                EXEC dbo.spPlatzUmbuchen
+                    @kArtikel = @KArtikel,
+                    @fAnzahl = @FAnzahl,
+                    @kWarenlagerPLatzNeu = @KWarenLagerPlatzNeu,
+                    @kWarenlagerPlatzAlt = @KWarenLagerPlatzAlt,
+                    @cKommentar = @CKommentar,
+                    @kBuchungsart = 60,
+                    @kBenutzer = @KBenutzer,
+                    @dMhd = @DMHD,
+                    @cChargenNr = @CChargenNr",
+                new {
+                    KArtikel = charge.KArtikel,
+                    FAnzahl = charge.FAnzahl,
+                    KWarenLagerPlatzNeu = quarantaenePlatz,
+                    KWarenLagerPlatzAlt = charge.KWarenLagerPlatz,
+                    CKommentar = kommentar,
+                    KBenutzer = kBenutzer,
+                    DMHD = charge.DMHD,
+                    CChargenNr = charge.CChargenNr
                 });
         }
 
         /// <summary>
-        /// Charge aus Quarantaene zurueck ins Ursprungslager - JTL-konform
+        /// Charge aus Quarantaene zurueck ins Ursprungslager - JTL-konform per SP dbo.spPlatzUmbuchen
         /// </summary>
         public async Task ChargeAusQuarantaene(int kWarenLagerEingang, string? hinweis, int kBenutzer)
         {
             var conn = await GetConnectionAsync();
 
-            // Ursprungslagerplatz aus Kommentar auslesen
-            var kommentar = await conn.QueryFirstOrDefaultAsync<string?>(
-                "SELECT cKommentar FROM tWarenLagerEingang WHERE kWarenLagerEingang = @Id",
+            // Charge-Daten laden
+            var charge = await conn.QueryFirstOrDefaultAsync<(int KArtikel, decimal FAnzahl, int KWarenLagerPlatz, string? CChargenNr, DateTime? DMHD)>(@"
+                SELECT kArtikel, fAnzahlAktuell, kWarenLagerPlatz, cChargenNr, dMHD
+                FROM tWarenLagerEingang WHERE kWarenLagerEingang = @Id",
                 new { Id = kWarenLagerEingang });
 
-            int? originalPlatz = null;
-            if (!string.IsNullOrEmpty(kommentar) && kommentar.StartsWith("QUARANTAENE|"))
+            if (charge.KArtikel == 0)
+                throw new InvalidOperationException($"WarenLagerEingang {kWarenLagerEingang} nicht gefunden.");
+
+            // Ursprungslagerplatz aus NOVVIA.ChargenBewegung lesen (letzte Quarantaene-Bewegung)
+            var ursprung = await conn.QueryFirstOrDefaultAsync<int?>(@"
+                SELECT TOP 1 kVonWarenLager
+                FROM NOVVIA.ChargenBewegung
+                WHERE kWarenLagerEingang = @Id AND cAktion = 'Quarantaene'
+                ORDER BY dErstellt DESC",
+                new { Id = kWarenLagerEingang });
+
+            // Ersten Lagerplatz im Ursprungslager ermitteln
+            int? zielPlatz = null;
+            if (ursprung.HasValue)
             {
-                var parts = kommentar.Split('|');
-                if (parts.Length >= 2 && int.TryParse(parts[1], out var platz))
-                    originalPlatz = platz;
+                zielPlatz = await conn.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT TOP 1 kWarenLagerPlatz FROM tWarenLagerPlatz WHERE kWarenLager = @KWarenLager ORDER BY nSort",
+                    new { KWarenLager = ursprung.Value });
             }
 
-            // Falls kein Ursprungslagerplatz bekannt, Standard-Lagerplatz (Lager MSK, kWarenLager=1)
-            if (originalPlatz == null)
+            // Falls kein Ursprungslager bekannt, Standard-Lager (kWarenLager=1)
+            if (zielPlatz == null)
             {
-                originalPlatz = await conn.QueryFirstOrDefaultAsync<int?>(
-                    "SELECT TOP 1 kWarenLagerPlatz FROM tWarenLagerPlatz WHERE kWarenLager = 1");
+                zielPlatz = await conn.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT TOP 1 kWarenLagerPlatz FROM tWarenLagerPlatz WHERE kWarenLager = 1 ORDER BY nSort");
             }
 
-            if (originalPlatz == null)
+            if (zielPlatz == null)
                 throw new InvalidOperationException("Kein Ziellagerplatz fuer Freigabe gefunden.");
 
-            // Zurueck umlagern
+            // Freigabe in NOVVIA.ChargenBewegung protokollieren
+            var quarantaeneLager = await GetQuarantaeneLagerIdAsync();
             await conn.ExecuteAsync(@"
-                UPDATE tWarenLagerEingang
-                SET kWarenLagerPlatz = @OriginalPlatz,
-                    cKommentar = @Kommentar
-                WHERE kWarenLagerEingang = @Id",
+                INSERT INTO NOVVIA.ChargenBewegung (kWarenLagerEingang, kArtikel, cChargenNr, cAktion, cGrund, cHinweis, kVonWarenLager, kNachWarenLager, fMenge, kBenutzer, dErstellt)
+                SELECT @KWarenLagerEingang, @KArtikel, @CChargenNr, 'Freigabe', NULL, @Hinweis,
+                       @QuarantaeneLager, wlp_neu.kWarenLager, @FAnzahl, @KBenutzer, GETDATE()
+                FROM tWarenLagerPlatz wlp_neu WHERE wlp_neu.kWarenLagerPlatz = @KWarenLagerPlatzNeu",
                 new {
-                    Id = kWarenLagerEingang,
-                    OriginalPlatz = originalPlatz,
-                    Kommentar = $"Freigabe: {hinweis ?? ""}"
+                    KWarenLagerEingang = kWarenLagerEingang,
+                    KArtikel = charge.KArtikel,
+                    CChargenNr = charge.CChargenNr,
+                    Hinweis = hinweis,
+                    QuarantaeneLager = quarantaeneLager,
+                    FAnzahl = charge.FAnzahl,
+                    KBenutzer = kBenutzer,
+                    KWarenLagerPlatzNeu = zielPlatz
+                });
+
+            // JTL SP aufrufen: dbo.spPlatzUmbuchen
+            var kommentar = $"Freigabe: {hinweis ?? ""}";
+            await conn.ExecuteAsync(@"
+                EXEC dbo.spPlatzUmbuchen
+                    @kArtikel = @KArtikel,
+                    @fAnzahl = @FAnzahl,
+                    @kWarenlagerPLatzNeu = @KWarenLagerPlatzNeu,
+                    @kWarenlagerPlatzAlt = @KWarenLagerPlatzAlt,
+                    @cKommentar = @CKommentar,
+                    @kBuchungsart = 60,
+                    @kBenutzer = @KBenutzer,
+                    @dMhd = @DMHD,
+                    @cChargenNr = @CChargenNr",
+                new {
+                    KArtikel = charge.KArtikel,
+                    FAnzahl = charge.FAnzahl,
+                    KWarenLagerPlatzNeu = zielPlatz,
+                    KWarenLagerPlatzAlt = charge.KWarenLagerPlatz,
+                    CKommentar = kommentar,
+                    KBenutzer = kBenutzer,
+                    DMHD = charge.DMHD,
+                    CChargenNr = charge.CChargenNr
                 });
         }
 

@@ -880,7 +880,7 @@ namespace NovviaERP.Core.Services
 
         #region DTOs
 
-        // Typen fuer View-Kompatibilitaet
+        // Typen fuer View-Kompatibilitaet (JTL-Style)
         public class ZahlungsabgleichEintrag
         {
             public int Id { get; set; }
@@ -895,6 +895,22 @@ namespace NovviaERP.Core.Services
             public int MatchKonfidenz { get; set; }
             public string? ZugeordneteRechnungNr { get; set; }
             public string? ZugeordneteAuftragNr { get; set; }
+
+            // JTL-Style zusaetzliche Properties
+            public string? KontoName { get; set; }
+            public string? Buchungstyp { get; set; }
+            public decimal RestBetrag { get; set; }
+            public bool IstZugewiesen => MatchKonfidenz >= 100 || !string.IsNullOrEmpty(ZugeordneteRechnungNr);
+            public bool IstTeilzugewiesen => RestBetrag > 0 && RestBetrag < Math.Abs(Betrag);
+            public bool IstAusgeblendet { get; set; }
+            public DateTime? ZugewiesenAm { get; set; }
+            public string? RechnungsNr => ZugeordneteRechnungNr;
+            public string? BestellNr => ZugeordneteAuftragNr;
+            public string? KundeName { get; set; }
+            public string? KundenNr { get; set; }
+
+            public string StatusText => IstZugewiesen ? "Zugewiesen" :
+                                        IstTeilzugewiesen ? "Teilweise" : "Offen";
         }
 
         public class OffeneRechnung

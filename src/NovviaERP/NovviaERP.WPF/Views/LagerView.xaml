@@ -23,9 +23,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="Bewegungen" Click="Bewegungen_Click"
-                            Background="#6c757d" Foreground="White" Padding="15,8" BorderThickness="0" Margin="0,0,10,0"/>
-                    <Button Content="Aktualisieren" Click="Aktualisieren_Click"
-                            Background="#0078D4" Foreground="White" Padding="15,8" BorderThickness="0"/>
+                            Background="#6c757d" Foreground="White" Padding="15,8" BorderThickness="0"/>
                 </StackPanel>
             </Grid>
         </Border>

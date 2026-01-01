@@ -683,6 +683,34 @@ namespace NovviaERP.Core.Services
         public int AnzahlPositionen { get; set; }
         public decimal Summe { get; set; }
         public List<LieferantenBestellungPos> Positionen { get; set; } = new();
+
+        // JTL Status-Text
+        public string StatusText => NStatus switch
+        {
+            5 => "Entwurf",
+            100 => "Offen",
+            200 => "Bestellt",
+            300 => "Teilgeliefert",
+            400 => "Geliefert",
+            500 => "Abgeschlossen",
+            600 => "Storniert",
+            700 => "Gebucht",
+            _ => $"Unbekannt ({NStatus})"
+        };
+
+        // Status-Farbe für UI
+        public string StatusFarbe => NStatus switch
+        {
+            5 => "#9E9E9E",      // Grau - Entwurf
+            100 => "#FF9800",    // Orange - Offen
+            200 => "#2196F3",    // Blau - Bestellt
+            300 => "#9C27B0",    // Lila - Teilgeliefert
+            400 => "#4CAF50",    // Grün - Geliefert
+            500 => "#1B5E20",    // Dunkelgrün - Abgeschlossen
+            600 => "#F44336",    // Rot - Storniert
+            700 => "#607D8B",    // Blaugrau - Gebucht
+            _ => "#9E9E9E"
+        };
     }
 
     public class LieferantenBestellungPos

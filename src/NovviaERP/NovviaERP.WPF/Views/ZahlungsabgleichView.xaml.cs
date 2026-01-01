@@ -33,11 +33,49 @@ namespace NovviaERP.WPF.Views
             _sepa = App.Services.GetService<SepaService>();
             _payment = App.Services.GetService<PaymentService>();
 
-            // Standard-Datumsbereich: Letzter Monat
-            dpVon.SelectedDate = DateTime.Today.AddMonths(-1);
-            dpBis.SelectedDate = DateTime.Today;
+            Loaded += async (s, e) => await InitAsync();
+        }
 
-            Loaded += async (s, e) => await LadeZahlungenAsync();
+        private async Task InitAsync()
+        {
+            // Konten laden fuer Filter
+            await LadeKontenAsync();
+            await LadeZahlungenAsync();
+        }
+
+        private async Task LadeKontenAsync()
+        {
+            try
+            {
+                // TODO: Konten aus DB laden
+                // Vorlaeufig statische Eintraege
+                cmbKontoFilter.Items.Clear();
+                cmbKontoFilter.Items.Add(new ComboBoxItem { Content = "Alle Konten", Tag = null, IsSelected = true });
+                cmbKontoFilter.Items.Add(new ComboBoxItem { Content = "Sparkasse", Tag = "BANK" });
+                cmbKontoFilter.Items.Add(new ComboBoxItem { Content = "PayPal", Tag = "PAYPAL" });
+                cmbKontoFilter.Items.Add(new ComboBoxItem { Content = "Mollie", Tag = "MOLLIE" });
+            }
+            catch { }
+        }
+
+        private (DateTime? Von, DateTime? Bis) BerechneZeitraum()
+        {
+            var tag = (cmbZeitraum.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "7";
+            var heute = DateTime.Today;
+
+            return tag switch
+            {
+                "0" => (heute, heute.AddDays(1)),                              // Heute
+                "1" => (heute.AddDays(-1), heute),                             // Gestern
+                "7" => (heute.AddDays(-7), null),                              // Letzte 7 Tage
+                "30" => (heute.AddDays(-30), null),                            // Letzte 30 Tage
+                "M" => (new DateTime(heute.Year, heute.Month, 1), null),       // Dieser Monat
+                "LM" => (new DateTime(heute.Year, heute.Month, 1).AddMonths(-1),
+                         new DateTime(heute.Year, heute.Month, 1)),            // Letzter Monat
+                "Y" => (new DateTime(heute.Year, 1, 1), null),                 // Dieses Jahr
+                "ALL" => (null, null),                                         // Alle
+                _ => (heute.AddDays(-7), null)
+            };
         }
 
         #region Laden
@@ -46,28 +84,61 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
-                txtStatus.Text = "Lade Zahlungen...";
+                txtStatus.Text = "Lade Kontobewegungen...";
 
+                var (von, bis) = BerechneZeitraum();
                 var nurUnmatched = chkNurUnmatched.IsChecked == true;
+                var zeigAusgeblendete = chkAusgeblendetZeigen.IsChecked == true;
+
+                // Filter-Werte sammeln
+                var transaktionsId = txtTransaktionsId.Text?.Trim();
+                var senderEmpfaenger = txtSenderEmpfaenger.Text?.Trim();
+                var verwendungszweck = txtVerwendungszweck.Text?.Trim();
+                decimal? betragVon = null, betragBis = null;
+
+                if (decimal.TryParse(txtBetragVon.Text, out var bv)) betragVon = bv;
+                if (decimal.TryParse(txtBetragBis.Text, out var bb)) betragBis = bb;
 
                 _zahlungen = (await _zahlungsabgleich.GetAllTransaktionenAsync(
-                    von: dpVon.SelectedDate,
-                    bis: dpBis.SelectedDate,
+                    von: von,
+                    bis: bis,
                     nurUnmatched: nurUnmatched
                 )).ToList();
 
+                // Client-seitige Filterung
+                var gefiltert = _zahlungen.AsEnumerable();
+
+                if (!string.IsNullOrEmpty(transaktionsId))
+                    gefiltert = gefiltert.Where(z => z.TransaktionsId?.Contains(transaktionsId, StringComparison.OrdinalIgnoreCase) == true);
+
+                if (!string.IsNullOrEmpty(senderEmpfaenger))
+                    gefiltert = gefiltert.Where(z => z.Name?.Contains(senderEmpfaenger, StringComparison.OrdinalIgnoreCase) == true);
+
+                if (!string.IsNullOrEmpty(verwendungszweck))
+                    gefiltert = gefiltert.Where(z => z.Verwendungszweck?.Contains(verwendungszweck, StringComparison.OrdinalIgnoreCase) == true);
+
+                if (betragVon.HasValue)
+                    gefiltert = gefiltert.Where(z => Math.Abs(z.Betrag) >= betragVon.Value);
+
+                if (betragBis.HasValue)
+                    gefiltert = gefiltert.Where(z => Math.Abs(z.Betrag) <= betragBis.Value);
+
+                if (!zeigAusgeblendete)
+                    gefiltert = gefiltert.Where(z => !z.IstAusgeblendet);
+
+                _zahlungen = gefiltert.ToList();
                 dgZahlungen.ItemsSource = _zahlungen;
 
                 // Summen
                 var anzahl = _zahlungen.Count;
                 var summe = _zahlungen.Where(z => z.Betrag > 0).Sum(z => z.Betrag);
-                var unmatched = _zahlungen.Count(z => z.MatchKonfidenz == 0);
+                var unmatched = _zahlungen.Count(z => !z.IstZugewiesen);
 
-                txtSummeAnzahl.Text = $"{anzahl} Zahlungen ({unmatched} nicht zugeordnet)";
+                txtSummeAnzahl.Text = $"{anzahl} Kontobewegungen ({unmatched} nicht zugeordnet)";
                 txtSummeBetrag.Text = summe.ToString("N2");
                 txtAnzahl.Text = $"({anzahl} Eintraege)";
 
-                txtStatus.Text = $"{anzahl} Zahlungen geladen";
+                txtStatus.Text = $"{anzahl} Kontobewegungen geladen";
             }
             catch (Exception ex)
             {
@@ -576,11 +647,71 @@ namespace NovviaERP.WPF.Views
 
         #region Event Handlers
 
-        private async void Aktualisieren_Click(object sender, RoutedEventArgs e)
+        private async void AbgleichStarten_Click(object sender, RoutedEventArgs e)
         {
-            if (tabZahlungen.SelectedIndex == 1)
-                await LadeSepaAsync();
-            else
+            // Alle Konten abgleichen (Bank + PayPal + Mollie)
+            var result = MessageBox.Show(
+                "Abgleich starten?\n\n" +
+                "Dies ruft Transaktionen von allen konfigurierten Konten ab:\n" +
+                "- Bank (MT940/CAMT Import oder HBCI)\n" +
+                "- PayPal\n" +
+                "- Mollie",
+                "Abgleich starten", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                txtStatus.Text = "Starte Abgleich...";
+
+                // PayPal abrufen
+                if (_payment != null)
+                {
+                    try
+                    {
+                        PayPalSync_Click(sender, e);
+                    }
+                    catch { }
+
+                    try
+                    {
+                        MollieSync_Click(sender, e);
+                    }
+                    catch { }
+                }
+
+                // Auto-Matching durchfuehren
+                await AutoMatchAsync();
+
+                await LadeZahlungenAsync();
+                txtStatus.Text = "Abgleich abgeschlossen";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Abgleich:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void Suchen_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeZahlungenAsync();
+        }
+
+        private async void Zeitraum_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            await LadeZahlungenAsync();
+        }
+
+        private async void KontoFilter_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            await LadeZahlungenAsync();
+        }
+
+        private async void TxtTransaktionsId_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
                 await LadeZahlungenAsync();
         }
 
@@ -588,8 +719,38 @@ namespace NovviaERP.WPF.Views
         {
             if (e.Source != tabZahlungen || !IsLoaded) return;
 
-            if (tabZahlungen.SelectedIndex == 1)
-                await LadeSepaAsync();
+            switch (tabZahlungen.SelectedIndex)
+            {
+                case 1: // Zugewiesene Zahlungen
+                    await LadeZugewieseneAsync();
+                    break;
+                case 2: // SEPA
+                    await LadeSepaAsync();
+                    break;
+            }
+        }
+
+        private async Task LadeZugewieseneAsync()
+        {
+            try
+            {
+                txtStatus.Text = "Lade zugewiesene Zahlungen...";
+
+                var (von, bis) = BerechneZeitraum();
+
+                // Alle zugewiesenen Zahlungen laden
+                var alle = await _zahlungsabgleich.GetAllTransaktionenAsync(von: von, bis: bis, nurUnmatched: false);
+                var zugewiesen = alle.Where(z => z.IstZugewiesen).ToList();
+
+                dgZugewiesen.ItemsSource = zugewiesen;
+                txtZugewiesenAnzahl.Text = $"{zugewiesen.Count} zugewiesene Zahlungen";
+
+                txtStatus.Text = $"{zugewiesen.Count} zugewiesene Zahlungen geladen";
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
         }
 
         private async void Filter_Changed(object sender, RoutedEventArgs e)
@@ -598,17 +759,80 @@ namespace NovviaERP.WPF.Views
             await LadeZahlungenAsync();
         }
 
-        private async void Filter_Changed(object sender, SelectionChangedEventArgs e)
-        {
-            if (!IsLoaded) return;
-            await LadeZahlungenAsync();
-        }
-
         private void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var hasSelection = dgZahlungen.SelectedItem != null;
-            btnZuordnen.IsEnabled = hasSelection;
+            var zahlung = dgZahlungen.SelectedItem as ZahlungsabgleichEintrag;
+
+            btnManuellZuweisen.IsEnabled = hasSelection && zahlung != null && !zahlung.IstZugewiesen;
+            btnAusblenden.IsEnabled = hasSelection;
+            btnRueckbuchung.IsEnabled = hasSelection && zahlung != null && zahlung.RestBetrag > 0;
             btnDetails.IsEnabled = hasSelection;
+        }
+
+        private async void Ausblenden_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgZahlungen.SelectedItem is not ZahlungsabgleichEintrag zahlung) return;
+
+            try
+            {
+                // TODO: Zahlung als ausgeblendet markieren
+                zahlung.IstAusgeblendet = true;
+                txtStatus.Text = "Kontobewegung ausgeblendet";
+                await LadeZahlungenAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void Rueckbuchung_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgZahlungen.SelectedItem is not ZahlungsabgleichEintrag zahlung) return;
+
+            MessageBox.Show(
+                $"Rueckbuchung fuer Restbetrag:\n\n" +
+                $"Ursprungsbetrag: {zahlung.Betrag:N2} EUR\n" +
+                $"Bereits zugewiesen: {(zahlung.Betrag - zahlung.RestBetrag):N2} EUR\n" +
+                $"Restbetrag: {zahlung.RestBetrag:N2} EUR\n\n" +
+                "Diese Funktion ist noch nicht implementiert.",
+                "Rueckbuchung", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private async void ZuweisungAufheben_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgZugewiesen.SelectedItem is not ZahlungsabgleichEintrag zahlung) return;
+
+            var result = MessageBox.Show(
+                $"Zuweisung aufheben?\n\n" +
+                $"Zahlung: {zahlung.Betrag:N2} EUR vom {zahlung.Buchungsdatum:dd.MM.yyyy}\n" +
+                $"Rechnung: {zahlung.RechnungsNr}",
+                "Zuweisung aufheben", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                // TODO: Zuweisung in DB aufheben
+                txtStatus.Text = "Zuweisung aufgehoben";
+                await LadeZugewieseneAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task AutoMatchAsync()
+        {
+            var result = await _zahlungsabgleich.MatchZahlungenAsync();
+
+            MessageBox.Show($"Automatische Zuordnung abgeschlossen!\n\n" +
+                $"Automatisch zugeordnet: {result.AutoGematchedAnzahl}\n" +
+                $"Vorschlaege: {result.VorschlaegeAnzahl}\n" +
+                $"Gesamt geprueft: {result.GesamtAnzahl}",
+                "Automatische Zuordnung", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         #endregion

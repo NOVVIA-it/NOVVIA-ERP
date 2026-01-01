@@ -45,6 +45,7 @@ namespace NovviaERP.WPF.Views
                 await LadeKundenkategorienAsync();
                 await LadeZahlungsartenAsync();
                 await LadeVersandartenAsync();
+                await LadeLagerAsync();
                 await LadeSteuernAsync();
                 await LadeKontenAsync();
                 await LadeEigeneFelderAsync();
@@ -53,6 +54,7 @@ namespace NovviaERP.WPF.Views
                 await LadeWooShopsAsync();
                 await LadeLogsAsync();
                 await LadeLogAufbewahrungAsync();
+                await LadeNovviaEinstellungenAsync();
             }
             catch (Exception ex)
             {
@@ -482,6 +484,233 @@ namespace NovviaERP.WPF.Views
 
         #endregion
 
+        #region Lager (JTL-Style)
+
+        private List<CoreService.LagerUebersicht>? _lager;
+        private int? _selectedLagerId;
+
+        private bool _isLoadingLager = false;
+
+        private async System.Threading.Tasks.Task LadeLagerAsync()
+        {
+            if (_isLoadingLager) return;
+            _isLoadingLager = true;
+
+            try
+            {
+                // Auswahl merken vor dem Neuladen
+                var selectedId = _selectedLagerId;
+
+                _lager = await _core.GetLagerUebersichtAsync();
+                lstLager.ItemsSource = _lager;
+
+                // Auswahl wiederherstellen
+                if (selectedId.HasValue)
+                {
+                    lstLager.SelectedValue = selectedId.Value;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Lager laden: {ex.Message}");
+            }
+            finally
+            {
+                _isLoadingLager = false;
+            }
+        }
+
+        private void LstLager_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Waehrend des Ladens keine Aenderungen verarbeiten
+            if (_isLoadingLager) return;
+
+            if (lstLager.SelectedItem is CoreService.LagerUebersicht lager)
+            {
+                _selectedLagerId = lager.KWarenLager;
+                btnLagerLoeschen.IsEnabled = true;
+
+                // Allgemein
+                txtLagerName.Text = lager.CName ?? "";
+                txtLagerKuerzel.Text = lager.CKuerzel ?? "";
+
+                // Lagertyp
+                cmbLagerTyp.SelectedIndex = 0; // Default
+                foreach (ComboBoxItem item in cmbLagerTyp.Items)
+                {
+                    if (item.Tag?.ToString() == lager.CLagerTyp)
+                    {
+                        cmbLagerTyp.SelectedItem = item;
+                        break;
+                    }
+                }
+
+                // Optionen
+                chkLagerAktiv.IsChecked = lager.NAktiv;
+                chkLagerBestandGesperrt.IsChecked = lager.NBestandGesperrt;
+                chkLagerAuslieferungGesperrt.IsChecked = lager.NAuslieferungGesperrt;
+
+                // Adresse (aus erweiterten Daten laden, falls vorhanden)
+                txtLagerStrasse.Text = lager.CStrasse ?? "";
+                txtLagerPLZ.Text = lager.CPLZ ?? "";
+                txtLagerOrt.Text = lager.COrt ?? "";
+                txtLagerLand.Text = lager.CLand ?? "Deutschland";
+                txtLagerTelefon.Text = lager.CTelefon ?? "";
+                txtLagerEmail.Text = lager.CEmail ?? "";
+                txtLagerAnsprechpartner.Text = lager.CAnsprechpartner ?? "";
+
+                txtLagerStatus.Text = $"Lager ID: {lager.KWarenLager}";
+                txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
+            }
+            // WICHTIG: _selectedLagerId wird NICHT geloescht, wenn SelectedItem null ist
+            // Das kann passieren wenn der Fokus wechselt, aber das Lager bleibt ausgewaehlt
+        }
+
+        private void ClearLagerForm()
+        {
+            txtLagerName.Text = "";
+            txtLagerKuerzel.Text = "";
+            cmbLagerTyp.SelectedIndex = 0;
+            chkLagerAktiv.IsChecked = true;
+            chkLagerBestandGesperrt.IsChecked = false;
+            chkLagerAuslieferungGesperrt.IsChecked = false;
+            txtLagerStrasse.Text = "";
+            txtLagerPLZ.Text = "";
+            txtLagerOrt.Text = "";
+            txtLagerLand.Text = "Deutschland";
+            txtLagerTelefon.Text = "";
+            txtLagerEmail.Text = "";
+            txtLagerAnsprechpartner.Text = "";
+            txtLagerStatus.Text = "";
+            txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
+        }
+
+        private void LagerNeu_Click(object sender, RoutedEventArgs e)
+        {
+            // Formular leeren fuer neues Lager
+            _selectedLagerId = null;
+            btnLagerLoeschen.IsEnabled = false;
+
+            // Auswahl in der ListBox entfernen (ohne SelectionChanged zu triggern)
+            _isLoadingLager = true;
+            lstLager.SelectedItem = null;
+            _isLoadingLager = false;
+
+            ClearLagerForm();
+            txtLagerName.Focus();
+            txtLagerStatus.Text = "Neues Lager - Namen eingeben und Speichern klicken.";
+            txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
+        }
+
+        private async void LagerLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedLagerId == null) return;
+
+            var lager = lstLager.SelectedItem as CoreService.LagerUebersicht;
+            if (lager == null) return;
+
+            var result = MessageBox.Show(
+                $"Lager '{lager.CName}' wirklich loeschen?\n\n" +
+                "Achtung: Dies ist nur moeglich, wenn das Lager leer ist.",
+                "Lager loeschen", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _core.DeleteWarenlagerAsync(_selectedLagerId.Value);
+                await LadeLagerAsync();
+                ClearLagerForm();
+                txtLagerStatus.Text = "Lager geloescht.";
+                txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void LagerplaetzeVerwalten_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedLagerId == null)
+            {
+                MessageBox.Show("Bitte zuerst ein Lager auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var lager = lstLager.SelectedItem as CoreService.LagerUebersicht;
+            MessageBox.Show(
+                $"Lagerplaetze fuer '{lager?.CName}':\n\n" +
+                $"Anzahl Plaetze: {lager?.AnzahlPlaetze ?? 0}\n\n" +
+                "Funktion wird noch implementiert.\n" +
+                "Neue Plaetze koennen ueber SQL hinzugefuegt werden.",
+                "Lagerplaetze", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private async void LagerSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            // Validierung
+            if (string.IsNullOrWhiteSpace(txtLagerName.Text))
+            {
+                MessageBox.Show("Bitte einen Lagernamen eingeben.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                txtLagerName.Focus();
+                return;
+            }
+
+            try
+            {
+                var lagerTyp = (cmbLagerTyp.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Standard";
+                var kuerzel = string.IsNullOrWhiteSpace(txtLagerKuerzel.Text)
+                    ? txtLagerName.Text.Substring(0, Math.Min(3, txtLagerName.Text.Length)).ToUpper()
+                    : txtLagerKuerzel.Text.Trim();
+
+                // Speichern-Button waehrend Speicherung deaktivieren
+                txtLagerStatus.Text = "Speichern...";
+                txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
+
+                if (_selectedLagerId == null)
+                {
+                    // Neues Lager anlegen
+                    var newId = await _core.CreateWarenlagerAsync(txtLagerName.Text.Trim(), kuerzel);
+                    _selectedLagerId = newId; // Neue ID merken
+                    txtLagerStatus.Text = $"Neues Lager '{txtLagerName.Text}' angelegt (ID: {newId})!";
+                    btnLagerLoeschen.IsEnabled = true;
+                }
+                else
+                {
+                    // Bestehendes Lager aktualisieren mit allen Feldern (direkt in tWarenLager)
+                    await _core.UpdateWarenlagerAsync(
+                        kWarenLager: _selectedLagerId.Value,
+                        name: txtLagerName.Text.Trim(),
+                        kuerzel: kuerzel,
+                        aktiv: chkLagerAktiv.IsChecked == true,
+                        lagerTyp: lagerTyp,
+                        strasse: txtLagerStrasse.Text.Trim(),
+                        plz: txtLagerPLZ.Text.Trim(),
+                        ort: txtLagerOrt.Text.Trim(),
+                        land: txtLagerLand.Text.Trim(),
+                        ansprechpartnerName: txtLagerAnsprechpartner.Text.Trim(),
+                        telefon: txtLagerTelefon.Text.Trim(),
+                        email: txtLagerEmail.Text.Trim());
+
+                    txtLagerStatus.Text = $"Lager '{txtLagerName.Text}' gespeichert (ID: {_selectedLagerId.Value})!";
+                }
+
+                txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+
+                // Lagerliste neu laden und Auswahl wiederherstellen
+                await LadeLagerAsync();
+            }
+            catch (Exception ex)
+            {
+                txtLagerStatus.Text = $"Fehler: {ex.Message}";
+                txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
         #region Steuern & Konten (nur Ansicht)
 
         private async System.Threading.Tasks.Task LadeSteuernAsync()
@@ -551,6 +780,111 @@ namespace NovviaERP.WPF.Views
                 dgFirmaEigeneFelder.ItemsSource = firmaFelder.ToList();
             }
             catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Firma Felder: {ex.Message}"); }
+
+        }
+
+        #endregion
+
+        #region NOVVIA Einstellungen
+
+        private async System.Threading.Tasks.Task LadeNovviaEinstellungenAsync()
+        {
+            try
+            {
+                // Lager für Dropdown laden
+                var lager = await _core.GetLagerUebersichtAsync();
+                cmbQuarantaeneLager.ItemsSource = lager;
+
+                // Einstellungen aus NOVVIA.FirmaEinstellung laden
+                var einstellungen = await _core.GetNovviaEinstellungenAsync();
+
+                chkPharmaModus.IsChecked = einstellungen.PharmaModus;
+                cmbQuarantaeneLager.SelectedValue = einstellungen.QuarantaeneLagerId;
+                txtAutoMatchSchwelle.Text = einstellungen.AutoMatchSchwelle.ToString();
+                txtNovviaFirmenname.Text = einstellungen.Firmenname ?? "";
+
+                // Logo laden
+                txtLogoPfad.Text = einstellungen.LogoPfad ?? "";
+                LadeLogoVorschau(einstellungen.LogoPfad);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"NOVVIA Einstellungen laden: {ex.Message}");
+            }
+        }
+
+        private void LadeLogoVorschau(string? pfad)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(pfad) && System.IO.File.Exists(pfad))
+                {
+                    var bitmap = new System.Windows.Media.Imaging.BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(pfad, UriKind.Absolute);
+                    bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    imgLogoPreview.Source = bitmap;
+                    btnLogoEntfernen.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    imgLogoPreview.Source = null;
+                    btnLogoEntfernen.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch
+            {
+                imgLogoPreview.Source = null;
+                btnLogoEntfernen.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void LogoAuswaehlen_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Firmenlogo auswaehlen",
+                Filter = "Bilddateien (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|Alle Dateien (*.*)|*.*"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                txtLogoPfad.Text = dialog.FileName;
+                LadeLogoVorschau(dialog.FileName);
+            }
+        }
+
+        private void LogoEntfernen_Click(object sender, RoutedEventArgs e)
+        {
+            txtLogoPfad.Text = "";
+            imgLogoPreview.Source = null;
+            btnLogoEntfernen.Visibility = Visibility.Collapsed;
+        }
+
+        private async void NovviaEinstellungenSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var einstellungen = new CoreService.NovviaEinstellungen
+                {
+                    PharmaModus = chkPharmaModus.IsChecked == true,
+                    QuarantaeneLagerId = cmbQuarantaeneLager.SelectedValue as int? ?? 3,
+                    AutoMatchSchwelle = int.TryParse(txtAutoMatchSchwelle.Text, out var schwelle) ? schwelle : 90,
+                    Firmenname = txtNovviaFirmenname.Text.Trim(),
+                    LogoPfad = txtLogoPfad.Text.Trim()
+                };
+
+                await _core.SaveNovviaEinstellungenAsync(einstellungen);
+
+                txtNovviaStatus.Text = "Einstellungen gespeichert!";
+                txtNovviaStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+            }
+            catch (Exception ex)
+            {
+                txtNovviaStatus.Text = $"Fehler: {ex.Message}";
+                txtNovviaStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+            }
         }
 
         #endregion
@@ -682,6 +1016,14 @@ namespace NovviaERP.WPF.Views
                         txtMollieRedirectUrl.Text = config.MollieRedirectUrl ?? "";
                         txtMollieWebhookUrl.Text = config.MollieWebhookUrl ?? "";
 
+                        // Bank / FinTS
+                        txtBankName.Text = config.BankName ?? "";
+                        txtBankBLZ.Text = config.BankBLZ ?? "";
+                        txtBankKontonummer.Text = config.BankKontonummer ?? "";
+                        txtBankIBAN.Text = config.BankIBAN ?? "";
+                        txtBankBIC.Text = config.BankBIC ?? "";
+                        txtBankFinTSUrl.Text = config.BankFinTSUrl ?? "https://banking-sn3.s-fints-pt-sn.de/fints30";
+
                         txtPaymentFirmaName.Text = config.FirmaName ?? "";
                     }
                 }
@@ -707,6 +1049,14 @@ namespace NovviaERP.WPF.Views
                     MollieApiKey = txtMollieApiKey.Password,
                     MollieRedirectUrl = txtMollieRedirectUrl.Text.Trim(),
                     MollieWebhookUrl = txtMollieWebhookUrl.Text.Trim(),
+
+                    // Bank / FinTS
+                    BankName = txtBankName.Text.Trim(),
+                    BankBLZ = txtBankBLZ.Text.Trim(),
+                    BankKontonummer = txtBankKontonummer.Text.Trim(),
+                    BankIBAN = txtBankIBAN.Text.Trim(),
+                    BankBIC = txtBankBIC.Text.Trim(),
+                    BankFinTSUrl = txtBankFinTSUrl.Text.Trim(),
 
                     FirmaName = txtPaymentFirmaName.Text.Trim()
                 };
@@ -1152,13 +1502,16 @@ namespace NovviaERP.WPF.Views
                 txtLogBewegung.Text = stats.Bewegungsdaten.ToString();
                 txtLogFehler.Text = stats.Fehler.ToString();
 
+                // Zeitraum berechnen (JTL-Logik)
+                var (von, bis) = BerechneLogZeitraum();
+
                 // Logs laden mit Filter
                 var filter = new LogService.LogFilter
                 {
                     Kategorie = GetSelectedComboText(cmbLogKategorie),
                     Modul = GetSelectedComboText(cmbLogModul),
-                    Von = dpLogVon.SelectedDate,
-                    Bis = dpLogBis.SelectedDate?.AddDays(1),
+                    Von = von,
+                    Bis = bis,
                     Suche = string.IsNullOrWhiteSpace(txtLogSuche.Text) ? null : txtLogSuche.Text.Trim()
                 };
 
@@ -1181,6 +1534,29 @@ namespace NovviaERP.WPF.Views
                 return text;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Berechnet Von/Bis basierend auf JTL-Zeitraum-Logik
+        /// </summary>
+        private (DateTime? Von, DateTime? Bis) BerechneLogZeitraum()
+        {
+            var tag = (cmbLogZeitraum.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "7";
+            var heute = DateTime.Today;
+
+            return tag switch
+            {
+                "0" => (heute, heute.AddDays(1)),                                    // Heute
+                "1" => (heute.AddDays(-1), heute),                                   // Gestern
+                "7" => (heute.AddDays(-7), null),                                    // Letzte 7 Tage
+                "30" => (heute.AddDays(-30), null),                                  // Letzte 30 Tage
+                "M" => (new DateTime(heute.Year, heute.Month, 1), null),             // Dieser Monat
+                "LM" => (new DateTime(heute.Year, heute.Month, 1).AddMonths(-1),     // Letzter Monat
+                         new DateTime(heute.Year, heute.Month, 1)),
+                "Y" => (new DateTime(heute.Year, 1, 1), null),                       // Dieses Jahr
+                "ALL" => (null, null),                                               // Alle
+                _ => (heute.AddDays(-7), null)
+            };
         }
 
         private void LogFilter_Changed(object sender, object e)

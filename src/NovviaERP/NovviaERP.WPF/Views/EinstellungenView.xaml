@@ -315,6 +315,161 @@
                 </Grid>
             </TabItem>
 
+            <!-- Lager Tab (JTL-Style: Lager anlegen/bearbeiten) -->
+            <TabItem Header="Lager">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Linke Seite: Lager-Liste -->
+                    <Border BorderBrush="#ddd" BorderThickness="0,0,1,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Toolbar -->
+                            <StackPanel Orientation="Horizontal" Margin="10,10,10,5">
+                                <Button Content="Anlegen" Click="LagerNeu_Click" Padding="12,6" Margin="0,0,8,0"
+                                        Background="#0078D4" Foreground="White"/>
+                                <Button x:Name="btnLagerLoeschen" Content="Loeschen" Click="LagerLoeschen_Click" Padding="12,6"
+                                        IsEnabled="False"/>
+                            </StackPanel>
+
+                            <!-- Lager-Liste mit persistenter Markierung -->
+                            <ListBox x:Name="lstLager" Grid.Row="1" Margin="10,5,10,10"
+                                     DisplayMemberPath="CName" SelectedValuePath="KWarenLager"
+                                     SelectionChanged="LstLager_SelectionChanged">
+                                <ListBox.Resources>
+                                    <!-- Markierung bleibt sichtbar auch wenn ListBox nicht fokussiert -->
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0078D4"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
+                                </ListBox.Resources>
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Padding" Value="10,6"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="#0078D4"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Rechte Seite: Lager-Details (JTL-Style) -->
+                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="20,15">
+
+                            <!-- Allgemeine Informationen -->
+                            <TextBlock Text="Allgemein" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="250"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Name:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtLagerName" Grid.Column="1"/>
+
+                                <TextBlock Text="Kuerzel:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                                <TextBox x:Name="txtLagerKuerzel" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" MaxLength="10"/>
+
+                                <TextBlock Text="Typ des Warenlagers:" VerticalAlignment="Center" Grid.Row="2" Margin="0,8,0,0"/>
+                                <ComboBox x:Name="cmbLagerTyp" Grid.Row="2" Grid.Column="1" Margin="0,8,0,0">
+                                    <ComboBoxItem Content="Standard" Tag="Standard" IsSelected="True"/>
+                                    <ComboBoxItem Content="WMS-Lager" Tag="WMS"/>
+                                    <ComboBoxItem Content="FBA-Lager" Tag="FBA"/>
+                                    <ComboBoxItem Content="Fulfillment-Lager" Tag="Fulfillment"/>
+                                    <ComboBoxItem Content="Konsignationslager" Tag="Konsignation"/>
+                                </ComboBox>
+                            </Grid>
+
+                            <!-- Optionen (JTL-Style) -->
+                            <TextBlock Text="Optionen" FontSize="16" FontWeight="SemiBold" Margin="0,25,0,15"/>
+                            <StackPanel>
+                                <CheckBox x:Name="chkLagerAktiv" Content="Lager ist aktiv" IsChecked="True" Margin="0,0,0,8"/>
+                                <CheckBox x:Name="chkLagerBestandGesperrt" Content="Fuer den verfuegbaren Bestand sperren" Margin="0,0,0,4"/>
+                                <TextBlock Text="Die Bestaende stehen nicht im Onlineshop und auf Marktplaetzen zur Verfuegung."
+                                           Foreground="Gray" FontSize="11" Margin="20,0,0,8"/>
+                                <CheckBox x:Name="chkLagerAuslieferungGesperrt" Content="Fuer Auslieferung sperren" Margin="0,0,0,4"/>
+                                <TextBlock Text="Die Bestaende koennen nicht fuer Auftraege verwendet werden."
+                                           Foreground="Gray" FontSize="11" Margin="20,0,0,8"/>
+                            </StackPanel>
+
+                            <!-- Adresse -->
+                            <TextBlock Text="Lageranschrift" FontSize="16" FontWeight="SemiBold" Margin="0,20,0,15"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="300"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Strasse:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtLagerStrasse" Grid.Column="1"/>
+
+                                <TextBlock Text="PLZ/Ort:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                                <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
+                                    <TextBox x:Name="txtLagerPLZ" Width="80" MaxLength="10"/>
+                                    <TextBox x:Name="txtLagerOrt" Width="212" Margin="8,0,0,0"/>
+                                </StackPanel>
+
+                                <TextBlock Text="Land:" VerticalAlignment="Center" Grid.Row="2" Margin="0,8,0,0"/>
+                                <TextBox x:Name="txtLagerLand" Grid.Row="2" Grid.Column="1" Margin="0,8,0,0" Text="Deutschland"/>
+
+                                <TextBlock Text="Telefon:" VerticalAlignment="Center" Grid.Row="3" Margin="0,8,0,0"/>
+                                <TextBox x:Name="txtLagerTelefon" Grid.Row="3" Grid.Column="1" Margin="0,8,0,0"/>
+
+                                <TextBlock Text="E-Mail:" VerticalAlignment="Center" Grid.Row="4" Margin="0,8,0,0"/>
+                                <TextBox x:Name="txtLagerEmail" Grid.Row="4" Grid.Column="1" Margin="0,8,0,0"/>
+                            </Grid>
+
+                            <!-- Ansprechpartner -->
+                            <TextBlock Text="Ansprechpartner" FontSize="16" FontWeight="SemiBold" Margin="0,20,0,15"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="300"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="Name:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtLagerAnsprechpartner" Grid.Column="1"/>
+                            </Grid>
+
+                            <!-- Speichern -->
+                            <StackPanel Orientation="Horizontal" Margin="0,25,0,0">
+                                <Button Content="Speichern" Click="LagerSpeichern_Click" Padding="20,8"
+                                        Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                                <Button Content="Lagerplaetze verwalten" Click="LagerplaetzeVerwalten_Click" Padding="15,8" Margin="15,0,0,0"/>
+                            </StackPanel>
+
+                            <TextBlock x:Name="txtLagerStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
             <!-- Zahlungsanbieter Tab -->
             <TabItem Header="Zahlungsanbieter">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -374,6 +529,43 @@
                             <TextBox x:Name="txtMollieWebhookUrl" Grid.Row="2" Grid.Column="1" Margin="0,3" Text="https://novvia.de/api/mollie/webhook"/>
                         </Grid>
 
+                        <!-- Bank / FinTS -->
+                        <TextBlock Text="Bank / FinTS (HBCI)" FontSize="18" FontWeight="SemiBold" Margin="0,25,0,15"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="350"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Bankname:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtBankName" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="BLZ:" VerticalAlignment="Center" Grid.Row="1"/>
+                            <TextBox x:Name="txtBankBLZ" Grid.Row="1" Grid.Column="1" Margin="0,3" MaxLength="8"/>
+
+                            <TextBlock Text="Kontonummer:" VerticalAlignment="Center" Grid.Row="2"/>
+                            <TextBox x:Name="txtBankKontonummer" Grid.Row="2" Grid.Column="1" Margin="0,3"/>
+
+                            <TextBlock Text="IBAN:" VerticalAlignment="Center" Grid.Row="3"/>
+                            <TextBox x:Name="txtBankIBAN" Grid.Row="3" Grid.Column="1" Margin="0,3" MaxLength="34"/>
+
+                            <TextBlock Text="BIC:" VerticalAlignment="Center" Grid.Row="4"/>
+                            <TextBox x:Name="txtBankBIC" Grid.Row="4" Grid.Column="1" Margin="0,3" MaxLength="11"/>
+
+                            <TextBlock Text="FinTS-URL:" VerticalAlignment="Center" Grid.Row="5"/>
+                            <TextBox x:Name="txtBankFinTSUrl" Grid.Row="5" Grid.Column="1" Margin="0,3"
+                                     Text="https://banking-sn3.s-fints-pt-sn.de/fints30"/>
+                        </Grid>
+
                         <!-- Allgemein -->
                         <TextBlock Text="Allgemein" FontSize="18" FontWeight="SemiBold" Margin="0,25,0,15"/>
                         <Grid>
@@ -394,27 +586,6 @@
 
                         <TextBlock x:Name="txtPaymentStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
 
-                        <!-- Zahlungsabgleich Einstellungen -->
-                        <TextBlock Text="Zahlungsabgleich" FontSize="18" FontWeight="SemiBold" Margin="0,35,0,15"/>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="100"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Text="Auto-Match Schwelle (%):" VerticalAlignment="Center"/>
-                            <TextBox x:Name="txtAutoMatchSchwelle" Grid.Column="1" Margin="0,3" Text="90"/>
-                            <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="Gray"
-                                       Text="Zahlungen mit Konfidenz >= Schwelle werden automatisch zugeordnet"/>
-
-                            <Button Grid.Row="1" Grid.ColumnSpan="2" Content="Zahlungsabgleich-Einstellungen speichern"
-                                    Click="ZahlungsabgleichEinstellungenSpeichern_Click" Margin="0,15,0,0" Padding="15,8"/>
-                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -768,11 +939,17 @@
                             <ComboBoxItem Content="(Alle)" IsSelected="True"/>
                         </ComboBox>
 
-                        <TextBlock Text="Von:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <DatePicker x:Name="dpLogVon" Width="120" Margin="0,0,15,0" SelectedDateChanged="LogFilter_Changed"/>
-
-                        <TextBlock Text="Bis:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <DatePicker x:Name="dpLogBis" Width="120" Margin="0,0,15,0" SelectedDateChanged="LogFilter_Changed"/>
+                        <TextBlock Text="Zeitraum:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <ComboBox x:Name="cmbLogZeitraum" Width="150" Margin="0,0,15,0" SelectionChanged="LogFilter_Changed">
+                            <ComboBoxItem Content="Heute" Tag="0"/>
+                            <ComboBoxItem Content="Gestern" Tag="1"/>
+                            <ComboBoxItem Content="Letzte 7 Tage" Tag="7" IsSelected="True"/>
+                            <ComboBoxItem Content="Letzte 30 Tage" Tag="30"/>
+                            <ComboBoxItem Content="Dieser Monat" Tag="M"/>
+                            <ComboBoxItem Content="Letzter Monat" Tag="LM"/>
+                            <ComboBoxItem Content="Dieses Jahr" Tag="Y"/>
+                            <ComboBoxItem Content="Alle" Tag="ALL"/>
+                        </ComboBox>
 
                         <TextBlock Text="Suche:" VerticalAlignment="Center" Margin="0,0,5,0"/>
                         <TextBox x:Name="txtLogSuche" Width="200" Margin="0,0,15,0"/>
@@ -853,6 +1030,91 @@
                         </Grid>
                     </Border>
                 </Grid>
+            </TabItem>
+
+            <!-- NOVVIA Tab -->
+            <TabItem Header="NOVVIA">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="15">
+
+                        <!-- Pharma Einstellungen -->
+                        <GroupBox Header="Pharma Einstellungen" Margin="0,0,0,20">
+                            <Grid Margin="15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="250"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Pharma-Modus:" VerticalAlignment="Center"/>
+                                <CheckBox x:Name="chkPharmaModus" Grid.Column="1" Content="Aktiviert (erweiterte Chargen-Validierung)" VerticalAlignment="Center"/>
+
+                                <TextBlock Text="Quarantäne-Lager:" VerticalAlignment="Center" Grid.Row="1" Margin="0,10,0,0"/>
+                                <ComboBox x:Name="cmbQuarantaeneLager" Grid.Row="1" Grid.Column="1" Margin="0,10,0,0"
+                                          DisplayMemberPath="CName" SelectedValuePath="KWarenLager"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Zahlungsabgleich Einstellungen -->
+                        <GroupBox Header="Zahlungsabgleich" Margin="0,0,0,20">
+                            <Grid Margin="15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="Auto-Match Schwelle:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtAutoMatchSchwelle" Grid.Column="1" Text="90"/>
+                                <TextBlock Text="% (0-100)" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="Gray"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Allgemein -->
+                        <GroupBox Header="Allgemein" Margin="0,0,0,20">
+                            <Grid Margin="15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="300"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Firmenname (Berichte):" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtNovviaFirmenname" Grid.Column="1"/>
+
+                                <TextBlock Text="Firmenlogo (PNG/JPG):" VerticalAlignment="Center" Grid.Row="1" Margin="0,10,0,0"/>
+                                <TextBox x:Name="txtLogoPfad" Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" IsReadOnly="True"/>
+                                <Button Content="Durchsuchen..." Grid.Row="1" Grid.Column="2" Padding="10,4" Margin="8,10,0,0" Click="LogoAuswaehlen_Click"/>
+
+                                <!-- Logo-Vorschau -->
+                                <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,10,0,0" Orientation="Horizontal">
+                                    <Image x:Name="imgLogoPreview" MaxHeight="60" MaxWidth="200" HorizontalAlignment="Left"/>
+                                    <Button x:Name="btnLogoEntfernen" Content="Entfernen" Padding="8,4" Margin="10,0,0,0"
+                                            Click="LogoEntfernen_Click" Visibility="Collapsed"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Speichern Button -->
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="NOVVIA Einstellungen speichern" Padding="20,10" Click="NovviaEinstellungenSpeichern_Click"
+                                    Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="txtNovviaStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
+
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
     </Grid>
