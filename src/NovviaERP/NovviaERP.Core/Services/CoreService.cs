@@ -1925,6 +1925,17 @@ namespace NovviaERP.Core.Services
                 await conn.ExecuteAsync("Versand.spLieferscheinPosErstellen", posParams, commandType: System.Data.CommandType.StoredProcedure);
             }
 
+            // Log in NOVVIA.Log
+            if (_logService != null)
+            {
+                await _logService.LogBewegungsdatenAsync(
+                    entityTyp: "Lieferschein",
+                    kEntity: kLieferschein,
+                    entityNr: lieferscheinNr,
+                    aktion: "Erstellt",
+                    beschreibung: $"Lieferschein erstellt fuer Auftrag {auftragNr}");
+            }
+
             return kLieferschein;
         }
 
@@ -2369,6 +2380,17 @@ namespace NovviaERP.Core.Services
             catch
             {
                 // SP eventuell nicht vorhanden - ignorieren
+            }
+
+            // Log in NOVVIA.Log
+            if (_logService != null)
+            {
+                await _logService.LogBewegungsdatenAsync(
+                    entityTyp: "Rechnung",
+                    kEntity: kRechnung,
+                    entityNr: rechnungsNr,
+                    aktion: "Erstellt",
+                    beschreibung: $"Rechnung erstellt fuer Auftrag {kAuftrag}, Kunde {auftrag.CKundennr}");
             }
 
             return kRechnung;
@@ -3846,7 +3868,21 @@ namespace NovviaERP.Core.Services
 
             await conn.ExecuteAsync("[Lieferantenbestellung].[spLieferantenBestellungErstellen]", p, commandType: CommandType.StoredProcedure);
 
-            return p.Get<int>("@kLieferantenbestellung");
+            var kLieferantenBestellung = p.Get<int>("@kLieferantenbestellung");
+
+            // Log in NOVVIA.Log
+            if (_logService != null)
+            {
+                await _logService.LogBewegungsdatenAsync(
+                    entityTyp: "Lieferantenbestellung",
+                    kEntity: kLieferantenBestellung,
+                    entityNr: bestellung.CEigeneBestellnummer,
+                    aktion: "Erstellt",
+                    beschreibung: $"Lieferantenbestellung erstellt fuer Lieferant {bestellung.KLieferant}",
+                    betragNetto: bestellung.Positionen?.Sum(pos => pos.FEKNetto * pos.FMenge) ?? 0);
+            }
+
+            return kLieferantenBestellung;
         }
 
         /// <summary>
@@ -4083,6 +4119,18 @@ namespace NovviaERP.Core.Services
 
             _log.Information("Wareneingang fuer Bestellung {KBestellung}: {Anzahl} Positionen, LS: {LieferscheinNr}",
                 kLieferantenBestellung, positionen.Count(p => p.FMenge > 0), lieferscheinNr);
+
+            // Log in NOVVIA.Log
+            if (_logService != null)
+            {
+                var gesamtMenge = positionen.Sum(p => p.FMenge);
+                await _logService.LogBewegungsdatenAsync(
+                    entityTyp: "Wareneingang",
+                    kEntity: kLieferantenBestellung,
+                    entityNr: lieferscheinNr,
+                    aktion: alleGeliefert == 1 ? "Vollstaendig" : "Teillieferung",
+                    beschreibung: $"Wareneingang: {positionen.Count(p => p.FMenge > 0)} Positionen, {gesamtMenge:N0} Stueck");
+            }
         }
 
         public class WareneingangPosition

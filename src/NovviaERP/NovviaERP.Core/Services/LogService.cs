@@ -355,5 +355,60 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region Log Aufbewahrung
+
+        public const string SETTING_LOG_AUFBEWAHRUNG_TAGE = "Log.AufbewahrungTage";
+        public const int DEFAULT_LOG_AUFBEWAHRUNG_TAGE = 30;
+
+        /// <summary>Liest die Log-Aufbewahrungsdauer in Tagen</summary>
+        public async Task<int> GetLogAufbewahrungTageAsync()
+        {
+            return await _db.GetEinstellungIntAsync(SETTING_LOG_AUFBEWAHRUNG_TAGE, DEFAULT_LOG_AUFBEWAHRUNG_TAGE);
+        }
+
+        /// <summary>Setzt die Log-Aufbewahrungsdauer in Tagen</summary>
+        public async Task SetLogAufbewahrungTageAsync(int tage, int? kBenutzer = null)
+        {
+            await _db.SetEinstellungAsync(SETTING_LOG_AUFBEWAHRUNG_TAGE, tage.ToString(),
+                "Log-Aufbewahrung in Tagen (aeltere Logs werden automatisch geloescht)", kBenutzer);
+        }
+
+        /// <summary>Loescht alte Log-Eintraege gemaess Aufbewahrungsdauer</summary>
+        public async Task<int> BereinigeAlteLogs()
+        {
+            var tage = await GetLogAufbewahrungTageAsync();
+            if (tage <= 0) return 0; // 0 = keine automatische Bereinigung
+
+            var conn = await _db.GetConnectionAsync();
+            var geloescht = await conn.ExecuteScalarAsync<int>(@"
+                DECLARE @Geloescht INT;
+                DELETE FROM NOVVIA.[Log] WHERE dZeitpunkt < DATEADD(DAY, -@Tage, GETDATE());
+                SET @Geloescht = @@ROWCOUNT;
+                SELECT @Geloescht;",
+                new { Tage = tage });
+
+            if (geloescht > 0)
+            {
+                await LogAsync("System", "Log Bereinigung", "LogService",
+                    beschreibung: $"{geloescht} alte Log-Eintraege geloescht (aelter als {tage} Tage)");
+            }
+
+            return geloescht;
+        }
+
+        /// <summary>Anzahl der Log-Eintraege die bei Bereinigung geloescht wuerden</summary>
+        public async Task<int> GetAnzahlZuLoeschendeLogsAsync()
+        {
+            var tage = await GetLogAufbewahrungTageAsync();
+            if (tage <= 0) return 0;
+
+            var conn = await _db.GetConnectionAsync();
+            return await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM NOVVIA.[Log] WHERE dZeitpunkt < DATEADD(DAY, -@Tage, GETDATE())",
+                new { Tage = tage });
+        }
+
+        #endregion
     }
 }

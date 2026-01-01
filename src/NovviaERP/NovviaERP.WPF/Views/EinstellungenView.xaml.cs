@@ -51,6 +51,7 @@ namespace NovviaERP.WPF.Views
                 await LadeZahlungsabgleichEinstellungenAsync();
                 await LadeWooShopsAsync();
                 await LadeLogsAsync();
+                await LadeLogAufbewahrungAsync();
             }
             catch (Exception ex)
             {
@@ -1167,6 +1168,77 @@ namespace NovviaERP.WPF.Views
                 txtLogDetails.Text = "-";
                 txtLogRechner.Text = "-";
                 txtLogIP.Text = "-";
+            }
+        }
+
+        private async System.Threading.Tasks.Task LadeLogAufbewahrungAsync()
+        {
+            try
+            {
+                var logService = App.Services.GetService<LogService>();
+                if (logService != null)
+                {
+                    var tage = await logService.GetLogAufbewahrungTageAsync();
+                    txtLogAufbewahrungTage.Text = tage.ToString();
+                }
+            }
+            catch { /* Einstellung nicht vorhanden */ }
+        }
+
+        private async void LogAufbewahrungSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (!int.TryParse(txtLogAufbewahrungTage.Text, out var tage) || tage < 0)
+            {
+                MessageBox.Show("Bitte geben Sie eine gueltige Anzahl Tage ein (0 = keine automatische Loeschung).",
+                    "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var logService = App.Services.GetService<LogService>();
+                if (logService != null)
+                {
+                    await logService.SetLogAufbewahrungTageAsync(tage);
+                    MessageBox.Show($"Log-Aufbewahrung auf {tage} Tage gesetzt.", "Erfolg",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void LogBereinigen_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var logService = App.Services.GetService<LogService>();
+                if (logService == null) return;
+
+                var anzahl = await logService.GetAnzahlZuLoeschendeLogsAsync();
+                if (anzahl == 0)
+                {
+                    MessageBox.Show("Keine alten Logs zum Bereinigen vorhanden.", "Hinweis",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var result = MessageBox.Show($"{anzahl} Log-Eintraege werden geloescht.\n\nFortfahren?",
+                    "Logs bereinigen", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (result != MessageBoxResult.Yes) return;
+
+                var geloescht = await logService.BereinigeAlteLogs();
+                MessageBox.Show($"{geloescht} Log-Eintraege wurden geloescht.", "Erfolg",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+
+                await LadeLogsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Bereinigen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

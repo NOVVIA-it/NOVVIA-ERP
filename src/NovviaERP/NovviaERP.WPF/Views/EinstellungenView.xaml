@@ -760,6 +760,16 @@
 
                         <Button Content="Suchen" Click="LogSuchen_Click" Padding="15,5" Margin="0,0,10,0"/>
                         <Button Content="Aktualisieren" Click="LogAktualisieren_Click" Padding="15,5"/>
+
+                        <!-- Separator -->
+                        <Border Width="1" Background="#ccc" Margin="15,0"/>
+
+                        <!-- Log Aufbewahrung -->
+                        <TextBlock Text="Aufbewahrung:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox x:Name="txtLogAufbewahrungTage" Width="50" Margin="0,0,5,0" Text="30"/>
+                        <TextBlock Text="Tage" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <Button Content="Speichern" Click="LogAufbewahrungSpeichern_Click" Padding="10,5" Margin="0,0,10,0"/>
+                        <Button Content="Alte Logs bereinigen" Click="LogBereinigen_Click" Padding="10,5"/>
                     </StackPanel>
 
                     <!-- Log-Tabelle -->
