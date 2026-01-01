@@ -1061,5 +1061,204 @@ namespace NovviaERP.Core.Data
             public int Ebene { get; set; }
         }
         #endregion
+
+        #region JTL Shop Sync (tShop, tArtikelShop)
+
+        /// <summary>
+        /// Holt alle konfigurierten JTL Shops
+        /// </summary>
+        public async Task<List<JtlShop>> GetJtlShopsAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<JtlShop>(@"
+                SELECT kShop, cName, cServerWeb AS Url, cBenutzerWeb AS ConsumerKey, cPasswortWeb AS ConsumerSecret,
+                       nAktiv AS Aktiv, nTyp AS ShopTyp, kWarenlager AS WarenlagerId
+                FROM tShop
+                WHERE nAktiv = 1
+                ORDER BY cName")).ToList();
+        }
+
+        /// <summary>
+        /// Holt einen JTL Shop per ID
+        /// </summary>
+        public async Task<JtlShop?> GetJtlShopByIdAsync(int kShop)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleOrDefaultAsync<JtlShop>(@"
+                SELECT kShop, cName, cServerWeb AS Url, cBenutzerWeb AS ConsumerKey, cPasswortWeb AS ConsumerSecret,
+                       nAktiv AS Aktiv, nTyp AS ShopTyp, kWarenlager AS WarenlagerId
+                FROM tShop WHERE kShop = @kShop", new { kShop });
+        }
+
+        /// <summary>
+        /// Holt Artikel die synchronisiert werden muessen (nAktion > 0)
+        /// </summary>
+        public async Task<List<ArtikelSyncInfo>> GetArtikelZuSyncenAsync(int kShop, int limit = 100)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<ArtikelSyncInfo>(@"
+                SELECT TOP (@limit)
+                    ash.kArtikel, ash.kShop, ash.nAktion, ash.cInet AS ShopProduktId,
+                    a.cArtNr, ab.cName AS ArtikelName, a.fVKBrutto AS Preis,
+                    ISNULL(a.fLagerbestand, 0) AS Bestand, a.dGeaendert
+                FROM tArtikelShop ash
+                INNER JOIN tArtikel a ON ash.kArtikel = a.kArtikel
+                LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 AND ab.kPlattform = 1
+                WHERE ash.kShop = @kShop
+                  AND ash.nAktion > 0
+                  AND ISNULL(ash.nInBearbeitung, 0) = 0
+                ORDER BY ash.nAktion DESC, a.dGeaendert DESC",
+                new { kShop, limit })).ToList();
+        }
+
+        /// <summary>
+        /// Markiert Artikel als "in Bearbeitung"
+        /// </summary>
+        public async Task SetArtikelInBearbeitungAsync(int kShop, List<int> artikelIds, bool inBearbeitung)
+        {
+            if (!artikelIds.Any()) return;
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE tArtikelShop
+                SET nInBearbeitung = @inBearb
+                WHERE kShop = @kShop AND kArtikel IN @artikelIds",
+                new { kShop, artikelIds, inBearb = inBearbeitung ? 1 : 0 });
+        }
+
+        /// <summary>
+        /// Markiert Artikel als synchronisiert (nAktion = 0) und speichert Shop-Produkt-ID
+        /// </summary>
+        public async Task SetArtikelSyncErfolgreichAsync(int kShop, int kArtikel, string? shopProduktId = null)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE tArtikelShop
+                SET nAktion = 0, nInBearbeitung = 0, cInet = ISNULL(@shopId, cInet)
+                WHERE kShop = @kShop AND kArtikel = @kArtikel",
+                new { kShop, kArtikel, shopId = shopProduktId });
+        }
+
+        /// <summary>
+        /// Markiert Artikel fuer Sync (nAktion = 1 = Update, 2 = Delete)
+        /// </summary>
+        public async Task SetArtikelSyncNoetigAsync(int kShop, int kArtikel, int aktion = 1)
+        {
+            var conn = await GetConnectionAsync();
+            // Pruefen ob Eintrag existiert
+            var exists = await conn.QuerySingleAsync<int>(
+                "SELECT COUNT(*) FROM tArtikelShop WHERE kShop = @kShop AND kArtikel = @kArtikel",
+                new { kShop, kArtikel });
+
+            if (exists > 0)
+            {
+                await conn.ExecuteAsync(@"
+                    UPDATE tArtikelShop SET nAktion = @aktion WHERE kShop = @kShop AND kArtikel = @kArtikel",
+                    new { kShop, kArtikel, aktion });
+            }
+            else
+            {
+                await conn.ExecuteAsync(@"
+                    INSERT INTO tArtikelShop (kArtikel, kShop, nAktion, nInBearbeitung)
+                    VALUES (@kArtikel, @kShop, @aktion, 0)",
+                    new { kShop, kArtikel, aktion });
+            }
+        }
+
+        /// <summary>
+        /// Markiert alle aktiven Artikel eines Shops fuer Sync
+        /// </summary>
+        public async Task SetAlleArtikelSyncNoetigAsync(int kShop)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                -- Bestehende auf Update setzen
+                UPDATE tArtikelShop SET nAktion = 1 WHERE kShop = @kShop AND nAktion = 0;
+
+                -- Neue Artikel hinzufuegen die noch nicht im Shop sind
+                INSERT INTO tArtikelShop (kArtikel, kShop, nAktion, nInBearbeitung)
+                SELECT a.kArtikel, @kShop, 1, 0
+                FROM tArtikel a
+                WHERE a.cAktiv = 'Y'
+                  AND NOT EXISTS (SELECT 1 FROM tArtikelShop ash WHERE ash.kArtikel = a.kArtikel AND ash.kShop = @kShop)",
+                new { kShop });
+        }
+
+        /// <summary>
+        /// Holt Sync-Statistik fuer einen Shop
+        /// </summary>
+        public async Task<ShopSyncStats> GetShopSyncStatsAsync(int kShop)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleAsync<ShopSyncStats>(@"
+                SELECT
+                    COUNT(*) AS Gesamt,
+                    SUM(CASE WHEN nAktion = 0 THEN 1 ELSE 0 END) AS Synchronisiert,
+                    SUM(CASE WHEN nAktion = 1 THEN 1 ELSE 0 END) AS UpdateNoetig,
+                    SUM(CASE WHEN nAktion = 2 THEN 1 ELSE 0 END) AS LoeschenNoetig,
+                    SUM(CASE WHEN nInBearbeitung = 1 THEN 1 ELSE 0 END) AS InBearbeitung
+                FROM tArtikelShop WHERE kShop = @kShop", new { kShop });
+        }
+
+        /// <summary>
+        /// Holt Zahlungsabgleich-Transaktionen
+        /// </summary>
+        public async Task<List<ZahlungsabgleichUmsatz>> GetZahlungsabgleichUmsaetzeAsync(int? kModul = null, int limit = 100)
+        {
+            var conn = await GetConnectionAsync();
+            var where = kModul.HasValue ? "WHERE kZahlungsabgleichModul = @kModul" : "";
+            return (await conn.QueryAsync<ZahlungsabgleichUmsatz>($@"
+                SELECT TOP (@limit) * FROM tZahlungsabgleichUmsatz {where}
+                ORDER BY dBuchungsdatum DESC", new { kModul, limit })).ToList();
+        }
+
+        public class JtlShop
+        {
+            public int KShop { get; set; }
+            public string Name { get; set; } = "";
+            public string? Url { get; set; }
+            public string? ConsumerKey { get; set; }
+            public string? ConsumerSecret { get; set; }
+            public bool Aktiv { get; set; }
+            public int ShopTyp { get; set; } // 4 = WooCommerce, etc.
+            public int? WarenlagerId { get; set; }
+        }
+
+        public class ArtikelSyncInfo
+        {
+            public int KArtikel { get; set; }
+            public int KShop { get; set; }
+            public int NAktion { get; set; } // 0=OK, 1=Update, 2=Delete
+            public string? ShopProduktId { get; set; }
+            public string ArtNr { get; set; } = "";
+            public string? ArtikelName { get; set; }
+            public decimal Preis { get; set; }
+            public decimal Bestand { get; set; }
+            public DateTime? DGeaendert { get; set; }
+        }
+
+        public class ShopSyncStats
+        {
+            public int Gesamt { get; set; }
+            public int Synchronisiert { get; set; }
+            public int UpdateNoetig { get; set; }
+            public int LoeschenNoetig { get; set; }
+            public int InBearbeitung { get; set; }
+        }
+
+        public class ZahlungsabgleichUmsatz
+        {
+            public int KZahlungsabgleichUmsatz { get; set; }
+            public int KZahlungsabgleichModul { get; set; }
+            public string? CKontoIdentifikation { get; set; }
+            public string? CTransaktionID { get; set; }
+            public DateTime? DBuchungsdatum { get; set; }
+            public decimal FBetrag { get; set; }
+            public string CWaehrungISO { get; set; } = "EUR";
+            public string? CName { get; set; }
+            public string? CVerwendungszweck { get; set; }
+            public int NStatus { get; set; }
+        }
+
+        #endregion
     }
 }

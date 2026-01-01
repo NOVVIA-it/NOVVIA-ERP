@@ -484,6 +484,122 @@ namespace NovviaERP.API.Controllers
 
         #endregion
 
+        #region JTL-Native Sync (tArtikelShop)
+
+        /// <summary>
+        /// Holt JTL Shops aus tShop Tabelle
+        /// </summary>
+        [HttpGet("jtl/shops")]
+        [Authorize]
+        public async Task<IActionResult> GetJtlShops()
+        {
+            var shops = await _db.GetJtlShopsAsync();
+            return Ok(shops);
+        }
+
+        /// <summary>
+        /// Holt Sync-Statistik fuer einen Shop (aus tArtikelShop)
+        /// </summary>
+        [HttpGet("jtl/shops/{kShop}/stats")]
+        [Authorize]
+        public async Task<IActionResult> GetSyncStats(int kShop)
+        {
+            var stats = await _db.GetShopSyncStatsAsync(kShop);
+            return Ok(stats);
+        }
+
+        /// <summary>
+        /// Synchronisiert nur Artikel die in tArtikelShop mit nAktion > 0 markiert sind
+        /// Dies ist die JTL-native Methode - nur geaenderte Artikel werden uebertragen
+        /// </summary>
+        [HttpPost("jtl/shops/{kShop}/sync")]
+        [Authorize]
+        public async Task<IActionResult> SyncPending(int kShop, [FromQuery] bool testModus = false, [FromQuery] int batchSize = 50)
+        {
+            var jtlShop = await _db.GetJtlShopByIdAsync(kShop);
+            if (jtlShop == null) return NotFound("JTL Shop nicht gefunden");
+
+            // Konvertiere zu WooCommerceShop fuer den Service
+            var shop = new WooCommerceShop
+            {
+                Id = jtlShop.KShop,
+                Name = jtlShop.Name,
+                Url = jtlShop.Url ?? "",
+                ConsumerKey = jtlShop.ConsumerKey ?? "",
+                ConsumerSecret = jtlShop.ConsumerSecret ?? "",
+                Aktiv = jtlShop.Aktiv
+            };
+
+            using var woo = new WooCommerceService(_db, testModus);
+            var result = await woo.SyncPendingProductsAsync(shop, batchSize);
+
+            return Ok(new
+            {
+                Shop = shop.Name,
+                result.Erstellt,
+                result.Aktualisiert,
+                result.Fehler,
+                result.Details,
+                ApiLog = testModus ? woo.GetApiLog() : null
+            });
+        }
+
+        /// <summary>
+        /// Markiert alle Artikel fuer Vollsync
+        /// </summary>
+        [HttpPost("jtl/shops/{kShop}/trigger-full-sync")]
+        [Authorize]
+        public async Task<IActionResult> TriggerFullSync(int kShop)
+        {
+            var jtlShop = await _db.GetJtlShopByIdAsync(kShop);
+            if (jtlShop == null) return NotFound("JTL Shop nicht gefunden");
+
+            await _db.SetAlleArtikelSyncNoetigAsync(kShop);
+
+            var stats = await _db.GetShopSyncStatsAsync(kShop);
+
+            return Ok(new
+            {
+                Message = $"Vollsync getriggert fuer {jtlShop.Name}",
+                ArtikelZuSyncen = stats.UpdateNoetig
+            });
+        }
+
+        /// <summary>
+        /// Markiert einzelnen Artikel fuer Sync
+        /// </summary>
+        [HttpPost("jtl/shops/{kShop}/artikel/{kArtikel}/trigger")]
+        [Authorize]
+        public async Task<IActionResult> TriggerArtikelSync(int kShop, int kArtikel)
+        {
+            await _db.SetArtikelSyncNoetigAsync(kShop, kArtikel, 1);
+            return Ok(new { Message = $"Artikel {kArtikel} fuer Sync markiert" });
+        }
+
+        /// <summary>
+        /// Holt Artikel die synchronisiert werden muessen
+        /// </summary>
+        [HttpGet("jtl/shops/{kShop}/pending")]
+        [Authorize]
+        public async Task<IActionResult> GetPendingArticles(int kShop, [FromQuery] int limit = 100)
+        {
+            var pending = await _db.GetArtikelZuSyncenAsync(kShop, limit);
+            return Ok(pending);
+        }
+
+        /// <summary>
+        /// Holt Zahlungsabgleich-Transaktionen aus tZahlungsabgleichUmsatz
+        /// </summary>
+        [HttpGet("jtl/zahlungen")]
+        [Authorize]
+        public async Task<IActionResult> GetZahlungsabgleichUmsaetze([FromQuery] int? kModul = null, [FromQuery] int limit = 100)
+        {
+            var umsaetze = await _db.GetZahlungsabgleichUmsaetzeAsync(kModul, limit);
+            return Ok(umsaetze);
+        }
+
+        #endregion
+
         #region DTOs
 
         public record WebhookSetupRequest(string CallbackBaseUrl);

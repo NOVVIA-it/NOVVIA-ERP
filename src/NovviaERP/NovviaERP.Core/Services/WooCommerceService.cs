@@ -767,6 +767,125 @@ namespace NovviaERP.Core.Services
             }
         }
         #endregion
+
+        #region JTL-Native Sync (tArtikelShop)
+
+        /// <summary>
+        /// Synchronisiert nur Artikel die in tArtikelShop mit nAktion > 0 markiert sind
+        /// Dies ist die JTL-native Methode - nur geaenderte Artikel werden uebertragen
+        /// </summary>
+        public async Task<SyncResult> SyncPendingProductsAsync(WooCommerceShop shop, int batchSize = 50)
+        {
+            var result = new SyncResult { Typ = "Pending Products (JTL-Sync)" };
+            SetAuth(shop);
+
+            try
+            {
+                // Hole Artikel die synchronisiert werden muessen
+                var pending = await _db.GetArtikelZuSyncenAsync(shop.Id, batchSize);
+
+                if (pending.Count == 0)
+                {
+                    _log.Information("Keine Artikel zu synchronisieren fuer Shop {Shop}", shop.Name);
+                    return result;
+                }
+
+                _log.Information("WooCommerce Sync: {Count} Artikel zu synchronisieren ({Shop})", pending.Count, shop.Name);
+
+                // Markiere als in Bearbeitung
+                var artikelIds = pending.Select(p => p.KArtikel).ToList();
+                await _db.SetArtikelInBearbeitungAsync(shop.Id, artikelIds, true);
+
+                foreach (var item in pending)
+                {
+                    try
+                    {
+                        if (item.NAktion == 2) // Delete
+                        {
+                            if (!string.IsNullOrEmpty(item.ShopProduktId))
+                            {
+                                await DeleteProductAsync(shop, int.Parse(item.ShopProduktId));
+                                result.Aktualisiert++;
+                            }
+                            await _db.SetArtikelSyncErfolgreichAsync(shop.Id, item.KArtikel);
+                        }
+                        else // Update/Create
+                        {
+                            var artikel = await _db.GetArtikelByIdAsync(item.KArtikel);
+                            if (artikel != null)
+                            {
+                                var wcId = await SyncProductAsync(shop, artikel);
+                                await _db.SetArtikelSyncErfolgreichAsync(shop.Id, item.KArtikel, wcId.ToString());
+
+                                if (string.IsNullOrEmpty(item.ShopProduktId))
+                                    result.Erstellt++;
+                                else
+                                    result.Aktualisiert++;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Fehler++;
+                        result.Details.Add($"{item.ArtNr}: {ex.Message}");
+                        _log.Warning("Sync Fehler fuer {ArtNr}: {Error}", item.ArtNr, ex.Message);
+                        // Bei Fehler: in Bearbeitung zuruecksetzen aber nAktion belassen
+                        await _db.SetArtikelInBearbeitungAsync(shop.Id, new List<int> { item.KArtikel }, false);
+                    }
+                }
+
+                _log.Information("WooCommerce Sync abgeschlossen: {Erstellt} erstellt, {Aktualisiert} aktualisiert, {Fehler} Fehler",
+                    result.Erstellt, result.Aktualisiert, result.Fehler);
+            }
+            catch (Exception ex)
+            {
+                result.FehlerMeldung = ex.Message;
+                _log.Error(ex, "WooCommerce Pending Sync fehlgeschlagen");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Loescht ein Produkt im WooCommerce Shop
+        /// </summary>
+        private async Task DeleteProductAsync(WooCommerceShop shop, int wcProductId)
+        {
+            var response = await _http.DeleteAsync($"{shop.Url}/wp-json/wc/v3/products/{wcProductId}?force=true");
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                throw new Exception($"Delete fehlgeschlagen: {response.StatusCode} - {error}");
+            }
+            _log.Information("WooCommerce Produkt geloescht: {WcId}", wcProductId);
+        }
+
+        /// <summary>
+        /// Holt Sync-Statistik fuer einen Shop
+        /// </summary>
+        public async Task<JtlDbContext.ShopSyncStats> GetSyncStatsAsync(int kShop)
+        {
+            return await _db.GetShopSyncStatsAsync(kShop);
+        }
+
+        /// <summary>
+        /// Markiert alle Artikel fuer Vollsync
+        /// </summary>
+        public async Task TriggerFullSyncAsync(int kShop)
+        {
+            await _db.SetAlleArtikelSyncNoetigAsync(kShop);
+            _log.Information("Vollsync getriggert fuer Shop {KShop}", kShop);
+        }
+
+        /// <summary>
+        /// Markiert einen einzelnen Artikel fuer Sync
+        /// </summary>
+        public async Task TriggerArtikelSyncAsync(int kShop, int kArtikel)
+        {
+            await _db.SetArtikelSyncNoetigAsync(kShop, kArtikel, 1);
+        }
+
+        #endregion
     }
 
     public class WooOrder
