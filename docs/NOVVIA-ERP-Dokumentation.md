@@ -681,6 +681,196 @@ Kunde
 
 **Services:** `MSV3Service.cs`, `ABdataService.cs`
 
+### 8.6 Ameise (Import/Export)
+
+**Service:** `AmeiseService.cs`
+**View:** `AmeiseView.xaml`
+
+NOVVIA ERP bietet einen Import/Export-Dienst (aehnlich JTL-Ameise) fuer Massendatenverarbeitung.
+
+#### Import-Vorlagen
+
+| Vorlage | Tabelle | Key-Spalte | Beschreibung |
+|---------|---------|------------|--------------|
+| **Artikel** | tArtikel | cArtNr | Artikel-Stammdaten |
+| **Kunden** | tKunde | cKundenNr | Kunden-Stammdaten |
+| **Preise** | tArtikel | cArtNr | Preise aktualisieren |
+| **Bestaende** | tLagerbestand | cArtNr | Lagerbestaende |
+| **Lieferanten** | tLieferant | cFirma | Lieferanten-Stammdaten |
+
+#### Artikel-Spalten
+
+| CSV-Spalte | DB-Spalte | Typ | Pflicht | Beschreibung |
+|------------|-----------|-----|---------|--------------|
+| ArtNr | cArtNr | String | Ja | Artikelnummer (Key) |
+| Name | cName | String | Ja | Artikelname |
+| Beschreibung | cBeschreibung | String | - | Langtext |
+| VKBrutto | fVKBrutto | Decimal | - | Verkaufspreis Brutto |
+| VKNetto | fVKNetto | Decimal | - | Verkaufspreis Netto |
+| EKNetto | fEKNetto | Decimal | - | Einkaufspreis Netto |
+| Barcode | cBarcode | String | - | Barcode/EAN |
+| Gewicht | fGewicht | Decimal | - | Gewicht in kg |
+| Lagerbestand | fLagerbestand | Decimal | - | Aktueller Bestand |
+| Hersteller | kHersteller | FK | - | -> tHersteller.cName |
+| Kategorie | kKategorie | FK | - | -> tKategorieSprache.cName |
+| Aktiv | nAktiv | Bool | - | Artikel aktiv (1/0/ja/nein) |
+
+#### Kunden-Spalten
+
+| CSV-Spalte | DB-Spalte | Typ | Pflicht |
+|------------|-----------|-----|---------|
+| KundenNr | cKundenNr | String | Ja |
+| Anrede | cAnrede | String | - |
+| Firma | cFirma | String | - |
+| Vorname | cVorname | String | - |
+| Nachname | cNachname | String | Ja |
+| Strasse | cStrasse | String | - |
+| PLZ | cPLZ | String | - |
+| Ort | cOrt | String | - |
+| Land | cLand | String | - |
+| Email | cMail | String | - |
+| Telefon | cTel | String | - |
+| UStID | cUStID | String | - |
+| Kundengruppe | kKundenGruppe | FK | - |
+| Rabatt | fRabatt | Decimal | - |
+
+#### Import-Optionen
+
+```csharp
+var optionen = new AmeiseImportOptionen
+{
+    Trennzeichen = ";",           // CSV-Trennzeichen
+    UpdateExistierend = true,     // Bestehende Datensaetze aktualisieren
+    FehlerIgnorieren = false,     // Bei Fehler abbrechen?
+    Transaktion = true            // Alle in einer Transaktion?
+};
+```
+
+#### Export-Funktionen
+
+```csharp
+// CSV Export
+var csv = await _ameise.ExportCsvAsync("Artikel", new ExportOptionen
+{
+    Trennzeichen = ";",
+    Filter = "nAktiv = 1",
+    Sortierung = "cArtNr",
+    Limit = 1000
+});
+
+// Artikelbilder importieren (Dateiname = ArtNr)
+var anzahl = await _ameise.ImportArtikelBilderAsync("C:\\Import\\Bilder");
+
+// Massenupdate
+var updated = await _ameise.MassenUpdateAsync("tArtikel", "fVKBrutto", 19.99m, "kKategorie = 5");
+```
+
+### 8.7 REST API
+
+**Projekt:** `NovviaERP.API`
+**Authentifizierung:** JWT Bearer Token
+
+NOVVIA ERP bietet eine REST API fuer externe Integrationen (Shops, Apps, etc.).
+
+#### Basis-URL
+
+```
+https://[server]:5001/api
+```
+
+#### Authentifizierung
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "login": "admin",
+  "passwort": "geheim123"
+}
+
+Response:
+{
+  "token": "eyJhbGciOiJIUzI1...",
+  "benutzer": { "id": 1, "login": "admin", "name": "Administrator" },
+  "rolle": "Admin",
+  "berechtigungen": ["artikel:read", "artikel:write", ...]
+}
+```
+
+#### Endpunkte
+
+##### Auth Controller (`/api/auth`)
+
+| Methode | Route | Auth | Beschreibung |
+|---------|-------|------|--------------|
+| POST | `/login` | - | Anmelden, Token erhalten |
+| POST | `/logout` | Ja | Abmelden |
+| POST | `/change-password` | Ja | Passwort aendern |
+| GET | `/me` | Ja | Aktueller Benutzer |
+| GET | `/check/{modul}/{aktion}` | Ja | Berechtigung pruefen |
+
+##### Artikel Controller (`/api/artikel`)
+
+| Methode | Route | Auth | Beschreibung |
+|---------|-------|------|--------------|
+| GET | `/` | - | Alle Artikel (suche, limit) |
+| GET | `/{id}` | - | Artikel by ID |
+| GET | `/barcode/{barcode}` | - | Artikel by Barcode |
+| POST | `/` | Ja | Artikel erstellen |
+| PUT | `/{id}` | Ja | Artikel aktualisieren |
+| PATCH | `/{id}/bestand` | Ja | Bestand aktualisieren |
+
+##### Bestellungen Controller (`/api/bestellungen`)
+
+| Methode | Route | Auth | Beschreibung |
+|---------|-------|------|--------------|
+| GET | `/` | - | Alle Bestellungen (status, limit) |
+| GET | `/{id}` | - | Bestellung by ID |
+| POST | `/` | Ja | Bestellung erstellen |
+| PATCH | `/{id}/status` | Ja | Status aendern |
+| POST | `/{id}/rechnung` | Ja | Rechnung erstellen |
+| POST | `/{id}/lieferschein` | Ja | Lieferschein erstellen |
+
+##### Kunden Controller (`/api/kunden`)
+
+| Methode | Route | Auth | Beschreibung |
+|---------|-------|------|--------------|
+| GET | `/` | - | Alle Kunden (suche, limit) |
+| GET | `/{id}` | - | Kunde by ID |
+| POST | `/` | Ja | Kunde erstellen |
+| PUT | `/{id}` | Ja | Kunde aktualisieren |
+
+##### Dashboard Controller (`/api/dashboard`)
+
+| Methode | Route | Auth | Beschreibung |
+|---------|-------|------|--------------|
+| GET | `/stats` | Ja | Kennzahlen |
+| GET | `/umsatz` | Ja | Umsatzstatistik |
+
+#### Beispiele
+
+```bash
+# Artikel suchen
+curl -X GET "https://server:5001/api/artikel?suche=laptop&limit=10"
+
+# Artikel mit Token erstellen
+curl -X POST "https://server:5001/api/artikel" \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -H "Content-Type: application/json" \
+  -d '{"cArtNr": "ART-001", "cName": "Test Artikel", "fVKBrutto": 99.99}'
+
+# Bestand aktualisieren
+curl -X PATCH "https://server:5001/api/artikel/123/bestand" \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -d '{"menge": 50, "lagerId": 1, "grund": "Wareneingang"}'
+
+# Bestellstatus aendern
+curl -X PATCH "https://server:5001/api/bestellungen/456/status" \
+  -H "Authorization: Bearer eyJhbGc..." \
+  -d '{"status": "Versendet"}'
+```
+
 ---
 
 ## 9. Konfiguration
@@ -715,6 +905,15 @@ Kunde
 ---
 
 ## 10. Aenderungsprotokoll
+
+### Version 1.0.1 (2025-12-31)
+
+**Dokumentation:**
+- Ameise Import/Export Dokumentation (Abschnitt 8.6)
+- REST API Dokumentation (Abschnitt 8.7)
+
+**Verbesserungen:**
+- JTL Datumslogik in Auftraege/Bestellungen
 
 ### Version 1.0.0 (2025-12-31)
 

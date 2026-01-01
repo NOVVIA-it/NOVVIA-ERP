@@ -393,6 +393,12 @@ namespace NovviaERP.Core.Services
             public string? CBestellNr { get; set; }
             public string? CInetBestellNr { get; set; }
             public DateTime DErstellt { get; set; }
+            public DateTime? DExternesDatum { get; set; }  // JTL: dExternesErstelldatum
+            public DateTime? DErstelltWawi { get; set; }   // JTL: dErstelltWawi
+
+            /// <summary>JTL-Datumslogik: Externes Datum (Shop) > Erstellt > ErstelltWawi</summary>
+            public DateTime DatumAnzeige => DExternesDatum ?? DErstellt;
+
             public string? CStatus { get; set; }
             public int TKunde_KKunde { get; set; }
             public string? KundeName { get; set; }
@@ -1414,6 +1420,9 @@ namespace NovviaERP.Core.Services
                 SELECT TOP (@Limit)
                     b.kBestellung, b.cBestellNr, b.cInetBestellNr,
                     CASE WHEN b.dErstellt > '1900-01-02' THEN b.dErstellt ELSE NULL END AS DErstellt,
+                    -- JTL Datumslogik: Externes Datum und Wawi-Datum
+                    CASE WHEN va.dExternesErstelldatum > '1900-01-02' THEN va.dExternesErstelldatum ELSE NULL END AS DExternesDatum,
+                    CASE WHEN va.dErstelltWawi > '1900-01-02' THEN va.dErstelltWawi ELSE NULL END AS DErstelltWawi,
                     b.cStatus,
                     b.tKunde_kKunde,
                     CASE WHEN b.dVersandt > '1900-01-02' THEN b.dVersandt ELSE NULL END AS DVersandt,
@@ -1433,6 +1442,7 @@ namespace NovviaERP.Core.Services
                     ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtNetto,
                     ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100) * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
                 FROM tBestellung b
+                LEFT JOIN Verkauf.tAuftrag va ON va.kAuftrag = b.kBestellung
                 LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
                 OUTER APPLY (SELECT TOP 1 * FROM tAdresse WHERE kKunde = k.kKunde ORDER BY nStandard DESC, kAdresse) a
                 OUTER APPLY (SELECT TOP 1 * FROM Verkauf.tAuftragAdresse WHERE kAuftrag = b.kBestellung AND nTyp = 0) re
