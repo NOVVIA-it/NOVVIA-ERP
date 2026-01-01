@@ -1,43 +1,54 @@
 # Claude Session Status - 2026-01-01
 
-## Aktuelles Problem: Lager speichern funktioniert nicht
+## Zuletzt abgeschlossen
 
-### Symptom
-- User waehlt Lager in der Liste aus
-- Beim Klick auf Formularfelder verliert die Auswahl die Markierung
-- Speichern funktioniert nicht
+### Lager speichern - GELOEST
+- Problem: Lager-Auswahl verlor Markierung, Speichern funktionierte nicht
+- Loesung:
+  1. ListBox-Styling hinzugefuegt (Markierung bleibt sichtbar bei Fokusverlust)
+  2. `_selectedLagerId` wird nicht mehr geloescht bei Fokuswechsel
+  3. UpdateWarenlagerAsync gibt jetzt int (rows affected) zurueck
+  4. Checkboxen "Bestand sperren" / "Auslieferung sperren" entfernt (Spalten existieren nicht in JTL)
 
-### Bisherige Fixes (bereits committed)
-1. ListBox-Styling hinzugefuegt damit Markierung sichtbar bleibt (InactiveSelectionHighlightBrushKey)
-2. _selectedLagerId wird nicht mehr geloescht bei Fokuswechsel
-3. LagerNeu_Click verwendet _isLoadingLager Flag
-4. Debug-Ausgabe in LagerSpeichern_Click hinzugefuegt
+### Zahlungsabgleich JTL-konform
+- JTL-Style Filter (Konto, Transaktions-ID, Betrag, etc.)
+- Zeitraum-Dropdown statt Datepicker (Heute, Gestern, 7 Tage, 30 Tage, Monat, Jahr, Alle)
+- Tabs: Kontobewegungen, Zugewiesene Zahlungen, SEPA Lastschriften
 
-### Dateien geaendert
-- `NovviaERP.WPF/Views/EinstellungenView.xaml` - ListBox Styling
-- `NovviaERP.WPF/Views/EinstellungenView.xaml.cs` - Selection Handler, Save Logic
+### Weitere erledigte Features
+- Logo-Pfad in NOVVIA.FirmaEinstellung
+- NOVVIA.BenutzerEinstellung Tabelle fuer Spalteneinstellungen
+- ZahlungsabgleichService erweitert
 
-### Naechste Schritte zum Debuggen
-1. App starten und in Einstellungen -> Lager gehen
-2. Lager auswaehlen und pruefen ob Markierung blau bleibt
-3. Auf Textfeld klicken und pruefen ob Markierung bleibt
-4. Speichern klicken und Statuszeile beobachten
-   - Sollte zeigen: "Speichern... (ID: X)" oder "Speichern... (ID: NEU)"
-5. Falls Fehler erscheint, Fehlermeldung dokumentieren
+## Dateien geaendert (diese Session)
 
-### Moegliche Ursachen
-- UpdateWarenlagerAsync in CoreService koennte fehlschlagen
-- Datenbank-Verbindungsproblem
-- Spalten-Mismatch (unwahrscheinlich, Spalten existieren alle)
+**NovviaERP.WPF/Views/EinstellungenView.xaml**
+- ListBox mit persistenter Markierung (InactiveSelectionHighlightBrushKey)
+- Checkboxen fuer Bestand/Auslieferung sperren entfernt
 
-### Git Status
+**NovviaERP.WPF/Views/EinstellungenView.xaml.cs**
+- LstLager_SelectionChanged: _selectedLagerId bleibt erhalten
+- LagerNeu_Click: Verwendet _isLoadingLager Flag
+- LagerSpeichern_Click: Aufgeraeumt, funktioniert jetzt
+
+**NovviaERP.Core/Services/CoreService.cs**
+- UpdateWarenlagerAsync: Gibt int zurueck, keine COALESCE mehr
+- LagerUebersicht: NBestandGesperrt/NAuslieferungGesperrt entfernt
+
+**NovviaERP.WPF/Views/ZahlungsabgleichView.xaml**
+- JTL-Style Filter und Tabs
+
+## Git Status
 - Branch: main
-- Letzte Commits:
-  - 73ea250: Add debug output for Lager save troubleshooting
-  - cd65601: Fix Lager selection persistence and save functionality
-- Ahead of origin/main by 3 commits
+- Alle Aenderungen committed und gepusht
+- Letzter Commit: bf43a0d "Fix Lager speichern - remove non-existent checkbox fields"
 
-### Andere aktuelle Features
-- ZahlungsabgleichView JTL-konform gemacht
-- Logo-Pfad in NOVVIA Einstellungen
-- BenutzerEinstellung Tabelle fuer Spalteneinstellungen
+## Offene Punkte / Naechste Schritte
+- Spalteneinstellungen in Views mit NOVVIA.BenutzerEinstellung implementieren
+- Zahlungsabgleich Auto-Matching testen
+- SEPA Lastschrift Export implementieren
+
+## Technische Notizen
+- tWarenLager hat KEINE Spalten fuer BestandGesperrt/AuslieferungGesperrt
+- Verbindung zur DB funktioniert korrekt (Update wird ausgefuehrt)
+- JTL Mandant: Mandant_2 auf 24.134.81.65,2107\NOVVIAS05
