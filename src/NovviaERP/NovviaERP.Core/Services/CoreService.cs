@@ -7254,6 +7254,358 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region Benutzer & Rollen Verwaltung
+
+        public class NovviaBenutzer
+        {
+            public int KBenutzer { get; set; }
+            public string CBenutzername { get; set; } = "";
+            public string? CVorname { get; set; }
+            public string? CNachname { get; set; }
+            public string? CEmail { get; set; }
+            public string? CTelefon { get; set; }
+            public bool NAktiv { get; set; }
+            public bool NGesperrt { get; set; }
+            public string? CSperrgrund { get; set; }
+            public DateTime? DLetzteAnmeldung { get; set; }
+            public DateTime DErstellt { get; set; }
+            public string VollName => $"{CVorname} {CNachname}".Trim();
+        }
+
+        public class NovviaRolle
+        {
+            public int KRolle { get; set; }
+            public string CName { get; set; } = "";
+            public string CBezeichnung { get; set; } = "";
+            public string? CBeschreibung { get; set; }
+            public bool NIstSystem { get; set; }
+            public bool NIstAdmin { get; set; }
+            public bool NAktiv { get; set; }
+            public DateTime DErstellt { get; set; }
+        }
+
+        public class RolleSelection
+        {
+            public int KRolle { get; set; }
+            public string CBezeichnung { get; set; } = "";
+            public bool IsSelected { get; set; }
+        }
+
+        /// <summary>
+        /// Lädt alle NOVVIA Benutzer
+        /// </summary>
+        public async Task<List<NovviaBenutzer>> GetNovviaBenutzerAsync()
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QueryAsync<NovviaBenutzer>(@"
+                    SELECT kBenutzer, cBenutzername, cVorname, cNachname, cEmail, cTelefon,
+                           nAktiv, nGesperrt, cSperrgrund, dLetzteAnmeldung, dErstellt
+                    FROM NOVVIA.Benutzer
+                    ORDER BY cBenutzername
+                ");
+                return result.ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetNovviaBenutzerAsync Fehler: {ex.Message}");
+                return new List<NovviaBenutzer>();
+            }
+        }
+
+        /// <summary>
+        /// Lädt alle NOVVIA Rollen
+        /// </summary>
+        public async Task<List<NovviaRolle>> GetNovviaRollenAsync()
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QueryAsync<NovviaRolle>(@"
+                    SELECT kRolle, cName, cBezeichnung, cBeschreibung, nIstSystem, nIstAdmin, nAktiv, dErstellt
+                    FROM NOVVIA.Rolle
+                    ORDER BY cBezeichnung
+                ");
+                return result.ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetNovviaRollenAsync Fehler: {ex.Message}");
+                return new List<NovviaRolle>();
+            }
+        }
+
+        /// <summary>
+        /// Lädt Rollen eines Benutzers (mit Selection-Flag)
+        /// </summary>
+        public async Task<List<RolleSelection>> GetBenutzerRollenSelectionAsync(int kBenutzer)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QueryAsync<RolleSelection>(@"
+                    SELECT r.kRolle, r.cBezeichnung,
+                           CASE WHEN br.kBenutzerRolle IS NOT NULL THEN 1 ELSE 0 END AS IsSelected
+                    FROM NOVVIA.Rolle r
+                    LEFT JOIN NOVVIA.BenutzerRolle br ON r.kRolle = br.kRolle AND br.kBenutzer = @kBenutzer
+                    WHERE r.nAktiv = 1
+                    ORDER BY r.cBezeichnung
+                ", new { kBenutzer });
+                return result.ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetBenutzerRollenSelectionAsync Fehler: {ex.Message}");
+                return new List<RolleSelection>();
+            }
+        }
+
+        /// <summary>
+        /// Lädt Benutzer die eine bestimmte Rolle haben
+        /// </summary>
+        public async Task<List<NovviaBenutzer>> GetBenutzerMitRolleAsync(int kRolle)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QueryAsync<NovviaBenutzer>(@"
+                    SELECT b.kBenutzer, b.cBenutzername, b.cVorname, b.cNachname, b.cEmail,
+                           b.nAktiv, b.nGesperrt
+                    FROM NOVVIA.Benutzer b
+                    INNER JOIN NOVVIA.BenutzerRolle br ON b.kBenutzer = br.kBenutzer
+                    WHERE br.kRolle = @kRolle
+                    ORDER BY b.cBenutzername
+                ", new { kRolle });
+                return result.ToList();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetBenutzerMitRolleAsync Fehler: {ex.Message}");
+                return new List<NovviaBenutzer>();
+            }
+        }
+
+        /// <summary>
+        /// Erstellt einen neuen Benutzer
+        /// </summary>
+        public async Task<int> CreateNovviaBenutzerAsync(NovviaBenutzer benutzer, string passwort)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                // Passwort hashen (einfacher SHA256 Hash, in Produktion BCrypt empfohlen)
+                var passwortHash = ComputePasswordHash(passwort);
+                var result = await conn.QuerySingleAsync<int>(@"
+                    INSERT INTO NOVVIA.Benutzer (cBenutzername, cPasswortHash, cVorname, cNachname, cEmail, cTelefon,
+                                                  nAktiv, nGesperrt, cSprache, cTheme, dErstellt)
+                    VALUES (@CBenutzername, @Hash, @CVorname, @CNachname, @CEmail, @CTelefon,
+                            @NAktiv, @NGesperrt, 'de', 'light', SYSDATETIME());
+                    SELECT SCOPE_IDENTITY();
+                ", new
+                {
+                    benutzer.CBenutzername,
+                    Hash = passwortHash,
+                    benutzer.CVorname,
+                    benutzer.CNachname,
+                    benutzer.CEmail,
+                    benutzer.CTelefon,
+                    benutzer.NAktiv,
+                    benutzer.NGesperrt
+                });
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CreateNovviaBenutzerAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Aktualisiert einen Benutzer
+        /// </summary>
+        public async Task UpdateNovviaBenutzerAsync(NovviaBenutzer benutzer)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                await conn.ExecuteAsync(@"
+                    UPDATE NOVVIA.Benutzer SET
+                        cBenutzername = @CBenutzername,
+                        cVorname = @CVorname,
+                        cNachname = @CNachname,
+                        cEmail = @CEmail,
+                        cTelefon = @CTelefon,
+                        nAktiv = @NAktiv,
+                        nGesperrt = @NGesperrt,
+                        dGeaendert = SYSDATETIME()
+                    WHERE kBenutzer = @KBenutzer
+                ", benutzer);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateNovviaBenutzerAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Setzt das Passwort eines Benutzers
+        /// </summary>
+        public async Task SetBenutzerPasswortAsync(int kBenutzer, string neuesPasswort)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var passwortHash = ComputePasswordHash(neuesPasswort);
+                await conn.ExecuteAsync(@"
+                    UPDATE NOVVIA.Benutzer SET
+                        cPasswortHash = @Hash,
+                        nFehlversuche = 0,
+                        dGeaendert = SYSDATETIME()
+                    WHERE kBenutzer = @kBenutzer
+                ", new { kBenutzer, Hash = passwortHash });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SetBenutzerPasswortAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Löscht einen Benutzer
+        /// </summary>
+        public async Task DeleteNovviaBenutzerAsync(int kBenutzer)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                // Zuerst Rollenzuweisungen löschen
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.BenutzerRolle WHERE kBenutzer = @kBenutzer", new { kBenutzer });
+                // Dann Benutzer löschen
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.Benutzer WHERE kBenutzer = @kBenutzer", new { kBenutzer });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DeleteNovviaBenutzerAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Setzt die Rollen eines Benutzers
+        /// </summary>
+        public async Task SetBenutzerRollenAsync(int kBenutzer, List<int> rollenIds)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                // Alle bestehenden Rollen löschen
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.BenutzerRolle WHERE kBenutzer = @kBenutzer", new { kBenutzer });
+                // Neue Rollen einfügen
+                foreach (var kRolle in rollenIds)
+                {
+                    await conn.ExecuteAsync(@"
+                        INSERT INTO NOVVIA.BenutzerRolle (kBenutzer, kRolle, dErstellt)
+                        VALUES (@kBenutzer, @kRolle, SYSDATETIME())
+                    ", new { kBenutzer, kRolle });
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SetBenutzerRollenAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Erstellt eine neue Rolle
+        /// </summary>
+        public async Task<int> CreateNovviaRolleAsync(NovviaRolle rolle)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                var result = await conn.QuerySingleAsync<int>(@"
+                    INSERT INTO NOVVIA.Rolle (cName, cBezeichnung, cBeschreibung, nIstSystem, nIstAdmin, nAktiv, dErstellt)
+                    VALUES (@CName, @CBezeichnung, @CBeschreibung, 0, @NIstAdmin, @NAktiv, SYSDATETIME());
+                    SELECT SCOPE_IDENTITY();
+                ", rolle);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CreateNovviaRolleAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Aktualisiert eine Rolle
+        /// </summary>
+        public async Task UpdateNovviaRolleAsync(NovviaRolle rolle)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                await conn.ExecuteAsync(@"
+                    UPDATE NOVVIA.Rolle SET
+                        cName = @CName,
+                        cBezeichnung = @CBezeichnung,
+                        cBeschreibung = @CBeschreibung,
+                        nIstAdmin = @NIstAdmin,
+                        nAktiv = @NAktiv,
+                        dGeaendert = SYSDATETIME()
+                    WHERE kRolle = @KRolle
+                ", rolle);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateNovviaRolleAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Löscht eine Rolle (nur wenn nicht System-Rolle)
+        /// </summary>
+        public async Task DeleteNovviaRolleAsync(int kRolle)
+        {
+            try
+            {
+                var conn = await GetConnectionAsync();
+                // Prüfen ob System-Rolle
+                var isSystem = await conn.ExecuteScalarAsync<bool>(
+                    "SELECT nIstSystem FROM NOVVIA.Rolle WHERE kRolle = @kRolle", new { kRolle });
+                if (isSystem)
+                    throw new InvalidOperationException("System-Rollen können nicht gelöscht werden.");
+
+                // Zuerst Benutzer-Zuweisungen löschen
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.BenutzerRolle WHERE kRolle = @kRolle", new { kRolle });
+                // Dann Rolle löschen
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.Rolle WHERE kRolle = @kRolle", new { kRolle });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DeleteNovviaRolleAsync Fehler: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Einfacher Passwort-Hash (SHA256)
+        /// </summary>
+        private static string ComputePasswordHash(string password)
+        {
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(bytes);
+        }
+
+        #endregion
     }
 
     #region Benutzerrechte DTOs

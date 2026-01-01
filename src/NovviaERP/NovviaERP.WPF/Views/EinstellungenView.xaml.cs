@@ -55,6 +55,8 @@ namespace NovviaERP.WPF.Views
                 await LadeLogsAsync();
                 await LadeLogAufbewahrungAsync();
                 await LadeNovviaEinstellungenAsync();
+                await LadeBenutzerAsync();
+                await LadeRollenAsync();
             }
             catch (Exception ex)
             {
@@ -1665,6 +1667,346 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Bereinigen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Benutzer & Rollen
+
+        private List<CoreService.NovviaBenutzer>? _benutzer;
+        private CoreService.NovviaBenutzer? _selectedBenutzer;
+        private List<CoreService.RolleSelection>? _benutzerRollen;
+
+        private List<CoreService.NovviaRolle>? _rollen;
+        private CoreService.NovviaRolle? _selectedRolle;
+
+        private async System.Threading.Tasks.Task LadeBenutzerAsync()
+        {
+            try
+            {
+                _benutzer = await _core.GetNovviaBenutzerAsync();
+                lstBenutzer.ItemsSource = _benutzer;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Benutzer laden: {ex.Message}");
+            }
+        }
+
+        private async System.Threading.Tasks.Task LadeRollenAsync()
+        {
+            try
+            {
+                _rollen = await _core.GetNovviaRollenAsync();
+                lstRollen.ItemsSource = _rollen;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Rollen laden: {ex.Message}");
+            }
+        }
+
+        private async void LstBenutzer_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (lstBenutzer.SelectedItem is CoreService.NovviaBenutzer benutzer)
+            {
+                _selectedBenutzer = benutzer;
+                btnBenutzerLoeschen.IsEnabled = benutzer.KBenutzer != 1; // Admin nicht loeschbar
+
+                txtBenutzerName.Text = benutzer.CBenutzername;
+                txtBenutzerVorname.Text = benutzer.CVorname ?? "";
+                txtBenutzerNachname.Text = benutzer.CNachname ?? "";
+                txtBenutzerEmail.Text = benutzer.CEmail ?? "";
+                txtBenutzerTelefon.Text = benutzer.CTelefon ?? "";
+                txtBenutzerPasswort.Password = "";
+                chkBenutzerAktiv.IsChecked = benutzer.NAktiv;
+                chkBenutzerGesperrt.IsChecked = benutzer.NGesperrt;
+
+                // Rollen laden
+                _benutzerRollen = await _core.GetBenutzerRollenSelectionAsync(benutzer.KBenutzer);
+                lstBenutzerRollen.ItemsSource = _benutzerRollen;
+
+                txtBenutzerStatus.Text = $"Benutzer ID: {benutzer.KBenutzer}";
+                txtBenutzerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
+            }
+        }
+
+        private void BenutzerNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedBenutzer = null;
+            btnBenutzerLoeschen.IsEnabled = false;
+
+            txtBenutzerName.Text = "";
+            txtBenutzerVorname.Text = "";
+            txtBenutzerNachname.Text = "";
+            txtBenutzerEmail.Text = "";
+            txtBenutzerTelefon.Text = "";
+            txtBenutzerPasswort.Password = "";
+            chkBenutzerAktiv.IsChecked = true;
+            chkBenutzerGesperrt.IsChecked = false;
+
+            lstBenutzerRollen.ItemsSource = null;
+            txtBenutzerName.Focus();
+            txtBenutzerStatus.Text = "Neuer Benutzer - Benutzername und Passwort eingeben.";
+            txtBenutzerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
+        }
+
+        private async void BenutzerLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedBenutzer == null) return;
+            if (_selectedBenutzer.KBenutzer == 1)
+            {
+                MessageBox.Show("Der Admin-Benutzer kann nicht geloescht werden.", "Hinweis",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show($"Benutzer '{_selectedBenutzer.CBenutzername}' wirklich loeschen?",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _core.DeleteNovviaBenutzerAsync(_selectedBenutzer.KBenutzer);
+                await LadeBenutzerAsync();
+                BenutzerNeu_Click(sender, e);
+                txtBenutzerStatus.Text = "Benutzer geloescht.";
+                txtBenutzerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BenutzerSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtBenutzerName.Text))
+            {
+                MessageBox.Show("Bitte einen Benutzernamen eingeben.", "Hinweis",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                if (_selectedBenutzer == null)
+                {
+                    // Neuer Benutzer
+                    if (string.IsNullOrWhiteSpace(txtBenutzerPasswort.Password))
+                    {
+                        MessageBox.Show("Bitte ein Passwort fuer den neuen Benutzer eingeben.", "Hinweis",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    var neuerBenutzer = new CoreService.NovviaBenutzer
+                    {
+                        CBenutzername = txtBenutzerName.Text.Trim(),
+                        CVorname = txtBenutzerVorname.Text.Trim(),
+                        CNachname = txtBenutzerNachname.Text.Trim(),
+                        CEmail = txtBenutzerEmail.Text.Trim(),
+                        CTelefon = txtBenutzerTelefon.Text.Trim(),
+                        NAktiv = chkBenutzerAktiv.IsChecked == true,
+                        NGesperrt = chkBenutzerGesperrt.IsChecked == true
+                    };
+
+                    var newId = await _core.CreateNovviaBenutzerAsync(neuerBenutzer, txtBenutzerPasswort.Password);
+                    txtBenutzerStatus.Text = $"Benutzer '{txtBenutzerName.Text}' angelegt (ID: {newId})!";
+                }
+                else
+                {
+                    // Bestehender Benutzer
+                    _selectedBenutzer.CBenutzername = txtBenutzerName.Text.Trim();
+                    _selectedBenutzer.CVorname = txtBenutzerVorname.Text.Trim();
+                    _selectedBenutzer.CNachname = txtBenutzerNachname.Text.Trim();
+                    _selectedBenutzer.CEmail = txtBenutzerEmail.Text.Trim();
+                    _selectedBenutzer.CTelefon = txtBenutzerTelefon.Text.Trim();
+                    _selectedBenutzer.NAktiv = chkBenutzerAktiv.IsChecked == true;
+                    _selectedBenutzer.NGesperrt = chkBenutzerGesperrt.IsChecked == true;
+
+                    await _core.UpdateNovviaBenutzerAsync(_selectedBenutzer);
+
+                    // Passwort aktualisieren falls eingegeben
+                    if (!string.IsNullOrWhiteSpace(txtBenutzerPasswort.Password))
+                    {
+                        await _core.SetBenutzerPasswortAsync(_selectedBenutzer.KBenutzer, txtBenutzerPasswort.Password);
+                    }
+
+                    // Rollen speichern
+                    if (_benutzerRollen != null)
+                    {
+                        var selectedRollen = _benutzerRollen.Where(r => r.IsSelected).Select(r => r.KRolle).ToList();
+                        await _core.SetBenutzerRollenAsync(_selectedBenutzer.KBenutzer, selectedRollen);
+                    }
+
+                    txtBenutzerStatus.Text = $"Benutzer '{txtBenutzerName.Text}' gespeichert!";
+                }
+
+                txtBenutzerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+                txtBenutzerPasswort.Password = "";
+                await LadeBenutzerAsync();
+            }
+            catch (Exception ex)
+            {
+                txtBenutzerStatus.Text = $"Fehler: {ex.Message}";
+                txtBenutzerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+            }
+        }
+
+        private async void BenutzerPasswortReset_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedBenutzer == null)
+            {
+                MessageBox.Show("Bitte zuerst einen Benutzer auswaehlen.", "Hinweis",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dialog = new InputDialog("Passwort zuruecksetzen", "Neues Passwort:");
+            if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.Ergebnis))
+            {
+                try
+                {
+                    await _core.SetBenutzerPasswortAsync(_selectedBenutzer.KBenutzer, dialog.Ergebnis);
+                    MessageBox.Show($"Passwort fuer '{_selectedBenutzer.CBenutzername}' wurde zurueckgesetzt.",
+                        "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void BenutzerRolle_Click(object sender, RoutedEventArgs e)
+        {
+            // Checkbox-Click aktualisiert automatisch das IsSelected Property
+        }
+
+        // === Rollen ===
+
+        private async void LstRollen_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (lstRollen.SelectedItem is CoreService.NovviaRolle rolle)
+            {
+                _selectedRolle = rolle;
+                btnRolleLoeschen.IsEnabled = !rolle.NIstSystem;
+
+                txtRolleName.Text = rolle.CName;
+                txtRolleBezeichnung.Text = rolle.CBezeichnung;
+                txtRolleBeschreibung.Text = rolle.CBeschreibung ?? "";
+                chkRolleAktiv.IsChecked = rolle.NAktiv;
+                chkRolleAdmin.IsChecked = rolle.NIstAdmin;
+                chkRolleSystem.IsChecked = rolle.NIstSystem;
+
+                // Benutzer mit dieser Rolle laden
+                var benutzerMitRolle = await _core.GetBenutzerMitRolleAsync(rolle.KRolle);
+                lstRolleBenutzer.ItemsSource = benutzerMitRolle;
+
+                txtRolleStatus.Text = $"Rolle ID: {rolle.KRolle}";
+                txtRolleStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
+            }
+        }
+
+        private void RolleNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedRolle = null;
+            btnRolleLoeschen.IsEnabled = false;
+
+            txtRolleName.Text = "";
+            txtRolleBezeichnung.Text = "";
+            txtRolleBeschreibung.Text = "";
+            chkRolleAktiv.IsChecked = true;
+            chkRolleAdmin.IsChecked = false;
+            chkRolleSystem.IsChecked = false;
+
+            lstRolleBenutzer.ItemsSource = null;
+            txtRolleName.Focus();
+            txtRolleStatus.Text = "Neue Rolle - Name und Bezeichnung eingeben.";
+            txtRolleStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
+        }
+
+        private async void RolleLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedRolle == null) return;
+            if (_selectedRolle.NIstSystem)
+            {
+                MessageBox.Show("System-Rollen koennen nicht geloescht werden.", "Hinweis",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show($"Rolle '{_selectedRolle.CBezeichnung}' wirklich loeschen?\n\n" +
+                "Alle Benutzer-Zuordnungen werden ebenfalls entfernt.",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _core.DeleteNovviaRolleAsync(_selectedRolle.KRolle);
+                await LadeRollenAsync();
+                RolleNeu_Click(sender, e);
+                txtRolleStatus.Text = "Rolle geloescht.";
+                txtRolleStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void RolleSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtRolleName.Text) || string.IsNullOrWhiteSpace(txtRolleBezeichnung.Text))
+            {
+                MessageBox.Show("Bitte Name und Bezeichnung eingeben.", "Hinweis",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                if (_selectedRolle == null)
+                {
+                    // Neue Rolle
+                    var neueRolle = new CoreService.NovviaRolle
+                    {
+                        CName = txtRolleName.Text.Trim(),
+                        CBezeichnung = txtRolleBezeichnung.Text.Trim(),
+                        CBeschreibung = txtRolleBeschreibung.Text.Trim(),
+                        NAktiv = chkRolleAktiv.IsChecked == true,
+                        NIstAdmin = chkRolleAdmin.IsChecked == true
+                    };
+
+                    var newId = await _core.CreateNovviaRolleAsync(neueRolle);
+                    txtRolleStatus.Text = $"Rolle '{txtRolleBezeichnung.Text}' angelegt (ID: {newId})!";
+                }
+                else
+                {
+                    // Bestehende Rolle
+                    _selectedRolle.CName = txtRolleName.Text.Trim();
+                    _selectedRolle.CBezeichnung = txtRolleBezeichnung.Text.Trim();
+                    _selectedRolle.CBeschreibung = txtRolleBeschreibung.Text.Trim();
+                    _selectedRolle.NAktiv = chkRolleAktiv.IsChecked == true;
+                    _selectedRolle.NIstAdmin = chkRolleAdmin.IsChecked == true;
+
+                    await _core.UpdateNovviaRolleAsync(_selectedRolle);
+                    txtRolleStatus.Text = $"Rolle '{txtRolleBezeichnung.Text}' gespeichert!";
+                }
+
+                txtRolleStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+                await LadeRollenAsync();
+            }
+            catch (Exception ex)
+            {
+                txtRolleStatus.Text = $"Fehler: {ex.Message}";
+                txtRolleStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
             }
         }
 

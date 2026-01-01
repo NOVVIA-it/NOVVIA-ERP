@@ -1110,6 +1110,241 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+
+            <!-- Benutzer & Rollen Tab -->
+            <TabItem Header="Benutzer &amp; Rollen">
+                <TabControl Margin="10">
+                    <!-- Benutzer Sub-Tab -->
+                    <TabItem Header="Benutzer">
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="350"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Linke Seite: Benutzer-Liste -->
+                            <Border BorderBrush="#ddd" BorderThickness="0,0,1,0">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <StackPanel Orientation="Horizontal" Margin="10,10,10,5">
+                                        <Button Content="Neu" Click="BenutzerNeu_Click" Padding="12,6" Margin="0,0,8,0"
+                                                Background="#0078D4" Foreground="White"/>
+                                        <Button x:Name="btnBenutzerLoeschen" Content="Loeschen" Click="BenutzerLoeschen_Click"
+                                                Padding="12,6" IsEnabled="False"/>
+                                    </StackPanel>
+
+                                    <ListBox x:Name="lstBenutzer" Grid.Row="1" Margin="10,5,10,10"
+                                             SelectionChanged="LstBenutzer_SelectionChanged">
+                                        <ListBox.Resources>
+                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0078D4"/>
+                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
+                                        </ListBox.Resources>
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding CBenutzername}" FontWeight="SemiBold" Width="120"/>
+                                                    <TextBlock Text="{Binding VollName}" Foreground="Gray"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Padding" Value="10,6"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter Property="Background" Value="#0078D4"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+
+                            <!-- Rechte Seite: Benutzer-Details -->
+                            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="20,15">
+                                    <TextBlock Text="Benutzer-Details" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="250"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Benutzername:" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtBenutzerName" Grid.Column="1"/>
+
+                                        <TextBlock Text="Vorname:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtBenutzerVorname" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0"/>
+
+                                        <TextBlock Text="Nachname:" VerticalAlignment="Center" Grid.Row="2" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtBenutzerNachname" Grid.Row="2" Grid.Column="1" Margin="0,8,0,0"/>
+
+                                        <TextBlock Text="E-Mail:" VerticalAlignment="Center" Grid.Row="3" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtBenutzerEmail" Grid.Row="3" Grid.Column="1" Margin="0,8,0,0"/>
+
+                                        <TextBlock Text="Telefon:" VerticalAlignment="Center" Grid.Row="4" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtBenutzerTelefon" Grid.Row="4" Grid.Column="1" Margin="0,8,0,0"/>
+
+                                        <TextBlock Text="Neues Passwort:" VerticalAlignment="Center" Grid.Row="5" Margin="0,8,0,0"/>
+                                        <PasswordBox x:Name="txtBenutzerPasswort" Grid.Row="5" Grid.Column="1" Margin="0,8,0,0"/>
+                                    </Grid>
+
+                                    <!-- Status-Optionen -->
+                                    <TextBlock Text="Status" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10"/>
+                                    <StackPanel>
+                                        <CheckBox x:Name="chkBenutzerAktiv" Content="Benutzer ist aktiv" IsChecked="True" Margin="0,0,0,5"/>
+                                        <CheckBox x:Name="chkBenutzerGesperrt" Content="Benutzer ist gesperrt" Margin="0,0,0,5"/>
+                                    </StackPanel>
+
+                                    <!-- Rollen-Zuweisung -->
+                                    <TextBlock Text="Rollen" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10"/>
+                                    <ListBox x:Name="lstBenutzerRollen" Height="150" SelectionMode="Multiple">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox Content="{Binding CBezeichnung}" IsChecked="{Binding IsSelected}"
+                                                          Margin="5,2" Click="BenutzerRolle_Click"/>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <!-- Speichern -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                                        <Button Content="Speichern" Click="BenutzerSpeichern_Click" Padding="20,8"
+                                                Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                                        <Button Content="Passwort zuruecksetzen" Click="BenutzerPasswortReset_Click"
+                                                Padding="15,8" Margin="15,0,0,0"/>
+                                    </StackPanel>
+
+                                    <TextBlock x:Name="txtBenutzerStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Rollen Sub-Tab -->
+                    <TabItem Header="Rollen">
+                        <Grid Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="300"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Linke Seite: Rollen-Liste -->
+                            <Border BorderBrush="#ddd" BorderThickness="0,0,1,0">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+
+                                    <StackPanel Orientation="Horizontal" Margin="10,10,10,5">
+                                        <Button Content="Neu" Click="RolleNeu_Click" Padding="12,6" Margin="0,0,8,0"
+                                                Background="#0078D4" Foreground="White"/>
+                                        <Button x:Name="btnRolleLoeschen" Content="Loeschen" Click="RolleLoeschen_Click"
+                                                Padding="12,6" IsEnabled="False"/>
+                                    </StackPanel>
+
+                                    <ListBox x:Name="lstRollen" Grid.Row="1" Margin="10,5,10,10"
+                                             DisplayMemberPath="CBezeichnung"
+                                             SelectionChanged="LstRollen_SelectionChanged">
+                                        <ListBox.Resources>
+                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0078D4"/>
+                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
+                                        </ListBox.Resources>
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Padding" Value="10,6"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter Property="Background" Value="#0078D4"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+
+                            <!-- Rechte Seite: Rollen-Details -->
+                            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="20,15">
+                                    <TextBlock Text="Rollen-Details" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="300"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Name (intern):" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtRolleName" Grid.Column="1"/>
+
+                                        <TextBlock Text="Bezeichnung:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtRolleBezeichnung" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0"/>
+
+                                        <TextBlock Text="Beschreibung:" VerticalAlignment="Center" Grid.Row="2" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtRolleBeschreibung" Grid.Row="2" Grid.Column="1" Margin="0,8,0,0"
+                                                 TextWrapping="Wrap" Height="60" AcceptsReturn="True"/>
+                                    </Grid>
+
+                                    <!-- Rollen-Optionen -->
+                                    <TextBlock Text="Optionen" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10"/>
+                                    <StackPanel>
+                                        <CheckBox x:Name="chkRolleAktiv" Content="Rolle ist aktiv" IsChecked="True" Margin="0,0,0,5"/>
+                                        <CheckBox x:Name="chkRolleAdmin" Content="Administrator-Rolle (alle Rechte)" Margin="0,0,0,5"/>
+                                        <CheckBox x:Name="chkRolleSystem" Content="System-Rolle (nicht loeschbar)" IsEnabled="False" Margin="0,0,0,5"/>
+                                    </StackPanel>
+
+                                    <!-- Benutzer mit dieser Rolle -->
+                                    <TextBlock Text="Benutzer mit dieser Rolle" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10"/>
+                                    <ListBox x:Name="lstRolleBenutzer" Height="100" IsEnabled="False">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock>
+                                                    <Run Text="{Binding CBenutzername}"/>
+                                                    <Run Text=" - " Foreground="Gray"/>
+                                                    <Run Text="{Binding VollName}" Foreground="Gray"/>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <!-- Speichern -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                                        <Button Content="Speichern" Click="RolleSpeichern_Click" Padding="20,8"
+                                                Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                                    </StackPanel>
+
+                                    <TextBlock x:Name="txtRolleStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
+            </TabItem>
         </TabControl>
     </Grid>
 </UserControl>
