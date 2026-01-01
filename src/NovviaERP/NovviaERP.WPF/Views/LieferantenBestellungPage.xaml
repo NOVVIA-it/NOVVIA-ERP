@@ -32,14 +32,16 @@
                       DisplayMemberPath="CFirma" SelectedValuePath="KLieferant"/>
 
             <TextBlock Text="Status:" VerticalAlignment="Center" Margin="15,0,5,0"/>
-            <ComboBox x:Name="cboFilterStatus" Width="120" SelectionChanged="Filter_Changed">
+            <ComboBox x:Name="cboFilterStatus" Width="130" SelectionChanged="Filter_Changed">
                 <ComboBoxItem Tag="" Content="Alle" IsSelected="True"/>
                 <ComboBoxItem Tag="5" Content="Entwurf"/>
-                <ComboBoxItem Tag="10" Content="Offen"/>
-                <ComboBoxItem Tag="20" Content="In Bearbeitung"/>
-                <ComboBoxItem Tag="30" Content="Teilgeliefert"/>
-                <ComboBoxItem Tag="50" Content="Abgeschlossen"/>
-                <ComboBoxItem Tag="100" Content="Storniert"/>
+                <ComboBoxItem Tag="100" Content="Offen"/>
+                <ComboBoxItem Tag="200" Content="Bestellt"/>
+                <ComboBoxItem Tag="300" Content="Teilgeliefert"/>
+                <ComboBoxItem Tag="400" Content="Geliefert"/>
+                <ComboBoxItem Tag="500" Content="Abgeschlossen"/>
+                <ComboBoxItem Tag="600" Content="Storniert"/>
+                <ComboBoxItem Tag="700" Content="Gebucht"/>
             </ComboBox>
 
             <Button x:Name="btnAktualisieren" Content="Aktualisieren" Padding="15,5" Margin="15,0,0,0" Click="Aktualisieren_Click"/>
@@ -62,24 +64,34 @@
                     <DataGridTextColumn Header="Lieferant" Binding="{Binding LieferantName}" Width="200"/>
                     <DataGridTextColumn Header="Eigene Bestellnr." Binding="{Binding CEigeneBestellnummer}" Width="120"/>
                     <DataGridTextColumn Header="Fremdbelegnr." Binding="{Binding CFremdbelegnummer}" Width="120"/>
-                    <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="100">
+                    <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="110">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
+                                <Setter Property="Padding" Value="4,2"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding NStatus}" Value="5">
-                                        <Setter Property="Background" Value="#E3F2FD"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding NStatus}" Value="10">
-                                        <Setter Property="Background" Value="#FFF3E0"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding NStatus}" Value="20">
-                                        <Setter Property="Background" Value="#FFECB3"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding NStatus}" Value="50">
-                                        <Setter Property="Background" Value="#C8E6C9"/>
+                                        <Setter Property="Background" Value="#E0E0E0"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding NStatus}" Value="100">
+                                        <Setter Property="Background" Value="#FFF3E0"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="200">
+                                        <Setter Property="Background" Value="#E3F2FD"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="300">
+                                        <Setter Property="Background" Value="#F3E5F5"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="400">
+                                        <Setter Property="Background" Value="#E8F5E9"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="500">
+                                        <Setter Property="Background" Value="#C8E6C9"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="600">
                                         <Setter Property="Background" Value="#FFCDD2"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NStatus}" Value="700">
+                                        <Setter Property="Background" Value="#CFD8DC"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>

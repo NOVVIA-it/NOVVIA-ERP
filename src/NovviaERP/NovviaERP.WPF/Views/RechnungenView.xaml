@@ -43,8 +43,9 @@
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Rechnungsnr." Binding="{Binding CRechnungsNr}" Width="130"/>
                     <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="90"/>
-                    <DataGridTextColumn Header="Kunde" Binding="{Binding KundeName}" Width="180"/>
-                    <DataGridTextColumn Header="Firma" Binding="{Binding KundeFirma}" Width="150"/>
+                    <DataGridTextColumn Header="Kd-Nr." Binding="{Binding CKundenNr}" Width="80"/>
+                    <DataGridTextColumn Header="Kunde" Binding="{Binding KundeName}" Width="150"/>
+                    <DataGridTextColumn Header="Firma" Binding="{Binding KundeFirma}" Width="140"/>
                     <DataGridTextColumn Header="Auftrag" Binding="{Binding CAuftragNr}" Width="100"/>
                     <DataGridTextColumn Header="Faellig" Binding="{Binding DFaellig, StringFormat=dd.MM.yyyy}" Width="90"/>
                     <DataGridTextColumn Header="Netto" Binding="{Binding FNetto, StringFormat=N2}" Width="100">

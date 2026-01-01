@@ -109,7 +109,6 @@ namespace NovviaERP.WPF.Views
         #region Event Handlers
 
         private async void Suchen_Click(object sender, RoutedEventArgs e) => await LadeLagerbestandAsync();
-        private async void Aktualisieren_Click(object sender, RoutedEventArgs e) => await LadeLagerbestandAsync();
 
         private async void Lager_Changed(object sender, SelectionChangedEventArgs e)
         {
@@ -145,18 +144,16 @@ namespace NovviaERP.WPF.Views
                 NavigateToArtikel(bestand.KArtikel);
         }
 
-        private void Bewegungen_Click(object sender, RoutedEventArgs e)
+        private async void Bewegungen_Click(object sender, RoutedEventArgs e)
         {
             tabLager.SelectedIndex = 1; // Bewegungen Tab
+            await LadeBewegungenAsync();
         }
-
-        private async void LadeBewegungen_Click(object sender, RoutedEventArgs e) => await LadeBewegungenAsync();
 
         private async void Zeitraum_Changed(object sender, SelectionChangedEventArgs e)
         {
             if (!IsLoaded) return;
-            if (tabLager.SelectedIndex == 1) // Nur wenn Bewegungen-Tab aktiv
-                await LadeBewegungenAsync();
+            await LadeBewegungenAsync();
         }
 
         #endregion

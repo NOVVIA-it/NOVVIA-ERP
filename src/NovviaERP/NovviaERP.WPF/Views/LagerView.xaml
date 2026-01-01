@@ -119,8 +119,6 @@
                             <ComboBoxItem Content="Letzte 90 Tage" Tag="90"/>
                             <ComboBoxItem Content="Alle" Tag="-1"/>
                         </ComboBox>
-                        <Button Content="Bewegungen laden" Click="LadeBewegungen_Click" Margin="15,0,0,0" Padding="15,5"
-                                Background="#0078D4" Foreground="White" BorderThickness="0"/>
                     </StackPanel>
 
                     <DataGrid x:Name="dgBewegungen" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"

@@ -6337,6 +6337,7 @@ namespace NovviaERP.Core.Services
                     ISNULL(ra.cVorname + ' ', '') + ISNULL(ra.cName, '') AS KundeName,
                     ISNULL(ra.cFirma, '') AS KundeFirma,
                     r.kKunde AS KKunde,
+                    k.cKundenNr AS CKundenNr,
                     a.cAuftragsNr AS CAuftragNr,
                     ar.kAuftrag AS KAuftrag,
                     ISNULL(zahlung.Summe, 0) AS FBezahlt,
@@ -6351,6 +6352,7 @@ namespace NovviaERP.Core.Services
                     la.cFirma AS LiFirma, la.cName AS LiName, la.cVorname AS LiVorname,
                     la.cStrasse AS LiStrasse, la.cPLZ AS LiPlz, la.cOrt AS LiOrt, la.cLand AS LiLand
                 FROM Rechnung.tRechnung r
+                LEFT JOIN dbo.tKunde k ON r.kKunde = k.kKunde
                 LEFT JOIN Rechnung.tRechnungText rt ON r.kRechnung = rt.kRechnung
                 OUTER APPLY (SELECT TOP 1 * FROM Rechnung.tRechnungAdresse WHERE kRechnung = r.kRechnung AND nTyp = 0) ra
                 OUTER APPLY (SELECT TOP 1 * FROM Rechnung.tRechnungAdresse WHERE kRechnung = r.kRechnung AND nTyp = 1) la
@@ -6419,6 +6421,7 @@ namespace NovviaERP.Core.Services
             public string KundeName { get; set; } = "";
             public string KundeFirma { get; set; } = "";
             public int KKunde { get; set; }
+            public string? CKundenNr { get; set; }
             public string? CAuftragNr { get; set; }
             public int? KAuftrag { get; set; }
             public decimal FBezahlt { get; set; }
