@@ -6744,8 +6744,8 @@ namespace NovviaERP.Core.Services
                     MERGE INTO NOVVIA.FirmaEinstellung AS target
                     USING (SELECT @Schluessel AS cSchluessel) AS source
                     ON target.cSchluessel = source.cSchluessel
-                    WHEN MATCHED THEN UPDATE SET cWert = @Wert, dGeaendert = GETDATE()
-                    WHEN NOT MATCHED THEN INSERT (cSchluessel, cWert, cBeschreibung, dErstellt)
+                    WHEN MATCHED THEN UPDATE SET cWert = @Wert, cBeschreibung = @Beschreibung, dGeaendert = GETDATE()
+                    WHEN NOT MATCHED THEN INSERT (cSchluessel, cWert, cBeschreibung, dGeaendert)
                         VALUES (@Schluessel, @Wert, @Beschreibung, GETDATE());",
                     new { Schluessel = schluessel, Wert = wert, Beschreibung = beschreibung });
             }
