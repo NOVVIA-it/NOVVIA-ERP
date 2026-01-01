@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
+using static NovviaERP.Core.Services.ZahlungsabgleichService;
 
 namespace NovviaERP.WPF.Views
 {

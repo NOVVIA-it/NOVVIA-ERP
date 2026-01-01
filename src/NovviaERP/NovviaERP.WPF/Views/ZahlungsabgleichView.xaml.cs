@@ -11,13 +11,14 @@ using System.Windows.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using NovviaERP.Core.Services;
+using static NovviaERP.Core.Services.ZahlungsabgleichService;
 
 namespace NovviaERP.WPF.Views
 {
     public partial class ZahlungsabgleichView : UserControl
     {
         private readonly ZahlungsabgleichService _zahlungsabgleich;
-        private readonly SepaService _sepa;
+        private readonly SepaService? _sepa;
         private readonly PaymentService? _payment;
         private List<ZahlungsabgleichEintrag> _zahlungen = new();
         private List<SepaRechnungViewModel> _sepaRechnungen = new();
@@ -29,7 +30,7 @@ namespace NovviaERP.WPF.Views
             InitializeComponent();
 
             _zahlungsabgleich = App.Services.GetRequiredService<ZahlungsabgleichService>();
-            _sepa = App.Services.GetRequiredService<SepaService>();
+            _sepa = App.Services.GetService<SepaService>();
             _payment = App.Services.GetService<PaymentService>();
 
             // Standard-Datumsbereich: Letzter Monat

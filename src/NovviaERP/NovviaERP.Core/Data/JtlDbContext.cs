@@ -1255,8 +1255,405 @@ namespace NovviaERP.Core.Data
             public decimal FBetrag { get; set; }
             public string CWaehrungISO { get; set; } = "EUR";
             public string? CName { get; set; }
+            public string? CKonto { get; set; }
+            public string? CVerwendungszweck { get; set; }
+            public int NStatus { get; set; } // 0=offen, 1=zugeordnet, 2=ignoriert
+            public DateTime? DAbgleichszeitpunkt { get; set; }
+            public int? KBenutzer { get; set; }
+        }
+
+        #endregion
+
+        #region JTL Zahlungsabgleich (tZahlungsabgleichUmsatz, tZahlung)
+
+        /// <summary>
+        /// Holt offene (nicht zugeordnete) Bank-Transaktionen
+        /// </summary>
+        public async Task<List<ZahlungsabgleichUmsatz>> GetOffeneUmsaetzeAsync(int? kModul = null, int limit = 500)
+        {
+            var conn = await GetConnectionAsync();
+            var modulFilter = kModul.HasValue ? "AND kZahlungsabgleichModul = @kModul" : "";
+            return (await conn.QueryAsync<ZahlungsabgleichUmsatz>($@"
+                SELECT TOP (@limit)
+                    kZahlungsabgleichUmsatz, kZahlungsabgleichModul, cKontoIdentifikation,
+                    cTransaktionID, dBuchungsdatum, fBetrag, cWaehrungISO, cName, cKonto,
+                    cVerwendungszweck, nStatus, dAbgleichszeitpunkt, kBenutzer
+                FROM tZahlungsabgleichUmsatz
+                WHERE nStatus = 0 AND fBetrag > 0 {modulFilter}
+                ORDER BY dBuchungsdatum DESC",
+                new { kModul, limit })).ToList();
+        }
+
+        /// <summary>
+        /// Holt bereits zugeordnete Bank-Transaktionen
+        /// </summary>
+        public async Task<List<ZahlungsabgleichUmsatzMitZuordnung>> GetGematchteUmsaetzeAsync(DateTime? von = null, DateTime? bis = null, int limit = 500)
+        {
+            var conn = await GetConnectionAsync();
+            var dateFilter = "";
+            if (von.HasValue) dateFilter += " AND u.dBuchungsdatum >= @von";
+            if (bis.HasValue) dateFilter += " AND u.dBuchungsdatum <= @bis";
+
+            return (await conn.QueryAsync<ZahlungsabgleichUmsatzMitZuordnung>($@"
+                SELECT TOP (@limit)
+                    u.kZahlungsabgleichUmsatz, u.dBuchungsdatum, u.fBetrag, u.cWaehrungISO,
+                    u.cName, u.cVerwendungszweck, u.nStatus, u.dAbgleichszeitpunkt,
+                    z.kZahlung, z.kBestellung, z.kRechnung, z.fBetrag AS ZahlungsBetrag,
+                    z.nZuweisungstyp, z.nZuweisungswertung,
+                    r.cRechnungsNr, a.cAuftragsnr AS BestellNr
+                FROM tZahlungsabgleichUmsatz u
+                INNER JOIN tZahlung z ON u.kZahlungsabgleichUmsatz = z.kZahlungsabgleichUmsatz
+                LEFT JOIN Rechnung.tRechnung r ON z.kRechnung = r.kRechnung
+                LEFT JOIN Verkauf.tAuftrag a ON z.kBestellung = a.kAuftrag
+                WHERE u.nStatus = 1 {dateFilter}
+                ORDER BY u.dBuchungsdatum DESC",
+                new { von, bis, limit })).ToList();
+        }
+
+        /// <summary>
+        /// Holt offene Rechnungen fuer Matching-Vorschlaege
+        /// </summary>
+        public async Task<List<OffeneRechnungInfo>> GetOffeneRechnungenFuerMatchingAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<OffeneRechnungInfo>(@"
+                SELECT
+                    r.kRechnung, r.cRechnungsNr AS RechnungsNr, r.kKunde,
+                    re.fVKBruttoGesamt AS Brutto, re.fBezahlt,
+                    (re.fVKBruttoGesamt - ISNULL(re.fBezahlt, 0)) AS OffenerBetrag,
+                    r.dErstellt, r.dFaellig,
+                    k.cFirma AS KundeFirma, k.cNachname AS KundeNachname, k.cKundenNr,
+                    ISNULL(kb.cIBAN, '') AS KundeIBAN
+                FROM Rechnung.tRechnung r
+                LEFT JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                LEFT JOIN dbo.tKunde k ON r.kKunde = k.kKunde
+                LEFT JOIN dbo.tKundeBankverbindung kb ON k.kKunde = kb.kKunde AND kb.nStandard = 1
+                WHERE r.nStorno = 0
+                  AND (re.fVKBruttoGesamt - ISNULL(re.fBezahlt, 0)) > 0.01
+                ORDER BY r.dFaellig")).ToList();
+        }
+
+        /// <summary>
+        /// Holt offene Auftraege fuer Matching (falls direkt auf Auftrag gebucht wird)
+        /// </summary>
+        public async Task<List<OffenerAuftragInfo>> GetOffeneAuftraegeFuerMatchingAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<OffenerAuftragInfo>(@"
+                SELECT
+                    a.kAuftrag, a.cAuftragsnr AS AuftragNr, a.kKunde,
+                    e.fWertBrutto AS Brutto, ISNULL(e.fGezahlt, 0) AS Bezahlt,
+                    (e.fWertBrutto - ISNULL(e.fGezahlt, 0)) AS OffenerBetrag,
+                    a.dErstellt,
+                    k.cFirma AS KundeFirma, k.cNachname AS KundeNachname, k.cKundenNr,
+                    ISNULL(kb.cIBAN, '') AS KundeIBAN
+                FROM Verkauf.tAuftrag a
+                LEFT JOIN Verkauf.tAuftragEckdaten e ON a.kAuftrag = e.kAuftrag
+                LEFT JOIN dbo.tKunde k ON a.kKunde = k.kKunde
+                LEFT JOIN dbo.tKundeBankverbindung kb ON k.kKunde = kb.kKunde AND kb.nStandard = 1
+                WHERE a.nStorno = 0 AND a.nAuftragStatus < 4
+                  AND (e.fWertBrutto - ISNULL(e.fGezahlt, 0)) > 0.01
+                ORDER BY a.dErstellt DESC")).ToList();
+        }
+
+        /// <summary>
+        /// Ordnet eine Bank-Transaktion einer Rechnung zu (erstellt tZahlung)
+        /// </summary>
+        public async Task<int> ZuordnenZuRechnungAsync(int kZahlungsabgleichUmsatz, int kRechnung, decimal betrag, int kBenutzer, int zuweisungswertung = 100)
+        {
+            var conn = await GetConnectionAsync();
+            using var tx = conn.BeginTransaction();
+            try
+            {
+                // Rechnung laden
+                var rechnung = await conn.QuerySingleOrDefaultAsync<dynamic>(
+                    "SELECT kKunde FROM Rechnung.tRechnung WHERE kRechnung = @kRechnung",
+                    new { kRechnung }, tx);
+                if (rechnung == null) throw new Exception($"Rechnung {kRechnung} nicht gefunden");
+
+                // Zahlungsart ermitteln (Standard: Ueberweisung = 5)
+                var zahlungsart = await conn.QuerySingleOrDefaultAsync<int?>(
+                    "SELECT kZahlungsart FROM tZahlungsart WHERE cName LIKE '%berweis%'", transaction: tx) ?? 5;
+
+                // tZahlung erstellen
+                var kZahlung = await conn.QuerySingleAsync<int>(@"
+                    INSERT INTO tZahlung (
+                        cName, dDatum, fBetrag, kBestellung, kRechnung, kBenutzer,
+                        kZahlungsart, kZahlungsabgleichUmsatz, nZuweisungstyp, nZuweisungswertung
+                    ) VALUES (
+                        'Zahlungsabgleich', GETDATE(), @betrag, NULL, @kRechnung, @kBenutzer,
+                        @zahlungsart, @kZahlungsabgleichUmsatz, 1, @zuweisungswertung
+                    ); SELECT SCOPE_IDENTITY();",
+                    new { betrag, kRechnung, kBenutzer, zahlungsart, kZahlungsabgleichUmsatz, zuweisungswertung }, tx);
+
+                // tZahlungsabgleichUmsatz als zugeordnet markieren
+                await conn.ExecuteAsync(@"
+                    UPDATE tZahlungsabgleichUmsatz
+                    SET nStatus = 1, dAbgleichszeitpunkt = GETDATE(), kBenutzer = @kBenutzer
+                    WHERE kZahlungsabgleichUmsatz = @kZahlungsabgleichUmsatz",
+                    new { kZahlungsabgleichUmsatz, kBenutzer }, tx);
+
+                // Rechnung aktualisieren (bezahlt)
+                await conn.ExecuteAsync(@"
+                    UPDATE Rechnung.tRechnung SET dGeaendert = GETDATE() WHERE kRechnung = @kRechnung",
+                    new { kRechnung }, tx);
+
+                // Eckdaten neu berechnen
+                await conn.ExecuteAsync("Rechnung.spRechnungEckdatenBerechnen",
+                    new { kRechnung }, tx, commandType: CommandType.StoredProcedure);
+
+                tx.Commit();
+                _log.Information("Zahlung {Betrag} EUR zu Rechnung {RechnungId} zugeordnet (Transaktion {UmsatzId})",
+                    betrag, kRechnung, kZahlungsabgleichUmsatz);
+                return kZahlung;
+            }
+            catch { tx.Rollback(); throw; }
+        }
+
+        /// <summary>
+        /// Ordnet eine Bank-Transaktion einem Auftrag zu
+        /// </summary>
+        public async Task<int> ZuordnenZuAuftragAsync(int kZahlungsabgleichUmsatz, int kAuftrag, decimal betrag, int kBenutzer, int zuweisungswertung = 100)
+        {
+            var conn = await GetConnectionAsync();
+            using var tx = conn.BeginTransaction();
+            try
+            {
+                var zahlungsart = await conn.QuerySingleOrDefaultAsync<int?>(
+                    "SELECT kZahlungsart FROM tZahlungsart WHERE cName LIKE '%berweis%'", transaction: tx) ?? 5;
+
+                var kZahlung = await conn.QuerySingleAsync<int>(@"
+                    INSERT INTO tZahlung (
+                        cName, dDatum, fBetrag, kBestellung, kRechnung, kBenutzer,
+                        kZahlungsart, kZahlungsabgleichUmsatz, nZuweisungstyp, nZuweisungswertung
+                    ) VALUES (
+                        'Zahlungsabgleich', GETDATE(), @betrag, @kAuftrag, NULL, @kBenutzer,
+                        @zahlungsart, @kZahlungsabgleichUmsatz, 1, @zuweisungswertung
+                    ); SELECT SCOPE_IDENTITY();",
+                    new { betrag, kAuftrag, kBenutzer, zahlungsart, kZahlungsabgleichUmsatz, zuweisungswertung }, tx);
+
+                await conn.ExecuteAsync(@"
+                    UPDATE tZahlungsabgleichUmsatz
+                    SET nStatus = 1, dAbgleichszeitpunkt = GETDATE(), kBenutzer = @kBenutzer
+                    WHERE kZahlungsabgleichUmsatz = @kZahlungsabgleichUmsatz",
+                    new { kZahlungsabgleichUmsatz, kBenutzer }, tx);
+
+                tx.Commit();
+                return kZahlung;
+            }
+            catch { tx.Rollback(); throw; }
+        }
+
+        /// <summary>
+        /// Importiert eine Bank-Transaktion (z.B. von PayPal, Mollie, MT940)
+        /// </summary>
+        public async Task<int> ImportUmsatzAsync(ZahlungsabgleichUmsatz umsatz)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Pruefen ob bereits importiert (via TransaktionID)
+            if (!string.IsNullOrEmpty(umsatz.CTransaktionID))
+            {
+                var exists = await conn.QuerySingleAsync<int>(
+                    "SELECT COUNT(*) FROM tZahlungsabgleichUmsatz WHERE cTransaktionID = @id",
+                    new { id = umsatz.CTransaktionID });
+                if (exists > 0) return 0; // Bereits vorhanden
+            }
+
+            return await conn.QuerySingleAsync<int>(@"
+                INSERT INTO tZahlungsabgleichUmsatz (
+                    kZahlungsabgleichModul, cKontoIdentifikation, cTransaktionID,
+                    dBuchungsdatum, fBetrag, cWaehrungISO, cName, cKonto, cVerwendungszweck,
+                    nStatus, nSichtbar, nBuchungstyp
+                ) VALUES (
+                    @KZahlungsabgleichModul, @CKontoIdentifikation, @CTransaktionID,
+                    @DBuchungsdatum, @FBetrag, @CWaehrungISO, @CName, @CKonto, @CVerwendungszweck,
+                    0, 1, 1
+                ); SELECT SCOPE_IDENTITY();", umsatz);
+        }
+
+        /// <summary>
+        /// Holt Zahlungsabgleich-Module (Sparkasse, PayPal, etc.)
+        /// </summary>
+        public async Task<List<ZahlungsabgleichModul>> GetZahlungsabgleichModuleAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<ZahlungsabgleichModul>(
+                "SELECT kZahlungsabgleichModul, cModulID, cEinstellungen FROM tZahlungsabgleichModul")).ToList();
+        }
+
+        /// <summary>
+        /// Erstellt oder aktualisiert ein Zahlungsabgleich-Modul
+        /// </summary>
+        public async Task<int> SaveZahlungsabgleichModulAsync(string modulId, string? einstellungen = null)
+        {
+            var conn = await GetConnectionAsync();
+            var existing = await conn.QuerySingleOrDefaultAsync<int?>(
+                "SELECT kZahlungsabgleichModul FROM tZahlungsabgleichModul WHERE cModulID = @modulId",
+                new { modulId });
+
+            if (existing.HasValue)
+            {
+                if (einstellungen != null)
+                {
+                    await conn.ExecuteAsync(
+                        "UPDATE tZahlungsabgleichModul SET cEinstellungen = @einstellungen WHERE kZahlungsabgleichModul = @id",
+                        new { id = existing.Value, einstellungen });
+                }
+                return existing.Value;
+            }
+
+            return await conn.QuerySingleAsync<int>(@"
+                INSERT INTO tZahlungsabgleichModul (cModulID, cEinstellungen)
+                VALUES (@modulId, @einstellungen);
+                SELECT SCOPE_IDENTITY();", new { modulId, einstellungen });
+        }
+
+        /// <summary>
+        /// Holt Zahlungsarten
+        /// </summary>
+        public async Task<List<Zahlungsart>> GetZahlungsartenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<Zahlungsart>(@"
+                SELECT kZahlungsart, cName, nAktiv, nLastschrift, cKonto
+                FROM tZahlungsart WHERE nAktiv = 1 ORDER BY nPrioritaet")).ToList();
+        }
+
+        /// <summary>
+        /// Holt Zahlungsabgleich-Statistik
+        /// </summary>
+        public async Task<ZahlungsabgleichStats> GetZahlungsabgleichStatsAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleAsync<ZahlungsabgleichStats>(@"
+                SELECT
+                    (SELECT COUNT(*) FROM tZahlungsabgleichUmsatz WHERE nStatus = 0 AND fBetrag > 0) AS OffeneTransaktionen,
+                    (SELECT ISNULL(SUM(fBetrag), 0) FROM tZahlungsabgleichUmsatz WHERE nStatus = 0 AND fBetrag > 0) AS OffenerBetrag,
+                    (SELECT COUNT(*) FROM tZahlungsabgleichUmsatz WHERE nStatus = 1) AS ZugeordneteTransaktionen,
+                    (SELECT COUNT(*) FROM Rechnung.tRechnung r
+                     LEFT JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                     WHERE r.nStorno = 0 AND (re.fVKBruttoGesamt - ISNULL(re.fBezahlt, 0)) > 0.01) AS OffeneRechnungen,
+                    (SELECT ISNULL(SUM(re.fVKBruttoGesamt - ISNULL(re.fBezahlt, 0)), 0)
+                     FROM Rechnung.tRechnung r
+                     LEFT JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                     WHERE r.nStorno = 0 AND (re.fVKBruttoGesamt - ISNULL(re.fBezahlt, 0)) > 0.01) AS OffenerRechnungsBetrag");
+        }
+
+        /// <summary>
+        /// Markiert Transaktion als ignoriert
+        /// </summary>
+        public async Task IgnoriereUmsatzAsync(int kZahlungsabgleichUmsatz, int kBenutzer)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE tZahlungsabgleichUmsatz
+                SET nStatus = 2, dAbgleichszeitpunkt = GETDATE(), kBenutzer = @kBenutzer
+                WHERE kZahlungsabgleichUmsatz = @kZahlungsabgleichUmsatz",
+                new { kZahlungsabgleichUmsatz, kBenutzer });
+        }
+
+        /// <summary>
+        /// Setzt Zuordnung zurueck
+        /// </summary>
+        public async Task ZuordnungAufhebenAsync(int kZahlungsabgleichUmsatz)
+        {
+            var conn = await GetConnectionAsync();
+            using var tx = conn.BeginTransaction();
+            try
+            {
+                // tZahlung loeschen
+                await conn.ExecuteAsync(
+                    "DELETE FROM tZahlung WHERE kZahlungsabgleichUmsatz = @id",
+                    new { id = kZahlungsabgleichUmsatz }, tx);
+
+                // Status zuruecksetzen
+                await conn.ExecuteAsync(@"
+                    UPDATE tZahlungsabgleichUmsatz
+                    SET nStatus = 0, dAbgleichszeitpunkt = NULL, kBenutzer = NULL
+                    WHERE kZahlungsabgleichUmsatz = @id",
+                    new { id = kZahlungsabgleichUmsatz }, tx);
+
+                tx.Commit();
+            }
+            catch { tx.Rollback(); throw; }
+        }
+
+        // DTOs fuer Zahlungsabgleich
+        public class ZahlungsabgleichUmsatzMitZuordnung
+        {
+            public int KZahlungsabgleichUmsatz { get; set; }
+            public DateTime? DBuchungsdatum { get; set; }
+            public decimal FBetrag { get; set; }
+            public string CWaehrungISO { get; set; } = "EUR";
+            public string? CName { get; set; }
             public string? CVerwendungszweck { get; set; }
             public int NStatus { get; set; }
+            public DateTime? DAbgleichszeitpunkt { get; set; }
+            public int KZahlung { get; set; }
+            public int? KBestellung { get; set; }
+            public int? KRechnung { get; set; }
+            public decimal ZahlungsBetrag { get; set; }
+            public int NZuweisungstyp { get; set; }
+            public int NZuweisungswertung { get; set; }
+            public string? RechnungsNr { get; set; }
+            public string? BestellNr { get; set; }
+        }
+
+        public class OffeneRechnungInfo
+        {
+            public int KRechnung { get; set; }
+            public string RechnungsNr { get; set; } = "";
+            public int KKunde { get; set; }
+            public decimal Brutto { get; set; }
+            public decimal Bezahlt { get; set; }
+            public decimal OffenerBetrag { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public DateTime? DFaellig { get; set; }
+            public string? KundeFirma { get; set; }
+            public string? KundeNachname { get; set; }
+            public string? KundenNr { get; set; }
+            public string? KundeIBAN { get; set; }
+        }
+
+        public class OffenerAuftragInfo
+        {
+            public int KAuftrag { get; set; }
+            public string AuftragNr { get; set; } = "";
+            public int KKunde { get; set; }
+            public decimal Brutto { get; set; }
+            public decimal Bezahlt { get; set; }
+            public decimal OffenerBetrag { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public string? KundeFirma { get; set; }
+            public string? KundeNachname { get; set; }
+            public string? KundenNr { get; set; }
+            public string? KundeIBAN { get; set; }
+        }
+
+        public class ZahlungsabgleichModul
+        {
+            public int KZahlungsabgleichModul { get; set; }
+            public string CModulID { get; set; } = "";
+            public string? CEinstellungen { get; set; }
+        }
+
+        public class Zahlungsart
+        {
+            public int KZahlungsart { get; set; }
+            public string CName { get; set; } = "";
+            public bool NAktiv { get; set; }
+            public bool NLastschrift { get; set; }
+            public string? CKonto { get; set; }
+        }
+
+        public class ZahlungsabgleichStats
+        {
+            public int OffeneTransaktionen { get; set; }
+            public decimal OffenerBetrag { get; set; }
+            public int ZugeordneteTransaktionen { get; set; }
+            public int OffeneRechnungen { get; set; }
+            public decimal OffenerRechnungsBetrag { get; set; }
         }
 
         #endregion

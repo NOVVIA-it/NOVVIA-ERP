@@ -1,617 +1,362 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Dapper;
 using NovviaERP.Core.Data;
 using Serilog;
+using static NovviaERP.Core.Data.JtlDbContext;
 
 namespace NovviaERP.Core.Services
 {
     /// <summary>
-    /// Zahlungsabgleich-Service fuer Bank-Transaktionen
-    /// - MT940/CAMT Import
-    /// - HBCI/FinTS Abruf (Sparkasse)
-    /// - Auto-Matching mit Rechnungen
+    /// Service fuer JTL-nativen Zahlungsabgleich (tZahlungsabgleichUmsatz, tZahlung)
     /// </summary>
-    public class ZahlungsabgleichService : IDisposable
+    public class ZahlungsabgleichService
     {
         private readonly JtlDbContext _db;
+        private readonly LogService _logService;
         private static readonly ILogger _log = Log.ForContext<ZahlungsabgleichService>();
 
-        public ZahlungsabgleichService(JtlDbContext db)
+        public ZahlungsabgleichService(JtlDbContext db, LogService? logService = null)
         {
             _db = db;
+            _logService = logService ?? new LogService(db);
         }
-
-        public void Dispose() { }
-
-        #region MT940/CAMT Import
-
-        /// <summary>
-        /// Importiert MT940-Datei (SWIFT-Format fuer Kontoauszuege)
-        /// </summary>
-        public async Task<ImportResult> ImportMT940Async(string filePath)
-        {
-            var result = new ImportResult();
-
-            try
-            {
-                if (!File.Exists(filePath))
-                    throw new FileNotFoundException($"Datei nicht gefunden: {filePath}");
-
-                var content = await File.ReadAllTextAsync(filePath, Encoding.GetEncoding("ISO-8859-1"));
-                var transaktionen = ParseMT940(content);
-
-                result.GesamtAnzahl = transaktionen.Count;
-
-                foreach (var tx in transaktionen)
-                {
-                    var imported = await ImportTransaktionAsync(tx);
-                    if (imported)
-                        result.ImportiertAnzahl++;
-                    else
-                        result.UebersprungAnzahl++;
-                }
-
-                result.Erfolg = true;
-                _log.Information("MT940 Import: {Importiert}/{Gesamt} Transaktionen",
-                    result.ImportiertAnzahl, result.GesamtAnzahl);
-            }
-            catch (Exception ex)
-            {
-                result.Fehler = ex.Message;
-                _log.Error(ex, "MT940 Import Fehler");
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Importiert CAMT.053-Datei (XML-Format fuer Kontoauszuege)
-        /// </summary>
-        public async Task<ImportResult> ImportCAMTAsync(string filePath)
-        {
-            var result = new ImportResult();
-
-            try
-            {
-                if (!File.Exists(filePath))
-                    throw new FileNotFoundException($"Datei nicht gefunden: {filePath}");
-
-                var content = await File.ReadAllTextAsync(filePath);
-                var transaktionen = ParseCAMT(content);
-
-                result.GesamtAnzahl = transaktionen.Count;
-
-                foreach (var tx in transaktionen)
-                {
-                    var imported = await ImportTransaktionAsync(tx);
-                    if (imported)
-                        result.ImportiertAnzahl++;
-                    else
-                        result.UebersprungAnzahl++;
-                }
-
-                result.Erfolg = true;
-                _log.Information("CAMT Import: {Importiert}/{Gesamt} Transaktionen",
-                    result.ImportiertAnzahl, result.GesamtAnzahl);
-            }
-            catch (Exception ex)
-            {
-                result.Fehler = ex.Message;
-                _log.Error(ex, "CAMT Import Fehler");
-            }
-
-            return result;
-        }
-
-        private List<BankTransaktion> ParseMT940(string content)
-        {
-            var transaktionen = new List<BankTransaktion>();
-
-            // MT940 besteht aus Bloecken, getrennt durch :-Tags
-            // :20: = Referenz
-            // :25: = Kontonummer
-            // :60F: = Anfangssaldo
-            // :61: = Umsatzzeile
-            // :86: = Verwendungszweck
-            // :62F: = Schlusssaldo
-
-            string kontoNr = "";
-            BankTransaktion? current = null;
-
-            var lines = content.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
-            var buffer = new StringBuilder();
-
-            foreach (var line in lines)
-            {
-                // Neue Tag-Zeile
-                if (line.StartsWith(":"))
-                {
-                    // Vorherigen Buffer verarbeiten
-                    if (current != null && buffer.Length > 0)
-                    {
-                        current.Verwendungszweck = CleanVerwendungszweck(buffer.ToString());
-                        buffer.Clear();
-                    }
-
-                    if (line.StartsWith(":25:"))
-                    {
-                        // Kontonummer: :25:BLZKONTONR oder :25:IBAN
-                        kontoNr = line.Substring(4).Trim();
-                    }
-                    else if (line.StartsWith(":61:"))
-                    {
-                        // Umsatzzeile: :61:JJMMTTJJMMTTCD12345,67NTRF...
-                        // Format: Datum(6) + Buchungsdatum(4, optional) + C/D + Betrag + N + Buchungsschluessel
-                        var umsatz = line.Substring(4);
-                        current = ParseMT940Umsatz(umsatz, kontoNr);
-                        if (current != null)
-                            transaktionen.Add(current);
-                    }
-                    else if (line.StartsWith(":86:") && current != null)
-                    {
-                        // Verwendungszweck beginnt
-                        buffer.Append(line.Substring(4));
-                    }
-                }
-                else if (current != null && buffer.Length > 0)
-                {
-                    // Fortsetzung Verwendungszweck
-                    buffer.Append(line);
-                }
-            }
-
-            // Letzten Eintrag abschliessen
-            if (current != null && buffer.Length > 0)
-            {
-                current.Verwendungszweck = CleanVerwendungszweck(buffer.ToString());
-            }
-
-            return transaktionen;
-        }
-
-        private BankTransaktion? ParseMT940Umsatz(string umsatz, string kontoNr)
-        {
-            try
-            {
-                // Format: JJMMTT[MMTT]C/D[RC]Betrag[,NN]NBuchungsschluessel//Referenz
-                // Beispiel: 2312150C1234,56NTRFNONREF//
-
-                if (umsatz.Length < 12)
-                    return null;
-
-                // Datum extrahieren (JJMMTT)
-                var datumStr = umsatz.Substring(0, 6);
-                var jahr = 2000 + int.Parse(datumStr.Substring(0, 2));
-                var monat = int.Parse(datumStr.Substring(2, 2));
-                var tag = int.Parse(datumStr.Substring(4, 2));
-                var datum = new DateTime(jahr, monat, tag);
-
-                // Soll/Haben (C = Credit/Haben, D = Debit/Soll)
-                var pos = 6;
-                if (char.IsDigit(umsatz[pos])) pos += 4; // Buchungsdatum ueberspringen
-
-                var sollHaben = umsatz[pos];
-                pos++;
-                if (umsatz[pos] == 'R') pos++; // Storno-Kennzeichen
-
-                // Betrag extrahieren
-                var betragEnd = umsatz.IndexOf('N', pos);
-                if (betragEnd < 0) return null;
-
-                var betragStr = umsatz.Substring(pos, betragEnd - pos).Replace(",", ".");
-                var betrag = decimal.Parse(betragStr, CultureInfo.InvariantCulture);
-
-                // Bei Soll (D) negativ
-                if (sollHaben == 'D')
-                    betrag = -betrag;
-
-                return new BankTransaktion
-                {
-                    KontoIdentifikation = kontoNr,
-                    Buchungsdatum = datum,
-                    Betrag = betrag,
-                    Waehrung = "EUR"
-                };
-            }
-            catch (Exception ex)
-            {
-                _log.Warning(ex, "MT940 Umsatz Parse-Fehler: {Umsatz}", umsatz);
-                return null;
-            }
-        }
-
-        private List<BankTransaktion> ParseCAMT(string xml)
-        {
-            var transaktionen = new List<BankTransaktion>();
-
-            try
-            {
-                // Einfacher XML-Parser fuer CAMT.053
-                // Suche nach <Ntry> (Entry) Elementen
-
-                var doc = System.Xml.Linq.XDocument.Parse(xml);
-                var ns = doc.Root?.GetDefaultNamespace() ?? System.Xml.Linq.XNamespace.None;
-
-                var entries = doc.Descendants(ns + "Ntry");
-
-                foreach (var entry in entries)
-                {
-                    var tx = new BankTransaktion();
-
-                    // Buchungsdatum
-                    var bookgDt = entry.Element(ns + "BookgDt")?.Element(ns + "Dt")?.Value;
-                    if (DateTime.TryParse(bookgDt, out var datum))
-                        tx.Buchungsdatum = datum;
-
-                    // Betrag
-                    var amtElement = entry.Element(ns + "Amt");
-                    if (decimal.TryParse(amtElement?.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out var betrag))
-                        tx.Betrag = betrag;
-                    tx.Waehrung = amtElement?.Attribute("Ccy")?.Value ?? "EUR";
-
-                    // Credit/Debit
-                    var cdtDbt = entry.Element(ns + "CdtDbtInd")?.Value;
-                    if (cdtDbt == "DBIT")
-                        tx.Betrag = -tx.Betrag;
-
-                    // Verwendungszweck
-                    var rmtInf = entry.Descendants(ns + "Ustrd").FirstOrDefault()?.Value;
-                    tx.Verwendungszweck = rmtInf ?? "";
-
-                    // Name Gegenkonto
-                    var nm = entry.Descendants(ns + "Nm").FirstOrDefault()?.Value;
-                    tx.Name = nm ?? "";
-
-                    // IBAN Gegenkonto
-                    var iban = entry.Descendants(ns + "IBAN").FirstOrDefault()?.Value;
-                    tx.Konto = iban ?? "";
-
-                    // Transaktions-ID
-                    var txId = entry.Descendants(ns + "TxId").FirstOrDefault()?.Value
-                            ?? entry.Descendants(ns + "AcctSvcrRef").FirstOrDefault()?.Value;
-                    tx.TransaktionsId = txId ?? Guid.NewGuid().ToString("N").Substring(0, 20);
-
-                    transaktionen.Add(tx);
-                }
-            }
-            catch (Exception ex)
-            {
-                _log.Error(ex, "CAMT Parse-Fehler");
-            }
-
-            return transaktionen;
-        }
-
-        private string CleanVerwendungszweck(string raw)
-        {
-            // MT940 Verwendungszweck bereinigen
-            // Entferne Strukturcodes wie ?20, ?21, etc.
-            var result = Regex.Replace(raw, @"\?\d{2}", " ");
-            result = Regex.Replace(result, @"\s+", " ");
-            return result.Trim();
-        }
-
-        private async Task<bool> ImportTransaktionAsync(BankTransaktion tx)
-        {
-            var conn = await _db.GetConnectionAsync();
-
-            // Pruefen ob bereits importiert (via TransaktionsId)
-            var exists = await conn.ExecuteScalarAsync<int>(
-                "SELECT COUNT(*) FROM dbo.tZahlungsabgleichUmsatz WHERE cTransaktionID = @Id",
-                new { Id = tx.TransaktionsId });
-
-            if (exists > 0)
-                return false; // Bereits vorhanden
-
-            // In JTL-Tabelle einfuegen
-            await conn.ExecuteAsync(@"
-                INSERT INTO dbo.tZahlungsabgleichUmsatz
-                    (kZahlungsabgleichModul, cKontoIdentifikation, cTransaktionID, dBuchungsdatum,
-                     fBetrag, cWaehrungISO, cName, cKonto, cVerwendungszweck, nSichtbar, nBuchungstyp, nStatus)
-                VALUES
-                    (1, @KontoId, @TxId, @Datum, @Betrag, @Waehrung, @Name, @Konto, @Vzweck, 1, @Typ, 0)",
-                new
-                {
-                    KontoId = tx.KontoIdentifikation,
-                    TxId = tx.TransaktionsId,
-                    Datum = tx.Buchungsdatum,
-                    Betrag = tx.Betrag,
-                    Waehrung = tx.Waehrung,
-                    Name = tx.Name ?? "",
-                    Konto = tx.Konto ?? "",
-                    Vzweck = tx.Verwendungszweck ?? "",
-                    Typ = tx.Betrag >= 0 ? 0 : 2 // 0=Eingang, 2=Ausgang
-                });
-
-            return true;
-        }
-
-        #endregion
-
-        #region Unmatched Transactions
-
-        /// <summary>
-        /// Holt alle nicht zugeordneten Zahlungseingaenge
-        /// </summary>
-        public async Task<IEnumerable<ZahlungsabgleichEintrag>> GetUnmatchedAsync()
-        {
-            var conn = await _db.GetConnectionAsync();
-
-            return await conn.QueryAsync<ZahlungsabgleichEintrag>(@"
-                SELECT
-                    z.kZahlungsabgleichUmsatz AS Id,
-                    z.cTransaktionID AS TransaktionsId,
-                    z.dBuchungsdatum AS Buchungsdatum,
-                    z.fBetrag AS Betrag,
-                    z.cWaehrungISO AS Waehrung,
-                    z.cName AS Name,
-                    z.cKonto AS Konto,
-                    z.cVerwendungszweck AS Verwendungszweck,
-                    z.nStatus AS Status,
-                    NULL AS RechnungsNr,
-                    NULL AS KundenNr,
-                    NULL AS MatchKonfidenz
-                FROM dbo.tZahlungsabgleichUmsatz z
-                WHERE z.nSichtbar = 1
-                  AND z.fBetrag > 0
-                  AND NOT EXISTS (
-                      SELECT 1 FROM dbo.tZahlung za
-                      WHERE za.kZahlungsabgleichUmsatz = z.kZahlungsabgleichUmsatz
-                  )
-                ORDER BY z.dBuchungsdatum DESC");
-        }
-
-        /// <summary>
-        /// Holt alle Transaktionen (fuer Uebersicht)
-        /// </summary>
-        public async Task<IEnumerable<ZahlungsabgleichEintrag>> GetAllTransaktionenAsync(
-            DateTime? von = null, DateTime? bis = null, bool nurUnmatched = false)
-        {
-            var conn = await _db.GetConnectionAsync();
-
-            var sql = @"
-                SELECT
-                    z.kZahlungsabgleichUmsatz AS Id,
-                    z.cTransaktionID AS TransaktionsId,
-                    z.dBuchungsdatum AS Buchungsdatum,
-                    z.fBetrag AS Betrag,
-                    z.cWaehrungISO AS Waehrung,
-                    z.cName AS Name,
-                    z.cKonto AS Konto,
-                    z.cVerwendungszweck AS Verwendungszweck,
-                    z.nStatus AS Status,
-                    r.cRechnungsnr AS RechnungsNr,
-                    k.cKundenNr AS KundenNr,
-                    CASE WHEN za.kZahlung IS NOT NULL THEN 100 ELSE 0 END AS MatchKonfidenz
-                FROM dbo.tZahlungsabgleichUmsatz z
-                LEFT JOIN dbo.tZahlung za ON za.kZahlungsabgleichUmsatz = z.kZahlungsabgleichUmsatz
-                LEFT JOIN Rechnung.tRechnung r ON r.kRechnung = za.kRechnung
-                LEFT JOIN dbo.tKunde k ON k.kKunde = r.kKunde
-                WHERE z.nSichtbar = 1";
-
-            if (von.HasValue) sql += " AND z.dBuchungsdatum >= @Von";
-            if (bis.HasValue) sql += " AND z.dBuchungsdatum <= @Bis";
-            if (nurUnmatched) sql += " AND za.kZahlung IS NULL AND z.fBetrag > 0";
-
-            sql += " ORDER BY z.dBuchungsdatum DESC";
-
-            return await conn.QueryAsync<ZahlungsabgleichEintrag>(sql, new { Von = von, Bis = bis });
-        }
-
-        #endregion
 
         #region Auto-Matching
 
         /// <summary>
-        /// Fuehrt Auto-Matching fuer alle nicht zugeordneten Zahlungen durch
+        /// Fuehrt Auto-Matching fuer alle offenen Transaktionen durch
         /// </summary>
-        public async Task<MatchingResult> MatchZahlungenAsync()
+        public async Task<AutoMatchResult> AutoMatchAsync(int kBenutzer, bool nurVorschlaege = false)
         {
-            var result = new MatchingResult();
-            var unmatched = await GetUnmatchedAsync();
+            var result = new AutoMatchResult();
 
-            foreach (var zahlung in unmatched)
+            // Offene Transaktionen laden
+            var offeneUmsaetze = await _db.GetOffeneUmsaetzeAsync();
+            if (!offeneUmsaetze.Any())
             {
-                result.GesamtAnzahl++;
+                _log.Information("Keine offenen Transaktionen zum Matchen");
+                return result;
+            }
 
-                var match = await FindBestMatchAsync(zahlung);
+            // Offene Rechnungen und Auftraege laden
+            var offeneRechnungen = await _db.GetOffeneRechnungenFuerMatchingAsync();
+            var offeneAuftraege = await _db.GetOffeneAuftraegeFuerMatchingAsync();
 
-                if (match != null && match.Konfidenz >= 90)
+            _log.Information("Auto-Matching: {Umsaetze} Transaktionen gegen {Rechnungen} Rechnungen und {Auftraege} Auftraege",
+                offeneUmsaetze.Count, offeneRechnungen.Count, offeneAuftraege.Count);
+
+            await _logService.LogAsync("Zahlungsabgleich", "AutoMatch Start", "Zahlungsabgleich",
+                beschreibung: $"Auto-Matching gestartet: {offeneUmsaetze.Count} Transaktionen",
+                kBenutzer: kBenutzer);
+
+            foreach (var umsatz in offeneUmsaetze)
+            {
+                var match = FindBestMatch(umsatz, offeneRechnungen, offeneAuftraege);
+                if (match == null) continue;
+
+                result.Vorschlaege.Add(match);
+
+                // Bei hoher Konfidenz (>= 90%) und nicht nur Vorschlaege: automatisch zuordnen
+                if (!nurVorschlaege && match.Konfidenz >= 90)
                 {
-                    // Auto-Zuordnung bei hoher Konfidenz
-                    await ZuordnenAsync(zahlung.Id, match.RechnungId, match.Betrag);
-                    result.AutoGematchedAnzahl++;
-                }
-                else if (match != null && match.Konfidenz >= 50)
-                {
-                    // Vorschlag speichern
-                    result.VorschlaegeAnzahl++;
+                    try
+                    {
+                        if (match.KRechnung.HasValue)
+                        {
+                            await _db.ZuordnenZuRechnungAsync(
+                                umsatz.KZahlungsabgleichUmsatz,
+                                match.KRechnung.Value,
+                                umsatz.FBetrag,
+                                kBenutzer,
+                                match.Konfidenz);
+
+                            await _logService.LogAsync("Zahlungsabgleich", "AutoMatch", "Zahlungsabgleich",
+                                entityTyp: "Rechnung", kEntity: match.KRechnung.Value, entityNr: match.RechnungsNr,
+                                beschreibung: $"Auto-Zuordnung: {umsatz.FBetrag:N2} EUR von {umsatz.CName}",
+                                details: string.Join(", ", match.MatchGruende),
+                                betragBrutto: umsatz.FBetrag, kBenutzer: kBenutzer);
+
+                            // Aus offenen Rechnungen entfernen
+                            offeneRechnungen.RemoveAll(r => r.KRechnung == match.KRechnung.Value);
+                            result.AutoGematcht++;
+                        }
+                        else if (match.KAuftrag.HasValue)
+                        {
+                            await _db.ZuordnenZuAuftragAsync(
+                                umsatz.KZahlungsabgleichUmsatz,
+                                match.KAuftrag.Value,
+                                umsatz.FBetrag,
+                                kBenutzer,
+                                match.Konfidenz);
+
+                            await _logService.LogAsync("Zahlungsabgleich", "AutoMatch", "Zahlungsabgleich",
+                                entityTyp: "Auftrag", kEntity: match.KAuftrag.Value, entityNr: match.AuftragNr,
+                                beschreibung: $"Auto-Zuordnung: {umsatz.FBetrag:N2} EUR von {umsatz.CName}",
+                                betragBrutto: umsatz.FBetrag, kBenutzer: kBenutzer);
+
+                            offeneAuftraege.RemoveAll(a => a.KAuftrag == match.KAuftrag.Value);
+                            result.AutoGematcht++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Warning(ex, "Fehler beim Auto-Matching von Transaktion {Id}", umsatz.KZahlungsabgleichUmsatz);
+                    }
                 }
             }
 
-            _log.Information("Auto-Matching: {Auto} auto, {Vorschlaege} Vorschlaege von {Gesamt}",
-                result.AutoGematchedAnzahl, result.VorschlaegeAnzahl, result.GesamtAnzahl);
+            await _logService.LogAsync("Zahlungsabgleich", "AutoMatch Ende", "Zahlungsabgleich",
+                beschreibung: $"Auto-Matching abgeschlossen: {result.AutoGematcht} automatisch, {result.Vorschlaege.Count} Vorschlaege",
+                kBenutzer: kBenutzer);
+
+            _log.Information("Auto-Matching abgeschlossen: {Auto} automatisch, {Vorschlaege} Vorschlaege",
+                result.AutoGematcht, result.Vorschlaege.Count);
 
             return result;
         }
 
         /// <summary>
-        /// Sucht die beste Rechnung fuer eine Zahlung
+        /// Findet den besten Match fuer eine Transaktion
         /// </summary>
-        public async Task<MatchVorschlag?> FindBestMatchAsync(ZahlungsabgleichEintrag zahlung)
+        private MatchVorschlag? FindBestMatch(
+            ZahlungsabgleichUmsatz umsatz,
+            List<OffeneRechnungInfo> rechnungen,
+            List<OffenerAuftragInfo> auftraege)
         {
-            var conn = await _db.GetConnectionAsync();
+            var verwendung = umsatz.CVerwendungszweck ?? "";
+            var zahlerName = umsatz.CName ?? "";
+            var zahlerIBAN = umsatz.CKonto ?? "";
+            var betrag = umsatz.FBetrag;
 
-            // 1. Rechnungsnummer im Verwendungszweck suchen
-            var rechnungsNr = ExtractRechnungsNr(zahlung.Verwendungszweck);
-            if (!string.IsNullOrEmpty(rechnungsNr))
+            MatchVorschlag? bestMatch = null;
+            int bestScore = 0;
+
+            // 1. Rechnungen pruefen
+            foreach (var rechnung in rechnungen)
             {
-                var rechnung = await conn.QueryFirstOrDefaultAsync<OffeneRechnung>(@"
-                    SELECT r.kRechnung, r.cRechnungsnr AS CRechnungsnummer, re.fVkBruttoGesamt AS Brutto,
-                           re.fOffenerWert AS Offen, k.cKundenNr, k.kKunde
-                    FROM Rechnung.tRechnung r
-                    JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
-                    JOIN dbo.tKunde k ON r.kKunde = k.kKunde
-                    WHERE r.cRechnungsnr LIKE @Nr AND re.nZahlungStatus = 1 AND r.nStorno = 0",
-                    new { Nr = $"%{rechnungsNr}%" });
+                int score = 0;
+                var gruende = new List<string>();
 
-                if (rechnung != null)
+                // Rechnungsnummer im Verwendungszweck
+                if (ContainsRechnungsNr(verwendung, rechnung.RechnungsNr))
                 {
-                    return new MatchVorschlag
+                    score += 50;
+                    gruende.Add($"Rechnungsnummer '{rechnung.RechnungsNr}' gefunden");
+                }
+
+                // Kundennummer im Verwendungszweck
+                if (!string.IsNullOrEmpty(rechnung.KundenNr) && verwendung.Contains(rechnung.KundenNr, StringComparison.OrdinalIgnoreCase))
+                {
+                    score += 20;
+                    gruende.Add($"Kundennummer '{rechnung.KundenNr}' gefunden");
+                }
+
+                // Betrag exakt gleich
+                if (Math.Abs(betrag - rechnung.OffenerBetrag) < 0.01m)
+                {
+                    score += 30;
+                    gruende.Add("Betrag exakt");
+                }
+                // Betrag nahe (Teilzahlung oder Rundung)
+                else if (Math.Abs(betrag - rechnung.OffenerBetrag) < 1.00m)
+                {
+                    score += 15;
+                    gruende.Add("Betrag nahezu gleich");
+                }
+
+                // Name/Firma pruefen
+                if (NameMatch(zahlerName, rechnung.KundeFirma, rechnung.KundeNachname))
+                {
+                    score += 20;
+                    gruende.Add("Name passt");
+                }
+
+                // IBAN pruefen
+                if (!string.IsNullOrEmpty(rechnung.KundeIBAN) &&
+                    !string.IsNullOrEmpty(zahlerIBAN) &&
+                    NormalizeIBAN(zahlerIBAN) == NormalizeIBAN(rechnung.KundeIBAN))
+                {
+                    score += 25;
+                    gruende.Add("IBAN passt");
+                }
+
+                if (score > bestScore && score >= 30)
+                {
+                    bestScore = score;
+                    bestMatch = new MatchVorschlag
                     {
-                        RechnungId = rechnung.KRechnung,
-                        RechnungsNr = rechnung.CRechnungsnummer,
-                        KundeId = rechnung.KKunde,
-                        KundenNr = rechnung.CKundenNr,
-                        RechnungsBetrag = rechnung.Offen,
-                        Betrag = Math.Min(zahlung.Betrag, rechnung.Offen),
-                        Konfidenz = zahlung.Betrag == rechnung.Offen ? 100 : 90
+                        KZahlungsabgleichUmsatz = umsatz.KZahlungsabgleichUmsatz,
+                        Betrag = betrag,
+                        ZahlerName = zahlerName,
+                        Verwendungszweck = verwendung,
+                        KRechnung = rechnung.KRechnung,
+                        RechnungsNr = rechnung.RechnungsNr,
+                        KKunde = rechnung.KKunde,
+                        KundeName = rechnung.KundeFirma ?? rechnung.KundeNachname ?? "",
+                        OffenerBetrag = rechnung.OffenerBetrag,
+                        Konfidenz = Math.Min(100, score),
+                        MatchGruende = gruende
                     };
                 }
             }
 
-            // 2. Bestellnummer im Verwendungszweck suchen
-            var bestellNr = ExtractBestellNr(zahlung.Verwendungszweck);
-            if (!string.IsNullOrEmpty(bestellNr))
+            // 2. Auftraege pruefen (wenn keine gute Rechnung gefunden)
+            if (bestScore < 70)
             {
-                var rechnung = await conn.QueryFirstOrDefaultAsync<OffeneRechnung>(@"
-                    SELECT r.kRechnung, r.cRechnungsnr AS CRechnungsnummer, re.fVkBruttoGesamt AS Brutto,
-                           re.fOffenerWert AS Offen, k.cKundenNr, k.kKunde
-                    FROM Rechnung.tRechnung r
-                    JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
-                    JOIN dbo.tKunde k ON r.kKunde = k.kKunde
-                    JOIN Verkauf.tAuftragRechnung ar ON ar.kRechnung = r.kRechnung
-                    JOIN Verkauf.tAuftrag b ON ar.kAuftrag = b.kAuftrag
-                    WHERE (b.cAuftragsNr LIKE @Nr OR b.cExterneAuftragsnummer LIKE @Nr)
-                      AND re.nZahlungStatus = 1 AND r.nStorno = 0",
-                    new { Nr = $"%{bestellNr}%" });
-
-                if (rechnung != null)
+                foreach (var auftrag in auftraege)
                 {
-                    return new MatchVorschlag
+                    int score = 0;
+                    var gruende = new List<string>();
+
+                    // Auftragsnummer im Verwendungszweck
+                    if (ContainsAuftragNr(verwendung, auftrag.AuftragNr))
                     {
-                        RechnungId = rechnung.KRechnung,
-                        RechnungsNr = rechnung.CRechnungsnummer,
-                        KundeId = rechnung.KKunde,
-                        KundenNr = rechnung.CKundenNr,
-                        RechnungsBetrag = rechnung.Offen,
-                        Betrag = Math.Min(zahlung.Betrag, rechnung.Offen),
-                        Konfidenz = zahlung.Betrag == rechnung.Offen ? 95 : 80
-                    };
+                        score += 50;
+                        gruende.Add($"Auftragsnummer '{auftrag.AuftragNr}' gefunden");
+                    }
+
+                    // Kundennummer
+                    if (!string.IsNullOrEmpty(auftrag.KundenNr) && verwendung.Contains(auftrag.KundenNr, StringComparison.OrdinalIgnoreCase))
+                    {
+                        score += 20;
+                        gruende.Add($"Kundennummer '{auftrag.KundenNr}' gefunden");
+                    }
+
+                    // Betrag
+                    if (Math.Abs(betrag - auftrag.OffenerBetrag) < 0.01m)
+                    {
+                        score += 30;
+                        gruende.Add("Betrag exakt");
+                    }
+                    else if (Math.Abs(betrag - auftrag.OffenerBetrag) < 1.00m)
+                    {
+                        score += 15;
+                        gruende.Add("Betrag nahezu gleich");
+                    }
+
+                    // Name
+                    if (NameMatch(zahlerName, auftrag.KundeFirma, auftrag.KundeNachname))
+                    {
+                        score += 20;
+                        gruende.Add("Name passt");
+                    }
+
+                    // IBAN
+                    if (!string.IsNullOrEmpty(auftrag.KundeIBAN) &&
+                        !string.IsNullOrEmpty(zahlerIBAN) &&
+                        NormalizeIBAN(zahlerIBAN) == NormalizeIBAN(auftrag.KundeIBAN))
+                    {
+                        score += 25;
+                        gruende.Add("IBAN passt");
+                    }
+
+                    if (score > bestScore && score >= 30)
+                    {
+                        bestScore = score;
+                        bestMatch = new MatchVorschlag
+                        {
+                            KZahlungsabgleichUmsatz = umsatz.KZahlungsabgleichUmsatz,
+                            Betrag = betrag,
+                            ZahlerName = zahlerName,
+                            Verwendungszweck = verwendung,
+                            KAuftrag = auftrag.KAuftrag,
+                            AuftragNr = auftrag.AuftragNr,
+                            KKunde = auftrag.KKunde,
+                            KundeName = auftrag.KundeFirma ?? auftrag.KundeNachname ?? "",
+                            OffenerBetrag = auftrag.OffenerBetrag,
+                            Konfidenz = Math.Min(100, score),
+                            MatchGruende = gruende
+                        };
+                    }
                 }
             }
 
-            // 3. IBAN-Abgleich mit Rechnungs-Zahlungsinfo
-            if (!string.IsNullOrEmpty(zahlung.Konto))
-            {
-                var rechnung = await conn.QueryFirstOrDefaultAsync<OffeneRechnung>(@"
-                    SELECT TOP 1 r.kRechnung, r.cRechnungsnr AS CRechnungsnummer, re.fVkBruttoGesamt AS Brutto,
-                           re.fOffenerWert AS Offen, k.cKundenNr, k.kKunde
-                    FROM Rechnung.tRechnung r
-                    JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
-                    JOIN dbo.tKunde k ON r.kKunde = k.kKunde
-                    LEFT JOIN Rechnung.tRechnungZahlungsinfo rzi ON r.kRechnung = rzi.kRechnung
-                    WHERE rzi.cIBAN = @IBAN AND re.nZahlungStatus = 1 AND r.nStorno = 0
-                    ORDER BY ABS(re.fOffenerWert - @Betrag)",
-                    new { IBAN = zahlung.Konto.Replace(" ", ""), Betrag = zahlung.Betrag });
-
-                if (rechnung != null)
-                {
-                    var konfidenz = zahlung.Betrag == rechnung.Offen ? 85 : 70;
-                    return new MatchVorschlag
-                    {
-                        RechnungId = rechnung.KRechnung,
-                        RechnungsNr = rechnung.CRechnungsnummer,
-                        KundeId = rechnung.KKunde,
-                        KundenNr = rechnung.CKundenNr,
-                        RechnungsBetrag = rechnung.Offen,
-                        Betrag = Math.Min(zahlung.Betrag, rechnung.Offen),
-                        Konfidenz = konfidenz
-                    };
-                }
-            }
-
-            // 4. Betragsabgleich (nur bei exaktem Match)
-            var betragMatch = await conn.QueryFirstOrDefaultAsync<OffeneRechnung>(@"
-                SELECT TOP 1 r.kRechnung, r.cRechnungsnr AS CRechnungsnummer, re.fVkBruttoGesamt AS Brutto,
-                       re.fOffenerWert AS Offen, k.cKundenNr, k.kKunde
-                FROM Rechnung.tRechnung r
-                JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
-                JOIN dbo.tKunde k ON r.kKunde = k.kKunde
-                WHERE ABS(re.fOffenerWert - @Betrag) < 0.01
-                  AND re.nZahlungStatus = 1 AND r.nStorno = 0
-                ORDER BY r.dErstellt DESC",
-                new { Betrag = zahlung.Betrag });
-
-            if (betragMatch != null)
-            {
-                return new MatchVorschlag
-                {
-                    RechnungId = betragMatch.KRechnung,
-                    RechnungsNr = betragMatch.CRechnungsnummer,
-                    KundeId = betragMatch.KKunde,
-                    KundenNr = betragMatch.CKundenNr,
-                    RechnungsBetrag = betragMatch.Offen,
-                    Betrag = zahlung.Betrag,
-                    Konfidenz = 50 // Nur Betrag passt - niedrige Konfidenz
-                };
-            }
-
-            return null;
+            return bestMatch;
         }
 
-        private string? ExtractRechnungsNr(string? verwendungszweck)
+        /// <summary>
+        /// Prueft ob Verwendungszweck eine Rechnungsnummer enthaelt
+        /// </summary>
+        private bool ContainsRechnungsNr(string verwendung, string rechnungsNr)
         {
-            if (string.IsNullOrEmpty(verwendungszweck)) return null;
+            if (string.IsNullOrEmpty(verwendung) || string.IsNullOrEmpty(rechnungsNr))
+                return false;
 
-            // Muster: RE-12345, RG12345, RG-12345, Rechnung 12345, etc.
+            // Exakte Suche
+            if (verwendung.Contains(rechnungsNr, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Ohne Prefix (RE-, RG-, etc.)
+            var nrOhnePrefix = Regex.Replace(rechnungsNr, @"^[A-Za-z]{1,3}[-_]?", "");
+            if (!string.IsNullOrEmpty(nrOhnePrefix) && verwendung.Contains(nrOhnePrefix))
+                return true;
+
+            // Typische Muster: RE12345, R-12345, Rechnung 12345
             var patterns = new[]
             {
-                @"RE[-\s]?(\d{4,})",
-                @"RG[-\s]?(\d{4,})",
-                @"Rechnung\s*[-:]?\s*(\d{4,})",
-                @"Invoice\s*[-:]?\s*(\d{4,})"
+                $@"\b{Regex.Escape(rechnungsNr)}\b",
+                $@"RE[-_]?{Regex.Escape(nrOhnePrefix)}",
+                $@"RG[-_]?{Regex.Escape(nrOhnePrefix)}",
+                $@"Rechnung\s*[-:#]?\s*{Regex.Escape(nrOhnePrefix)}"
             };
 
-            foreach (var pattern in patterns)
-            {
-                var match = Regex.Match(verwendungszweck, pattern, RegexOptions.IgnoreCase);
-                if (match.Success)
-                    return match.Groups[1].Value;
-            }
-
-            return null;
+            return patterns.Any(p => Regex.IsMatch(verwendung, p, RegexOptions.IgnoreCase));
         }
 
-        private string? ExtractBestellNr(string? verwendungszweck)
+        /// <summary>
+        /// Prueft ob Verwendungszweck eine Auftragsnummer enthaelt
+        /// </summary>
+        private bool ContainsAuftragNr(string verwendung, string auftragNr)
         {
-            if (string.IsNullOrEmpty(verwendungszweck)) return null;
+            if (string.IsNullOrEmpty(verwendung) || string.IsNullOrEmpty(auftragNr))
+                return false;
 
-            // Muster: AU-12345, B12345, Bestellung 12345, Order 12345, etc.
+            if (verwendung.Contains(auftragNr, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var nrOhnePrefix = Regex.Replace(auftragNr, @"^[A-Za-z]{1,3}[-_]?", "");
+            if (!string.IsNullOrEmpty(nrOhnePrefix) && verwendung.Contains(nrOhnePrefix))
+                return true;
+
             var patterns = new[]
             {
-                @"AU[-\s]?(\d{4,})",
-                @"B[-\s]?(\d{4,})",
-                @"Bestellung\s*[-:]?\s*(\d{4,})",
-                @"Order\s*[-:]?\s*(\d{4,})",
-                @"POR[-\s]?(\d{4,})"
+                $@"\b{Regex.Escape(auftragNr)}\b",
+                $@"AU[-_]?{Regex.Escape(nrOhnePrefix)}",
+                $@"Auftrag\s*[-:#]?\s*{Regex.Escape(nrOhnePrefix)}",
+                $@"Best[-.]?\s*[-:#]?\s*{Regex.Escape(nrOhnePrefix)}"
             };
 
-            foreach (var pattern in patterns)
-            {
-                var match = Regex.Match(verwendungszweck, pattern, RegexOptions.IgnoreCase);
-                if (match.Success)
-                    return match.Groups[1].Value;
-            }
+            return patterns.Any(p => Regex.IsMatch(verwendung, p, RegexOptions.IgnoreCase));
+        }
 
-            return null;
+        /// <summary>
+        /// Prueft ob Name uebereinstimmt
+        /// </summary>
+        private bool NameMatch(string zahlerName, string? firma, string? nachname)
+        {
+            if (string.IsNullOrEmpty(zahlerName))
+                return false;
+
+            zahlerName = zahlerName.ToUpperInvariant();
+
+            if (!string.IsNullOrEmpty(firma) && zahlerName.Contains(firma.ToUpperInvariant()))
+                return true;
+
+            if (!string.IsNullOrEmpty(nachname) && zahlerName.Contains(nachname.ToUpperInvariant()))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Normalisiert IBAN fuer Vergleich
+        /// </summary>
+        private string NormalizeIBAN(string iban)
+        {
+            return Regex.Replace(iban ?? "", @"[\s\-]", "").ToUpperInvariant();
         }
 
         #endregion
@@ -619,157 +364,610 @@ namespace NovviaERP.Core.Services
         #region Manuelle Zuordnung
 
         /// <summary>
-        /// Sucht offene Rechnungen fuer manuelle Zuordnung
+        /// Ordnet Transaktion manuell einer Rechnung zu
         /// </summary>
-        public async Task<IEnumerable<OffeneRechnung>> SucheOffeneRechnungenAsync(string? suchbegriff = null)
+        public async Task<int> ZuordnenZuRechnungAsync(int kZahlungsabgleichUmsatz, int kRechnung, int kBenutzer)
         {
-            var conn = await _db.GetConnectionAsync();
+            var umsatz = (await _db.GetOffeneUmsaetzeAsync()).FirstOrDefault(u => u.KZahlungsabgleichUmsatz == kZahlungsabgleichUmsatz);
+            if (umsatz == null)
+                throw new Exception($"Transaktion {kZahlungsabgleichUmsatz} nicht gefunden oder bereits zugeordnet");
 
-            var sql = @"
-                SELECT TOP 100 r.kRechnung, r.cRechnungsnr AS CRechnungsnummer,
-                       re.fVkBruttoGesamt AS Brutto, re.fOffenerWert AS Offen,
-                       k.cKundenNr, k.kKunde,
-                       k.cFirma, k.cVorname, k.cName AS KundeName
-                FROM Rechnung.tRechnung r
-                JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
-                JOIN dbo.tKunde k ON r.kKunde = k.kKunde
-                WHERE re.nZahlungStatus = 1 AND r.nStorno = 0 AND re.fOffenerWert > 0";
+            var result = await _db.ZuordnenZuRechnungAsync(kZahlungsabgleichUmsatz, kRechnung, umsatz.FBetrag, kBenutzer, 100);
 
-            if (!string.IsNullOrEmpty(suchbegriff))
-            {
-                sql += @" AND (r.cRechnungsnr LIKE @Such
-                        OR k.cKundenNr LIKE @Such
-                        OR k.cFirma LIKE @Such
-                        OR k.cName LIKE @Such)";
-            }
+            await _logService.LogAsync("Zahlungsabgleich", "Manuell Zuordnen", "Zahlungsabgleich",
+                entityTyp: "Rechnung", kEntity: kRechnung,
+                beschreibung: $"Manuelle Zuordnung: {umsatz.FBetrag:N2} EUR von {umsatz.CName}",
+                betragBrutto: umsatz.FBetrag, kBenutzer: kBenutzer);
 
-            sql += " ORDER BY r.dErstellt DESC";
-
-            return await conn.QueryAsync<OffeneRechnung>(sql, new { Such = $"%{suchbegriff}%" });
+            return result;
         }
 
         /// <summary>
-        /// Ordnet eine Zahlung manuell einer Rechnung zu
+        /// Ordnet Transaktion manuell einem Auftrag zu
         /// </summary>
-        public async Task ZuordnenAsync(int zahlungsabgleichId, int rechnungId, decimal betrag)
+        public async Task<int> ZuordnenZuAuftragAsync(int kZahlungsabgleichUmsatz, int kAuftrag, int kBenutzer)
         {
-            var conn = await _db.GetConnectionAsync();
+            var umsatz = (await _db.GetOffeneUmsaetzeAsync()).FirstOrDefault(u => u.KZahlungsabgleichUmsatz == kZahlungsabgleichUmsatz);
+            if (umsatz == null)
+                throw new Exception($"Transaktion {kZahlungsabgleichUmsatz} nicht gefunden oder bereits zugeordnet");
 
-            // Rechnung laden
-            var rechnung = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
-                SELECT r.kRechnung, r.kKunde, r.kAuftrag, re.fOffenerWert
-                FROM Rechnung.tRechnung r
-                JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
-                WHERE r.kRechnung = @Id",
-                new { Id = rechnungId });
+            var result = await _db.ZuordnenZuAuftragAsync(kZahlungsabgleichUmsatz, kAuftrag, umsatz.FBetrag, kBenutzer, 100);
 
-            if (rechnung == null)
-                throw new Exception($"Rechnung {rechnungId} nicht gefunden");
+            await _logService.LogAsync("Zahlungsabgleich", "Manuell Zuordnen", "Zahlungsabgleich",
+                entityTyp: "Auftrag", kEntity: kAuftrag,
+                beschreibung: $"Manuelle Zuordnung: {umsatz.FBetrag:N2} EUR von {umsatz.CName}",
+                betragBrutto: umsatz.FBetrag, kBenutzer: kBenutzer);
 
-            // Zahlung in tZahlung einfuegen
-            await conn.ExecuteAsync(@"
-                INSERT INTO dbo.tZahlung
-                    (cName, dDatum, fBetrag, kBestellung, kRechnung, kZahlungsart, kZahlungsabgleichUmsatz, nZahlungstyp)
-                SELECT
-                    'Bankeingang', z.dBuchungsdatum, @Betrag, @Bestellung, @Rechnung, 2, z.kZahlungsabgleichUmsatz, 0
-                FROM dbo.tZahlungsabgleichUmsatz z
-                WHERE z.kZahlungsabgleichUmsatz = @ZaId",
-                new {
-                    Betrag = betrag,
-                    Bestellung = (int?)rechnung.kAuftrag,
-                    Rechnung = rechnungId,
-                    ZaId = zahlungsabgleichId
+            return result;
+        }
+
+        /// <summary>
+        /// Ignoriert eine Transaktion (z.B. Gebuehren, Umbuchungen)
+        /// </summary>
+        public async Task IgnorierenAsync(int kZahlungsabgleichUmsatz, int kBenutzer)
+        {
+            await _db.IgnoriereUmsatzAsync(kZahlungsabgleichUmsatz, kBenutzer);
+
+            await _logService.LogAsync("Zahlungsabgleich", "Ignorieren", "Zahlungsabgleich",
+                entityTyp: "Transaktion", kEntity: kZahlungsabgleichUmsatz,
+                beschreibung: "Transaktion als ignoriert markiert", kBenutzer: kBenutzer);
+
+            _log.Information("Transaktion {Id} als ignoriert markiert", kZahlungsabgleichUmsatz);
+        }
+
+        /// <summary>
+        /// Hebt Zuordnung auf
+        /// </summary>
+        public async Task ZuordnungAufhebenAsync(int kZahlungsabgleichUmsatz, int kBenutzer)
+        {
+            await _db.ZuordnungAufhebenAsync(kZahlungsabgleichUmsatz);
+
+            await _logService.LogAsync("Zahlungsabgleich", "Zuordnung aufheben", "Zahlungsabgleich",
+                entityTyp: "Transaktion", kEntity: kZahlungsabgleichUmsatz,
+                beschreibung: "Zuordnung aufgehoben", kBenutzer: kBenutzer);
+
+            _log.Information("Zuordnung fuer Transaktion {Id} aufgehoben", kZahlungsabgleichUmsatz);
+        }
+
+        #endregion
+
+        #region Import
+
+        /// <summary>
+        /// Importiert PayPal-Transaktionen in tZahlungsabgleichUmsatz
+        /// </summary>
+        public async Task<ImportResult> ImportPayPalTransaktionenAsync(List<PayPalTransaktion> transaktionen, int kModul, int kBenutzer)
+        {
+            var result = new ImportResult();
+
+            foreach (var tx in transaktionen)
+            {
+                // Nur eingehende Zahlungen
+                if (tx.Betrag <= 0) continue;
+
+                var umsatz = new ZahlungsabgleichUmsatz
+                {
+                    KZahlungsabgleichModul = kModul,
+                    CTransaktionID = tx.TransaktionId,
+                    DBuchungsdatum = tx.Datum,
+                    FBetrag = tx.Betrag,
+                    CWaehrungISO = tx.Waehrung ?? "EUR",
+                    CName = tx.ZahlerName,
+                    CKonto = tx.ZahlerEmail,
+                    CVerwendungszweck = tx.Beschreibung
+                };
+
+                var id = await _db.ImportUmsatzAsync(umsatz);
+                if (id > 0)
+                    result.Importiert++;
+                else
+                    result.Uebersprungen++;
+            }
+
+            await _logService.LogAsync("Zahlungsabgleich", "PayPal Import", "PayPal",
+                beschreibung: $"PayPal-Import: {result.Importiert} importiert, {result.Uebersprungen} uebersprungen",
+                kBenutzer: kBenutzer);
+
+            _log.Information("PayPal-Import: {Importiert} importiert, {Uebersprungen} uebersprungen",
+                result.Importiert, result.Uebersprungen);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Importiert Mollie-Transaktionen
+        /// </summary>
+        public async Task<ImportResult> ImportMollieTransaktionenAsync(List<MollieTransaktion> transaktionen, int kModul, int kBenutzer)
+        {
+            var result = new ImportResult();
+
+            foreach (var tx in transaktionen)
+            {
+                if (tx.Betrag <= 0 || tx.Status != "paid") continue;
+
+                var umsatz = new ZahlungsabgleichUmsatz
+                {
+                    KZahlungsabgleichModul = kModul,
+                    CTransaktionID = tx.Id,
+                    DBuchungsdatum = tx.PaidAt ?? tx.CreatedAt,
+                    FBetrag = tx.Betrag,
+                    CWaehrungISO = tx.Waehrung ?? "EUR",
+                    CName = tx.Beschreibung,
+                    CVerwendungszweck = tx.Beschreibung
+                };
+
+                var id = await _db.ImportUmsatzAsync(umsatz);
+                if (id > 0)
+                    result.Importiert++;
+                else
+                    result.Uebersprungen++;
+            }
+
+            await _logService.LogAsync("Zahlungsabgleich", "Mollie Import", "Mollie",
+                beschreibung: $"Mollie-Import: {result.Importiert} importiert, {result.Uebersprungen} uebersprungen",
+                kBenutzer: kBenutzer);
+
+            _log.Information("Mollie-Import: {Importiert} importiert, {Uebersprungen} uebersprungen",
+                result.Importiert, result.Uebersprungen);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Importiert MT940-Bankumsaetze (Sparkasse, etc.)
+        /// </summary>
+        public async Task<ImportResult> ImportMT940Async(List<MT940Umsatz> umsaetze, int kModul, int kBenutzer)
+        {
+            var result = new ImportResult();
+
+            foreach (var u in umsaetze)
+            {
+                // Nur Eingaenge (Gutschriften)
+                if (u.Betrag <= 0) continue;
+
+                var umsatz = new ZahlungsabgleichUmsatz
+                {
+                    KZahlungsabgleichModul = kModul,
+                    CKontoIdentifikation = u.KontoNr,
+                    CTransaktionID = u.Referenz ?? $"{u.Buchungsdatum:yyyyMMdd}_{u.Betrag:0.00}_{u.Name?.GetHashCode()}",
+                    DBuchungsdatum = u.Buchungsdatum,
+                    FBetrag = u.Betrag,
+                    CWaehrungISO = "EUR",
+                    CName = u.Name,
+                    CKonto = u.IBAN,
+                    CVerwendungszweck = u.Verwendungszweck
+                };
+
+                var id = await _db.ImportUmsatzAsync(umsatz);
+                if (id > 0)
+                    result.Importiert++;
+                else
+                    result.Uebersprungen++;
+            }
+
+            await _logService.LogAsync("Zahlungsabgleich", "MT940 Import", "Bank",
+                beschreibung: $"MT940-Import: {result.Importiert} importiert, {result.Uebersprungen} uebersprungen",
+                kBenutzer: kBenutzer);
+
+            _log.Information("MT940-Import: {Importiert} importiert, {Uebersprungen} uebersprungen",
+                result.Importiert, result.Uebersprungen);
+
+            return result;
+        }
+
+        #endregion
+
+        #region Statistik
+
+        public async Task<ZahlungsabgleichStats> GetStatsAsync()
+        {
+            return await _db.GetZahlungsabgleichStatsAsync();
+        }
+
+        public async Task<List<ZahlungsabgleichUmsatz>> GetOffeneTransaktionenAsync(int? kModul = null)
+        {
+            return await _db.GetOffeneUmsaetzeAsync(kModul);
+        }
+
+        public async Task<List<ZahlungsabgleichUmsatzMitZuordnung>> GetGematchteTransaktionenAsync(DateTime? von = null, DateTime? bis = null)
+        {
+            return await _db.GetGematchteUmsaetzeAsync(von, bis);
+        }
+
+        public async Task<List<OffeneRechnungInfo>> GetOffeneRechnungenAsync()
+        {
+            return await _db.GetOffeneRechnungenFuerMatchingAsync();
+        }
+
+        public async Task<List<ZahlungsabgleichModul>> GetModuleAsync()
+        {
+            return await _db.GetZahlungsabgleichModuleAsync();
+        }
+
+        #endregion
+
+        #region View-Kompatible Methoden
+
+        /// <summary>
+        /// Holt alle Transaktionen (kompatibel mit ZahlungsabgleichView)
+        /// </summary>
+        public async Task<List<ZahlungsabgleichEintrag>> GetAllTransaktionenAsync(
+            DateTime? von = null, DateTime? bis = null, bool nurUnmatched = false)
+        {
+            var offene = await _db.GetOffeneUmsaetzeAsync();
+            var gematchte = !nurUnmatched ? await _db.GetGematchteUmsaetzeAsync(von, bis) : new List<ZahlungsabgleichUmsatzMitZuordnung>();
+
+            var result = new List<ZahlungsabgleichEintrag>();
+
+            // Offene Transaktionen
+            foreach (var u in offene)
+            {
+                if (von.HasValue && u.DBuchungsdatum < von) continue;
+                if (bis.HasValue && u.DBuchungsdatum > bis) continue;
+
+                result.Add(new ZahlungsabgleichEintrag
+                {
+                    Id = u.KZahlungsabgleichUmsatz,
+                    TransaktionsId = u.CTransaktionID ?? "",
+                    Buchungsdatum = u.DBuchungsdatum ?? DateTime.Now,
+                    Betrag = u.FBetrag,
+                    Waehrung = u.CWaehrungISO,
+                    Name = u.CName,
+                    Konto = u.CKonto,
+                    Verwendungszweck = u.CVerwendungszweck,
+                    Status = u.NStatus,
+                    MatchKonfidenz = 0
                 });
+            }
 
-            // Rechnung Zahlungsstatus aktualisieren
-            var offen = (decimal)rechnung.fOffenerWert - betrag;
-            var status = offen <= 0.01m ? 3 : 2; // 3=bezahlt, 2=teilweise bezahlt
+            // Gematchte Transaktionen
+            foreach (var g in gematchte)
+            {
+                result.Add(new ZahlungsabgleichEintrag
+                {
+                    Id = g.KZahlungsabgleichUmsatz,
+                    TransaktionsId = "",
+                    Buchungsdatum = g.DBuchungsdatum ?? DateTime.Now,
+                    Betrag = g.FBetrag,
+                    Waehrung = g.CWaehrungISO,
+                    Name = g.CName,
+                    Verwendungszweck = g.CVerwendungszweck,
+                    Status = g.NStatus,
+                    MatchKonfidenz = g.NZuweisungswertung,
+                    ZugeordneteRechnungNr = g.RechnungsNr,
+                    ZugeordneteAuftragNr = g.BestellNr
+                });
+            }
 
-            await conn.ExecuteAsync(@"
-                UPDATE Rechnung.tRechnungEckdaten
-                SET fOffenerWert = @Offen, nZahlungStatus = @Status, dBezahlt = GETDATE()
-                WHERE kRechnung = @Id",
-                new { Offen = Math.Max(0, offen), Status = status, Id = rechnungId });
+            return result.OrderByDescending(r => r.Buchungsdatum).ToList();
+        }
 
-            _log.Information("Zahlung {ZaId} zugeordnet zu Rechnung {ReId}, Betrag {Betrag}",
-                zahlungsabgleichId, rechnungId, betrag);
+        /// <summary>
+        /// Sucht offene Rechnungen (kompatibel mit ZahlungZuordnenDialog)
+        /// </summary>
+        public async Task<List<OffeneRechnung>> SucheOffeneRechnungenAsync(string? suchbegriff = null)
+        {
+            var rechnungen = await _db.GetOffeneRechnungenFuerMatchingAsync();
+
+            if (!string.IsNullOrEmpty(suchbegriff))
+            {
+                suchbegriff = suchbegriff.ToUpperInvariant();
+                rechnungen = rechnungen.Where(r =>
+                    (r.RechnungsNr?.ToUpperInvariant().Contains(suchbegriff) == true) ||
+                    (r.KundenNr?.ToUpperInvariant().Contains(suchbegriff) == true) ||
+                    (r.KundeFirma?.ToUpperInvariant().Contains(suchbegriff) == true) ||
+                    (r.KundeNachname?.ToUpperInvariant().Contains(suchbegriff) == true)
+                ).ToList();
+            }
+
+            return rechnungen.Select(r => new OffeneRechnung
+            {
+                KRechnung = r.KRechnung,
+                CRechnungsnummer = r.RechnungsNr,
+                Brutto = r.Brutto,
+                Offen = r.OffenerBetrag,
+                Faelligkeit = r.DFaellig,
+                KKunde = r.KKunde,
+                CKundenNr = r.KundenNr ?? "",
+                KundeDisplay = r.KundeFirma ?? r.KundeNachname ?? "",
+                CIBAN = r.KundeIBAN
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Ordnet Zahlung einer Rechnung zu (kompatibel mit ZahlungZuordnenDialog)
+        /// </summary>
+        public async Task ZuordnenAsync(int zahlungId, int kRechnung, decimal betrag)
+        {
+            await _db.ZuordnenZuRechnungAsync(zahlungId, kRechnung, betrag, 1, 100);
+            await _logService.LogAsync("Zahlungsabgleich", "Manuell Zuordnen", "Zahlungsabgleich",
+                entityTyp: "Rechnung", kEntity: kRechnung,
+                beschreibung: $"Manuelle Zuordnung: {betrag:N2} EUR",
+                betragBrutto: betrag);
+        }
+
+        /// <summary>
+        /// Fuehrt Auto-Matching durch (kompatibel mit View)
+        /// </summary>
+        public async Task<MatchResult> MatchZahlungenAsync()
+        {
+            var result = await AutoMatchAsync(1, false);
+            return new MatchResult
+            {
+                AutoGematchedAnzahl = result.AutoGematcht,
+                VorschlaegeAnzahl = result.Vorschlaege.Count,
+                GesamtAnzahl = result.Vorschlaege.Count + result.AutoGematcht
+            };
+        }
+
+        /// <summary>
+        /// Importiert MT940-Datei
+        /// </summary>
+        public async Task<FileImportResult> ImportMT940Async(string filePath)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(filePath))
+                    return new FileImportResult { Erfolg = false, Fehler = "Datei nicht gefunden" };
+
+                var content = await System.IO.File.ReadAllTextAsync(filePath);
+                var umsaetze = ParseMT940(content);
+
+                // Modul ID (Bank = 1)
+                var kModul = await GetOrCreateModulAsync("MT940");
+
+                var result = await ImportMT940Async(umsaetze, kModul, 1);
+
+                return new FileImportResult
+                {
+                    Erfolg = true,
+                    ImportiertAnzahl = result.Importiert,
+                    UebersprungAnzahl = result.Uebersprungen
+                };
+            }
+            catch (Exception ex)
+            {
+                return new FileImportResult { Erfolg = false, Fehler = ex.Message };
+            }
+        }
+
+        /// <summary>
+        /// Importiert CAMT-Datei
+        /// </summary>
+        public async Task<FileImportResult> ImportCAMTAsync(string filePath)
+        {
+            try
+            {
+                if (!System.IO.File.Exists(filePath))
+                    return new FileImportResult { Erfolg = false, Fehler = "Datei nicht gefunden" };
+
+                var content = await System.IO.File.ReadAllTextAsync(filePath);
+                var umsaetze = ParseCAMT(content);
+
+                var kModul = await GetOrCreateModulAsync("CAMT");
+
+                var result = await ImportMT940Async(umsaetze, kModul, 1);
+
+                return new FileImportResult
+                {
+                    Erfolg = true,
+                    ImportiertAnzahl = result.Importiert,
+                    UebersprungAnzahl = result.Uebersprungen
+                };
+            }
+            catch (Exception ex)
+            {
+                return new FileImportResult { Erfolg = false, Fehler = ex.Message };
+            }
+        }
+
+        private async Task<int> GetOrCreateModulAsync(string modulId)
+        {
+            return await _db.SaveZahlungsabgleichModulAsync(modulId);
+        }
+
+        private List<MT940Umsatz> ParseMT940(string content)
+        {
+            var result = new List<MT940Umsatz>();
+            // Einfacher MT940-Parser
+            var lines = content.Split('\n');
+            MT940Umsatz? current = null;
+
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith(":61:"))
+                {
+                    // Umsatzzeile
+                    current = new MT940Umsatz();
+                    // Format: :61:YYMMDDYYMMDDDC123,45Nxxx
+                    var match = Regex.Match(trimmed, @":61:(\d{6})\d{6}(C|D)([\d,\.]+)");
+                    if (match.Success)
+                    {
+                        var dateStr = match.Groups[1].Value;
+                        current.Buchungsdatum = DateTime.ParseExact("20" + dateStr, "yyyyMMdd", null);
+                        var vorzeichen = match.Groups[2].Value == "C" ? 1 : -1;
+                        current.Betrag = decimal.Parse(match.Groups[3].Value.Replace(",", "."),
+                            System.Globalization.CultureInfo.InvariantCulture) * vorzeichen;
+                    }
+                }
+                else if (trimmed.StartsWith(":86:") && current != null)
+                {
+                    // Verwendungszweck
+                    var vzweck = trimmed[4..];
+                    var nameMatch = Regex.Match(vzweck, @"(?:32|33):([^+]+)");
+                    if (nameMatch.Success) current.Name = nameMatch.Groups[1].Value;
+
+                    var ibanMatch = Regex.Match(vzweck, @"(?:31|30):([A-Z]{2}[0-9]{2}[A-Z0-9]+)");
+                    if (ibanMatch.Success) current.IBAN = ibanMatch.Groups[1].Value;
+
+                    current.Verwendungszweck = Regex.Replace(vzweck, @"\+\d{2}:", " ").Trim();
+
+                    if (current.Betrag != 0)
+                        result.Add(current);
+                    current = null;
+                }
+            }
+
+            return result;
+        }
+
+        private List<MT940Umsatz> ParseCAMT(string xmlContent)
+        {
+            var result = new List<MT940Umsatz>();
+            try
+            {
+                var doc = System.Xml.Linq.XDocument.Parse(xmlContent);
+                var ns = doc.Root?.Name.Namespace ?? "";
+
+                var entries = doc.Descendants(ns + "Ntry");
+                foreach (var entry in entries)
+                {
+                    var amt = entry.Element(ns + "Amt")?.Value;
+                    var cdtDbtInd = entry.Element(ns + "CdtDbtInd")?.Value;
+                    var bookgDt = entry.Element(ns + "BookgDt")?.Element(ns + "Dt")?.Value;
+
+                    var txDetails = entry.Descendants(ns + "TxDtls").FirstOrDefault();
+                    var rmtInf = txDetails?.Element(ns + "RmtInf")?.Element(ns + "Ustrd")?.Value;
+                    var dbtrNm = txDetails?.Descendants(ns + "Dbtr").FirstOrDefault()?.Element(ns + "Nm")?.Value;
+                    var iban = txDetails?.Descendants(ns + "DbtrAcct").FirstOrDefault()?.Element(ns + "Id")?.Element(ns + "IBAN")?.Value;
+
+                    if (!string.IsNullOrEmpty(amt) && decimal.TryParse(amt, System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out var betrag))
+                    {
+                        if (cdtDbtInd == "DBIT") betrag = -betrag;
+
+                        result.Add(new MT940Umsatz
+                        {
+                            Buchungsdatum = DateTime.TryParse(bookgDt, out var dt) ? dt : DateTime.Today,
+                            Betrag = betrag,
+                            Name = dbtrNm,
+                            IBAN = iban,
+                            Verwendungszweck = rmtInf
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Warning(ex, "Fehler beim Parsen der CAMT-Datei");
+            }
+            return result;
+        }
+
+        #endregion
+
+        #region DTOs
+
+        // Typen fuer View-Kompatibilitaet
+        public class ZahlungsabgleichEintrag
+        {
+            public int Id { get; set; }
+            public string TransaktionsId { get; set; } = "";
+            public DateTime Buchungsdatum { get; set; }
+            public decimal Betrag { get; set; }
+            public string Waehrung { get; set; } = "EUR";
+            public string? Name { get; set; }
+            public string? Konto { get; set; }
+            public string? Verwendungszweck { get; set; }
+            public int Status { get; set; }
+            public int MatchKonfidenz { get; set; }
+            public string? ZugeordneteRechnungNr { get; set; }
+            public string? ZugeordneteAuftragNr { get; set; }
+        }
+
+        public class OffeneRechnung
+        {
+            public int KRechnung { get; set; }
+            public string? CRechnungsnummer { get; set; }
+            public decimal Brutto { get; set; }
+            public decimal Offen { get; set; }
+            public DateTime? Faelligkeit { get; set; }
+            public int KKunde { get; set; }
+            public string CKundenNr { get; set; } = "";
+            public string KundeDisplay { get; set; } = "";
+            public string? CIBAN { get; set; }
+        }
+
+        public class MatchResult
+        {
+            public int AutoGematchedAnzahl { get; set; }
+            public int VorschlaegeAnzahl { get; set; }
+            public int GesamtAnzahl { get; set; }
+        }
+
+        public class FileImportResult
+        {
+            public bool Erfolg { get; set; }
+            public int ImportiertAnzahl { get; set; }
+            public int UebersprungAnzahl { get; set; }
+            public string? Fehler { get; set; }
+        }
+
+        public class AutoMatchResult
+        {
+            public int AutoGematcht { get; set; }
+            public List<MatchVorschlag> Vorschlaege { get; set; } = new();
+        }
+
+        public class MatchVorschlag
+        {
+            public int KZahlungsabgleichUmsatz { get; set; }
+            public decimal Betrag { get; set; }
+            public string? ZahlerName { get; set; }
+            public string? Verwendungszweck { get; set; }
+            public int? KRechnung { get; set; }
+            public string? RechnungsNr { get; set; }
+            public int? KAuftrag { get; set; }
+            public string? AuftragNr { get; set; }
+            public int KKunde { get; set; }
+            public string? KundeName { get; set; }
+            public decimal OffenerBetrag { get; set; }
+            public int Konfidenz { get; set; } // 0-100
+            public List<string> MatchGruende { get; set; } = new();
+        }
+
+        public class ImportResult
+        {
+            public int Importiert { get; set; }
+            public int Uebersprungen { get; set; }
+            public int Fehler { get; set; }
+        }
+
+        public class PayPalTransaktion
+        {
+            public string TransaktionId { get; set; } = "";
+            public DateTime Datum { get; set; }
+            public decimal Betrag { get; set; }
+            public string? Waehrung { get; set; }
+            public string? ZahlerName { get; set; }
+            public string? ZahlerEmail { get; set; }
+            public string? Beschreibung { get; set; }
+        }
+
+        public class MollieTransaktion
+        {
+            public string Id { get; set; } = "";
+            public DateTime CreatedAt { get; set; }
+            public DateTime? PaidAt { get; set; }
+            public decimal Betrag { get; set; }
+            public string? Waehrung { get; set; }
+            public string? Status { get; set; }
+            public string? Beschreibung { get; set; }
+        }
+
+        public class MT940Umsatz
+        {
+            public string? KontoNr { get; set; }
+            public DateTime Buchungsdatum { get; set; }
+            public decimal Betrag { get; set; }
+            public string? Name { get; set; }
+            public string? IBAN { get; set; }
+            public string? BIC { get; set; }
+            public string? Verwendungszweck { get; set; }
+            public string? Referenz { get; set; }
         }
 
         #endregion
     }
-
-    #region DTOs
-
-    public class BankTransaktion
-    {
-        public string TransaktionsId { get; set; } = Guid.NewGuid().ToString("N").Substring(0, 20);
-        public string KontoIdentifikation { get; set; } = "";
-        public DateTime Buchungsdatum { get; set; }
-        public decimal Betrag { get; set; }
-        public string Waehrung { get; set; } = "EUR";
-        public string? Name { get; set; }
-        public string? Konto { get; set; }
-        public string? Verwendungszweck { get; set; }
-    }
-
-    public class ZahlungsabgleichEintrag
-    {
-        public int Id { get; set; }
-        public string TransaktionsId { get; set; } = "";
-        public DateTime Buchungsdatum { get; set; }
-        public decimal Betrag { get; set; }
-        public string Waehrung { get; set; } = "EUR";
-        public string? Name { get; set; }
-        public string? Konto { get; set; }
-        public string? Verwendungszweck { get; set; }
-        public int Status { get; set; }
-        public string? RechnungsNr { get; set; }
-        public string? KundenNr { get; set; }
-        public int MatchKonfidenz { get; set; }
-    }
-
-    public class MatchVorschlag
-    {
-        public int RechnungId { get; set; }
-        public string RechnungsNr { get; set; } = "";
-        public int KundeId { get; set; }
-        public string KundenNr { get; set; } = "";
-        public decimal RechnungsBetrag { get; set; }
-        public decimal Betrag { get; set; }
-        public int Konfidenz { get; set; } // 0-100
-    }
-
-    public class OffeneRechnung
-    {
-        public int KRechnung { get; set; }
-        public string CRechnungsnummer { get; set; } = "";
-        public decimal Brutto { get; set; }
-        public decimal Offen { get; set; }
-        public int KKunde { get; set; }
-        public string CKundenNr { get; set; } = "";
-        public string? CFirma { get; set; }
-        public string? CVorname { get; set; }
-        public string? KundeName { get; set; }
-
-        public string KundeDisplay => !string.IsNullOrEmpty(CFirma) ? CFirma :
-            $"{CVorname} {KundeName}".Trim();
-    }
-
-    public class ImportResult
-    {
-        public bool Erfolg { get; set; }
-        public int GesamtAnzahl { get; set; }
-        public int ImportiertAnzahl { get; set; }
-        public int UebersprungAnzahl { get; set; }
-        public string? Fehler { get; set; }
-    }
-
-    public class MatchingResult
-    {
-        public int GesamtAnzahl { get; set; }
-        public int AutoGematchedAnzahl { get; set; }
-        public int VorschlaegeAnzahl { get; set; }
-    }
-
-    #endregion
 }

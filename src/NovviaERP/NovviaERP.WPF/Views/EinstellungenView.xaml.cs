@@ -49,6 +49,7 @@ namespace NovviaERP.WPF.Views
                 await LadeEigeneFelderAsync();
                 LadeZahlungsanbieterAsync();
                 await LadeWooShopsAsync();
+                await LadeLogsAsync();
             }
             catch (Exception ex)
             {
@@ -1028,6 +1029,102 @@ namespace NovviaERP.WPF.Views
         {
             if (string.IsNullOrEmpty(s)) return "";
             return s.Length > maxLength ? s[..maxLength] + "..." : s;
+        }
+
+        #endregion
+
+        #region Protokoll / Log
+
+        private LogService? _logService;
+        private List<LogService.LogEintrag> _logs = new();
+
+        private async System.Threading.Tasks.Task LadeLogsAsync()
+        {
+            try
+            {
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                _logService ??= new LogService(db);
+
+                // Statistik laden
+                var stats = await _logService.GetStatsAsync(7);
+                txtLogGesamt.Text = stats.Gesamt.ToString();
+                txtLogShop.Text = stats.Shop.ToString();
+                txtLogZahlung.Text = stats.Zahlungsabgleich.ToString();
+                txtLogStamm.Text = stats.Stammdaten.ToString();
+                txtLogBewegung.Text = stats.Bewegungsdaten.ToString();
+                txtLogFehler.Text = stats.Fehler.ToString();
+
+                // Logs laden mit Filter
+                var filter = new LogService.LogFilter
+                {
+                    Kategorie = GetSelectedComboText(cmbLogKategorie),
+                    Modul = GetSelectedComboText(cmbLogModul),
+                    Von = dpLogVon.SelectedDate,
+                    Bis = dpLogBis.SelectedDate?.AddDays(1),
+                    Suche = string.IsNullOrWhiteSpace(txtLogSuche.Text) ? null : txtLogSuche.Text.Trim()
+                };
+
+                _logs = await _logService.GetLogsAsync(filter, 500);
+                dgLogs.ItemsSource = _logs;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Logs laden: {ex.Message}");
+            }
+        }
+
+        private string? GetSelectedComboText(ComboBox cmb)
+        {
+            if (cmb.SelectedItem is ComboBoxItem item)
+            {
+                var text = item.Content?.ToString();
+                if (text == "(Alle)" || string.IsNullOrEmpty(text))
+                    return null;
+                return text;
+            }
+            return null;
+        }
+
+        private void LogFilter_Changed(object sender, object e)
+        {
+            // Automatisch neu laden wenn Filter geaendert wird
+            // Nur wenn bereits geladen
+            if (_logService != null && IsLoaded)
+            {
+                _ = LadeLogsAsync();
+            }
+        }
+
+        private async void LogSuchen_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeLogsAsync();
+        }
+
+        private async void LogAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeLogsAsync();
+        }
+
+        private void DgLogs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (dgLogs.SelectedItem is LogService.LogEintrag log)
+            {
+                txtLogFeld.Text = log.CFeldname ?? "-";
+                txtLogAlterWert.Text = log.CAlterWert ?? "-";
+                txtLogNeuerWert.Text = log.CNeuerWert ?? "-";
+                txtLogDetails.Text = log.CDetails ?? "-";
+                txtLogRechner.Text = log.CRechnername ?? "-";
+                txtLogIP.Text = log.CIP ?? "-";
+            }
+            else
+            {
+                txtLogFeld.Text = "-";
+                txtLogAlterWert.Text = "-";
+                txtLogNeuerWert.Text = "-";
+                txtLogDetails.Text = "-";
+                txtLogRechner.Text = "-";
+                txtLogIP.Text = "-";
+            }
         }
 
         #endregion
