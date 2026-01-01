@@ -24,16 +24,18 @@ namespace NovviaERP.Core.Services
     {
         private readonly JtlDbContext _db;
         private readonly HttpClient _http;
+        private readonly LogService _logService;
         private static readonly ILogger _log = Log.ForContext<WooCommerceService>();
 
         private bool _testModus;
         private readonly List<ApiLogEntry> _apiLog = new();
 
-        public WooCommerceService(JtlDbContext db, bool testModus = false)
+        public WooCommerceService(JtlDbContext db, bool testModus = false, LogService? logService = null)
         {
             _db = db;
             _testModus = testModus;
             _http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+            _logService = logService ?? new LogService(db);
         }
 
         public void Dispose() => _http.Dispose();
@@ -165,6 +167,13 @@ namespace NovviaERP.Core.Services
             var json = await response.Content.ReadFromJsonAsync<JsonElement>();
             var wcId = json.GetProperty("id").GetInt32();
             _log.Information("WooCommerce Sync: {ArtNr} -> {WcId} ({Shop})", artikel.ArtNr, wcId, shop.Name);
+
+            // Log in NOVVIA.Log
+            await _logService.LogShopAsync(shop.Id, shop.Name, link != null ? "Artikel Update" : "Artikel Erstellt",
+                entityTyp: "Artikel", kEntity: artikel.Id, entityNr: artikel.ArtNr,
+                beschreibung: $"Sync zu WooCommerce: {artikel.Beschreibung?.Name ?? artikel.ArtNr}",
+                details: $"WC-ID: {wcId}, Preis: {artikel.VKBrutto:N2} EUR, Bestand: {artikel.Lagerbestand}");
+
             return wcId;
         }
 
@@ -325,6 +334,14 @@ namespace NovviaERP.Core.Services
             var bestellungId = await _db.CreateBestellungAsync(bestellung);
             bestellung.Id = bestellungId;
             _log.Information("WooCommerce Order {WcNr} importiert als Bestellung {Nr}", wooOrder.Number, bestellung.BestellNr);
+
+            // Log in NOVVIA.Log
+            await _logService.LogShopAsync(shop.Id, shop.Name, "Bestellung Import",
+                entityTyp: "Bestellung", kEntity: bestellungId, entityNr: bestellung.BestellNr,
+                beschreibung: $"WooCommerce Bestellung {wooOrder.Number} importiert",
+                details: $"Kunde: {wooOrder.BillingFirstName} {wooOrder.BillingLastName}, {wooOrder.Items.Count} Positionen",
+                betragBrutto: wooOrder.Total);
+
             return bestellung;
         }
         #endregion
