@@ -649,6 +649,9 @@ namespace NovviaERP.WPF.Views
 
         private async void LagerSpeichern_Click(object sender, RoutedEventArgs e)
         {
+            // Debug-Info anzeigen
+            System.Diagnostics.Debug.WriteLine($"LagerSpeichern_Click: _selectedLagerId = {_selectedLagerId}, Name = '{txtLagerName.Text}'");
+
             // Validierung
             if (string.IsNullOrWhiteSpace(txtLagerName.Text))
             {
@@ -665,7 +668,7 @@ namespace NovviaERP.WPF.Views
                     : txtLagerKuerzel.Text.Trim();
 
                 // Speichern-Button waehrend Speicherung deaktivieren
-                txtLagerStatus.Text = "Speichern...";
+                txtLagerStatus.Text = $"Speichern... (ID: {_selectedLagerId?.ToString() ?? "NEU"})";
                 txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
 
                 if (_selectedLagerId == null)
