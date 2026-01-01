@@ -40,6 +40,7 @@ namespace NovviaERP.WPF.Views
             try
             {
                 await LadeFirmendatenAsync();
+                await LadeFirmaEinstellungenAsync();
                 await LadeKundengruppenAsync();
                 await LadeKundenkategorienAsync();
                 await LadeZahlungsartenAsync();
@@ -114,6 +115,59 @@ namespace NovviaERP.WPF.Views
 
                 await _core.UpdateFirmendatenAsync(firma);
                 MessageBox.Show("Firmendaten gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private List<JtlDbContext.NovviaEinstellung> _firmaEinstellungen = new();
+
+        private async System.Threading.Tasks.Task LadeFirmaEinstellungenAsync()
+        {
+            try
+            {
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                _firmaEinstellungen = (await db.GetAlleEinstellungenAsync()).ToList();
+                dgFirmaEinstellungen.ItemsSource = _firmaEinstellungen;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Firma Einstellungen laden: {ex.Message}");
+            }
+        }
+
+        private void FirmaEinstellungNeu_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new InputDialog("Neues Feld", "Schluessel (z.B. Firma.MeinFeld):");
+            if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.Ergebnis))
+            {
+                var neueEinstellung = new JtlDbContext.NovviaEinstellung
+                {
+                    CSchluessel = dialog.Ergebnis,
+                    CWert = "",
+                    CBeschreibung = "",
+                    DGeaendert = DateTime.Now
+                };
+                _firmaEinstellungen.Add(neueEinstellung);
+                dgFirmaEinstellungen.ItemsSource = null;
+                dgFirmaEinstellungen.ItemsSource = _firmaEinstellungen;
+            }
+        }
+
+        private async void FirmaEinstellungenSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                foreach (var einstellung in _firmaEinstellungen)
+                {
+                    await db.SetEinstellungAsync(einstellung.CSchluessel, einstellung.CWert ?? "",
+                        einstellung.CBeschreibung);
+                }
+                MessageBox.Show($"{_firmaEinstellungen.Count} Einstellungen gespeichert.", "Erfolg",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {

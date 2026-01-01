@@ -1,0 +1,23 @@
+<Window x:Class="NovviaERP.WPF.Views.InputDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding Titel}" Height="150" Width="400"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="txtLabel" Text="{Binding Label}" Margin="0,0,0,5"/>
+        <TextBox x:Name="txtEingabe" Grid.Row="1" Margin="0,0,0,10"/>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="OK" Width="80" Click="Ok_Click" IsDefault="True" Margin="0,0,10,0"/>
+            <Button Content="Abbrechen" Width="80" Click="Abbrechen_Click" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
