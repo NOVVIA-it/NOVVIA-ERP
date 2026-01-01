@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,16 +12,22 @@ namespace NovviaERP.WPF.Views
     public partial class EinstellungenView : UserControl
     {
         private readonly CoreService _core;
+        private readonly PaymentService? _payment;
         private int? _selectedKundengruppeId;
         private int? _selectedKundenkategorieId;
         private int? _selectedZahlungsartId;
         private int? _selectedVersandartId;
         private int? _selectedLieferantAttributId;
 
+        private static readonly string PaymentConfigPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "NovviaERP", "payment-config.json");
+
         public EinstellungenView()
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
+            _payment = App.Services.GetService<PaymentService>();
             Loaded += async (s, e) => await LoadAsync();
         }
 
@@ -35,6 +43,7 @@ namespace NovviaERP.WPF.Views
                 await LadeSteuernAsync();
                 await LadeKontenAsync();
                 await LadeEigeneFelderAsync();
+                LadeZahlungsanbieterAsync();
             }
             catch (Exception ex)
             {
@@ -585,6 +594,147 @@ namespace NovviaERP.WPF.Views
             {
                 MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        #endregion
+
+        #region Zahlungsanbieter
+
+        private void LadeZahlungsanbieterAsync()
+        {
+            try
+            {
+                if (File.Exists(PaymentConfigPath))
+                {
+                    var json = File.ReadAllText(PaymentConfigPath);
+                    var config = JsonSerializer.Deserialize<PaymentConfig>(json);
+                    if (config != null)
+                    {
+                        txtPayPalClientId.Text = config.PayPalClientId;
+                        txtPayPalSecret.Password = config.PayPalSecret;
+                        txtPayPalReturnUrl.Text = config.PayPalReturnUrl ?? "";
+                        txtPayPalCancelUrl.Text = config.PayPalCancelUrl ?? "";
+                        chkPayPalSandbox.IsChecked = config.PayPalSandbox;
+
+                        txtMollieApiKey.Password = config.MollieApiKey;
+                        txtMollieRedirectUrl.Text = config.MollieRedirectUrl ?? "";
+                        txtMollieWebhookUrl.Text = config.MollieWebhookUrl ?? "";
+
+                        txtPaymentFirmaName.Text = config.FirmaName ?? "";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Payment Config laden: {ex.Message}");
+            }
+        }
+
+        private void ZahlungsanbieterSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var config = new PaymentConfig
+                {
+                    PayPalClientId = txtPayPalClientId.Text.Trim(),
+                    PayPalSecret = txtPayPalSecret.Password,
+                    PayPalReturnUrl = txtPayPalReturnUrl.Text.Trim(),
+                    PayPalCancelUrl = txtPayPalCancelUrl.Text.Trim(),
+                    PayPalSandbox = chkPayPalSandbox.IsChecked == true,
+
+                    MollieApiKey = txtMollieApiKey.Password,
+                    MollieRedirectUrl = txtMollieRedirectUrl.Text.Trim(),
+                    MollieWebhookUrl = txtMollieWebhookUrl.Text.Trim(),
+
+                    FirmaName = txtPaymentFirmaName.Text.Trim()
+                };
+
+                // Verzeichnis sicherstellen
+                var dir = Path.GetDirectoryName(PaymentConfigPath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(PaymentConfigPath, json);
+
+                txtPaymentStatus.Text = "Zahlungsanbieter-Einstellungen gespeichert!";
+                txtPaymentStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+
+                MessageBox.Show("Zahlungsanbieter-Einstellungen gespeichert!\n\nHinweis: Die App muss neu gestartet werden, damit die Aenderungen wirksam werden.",
+                    "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                txtPaymentStatus.Text = $"Fehler: {ex.Message}";
+                txtPaymentStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void ZahlungsanbieterTesten_Click(object sender, RoutedEventArgs e)
+        {
+            var results = new System.Text.StringBuilder();
+            results.AppendLine("Verbindungstest:\n");
+
+            // PayPal testen
+            if (!string.IsNullOrEmpty(txtPayPalClientId.Text) && !string.IsNullOrEmpty(txtPayPalSecret.Password))
+            {
+                try
+                {
+                    txtPaymentStatus.Text = "Teste PayPal...";
+                    var baseUrl = chkPayPalSandbox.IsChecked == true
+                        ? "https://api-m.sandbox.paypal.com"
+                        : "https://api-m.paypal.com";
+
+                    using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                    var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Post, $"{baseUrl}/v1/oauth2/token");
+                    var credentials = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{txtPayPalClientId.Text}:{txtPayPalSecret.Password}"));
+                    request.Headers.Add("Authorization", $"Basic {credentials}");
+                    request.Content = new System.Net.Http.StringContent("grant_type=client_credentials", System.Text.Encoding.UTF8, "application/x-www-form-urlencoded");
+
+                    var response = await http.SendAsync(request);
+                    if (response.IsSuccessStatusCode)
+                        results.AppendLine("PayPal: OK (Token erfolgreich abgerufen)");
+                    else
+                        results.AppendLine($"PayPal: FEHLER ({response.StatusCode})");
+                }
+                catch (Exception ex)
+                {
+                    results.AppendLine($"PayPal: FEHLER ({ex.Message})");
+                }
+            }
+            else
+            {
+                results.AppendLine("PayPal: Nicht konfiguriert");
+            }
+
+            // Mollie testen
+            if (!string.IsNullOrEmpty(txtMollieApiKey.Password))
+            {
+                try
+                {
+                    txtPaymentStatus.Text = "Teste Mollie...";
+                    using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                    http.DefaultRequestHeaders.Add("Authorization", $"Bearer {txtMollieApiKey.Password}");
+
+                    var response = await http.GetAsync("https://api.mollie.com/v2/methods");
+                    if (response.IsSuccessStatusCode)
+                        results.AppendLine("Mollie: OK (API erreichbar)");
+                    else
+                        results.AppendLine($"Mollie: FEHLER ({response.StatusCode})");
+                }
+                catch (Exception ex)
+                {
+                    results.AppendLine($"Mollie: FEHLER ({ex.Message})");
+                }
+            }
+            else
+            {
+                results.AppendLine("Mollie: Nicht konfiguriert");
+            }
+
+            txtPaymentStatus.Text = "Test abgeschlossen";
+            MessageBox.Show(results.ToString(), "Verbindungstest", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         #endregion

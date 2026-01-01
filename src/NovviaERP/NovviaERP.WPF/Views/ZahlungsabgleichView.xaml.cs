@@ -297,7 +297,8 @@ namespace NovviaERP.WPF.Views
         {
             if (_payment == null)
             {
-                MessageBox.Show("PaymentService nicht konfiguriert.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("PaymentService nicht konfiguriert.\n\nBitte konfigurieren Sie PayPal in den Einstellungen.",
+                    "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -306,13 +307,33 @@ namespace NovviaERP.WPF.Views
                 txtProviderStatus.Text = "Synchronisiere PayPal...";
                 btnPayPalSync.IsEnabled = false;
 
-                // TODO: PayPal Sync implementieren
-                await Task.Delay(1000);
+                var von = DateTime.Now.AddDays(-30);
+                var bis = DateTime.Now;
+                var transaktionen = await _payment.GetPayPalTransactionsAsync(von, bis);
 
-                txtProviderStatus.Text = "PayPal synchronisiert";
-                MessageBox.Show("PayPal-Synchronisation noch nicht implementiert.\n\n" +
-                    "Hier werden PayPal-Transaktionen abgerufen und mit offenen Rechnungen gematcht.",
+                if (transaktionen.Count == 0)
+                {
+                    txtProviderStatus.Text = "Keine PayPal-Transaktionen gefunden";
+                    MessageBox.Show("Keine PayPal-Transaktionen im Zeitraum gefunden.",
+                        "PayPal", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // Verarbeiten und matchen
+                var gebucht = await _payment.ProcessPaymentsAsync();
+
+                txtProviderStatus.Text = $"PayPal: {transaktionen.Count} Transaktionen, {gebucht} gematcht";
+                MessageBox.Show($"PayPal-Synchronisation abgeschlossen!\n\n" +
+                    $"Transaktionen abgerufen: {transaktionen.Count}\n" +
+                    $"Automatisch zugeordnet: {gebucht}",
                     "PayPal", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                await LadeZahlungenAsync();
+            }
+            catch (Exception ex)
+            {
+                txtProviderStatus.Text = "PayPal-Fehler";
+                MessageBox.Show($"PayPal-Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -324,7 +345,8 @@ namespace NovviaERP.WPF.Views
         {
             if (_payment == null)
             {
-                MessageBox.Show("PaymentService nicht konfiguriert.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("PaymentService nicht konfiguriert.\n\nBitte konfigurieren Sie Mollie in den Einstellungen.",
+                    "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -333,13 +355,34 @@ namespace NovviaERP.WPF.Views
                 txtProviderStatus.Text = "Synchronisiere Mollie...";
                 btnMollieSync.IsEnabled = false;
 
-                // TODO: Mollie Sync implementieren
-                await Task.Delay(1000);
+                var von = DateTime.Now.AddDays(-30);
+                var payments = await _payment.GetMolliePaymentsAsync(von);
 
-                txtProviderStatus.Text = "Mollie synchronisiert";
-                MessageBox.Show("Mollie-Synchronisation noch nicht implementiert.\n\n" +
-                    "Hier werden Mollie-Zahlungen abgerufen und mit offenen Rechnungen gematcht.",
+                if (payments.Count == 0)
+                {
+                    txtProviderStatus.Text = "Keine Mollie-Zahlungen gefunden";
+                    MessageBox.Show("Keine Mollie-Zahlungen im Zeitraum gefunden.",
+                        "Mollie", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // Verarbeiten und matchen
+                var gebucht = await _payment.ProcessPaymentsAsync();
+
+                var bezahlt = payments.Count(p => p.Status == "paid");
+                txtProviderStatus.Text = $"Mollie: {payments.Count} Zahlungen, {gebucht} gematcht";
+                MessageBox.Show($"Mollie-Synchronisation abgeschlossen!\n\n" +
+                    $"Zahlungen abgerufen: {payments.Count}\n" +
+                    $"Davon bezahlt: {bezahlt}\n" +
+                    $"Automatisch zugeordnet: {gebucht}",
                     "Mollie", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                await LadeZahlungenAsync();
+            }
+            catch (Exception ex)
+            {
+                txtProviderStatus.Text = "Mollie-Fehler";
+                MessageBox.Show($"Mollie-Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {

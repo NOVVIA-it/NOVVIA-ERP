@@ -23,14 +23,93 @@ namespace NovviaERP.Core.Services
         public void Dispose() => _http.Dispose();
 
         #region PayPal
+        private string PayPalBaseUrl => _config.PayPalSandbox
+            ? "https://api-m.sandbox.paypal.com"
+            : "https://api-m.paypal.com";
+
         public async Task<string> GetPayPalTokenAsync()
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://api-m.paypal.com/v1/oauth2/token");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{PayPalBaseUrl}/v1/oauth2/token");
             request.Headers.Add("Authorization", $"Basic {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_config.PayPalClientId}:{_config.PayPalSecret}"))}");
             request.Content = new StringContent("grant_type=client_credentials", Encoding.UTF8, "application/x-www-form-urlencoded");
             var response = await _http.SendAsync(request);
             var data = await response.Content.ReadFromJsonAsync<JsonElement>();
             return data.GetProperty("access_token").GetString() ?? "";
+        }
+
+        /// <summary>
+        /// Erstellt einen PayPal-Zahlungslink fuer eine Rechnung
+        /// </summary>
+        public async Task<PaymentLinkResult> CreatePayPalPaymentLinkAsync(int rechnungId)
+        {
+            try
+            {
+                var rechnung = await _db.GetRechnungByIdAsync(rechnungId);
+                if (rechnung == null)
+                    return new PaymentLinkResult { Erfolg = false, Fehler = "Rechnung nicht gefunden" };
+
+                var token = await GetPayPalTokenAsync();
+                _http.DefaultRequestHeaders.Clear();
+                _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+                var order = new
+                {
+                    intent = "CAPTURE",
+                    purchase_units = new[]
+                    {
+                        new
+                        {
+                            reference_id = rechnung.RechnungsNr,
+                            description = $"Rechnung {rechnung.RechnungsNr}",
+                            custom_id = rechnungId.ToString(),
+                            amount = new
+                            {
+                                currency_code = "EUR",
+                                value = rechnung.Offen.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)
+                            }
+                        }
+                    },
+                    application_context = new
+                    {
+                        brand_name = _config.FirmaName ?? "NOVVIA",
+                        landing_page = "BILLING",
+                        user_action = "PAY_NOW",
+                        return_url = _config.PayPalReturnUrl ?? "https://novvia.de/zahlung/erfolg",
+                        cancel_url = _config.PayPalCancelUrl ?? "https://novvia.de/zahlung/abbruch"
+                    }
+                };
+
+                var response = await _http.PostAsJsonAsync($"{PayPalBaseUrl}/v2/checkout/orders", order);
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var orderId = result.GetProperty("id").GetString();
+                    var approveLink = result.GetProperty("links").EnumerateArray()
+                        .FirstOrDefault(l => l.GetProperty("rel").GetString() == "approve")
+                        .GetProperty("href").GetString();
+
+                    _log.Information("PayPal Link erstellt: {OrderId} fuer Rechnung {RechnungNr}", orderId, rechnung.RechnungsNr);
+
+                    return new PaymentLinkResult
+                    {
+                        Erfolg = true,
+                        PaymentUrl = approveLink ?? "",
+                        TransaktionsId = orderId ?? "",
+                        Provider = "PayPal"
+                    };
+                }
+                else
+                {
+                    var error = result.TryGetProperty("message", out var msg) ? msg.GetString() : "Unbekannter Fehler";
+                    return new PaymentLinkResult { Erfolg = false, Fehler = error };
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "PayPal Link Erstellung fehlgeschlagen");
+                return new PaymentLinkResult { Erfolg = false, Fehler = ex.Message };
+            }
         }
 
         public async Task<List<PayPalTransaction>> GetPayPalTransactionsAsync(DateTime von, DateTime bis)
@@ -65,6 +144,90 @@ namespace NovviaERP.Core.Services
         #endregion
 
         #region Mollie
+        /// <summary>
+        /// Erstellt einen Mollie-Checkout fuer eine Rechnung
+        /// </summary>
+        public async Task<PaymentLinkResult> CreateMollieCheckoutAsync(int rechnungId, string? method = null)
+        {
+            try
+            {
+                var rechnung = await _db.GetRechnungByIdAsync(rechnungId);
+                if (rechnung == null)
+                    return new PaymentLinkResult { Erfolg = false, Fehler = "Rechnung nicht gefunden" };
+
+                _http.DefaultRequestHeaders.Clear();
+                _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.MollieApiKey}");
+
+                var payment = new Dictionary<string, object>
+                {
+                    ["amount"] = new { currency = "EUR", value = rechnung.Offen.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) },
+                    ["description"] = $"Rechnung {rechnung.RechnungsNr}",
+                    ["redirectUrl"] = _config.MollieRedirectUrl ?? "https://novvia.de/zahlung/erfolg",
+                    ["webhookUrl"] = _config.MollieWebhookUrl ?? "https://novvia.de/api/mollie/webhook",
+                    ["metadata"] = new { rechnung_id = rechnungId.ToString(), rechnung_nr = rechnung.RechnungsNr }
+                };
+
+                // Optionale Zahlungsmethode (ideal, creditcard, banktransfer, etc.)
+                if (!string.IsNullOrEmpty(method))
+                    payment["method"] = method;
+
+                var response = await _http.PostAsJsonAsync("https://api.mollie.com/v2/payments", payment);
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var paymentId = result.GetProperty("id").GetString();
+                    var checkoutUrl = result.GetProperty("_links").GetProperty("checkout").GetProperty("href").GetString();
+
+                    _log.Information("Mollie Checkout erstellt: {PaymentId} fuer Rechnung {RechnungNr}", paymentId, rechnung.RechnungsNr);
+
+                    return new PaymentLinkResult
+                    {
+                        Erfolg = true,
+                        PaymentUrl = checkoutUrl ?? "",
+                        TransaktionsId = paymentId ?? "",
+                        Provider = "Mollie"
+                    };
+                }
+                else
+                {
+                    var error = result.TryGetProperty("detail", out var detail) ? detail.GetString() : "Unbekannter Fehler";
+                    return new PaymentLinkResult { Erfolg = false, Fehler = error };
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Mollie Checkout Erstellung fehlgeschlagen");
+                return new PaymentLinkResult { Erfolg = false, Fehler = ex.Message };
+            }
+        }
+
+        /// <summary>
+        /// Holt verfuegbare Mollie-Zahlungsmethoden
+        /// </summary>
+        public async Task<List<MollieMethod>> GetMollieMethodsAsync()
+        {
+            var list = new List<MollieMethod>();
+            try
+            {
+                _http.DefaultRequestHeaders.Clear();
+                _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.MollieApiKey}");
+                var response = await _http.GetFromJsonAsync<JsonElement>("https://api.mollie.com/v2/methods?include=pricing");
+                if (response.TryGetProperty("_embedded", out var emb) && emb.TryGetProperty("methods", out var methods))
+                    foreach (var m in methods.EnumerateArray())
+                    {
+                        list.Add(new MollieMethod
+                        {
+                            Id = m.GetProperty("id").GetString() ?? "",
+                            Description = m.GetProperty("description").GetString() ?? "",
+                            Image = m.TryGetProperty("image", out var img) && img.TryGetProperty("svg", out var svg) ? svg.GetString() : null
+                        });
+                    }
+            }
+            catch (Exception ex) { _log.Error(ex, "Mollie Methods Fehler"); }
+            return list;
+        }
+
         public async Task<List<MolliePayment>> GetMolliePaymentsAsync(DateTime von)
         {
             var list = new List<MolliePayment>();
@@ -86,7 +249,8 @@ namespace NovviaERP.Core.Services
                             Method = p.TryGetProperty("method", out var m) ? m.GetString() : null,
                             Description = p.TryGetProperty("description", out var d) ? d.GetString() : null,
                             CreatedAt = created,
-                            OrderId = p.TryGetProperty("metadata", out var meta) && meta.TryGetProperty("order_id", out var oid) ? oid.GetString() : null
+                            OrderId = p.TryGetProperty("metadata", out var meta) && meta.TryGetProperty("order_id", out var oid) ? oid.GetString() : null,
+                            RechnungId = p.TryGetProperty("metadata", out var meta2) && meta2.TryGetProperty("rechnung_id", out var rid) ? rid.GetString() : null
                         });
                     }
             }
@@ -155,13 +319,72 @@ namespace NovviaERP.Core.Services
 
     public class PaymentConfig
     {
+        // PayPal
         public string PayPalClientId { get; set; } = "";
         public string PayPalSecret { get; set; } = "";
+        public bool PayPalSandbox { get; set; } = false;
+        public string? PayPalReturnUrl { get; set; }
+        public string? PayPalCancelUrl { get; set; }
+
+        // Mollie
         public string MollieApiKey { get; set; } = "";
+        public string? MollieRedirectUrl { get; set; }
+        public string? MollieWebhookUrl { get; set; }
+
+        // Sparkasse/HBCI
         public string SparkasseBLZ { get; set; } = "";
         public string SparkasseKonto { get; set; } = "";
+
+        // Allgemein
+        public string? FirmaName { get; set; }
     }
-    public class PayPalTransaction { public string TransactionId { get; set; } = ""; public decimal Amount { get; set; } public string Currency { get; set; } = "EUR"; public string Status { get; set; } = ""; public DateTime Date { get; set; } public string? PayerEmail { get; set; } public string? Note { get; set; } }
-    public class MolliePayment { public string Id { get; set; } = ""; public decimal Amount { get; set; } public string Status { get; set; } = ""; public string? Method { get; set; } public string? Description { get; set; } public DateTime CreatedAt { get; set; } public string? OrderId { get; set; } }
-    public class SepaPayment { public string EndToEndId { get; set; } = ""; public decimal Betrag { get; set; } public string Name { get; set; } = ""; public string IBAN { get; set; } = ""; public string BIC { get; set; } = ""; public string Verwendungszweck { get; set; } = ""; }
+
+    public class PaymentLinkResult
+    {
+        public bool Erfolg { get; set; }
+        public string PaymentUrl { get; set; } = "";
+        public string TransaktionsId { get; set; } = "";
+        public string Provider { get; set; } = "";
+        public string? Fehler { get; set; }
+    }
+
+    public class PayPalTransaction
+    {
+        public string TransactionId { get; set; } = "";
+        public decimal Amount { get; set; }
+        public string Currency { get; set; } = "EUR";
+        public string Status { get; set; } = "";
+        public DateTime Date { get; set; }
+        public string? PayerEmail { get; set; }
+        public string? Note { get; set; }
+    }
+
+    public class MolliePayment
+    {
+        public string Id { get; set; } = "";
+        public decimal Amount { get; set; }
+        public string Status { get; set; } = "";
+        public string? Method { get; set; }
+        public string? Description { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string? OrderId { get; set; }
+        public string? RechnungId { get; set; }
+    }
+
+    public class MollieMethod
+    {
+        public string Id { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string? Image { get; set; }
+    }
+
+    public class SepaPayment
+    {
+        public string EndToEndId { get; set; } = "";
+        public decimal Betrag { get; set; }
+        public string Name { get; set; } = "";
+        public string IBAN { get; set; } = "";
+        public string BIC { get; set; } = "";
+        public string Verwendungszweck { get; set; } = "";
+    }
 }

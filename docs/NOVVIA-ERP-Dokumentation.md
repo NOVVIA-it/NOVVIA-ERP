@@ -906,6 +906,19 @@ curl -X PATCH "https://server:5001/api/bestellungen/456/status" \
 
 ## 10. Aenderungsprotokoll
 
+### Version 1.0.2 (2026-01-01)
+
+**Neue Features:**
+- PayPal-Zahlungslinks erstellen (CreatePayPalPaymentLinkAsync)
+- Mollie-Checkout erstellen (CreateMollieCheckoutAsync)
+- Zahlungsanbieter-Konfiguration in Einstellungen
+- Verbindungstest fuer PayPal/Mollie
+
+**Dateien geaendert:**
+- `~` PaymentService.cs (PayPal/Mollie Links)
+- `~` EinstellungenView.xaml (Zahlungsanbieter Tab)
+- `~` ZahlungsabgleichView.xaml.cs (Sync implementiert)
+
 ### Version 1.0.1 (2025-12-31)
 
 **Dokumentation:**
