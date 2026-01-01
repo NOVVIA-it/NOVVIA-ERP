@@ -7,7 +7,10 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="180"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
@@ -18,11 +21,11 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="Workflow-Verwaltung" FontSize="24" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="Automatisierte Aktionen bei Ereignissen" FontSize="12" Foreground="#B0B0B0" Margin="0,5,0,0"/>
+                    <TextBlock Text="JTL Workflows" FontSize="24" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="Automatisierte Aktionen bei Ereignissen (ausgefuehrt durch JTL-Wawi Worker)" FontSize="12" Foreground="#B0B0B0" Margin="0,5,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="+ Neuer Workflow" Click="NeuerWorkflow_Click"
+                    <Button Content="+ Neuer Workflow" Click="NeuerJtlWorkflow_Click"
                             Background="#4CAF50" Foreground="White" Padding="15,8" Margin="5,0"
                             BorderThickness="0" Cursor="Hand"/>
                     <Button Content="Aktualisieren" Click="Aktualisieren_Click"
@@ -32,198 +35,68 @@
             </Grid>
         </Border>
 
-        <!-- Content -->
-        <TabControl Grid.Row="1" Margin="20">
-            <!-- NOVVIA Workflows -->
-            <TabItem Header="NOVVIA Workflows">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="20,15,20,10">
+            <Button x:Name="btnJtlBearbeiten" Content="Bearbeiten" Click="JtlWorkflowBearbeiten_Click"
+                    Padding="12,6" Margin="0,0,10,0" IsEnabled="False"/>
+            <Button x:Name="btnJtlLoeschen" Content="Loeschen" Click="JtlWorkflowLoeschen_Click"
+                    Padding="12,6" Margin="0,0,20,0" IsEnabled="False" Background="#f44336" Foreground="White" BorderThickness="0"/>
+            <TextBlock Text="Objekt:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="cmbJtlObjektFilter" Width="150" SelectionChanged="JtlFilter_Changed">
+                <ComboBoxItem Content="Alle" IsSelected="True" Tag=""/>
+                <ComboBoxItem Content="Kunde" Tag="5"/>
+                <ComboBoxItem Content="Auftrag" Tag="6"/>
+                <ComboBoxItem Content="Lieferschein" Tag="7"/>
+                <ComboBoxItem Content="Rechnung" Tag="8"/>
+            </ComboBox>
+        </StackPanel>
 
-                    <!-- Filter -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-                        <TextBlock Text="Ereignis:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <ComboBox x:Name="cmbEreignisFilter" Width="200" SelectionChanged="Filter_Changed">
-                            <ComboBoxItem Content="Alle" IsSelected="True" Tag=""/>
-                            <ComboBoxItem Content="Bestellung erstellt" Tag="BestellungErstellt"/>
-                            <ComboBoxItem Content="Zahlung eingegangen" Tag="ZahlungEingang"/>
-                            <ComboBoxItem Content="Versand" Tag="Versand"/>
-                            <ComboBoxItem Content="RMA erstellt" Tag="RMAErstellt"/>
-                            <ComboBoxItem Content="Lagerbestand niedrig" Tag="LagerbestandNiedrig"/>
-                        </ComboBox>
-                        <TextBlock Text="Status:" VerticalAlignment="Center" Margin="20,0,5,0"/>
-                        <ComboBox x:Name="cmbStatusFilter" Width="120" SelectionChanged="Filter_Changed">
-                            <ComboBoxItem Content="Alle" IsSelected="True" Tag=""/>
-                            <ComboBoxItem Content="Aktiv" Tag="1"/>
-                            <ComboBoxItem Content="Inaktiv" Tag="0"/>
-                        </ComboBox>
-                    </StackPanel>
+        <!-- Workflow Liste -->
+        <DataGrid x:Name="dgJtlWorkflows" Grid.Row="2" Margin="20,0" AutoGenerateColumns="False" IsReadOnly="True"
+                  SelectionChanged="JtlWorkflow_SelectionChanged" MouseDoubleClick="JtlWorkflow_DoubleClick">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ID" Binding="{Binding KWorkflow}" Width="50"/>
+                <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="250"/>
+                <DataGridTextColumn Header="Event" Binding="{Binding EventName}" Width="200"/>
+                <DataGridTextColumn Header="Objekt" Binding="{Binding ObjektName}" Width="100"/>
+                <DataGridTextColumn Header="Typ" Binding="{Binding TypName}" Width="100"/>
+                <DataGridTextColumn Header="Aktionen" Binding="{Binding AktionenCount}" Width="70"/>
+                <DataGridTextColumn Header="Bedingungen" Binding="{Binding BedingungenCount}" Width="90"/>
+            </DataGrid.Columns>
+        </DataGrid>
 
-                    <!-- Workflow Liste -->
-                    <DataGrid x:Name="dgWorkflows" Grid.Row="1" AutoGenerateColumns="False"
-                              IsReadOnly="True" SelectionMode="Single"
-                              MouseDoubleClick="Workflow_DoubleClick"
-                              SelectionChanged="Workflow_SelectionChanged">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding KWorkflow}" Width="50"/>
-                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
-                            <DataGridTextColumn Header="Ereignis" Binding="{Binding CEreignis}" Width="150"/>
-                            <DataGridTextColumn Header="Bedingung" Binding="{Binding CBedingung}" Width="150"/>
-                            <DataGridTextColumn Header="Aktionstyp" Binding="{Binding CAktionTyp}" Width="100"/>
-                            <DataGridTemplateColumn Header="Aktiv" Width="60">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <CheckBox IsChecked="{Binding NAktiv, Mode=OneWay}" IsEnabled="False" HorizontalAlignment="Center"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Prioritaet" Binding="{Binding NPrioritaet}" Width="80"/>
-                            <DataGridTextColumn Header="Erstellt" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="100"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </TabItem>
+        <!-- Details Header -->
+        <TextBlock Grid.Row="3" Text="Aktionen und Bedingungen:" FontWeight="Bold" Margin="20,15,20,8"/>
 
-            <!-- JTL Workflows -->
-            <TabItem Header="JTL Workflows">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="150"/>
-                    </Grid.RowDefinitions>
+        <!-- Aktionen/Bedingungen Detail -->
+        <Grid Grid.Row="4" Margin="20,0,20,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                    <!-- Toolbar -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-                        <Button Content="+ Neuer JTL Workflow" Click="NeuerJtlWorkflow_Click"
-                                Background="#4CAF50" Foreground="White" Padding="10,5" Margin="0,0,10,0" BorderThickness="0"/>
-                        <Button x:Name="btnJtlBearbeiten" Content="Bearbeiten" Click="JtlWorkflowBearbeiten_Click"
-                                Padding="10,5" Margin="0,0,10,0" IsEnabled="False"/>
-                        <Button x:Name="btnJtlLoeschen" Content="Loeschen" Click="JtlWorkflowLoeschen_Click"
-                                Padding="10,5" Margin="0,0,10,0" IsEnabled="False" Background="#f44336" Foreground="White" BorderThickness="0"/>
-                        <Separator Width="20"/>
-                        <TextBlock Text="Objekt:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <ComboBox x:Name="cmbJtlObjektFilter" Width="150" SelectionChanged="JtlFilter_Changed">
-                            <ComboBoxItem Content="Alle" IsSelected="True" Tag=""/>
-                            <ComboBoxItem Content="Kunde" Tag="5"/>
-                            <ComboBoxItem Content="Auftrag" Tag="6"/>
-                            <ComboBoxItem Content="Lieferschein" Tag="7"/>
-                            <ComboBoxItem Content="Rechnung" Tag="8"/>
-                        </ComboBox>
-                    </StackPanel>
+            <!-- Aktionen -->
+            <GroupBox Header="Aktionen" Margin="0,0,10,0">
+                <DataGrid x:Name="dgJtlAktionen" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Pos" Binding="{Binding NPos}" Width="40"/>
+                        <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="*"/>
+                        <DataGridTextColumn Header="Typ" Binding="{Binding AktionTyp}" Width="120"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </GroupBox>
 
-                    <!-- Workflow Liste -->
-                    <DataGrid x:Name="dgJtlWorkflows" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
-                              SelectionChanged="JtlWorkflow_SelectionChanged" MouseDoubleClick="JtlWorkflow_DoubleClick">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding KWorkflow}" Width="50"/>
-                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="250"/>
-                            <DataGridTextColumn Header="Event" Binding="{Binding EventName}" Width="200"/>
-                            <DataGridTextColumn Header="Objekt" Binding="{Binding ObjektName}" Width="100"/>
-                            <DataGridTextColumn Header="Typ" Binding="{Binding TypName}" Width="80"/>
-                            <DataGridTextColumn Header="Aktionen" Binding="{Binding AktionenCount}" Width="70"/>
-                            <DataGridTextColumn Header="Bedingungen" Binding="{Binding BedingungenCount}" Width="90"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-
-                    <!-- Details Header -->
-                    <TextBlock Grid.Row="2" Text="Aktionen und Bedingungen:" FontWeight="Bold" Margin="0,10,0,5"/>
-
-                    <!-- Aktionen/Bedingungen Detail -->
-                    <Grid Grid.Row="3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Aktionen -->
-                        <GroupBox Header="Aktionen" Margin="0,0,5,0">
-                            <DataGrid x:Name="dgJtlAktionen" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Pos" Binding="{Binding NPos}" Width="40"/>
-                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="*"/>
-                                    <DataGridTextColumn Header="Typ" Binding="{Binding AktionTyp}" Width="120"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </GroupBox>
-
-                        <!-- Bedingungen -->
-                        <GroupBox Grid.Column="1" Header="Bedingungen" Margin="5,0,0,0">
-                            <DataGrid x:Name="dgJtlBedingungen" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Pos" Binding="{Binding NPos}" Width="40"/>
-                                    <DataGridTextColumn Header="Eigenschaft" Binding="{Binding Eigenschaft}" Width="*"/>
-                                    <DataGridTextColumn Header="Operator" Binding="{Binding OperatorText}" Width="60"/>
-                                    <DataGridTextColumn Header="Wert" Binding="{Binding CVergleichswert}" Width="100"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </GroupBox>
-                    </Grid>
-                </Grid>
-            </TabItem>
-
-            <!-- Workflow Log -->
-            <TabItem Header="Ausfuehrungsprotokoll">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Filter -->
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-                        <TextBlock Text="Workflow:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <ComboBox x:Name="cmbLogWorkflow" Width="200" DisplayMemberPath="CName" SelectedValuePath="KWorkflow"
-                                  SelectionChanged="LogFilter_Changed"/>
-                        <TextBlock Text="Status:" VerticalAlignment="Center" Margin="20,0,5,0"/>
-                        <ComboBox x:Name="cmbLogStatus" Width="120" SelectionChanged="LogFilter_Changed">
-                            <ComboBoxItem Content="Alle" IsSelected="True" Tag=""/>
-                            <ComboBoxItem Content="Erfolgreich" Tag="1"/>
-                            <ComboBoxItem Content="Fehler" Tag="0"/>
-                        </ComboBox>
-                        <Button Content="Aktualisieren" Click="LogAktualisieren_Click" Margin="20,0,0,0" Padding="10,5"/>
-                    </StackPanel>
-
-                    <DataGrid x:Name="dgLog" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Datum" Binding="{Binding DAusgefuehrt, StringFormat=dd.MM.yyyy HH:mm:ss}" Width="150"/>
-                            <DataGridTextColumn Header="Workflow" Binding="{Binding WorkflowName}" Width="200"/>
-                            <DataGridTextColumn Header="Ereignis" Binding="{Binding CEreignis}" Width="150"/>
-                            <DataGridTextColumn Header="Referenz" Binding="{Binding CReferenz}" Width="150"/>
-                            <DataGridTemplateColumn Header="Status" Width="80">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding NErfolgreich, Converter={StaticResource BoolToStatusConverter}}"
-                                                   Foreground="{Binding NErfolgreich, Converter={StaticResource BoolToColorConverter}}"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Fehler" Binding="{Binding CFehler}" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </TabItem>
-        </TabControl>
-
-        <!-- Context Menu fuer Workflows -->
-        <Grid.ContextMenu>
-            <ContextMenu x:Name="workflowContextMenu">
-                <MenuItem Header="Bearbeiten" Click="WorkflowBearbeiten_Click"/>
-                <MenuItem Header="Duplizieren" Click="WorkflowDuplizieren_Click"/>
-                <Separator/>
-                <MenuItem Header="Aktivieren" Click="WorkflowAktivieren_Click"/>
-                <MenuItem Header="Deaktivieren" Click="WorkflowDeaktivieren_Click"/>
-                <Separator/>
-                <MenuItem Header="Loeschen" Click="WorkflowLoeschen_Click"/>
-            </ContextMenu>
-        </Grid.ContextMenu>
+            <!-- Bedingungen -->
+            <GroupBox Grid.Column="1" Header="Bedingungen" Margin="10,0,0,0">
+                <DataGrid x:Name="dgJtlBedingungen" AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Pos" Binding="{Binding NPos}" Width="40"/>
+                        <DataGridTextColumn Header="Eigenschaft" Binding="{Binding Eigenschaft}" Width="*"/>
+                        <DataGridTextColumn Header="Op" Binding="{Binding OperatorText}" Width="50"/>
+                        <DataGridTextColumn Header="Wert" Binding="{Binding CVergleichswert}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </GroupBox>
+        </Grid>
     </Grid>
-
-    <UserControl.Resources>
-        <local:BoolToStatusConverter x:Key="BoolToStatusConverter"/>
-        <local:BoolToColorConverter x:Key="BoolToColorConverter"/>
-    </UserControl.Resources>
 </UserControl>

@@ -28,8 +28,8 @@ namespace NovviaERP.WPF.Views
             InitializeComponent();
             DataContext = this;
             _db = db;
-            LoadFormulare();
             LoadDatenfelder();
+            Loaded += async (s, e) => await LoadFormulareAsync();
         }
 
         #region Properties
@@ -50,7 +50,7 @@ namespace NovviaERP.WPF.Views
         #endregion
 
         #region Load Data
-        private async void LoadFormulare()
+        private async System.Threading.Tasks.Task LoadFormulareAsync()
         {
             try
             {
@@ -58,36 +58,34 @@ namespace NovviaERP.WPF.Views
                 var formulare = await conn.QueryAsync<FormularDefinition>(
                     "SELECT kFormular AS Id, cName AS Name, cTyp AS Typ, cPapierFormat AS PapierFormat, cElementeJson AS ElementeJson FROM NOVVIA.Formular WHERE nAktiv = 1 ORDER BY cTyp, cName");
 
-                Formulare.Clear();
-                foreach (var f in formulare)
+                Application.Current.Dispatcher.Invoke(() =>
                 {
-                    // Icon basierend auf Typ setzen
-                    f.Icon = f.Typ switch
+                    Formulare.Clear();
+                    foreach (var f in formulare)
                     {
-                        "Rechnung" => "📄",
-                        "Lieferschein" => "📦",
-                        "Etikett" => "🏷️",
-                        "Mahnung" => "⚠️",
-                        "Pickliste" => "📋",
-                        _ => "📄"
-                    };
-                    Formulare.Add(f);
-                }
+                        f.Icon = f.Typ switch
+                        {
+                            "Rechnung" => "📄",
+                            "Lieferschein" => "📦",
+                            "Etikett" => "🏷️",
+                            "Mahnung" => "⚠️",
+                            "Pickliste" => "📋",
+                            "Gutschrift" => "💰",
+                            "Angebot" => "📝",
+                            "Auftrag" => "📋",
+                            "Packliste" => "📦",
+                            "Ruecksendung" => "↩️",
+                            _ => "📄"
+                        };
+                        Formulare.Add(f);
+                    }
+                    StatusText = $"{Formulare.Count} Formulare geladen";
+                    OnPropertyChanged(nameof(StatusText));
+                });
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden: {ex.Message}");
-            }
-
-            // Standard-Formulare hinzufuegen falls leer
-            if (Formulare.Count == 0)
-            {
-                Formulare.Add(new FormularDefinition { Name = "Rechnung", Typ = "Rechnung", Icon = "📄" });
-                Formulare.Add(new FormularDefinition { Name = "Lieferschein", Typ = "Lieferschein", Icon = "📦" });
-                Formulare.Add(new FormularDefinition { Name = "Mahnung", Typ = "Mahnung", Icon = "⚠️" });
-                Formulare.Add(new FormularDefinition { Name = "Versandetikett", Typ = "Etikett", Icon = "🏷️" });
-                Formulare.Add(new FormularDefinition { Name = "Artikeletikett", Typ = "Etikett", Icon = "🔖" });
-                Formulare.Add(new FormularDefinition { Name = "Pickliste", Typ = "Pickliste", Icon = "📋" });
+                MessageBox.Show($"Fehler beim Laden der Formulare:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
