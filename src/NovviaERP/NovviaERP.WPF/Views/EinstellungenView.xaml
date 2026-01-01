@@ -378,6 +378,70 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- WooCommerce Shops Tab -->
+            <TabItem Header="WooCommerce Shops">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button Content="+ Neuer Shop" Click="WooShopNeu_Click" Padding="10,5" Margin="0,0,10,0"/>
+                        <Button Content="Verbindung testen" Click="WooShopTest_Click" Padding="10,5" Margin="0,0,10,0"/>
+                        <Button Content="Webhooks einrichten" Click="WooShopWebhooks_Click" Padding="10,5" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="chkWooTestModus" Content="Testmodus (alles loggen)" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                    </StackPanel>
+
+                    <DataGrid x:Name="dgWooShops" Grid.Row="1" AutoGenerateColumns="False"
+                              SelectionMode="Single" CanUserAddRows="False" SelectionChanged="DgWooShops_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="150"/>
+                            <DataGridTextColumn Header="Shop-URL" Binding="{Binding Url}" Width="250"/>
+                            <DataGridTextColumn Header="Consumer Key" Binding="{Binding ConsumerKey}" Width="200"/>
+                            <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding Aktiv}" Width="60"/>
+                            <DataGridCheckBoxColumn Header="Webhooks" Binding="{Binding WebhooksAktiv}" Width="80"/>
+                            <DataGridTextColumn Header="Sync-Intervall (Min)" Binding="{Binding SyncIntervallMinuten}" Width="120"/>
+                            <DataGridTextColumn Header="Letzter Sync" Binding="{Binding LetzterSync, StringFormat=dd.MM.yyyy HH:mm}" Width="140" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <GroupBox Header="Shop-Details" Padding="10" Width="400">
+                            <StackPanel>
+                                <TextBlock Text="Consumer Secret:" Margin="0,0,0,5"/>
+                                <PasswordBox x:Name="txtWooSecret" Width="350" HorizontalAlignment="Left"/>
+                                <TextBlock Text="Webhook Secret:" Margin="0,10,0,5"/>
+                                <TextBox x:Name="txtWooWebhookSecret" Width="350" IsReadOnly="True"/>
+                                <TextBlock Text="Webhook Callback URL:" Margin="0,10,0,5"/>
+                                <TextBox x:Name="txtWooCallbackUrl" Width="350" ToolTip="https://ihre-domain.de"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Aktionen" Padding="10" Margin="15,0,0,0" Width="250">
+                            <StackPanel>
+                                <Button Content="Shop speichern" Click="WooShopSpeichern_Click" Margin="0,0,0,10" Padding="10,5"/>
+                                <Button Content="Shop loeschen" Click="WooShopLoeschen_Click" Margin="0,0,0,10" Padding="10,5" Background="#dc3545" Foreground="White"/>
+                                <Separator Margin="0,10"/>
+                                <TextBlock Text="Sync starten:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <Button Content="Kategorien sync" Click="WooSyncKategorien_Click" Margin="0,0,0,5" Padding="10,5"/>
+                                <Button Content="Artikel sync" Click="WooSyncArtikel_Click" Margin="0,0,0,5" Padding="10,5"/>
+                                <Button Content="Bestellungen import" Click="WooImportBestellungen_Click" Padding="10,5"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="API-Log (Testmodus)" Padding="10" Margin="15,0,0,0" Width="350">
+                            <ScrollViewer MaxHeight="200">
+                                <TextBox x:Name="txtWooApiLog" IsReadOnly="True" TextWrapping="Wrap"
+                                         FontFamily="Consolas" FontSize="11" AcceptsReturn="True"/>
+                            </ScrollViewer>
+                        </GroupBox>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
             <!-- Steuern Tab -->
             <TabItem Header="Steuern">
                 <Grid Margin="15">

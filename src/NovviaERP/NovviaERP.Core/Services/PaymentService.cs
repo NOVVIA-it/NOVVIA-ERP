@@ -141,6 +141,87 @@ namespace NovviaERP.Core.Services
             catch (Exception ex) { _log.Error(ex, "PayPal Fehler"); }
             return list;
         }
+
+        /// <summary>
+        /// PayPal Rueckzahlung durchfuehren
+        /// </summary>
+        public async Task<RefundResult> RefundPayPalAsync(string captureId, decimal? betrag = null, string? grund = null)
+        {
+            try
+            {
+                var token = await GetPayPalTokenAsync();
+                _http.DefaultRequestHeaders.Clear();
+                _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+                object? body = null;
+                if (betrag.HasValue)
+                {
+                    body = new
+                    {
+                        amount = new { currency_code = "EUR", value = betrag.Value.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) },
+                        note_to_payer = grund ?? "Rueckerstattung"
+                    };
+                }
+
+                var response = await _http.PostAsJsonAsync($"{PayPalBaseUrl}/v2/payments/captures/{captureId}/refund", body ?? new { });
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var refundId = result.GetProperty("id").GetString();
+                    var status = result.GetProperty("status").GetString();
+                    _log.Information("PayPal Refund erfolgreich: {RefundId}", refundId);
+
+                    return new RefundResult
+                    {
+                        Erfolg = true,
+                        RefundId = refundId ?? "",
+                        Status = status ?? "",
+                        Provider = "PayPal"
+                    };
+                }
+                else
+                {
+                    var error = result.TryGetProperty("message", out var msg) ? msg.GetString() : "Unbekannter Fehler";
+                    return new RefundResult { Erfolg = false, Fehler = error };
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "PayPal Refund fehlgeschlagen");
+                return new RefundResult { Erfolg = false, Fehler = ex.Message };
+            }
+        }
+
+        /// <summary>
+        /// PayPal Capture-ID aus Transaktion ermitteln (fuer Refund noetig)
+        /// </summary>
+        public async Task<string?> GetPayPalCaptureIdAsync(string orderId)
+        {
+            try
+            {
+                var token = await GetPayPalTokenAsync();
+                _http.DefaultRequestHeaders.Clear();
+                _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+
+                var response = await _http.GetFromJsonAsync<JsonElement>($"{PayPalBaseUrl}/v2/checkout/orders/{orderId}");
+                if (response.TryGetProperty("purchase_units", out var units))
+                {
+                    var unit = units.EnumerateArray().FirstOrDefault();
+                    if (unit.TryGetProperty("payments", out var payments) &&
+                        payments.TryGetProperty("captures", out var captures))
+                    {
+                        var capture = captures.EnumerateArray().FirstOrDefault();
+                        return capture.GetProperty("id").GetString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "PayPal CaptureId abrufen fehlgeschlagen");
+            }
+            return null;
+        }
         #endregion
 
         #region Mollie
@@ -255,6 +336,85 @@ namespace NovviaERP.Core.Services
                     }
             }
             catch (Exception ex) { _log.Error(ex, "Mollie Fehler"); }
+            return list;
+        }
+
+        /// <summary>
+        /// Mollie Rueckzahlung durchfuehren
+        /// </summary>
+        public async Task<RefundResult> RefundMollieAsync(string paymentId, decimal? betrag = null, string? beschreibung = null)
+        {
+            try
+            {
+                _http.DefaultRequestHeaders.Clear();
+                _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.MollieApiKey}");
+
+                var refund = new Dictionary<string, object>();
+                if (betrag.HasValue)
+                    refund["amount"] = new { currency = "EUR", value = betrag.Value.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) };
+                if (!string.IsNullOrEmpty(beschreibung))
+                    refund["description"] = beschreibung;
+
+                object body = refund.Count > 0 ? refund : new { };
+                var response = await _http.PostAsJsonAsync($"https://api.mollie.com/v2/payments/{paymentId}/refunds", body);
+                var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var refundId = result.GetProperty("id").GetString();
+                    var status = result.GetProperty("status").GetString();
+                    _log.Information("Mollie Refund erfolgreich: {RefundId}", refundId);
+
+                    return new RefundResult
+                    {
+                        Erfolg = true,
+                        RefundId = refundId ?? "",
+                        Status = status ?? "",
+                        Provider = "Mollie"
+                    };
+                }
+                else
+                {
+                    var error = result.TryGetProperty("detail", out var detail) ? detail.GetString() : "Unbekannter Fehler";
+                    return new RefundResult { Erfolg = false, Fehler = error };
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Mollie Refund fehlgeschlagen");
+                return new RefundResult { Erfolg = false, Fehler = ex.Message };
+            }
+        }
+
+        /// <summary>
+        /// Mollie Refunds einer Zahlung abrufen
+        /// </summary>
+        public async Task<List<MollieRefund>> GetMollieRefundsAsync(string paymentId)
+        {
+            var list = new List<MollieRefund>();
+            try
+            {
+                _http.DefaultRequestHeaders.Clear();
+                _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.MollieApiKey}");
+
+                var response = await _http.GetFromJsonAsync<JsonElement>($"https://api.mollie.com/v2/payments/{paymentId}/refunds");
+                if (response.TryGetProperty("_embedded", out var emb) && emb.TryGetProperty("refunds", out var refunds))
+                {
+                    foreach (var r in refunds.EnumerateArray())
+                    {
+                        list.Add(new MollieRefund
+                        {
+                            Id = r.GetProperty("id").GetString() ?? "",
+                            PaymentId = paymentId,
+                            Amount = decimal.Parse(r.GetProperty("amount").GetProperty("value").GetString() ?? "0"),
+                            Status = r.GetProperty("status").GetString() ?? "",
+                            Description = r.TryGetProperty("description", out var d) ? d.GetString() : null,
+                            CreatedAt = DateTime.Parse(r.GetProperty("createdAt").GetString() ?? DateTime.Now.ToString())
+                        });
+                    }
+                }
+            }
+            catch (Exception ex) { _log.Error(ex, "Mollie Refunds abrufen fehlgeschlagen"); }
             return list;
         }
         #endregion
@@ -386,5 +546,46 @@ namespace NovviaERP.Core.Services
         public string IBAN { get; set; } = "";
         public string BIC { get; set; } = "";
         public string Verwendungszweck { get; set; } = "";
+    }
+
+    public class RefundResult
+    {
+        public bool Erfolg { get; set; }
+        public string RefundId { get; set; } = "";
+        public string Status { get; set; } = "";
+        public string Provider { get; set; } = "";
+        public string? Fehler { get; set; }
+    }
+
+    public class MollieRefund
+    {
+        public string Id { get; set; } = "";
+        public string PaymentId { get; set; } = "";
+        public decimal Amount { get; set; }
+        public string Status { get; set; } = "";
+        public string? Description { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    /// <summary>
+    /// Unified Transaction fuer Anzeige (Bank, PayPal, Mollie)
+    /// </summary>
+    public class UnifiedTransaction
+    {
+        public string Id { get; set; } = "";
+        public string Provider { get; set; } = "";  // "Bank", "PayPal", "Mollie"
+        public DateTime Datum { get; set; }
+        public decimal Betrag { get; set; }
+        public string Waehrung { get; set; } = "EUR";
+        public string Status { get; set; } = "";
+        public string? Beschreibung { get; set; }
+        public string? Kunde { get; set; }
+        public string? RechnungNr { get; set; }
+        public bool IstRefund { get; set; }
+        public bool KannRefunden { get; set; }
+
+        // Provider-spezifische IDs fuer Refund
+        public string? PayPalCaptureId { get; set; }
+        public string? MolliePaymentId { get; set; }
     }
 }

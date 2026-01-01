@@ -191,47 +191,136 @@
                 </Grid>
             </TabItem>
 
-            <!-- Tab: PayPal/Mollie -->
-            <TabItem Header="PayPal / Mollie" Padding="15,5">
+            <!-- Tab: PayPal/Mollie Transaktionen -->
+            <TabItem Header="Transaktionen (PayPal/Mollie)" Padding="15,5">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <!-- Provider Buttons -->
                     <Border Background="#f8f8f8" Padding="10" Margin="0,0,0,10">
-                        <StackPanel Orientation="Horizontal">
-                            <Button x:Name="btnPayPalSync" Content="PayPal synchronisieren" Click="PayPalSync_Click"
-                                    Background="#003087" Foreground="White" Padding="12,6" BorderThickness="0" Margin="0,0,10,0"/>
-                            <Button x:Name="btnMollieSync" Content="Mollie synchronisieren" Click="MollieSync_Click"
-                                    Background="#0a0a0a" Foreground="White" Padding="12,6" BorderThickness="0" Margin="0,0,10,0"/>
-                            <TextBlock x:Name="txtProviderStatus" Text="" VerticalAlignment="Center" Foreground="#666" Margin="10,0,0,0"/>
-                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="btnPayPalSync" Content="PayPal abrufen" Click="PayPalSync_Click"
+                                        Background="#003087" Foreground="White" Padding="12,6" BorderThickness="0" Margin="0,0,10,0"/>
+                                <Button x:Name="btnMollieSync" Content="Mollie abrufen" Click="MollieSync_Click"
+                                        Background="#0a0a0a" Foreground="White" Padding="12,6" BorderThickness="0" Margin="0,0,10,0"/>
+                                <TextBlock x:Name="txtProviderStatus" Text="" VerticalAlignment="Center" Foreground="#666" Margin="10,0,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <ComboBox x:Name="cmbProviderFilter" Width="100" SelectedIndex="0" SelectionChanged="ProviderFilter_Changed">
+                                    <ComboBoxItem Content="Alle"/>
+                                    <ComboBoxItem Content="PayPal"/>
+                                    <ComboBoxItem Content="Mollie"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
                     </Border>
 
                     <!-- Provider Transaktionen -->
                     <DataGrid x:Name="dgProvider" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
                               SelectionMode="Single" SelectionUnit="FullRow"
                               GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                              RowBackground="White" AlternatingRowBackground="#fafafa">
+                              RowBackground="White" AlternatingRowBackground="#fafafa"
+                              SelectionChanged="DgProvider_SelectionChanged">
                         <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Anbieter" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="4,2" CornerRadius="3" HorizontalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#6c757d"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Provider}" Value="PayPal">
+                                                            <Setter Property="Background" Value="#003087"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Provider}" Value="Mollie">
+                                                            <Setter Property="Background" Value="#0a0a0a"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Provider}" Foreground="White" FontSize="11"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Datum" Binding="{Binding Datum, StringFormat=dd.MM.yyyy HH:mm}" Width="130"/>
-                            <DataGridTextColumn Header="Anbieter" Binding="{Binding Anbieter}" Width="80"/>
                             <DataGridTextColumn Header="Betrag" Binding="{Binding Betrag, StringFormat=N2}" Width="100">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
                                         <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IstRefund}" Value="True">
+                                                <Setter Property="Foreground" Value="#dc3545"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
-                            <DataGridTextColumn Header="TransaktionsId" Binding="{Binding TransaktionsId}" Width="200"/>
-                            <DataGridTextColumn Header="Referenz" Binding="{Binding Referenz}" Width="150"/>
-                            <DataGridTextColumn Header="E-Mail" Binding="{Binding PayerEmail}" Width="*"/>
+                            <DataGridTemplateColumn Header="Status" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="4,2" CornerRadius="3" HorizontalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#ffc107"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="paid">
+                                                            <Setter Property="Background" Value="#28a745"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="S">
+                                                            <Setter Property="Background" Value="#28a745"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="COMPLETED">
+                                                            <Setter Property="Background" Value="#28a745"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="refunded">
+                                                            <Setter Property="Background" Value="#6c757d"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="failed">
+                                                            <Setter Property="Background" Value="#dc3545"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Status}" Foreground="White" FontSize="11"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Transaktion-ID" Binding="{Binding Id}" Width="180"/>
+                            <DataGridTextColumn Header="Beschreibung" Binding="{Binding Beschreibung}" Width="200"/>
+                            <DataGridTextColumn Header="Kunde" Binding="{Binding Kunde}" Width="150"/>
+                            <DataGridTextColumn Header="Rechnung" Binding="{Binding RechnungNr}" Width="100"/>
                         </DataGrid.Columns>
                     </DataGrid>
+
+                    <!-- Aktionen -->
+                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="txtProviderInfo" Text="0 Transaktionen" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button x:Name="btnRefund" Content="Rueckzahlung" Click="Refund_Click"
+                                        Background="#dc3545" Foreground="White" Padding="15,6" BorderThickness="0" IsEnabled="False"/>
+                                <Button x:Name="btnTxDetails" Content="Details" Click="TxDetails_Click"
+                                        Padding="15,6" Margin="10,0,0,0" IsEnabled="False"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
             </TabItem>
         </TabControl>

@@ -490,11 +490,15 @@ namespace NovviaERP.Core.Entities
         public string Url { get; set; } = "";
         public string ConsumerKey { get; set; } = "";
         public string ConsumerSecret { get; set; } = "";
+        public string? WebhookSecret { get; set; }
+        public string? WebhookCallbackUrl { get; set; }
         public bool Aktiv { get; set; } = true;
+        public bool WebhooksAktiv { get; set; }
         public DateTime? LetzterSync { get; set; }
         public int? StandardWarenlagerId { get; set; }
         public int? StandardZahlungsartId { get; set; }
         public int? StandardVersandartId { get; set; }
+        public int SyncIntervallMinuten { get; set; } = 15;
     }
     #endregion
 

@@ -21,6 +21,8 @@ namespace NovviaERP.WPF.Views
         private readonly PaymentService? _payment;
         private List<ZahlungsabgleichEintrag> _zahlungen = new();
         private List<SepaRechnungViewModel> _sepaRechnungen = new();
+        private List<UnifiedTransaction> _transaktionen = new();
+        private List<UnifiedTransaction> _transaktionenGefiltert = new();
 
         public ZahlungsabgleichView()
         {
@@ -304,31 +306,35 @@ namespace NovviaERP.WPF.Views
 
             try
             {
-                txtProviderStatus.Text = "Synchronisiere PayPal...";
+                txtProviderStatus.Text = "Lade PayPal-Transaktionen...";
                 btnPayPalSync.IsEnabled = false;
 
                 var von = DateTime.Now.AddDays(-30);
                 var bis = DateTime.Now;
-                var transaktionen = await _payment.GetPayPalTransactionsAsync(von, bis);
+                var paypalTx = await _payment.GetPayPalTransactionsAsync(von, bis);
 
-                if (transaktionen.Count == 0)
+                // Zu UnifiedTransactions konvertieren
+                var neueTransaktionen = paypalTx.Select(tx => new UnifiedTransaction
                 {
-                    txtProviderStatus.Text = "Keine PayPal-Transaktionen gefunden";
-                    MessageBox.Show("Keine PayPal-Transaktionen im Zeitraum gefunden.",
-                        "PayPal", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
+                    Id = tx.TransactionId,
+                    Provider = "PayPal",
+                    Datum = tx.Date,
+                    Betrag = tx.Amount,
+                    Waehrung = tx.Currency,
+                    Status = tx.Status,
+                    Beschreibung = tx.Note,
+                    Kunde = tx.PayerEmail,
+                    IstRefund = tx.Amount < 0,
+                    KannRefunden = tx.Status == "S" && tx.Amount > 0
+                }).ToList();
 
-                // Verarbeiten und matchen
-                var gebucht = await _payment.ProcessPaymentsAsync();
+                // Bestehende PayPal-Transaktionen ersetzen
+                _transaktionen.RemoveAll(t => t.Provider == "PayPal");
+                _transaktionen.AddRange(neueTransaktionen);
 
-                txtProviderStatus.Text = $"PayPal: {transaktionen.Count} Transaktionen, {gebucht} gematcht";
-                MessageBox.Show($"PayPal-Synchronisation abgeschlossen!\n\n" +
-                    $"Transaktionen abgerufen: {transaktionen.Count}\n" +
-                    $"Automatisch zugeordnet: {gebucht}",
-                    "PayPal", MessageBoxButton.OK, MessageBoxImage.Information);
+                FilterTransaktionen();
 
-                await LadeZahlungenAsync();
+                txtProviderStatus.Text = $"PayPal: {paypalTx.Count} Transaktionen geladen";
             }
             catch (Exception ex)
             {
@@ -352,32 +358,35 @@ namespace NovviaERP.WPF.Views
 
             try
             {
-                txtProviderStatus.Text = "Synchronisiere Mollie...";
+                txtProviderStatus.Text = "Lade Mollie-Zahlungen...";
                 btnMollieSync.IsEnabled = false;
 
                 var von = DateTime.Now.AddDays(-30);
-                var payments = await _payment.GetMolliePaymentsAsync(von);
+                var molliePay = await _payment.GetMolliePaymentsAsync(von);
 
-                if (payments.Count == 0)
+                // Zu UnifiedTransactions konvertieren
+                var neueTransaktionen = molliePay.Select(p => new UnifiedTransaction
                 {
-                    txtProviderStatus.Text = "Keine Mollie-Zahlungen gefunden";
-                    MessageBox.Show("Keine Mollie-Zahlungen im Zeitraum gefunden.",
-                        "Mollie", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
+                    Id = p.Id,
+                    Provider = "Mollie",
+                    Datum = p.CreatedAt,
+                    Betrag = p.Amount,
+                    Waehrung = "EUR",
+                    Status = p.Status,
+                    Beschreibung = p.Description,
+                    RechnungNr = p.RechnungId,
+                    IstRefund = false,
+                    KannRefunden = p.Status == "paid",
+                    MolliePaymentId = p.Id
+                }).ToList();
 
-                // Verarbeiten und matchen
-                var gebucht = await _payment.ProcessPaymentsAsync();
+                // Bestehende Mollie-Transaktionen ersetzen
+                _transaktionen.RemoveAll(t => t.Provider == "Mollie");
+                _transaktionen.AddRange(neueTransaktionen);
 
-                var bezahlt = payments.Count(p => p.Status == "paid");
-                txtProviderStatus.Text = $"Mollie: {payments.Count} Zahlungen, {gebucht} gematcht";
-                MessageBox.Show($"Mollie-Synchronisation abgeschlossen!\n\n" +
-                    $"Zahlungen abgerufen: {payments.Count}\n" +
-                    $"Davon bezahlt: {bezahlt}\n" +
-                    $"Automatisch zugeordnet: {gebucht}",
-                    "Mollie", MessageBoxButton.OK, MessageBoxImage.Information);
+                FilterTransaktionen();
 
-                await LadeZahlungenAsync();
+                txtProviderStatus.Text = $"Mollie: {molliePay.Count} Zahlungen geladen";
             }
             catch (Exception ex)
             {
@@ -388,6 +397,134 @@ namespace NovviaERP.WPF.Views
             {
                 btnMollieSync.IsEnabled = true;
             }
+        }
+
+        private void FilterTransaktionen()
+        {
+            var filter = (cmbProviderFilter.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString() ?? "Alle";
+
+            _transaktionenGefiltert = filter switch
+            {
+                "PayPal" => _transaktionen.Where(t => t.Provider == "PayPal").OrderByDescending(t => t.Datum).ToList(),
+                "Mollie" => _transaktionen.Where(t => t.Provider == "Mollie").OrderByDescending(t => t.Datum).ToList(),
+                _ => _transaktionen.OrderByDescending(t => t.Datum).ToList()
+            };
+
+            dgProvider.ItemsSource = _transaktionenGefiltert;
+            txtProviderInfo.Text = $"{_transaktionenGefiltert.Count} Transaktionen";
+        }
+
+        private void ProviderFilter_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            FilterTransaktionen();
+        }
+
+        private void DgProvider_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var tx = dgProvider.SelectedItem as UnifiedTransaction;
+            btnRefund.IsEnabled = tx != null && tx.KannRefunden && !tx.IstRefund;
+            btnTxDetails.IsEnabled = tx != null;
+        }
+
+        private async void Refund_Click(object sender, RoutedEventArgs e)
+        {
+            if (_payment == null || dgProvider.SelectedItem is not UnifiedTransaction tx) return;
+
+            // Betrag eingeben
+            var input = Microsoft.VisualBasic.Interaction.InputBox(
+                $"Rueckzahlungsbetrag eingeben (max. {tx.Betrag:N2} EUR):\n\n" +
+                $"Transaktion: {tx.Id}\n" +
+                $"Anbieter: {tx.Provider}",
+                "Rueckzahlung",
+                tx.Betrag.ToString("N2"));
+
+            if (string.IsNullOrEmpty(input)) return;
+
+            if (!decimal.TryParse(input.Replace(",", "."), System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var betrag) || betrag <= 0 || betrag > tx.Betrag)
+            {
+                MessageBox.Show("Ungueltiger Betrag!", "Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Rueckzahlung durchfuehren?\n\n" +
+                $"Anbieter: {tx.Provider}\n" +
+                $"Transaktion: {tx.Id}\n" +
+                $"Betrag: {betrag:N2} EUR",
+                "Rueckzahlung bestaetigen",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                txtProviderStatus.Text = "Fuehre Rueckzahlung durch...";
+                RefundResult refundResult;
+
+                if (tx.Provider == "PayPal")
+                {
+                    // PayPal braucht Capture ID
+                    var captureId = tx.PayPalCaptureId ?? await _payment.GetPayPalCaptureIdAsync(tx.Id);
+                    if (string.IsNullOrEmpty(captureId))
+                    {
+                        MessageBox.Show("PayPal Capture-ID nicht gefunden. Moeglicherweise wurde die Zahlung noch nicht erfasst.",
+                            "Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                    refundResult = await _payment.RefundPayPalAsync(captureId, betrag, "Rueckerstattung");
+                }
+                else // Mollie
+                {
+                    refundResult = await _payment.RefundMollieAsync(tx.MolliePaymentId ?? tx.Id, betrag, "Rueckerstattung");
+                }
+
+                if (refundResult.Erfolg)
+                {
+                    MessageBox.Show($"Rueckzahlung erfolgreich!\n\n" +
+                        $"Refund-ID: {refundResult.RefundId}\n" +
+                        $"Status: {refundResult.Status}",
+                        "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    txtProviderStatus.Text = $"Rueckzahlung erfolgreich: {refundResult.RefundId}";
+
+                    // Transaktion als "refunded" markieren
+                    tx.KannRefunden = false;
+                    tx.Status = "refunded";
+                    dgProvider.Items.Refresh();
+                }
+                else
+                {
+                    MessageBox.Show($"Rueckzahlung fehlgeschlagen:\n{refundResult.Fehler}",
+                        "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    txtProviderStatus.Text = "Rueckzahlung fehlgeschlagen";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                txtProviderStatus.Text = "Fehler bei Rueckzahlung";
+            }
+        }
+
+        private void TxDetails_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgProvider.SelectedItem is not UnifiedTransaction tx) return;
+
+            MessageBox.Show(
+                $"Transaktionsdetails:\n\n" +
+                $"Anbieter: {tx.Provider}\n" +
+                $"ID: {tx.Id}\n" +
+                $"Datum: {tx.Datum:dd.MM.yyyy HH:mm}\n" +
+                $"Betrag: {tx.Betrag:N2} {tx.Waehrung}\n" +
+                $"Status: {tx.Status}\n" +
+                $"Beschreibung: {tx.Beschreibung ?? "-"}\n" +
+                $"Kunde: {tx.Kunde ?? "-"}\n" +
+                $"Rechnung: {tx.RechnungNr ?? "-"}\n" +
+                $"Rueckzahlung: {(tx.IstRefund ? "Ja" : "Nein")}\n" +
+                $"Rueckzahlung moeglich: {(tx.KannRefunden ? "Ja" : "Nein")}",
+                "Transaktionsdetails", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         #endregion

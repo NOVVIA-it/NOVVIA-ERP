@@ -958,5 +958,108 @@ namespace NovviaERP.Core.Data
             return stats;
         }
         #endregion
+
+        #region WooCommerce Shops
+        public async Task<List<WooCommerceShop>> GetWooCommerceShopsAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<WooCommerceShop>("SELECT * FROM tWooCommerceShop ORDER BY cName")).ToList();
+        }
+
+        public async Task<WooCommerceShop?> GetWooCommerceShopByIdAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleOrDefaultAsync<WooCommerceShop>("SELECT * FROM tWooCommerceShop WHERE kWooCommerceShop=@Id", new { Id = id });
+        }
+
+        public async Task<int> CreateWooCommerceShopAsync(WooCommerceShop shop)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleAsync<int>(@"
+                INSERT INTO tWooCommerceShop (cName, cUrl, cConsumerKey, cConsumerSecret, cWebhookSecret, cWebhookCallbackUrl, nAktiv, nWebhooksAktiv, nSyncIntervallMinuten)
+                VALUES (@Name, @Url, @ConsumerKey, @ConsumerSecret, @WebhookSecret, @WebhookCallbackUrl, @Aktiv, @WebhooksAktiv, @SyncIntervallMinuten);
+                SELECT SCOPE_IDENTITY();", shop);
+        }
+
+        public async Task UpdateWooCommerceShopAsync(WooCommerceShop shop)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE tWooCommerceShop SET
+                    cName=@Name, cUrl=@Url, cConsumerKey=@ConsumerKey, cConsumerSecret=@ConsumerSecret,
+                    cWebhookSecret=@WebhookSecret, cWebhookCallbackUrl=@WebhookCallbackUrl,
+                    nAktiv=@Aktiv, nWebhooksAktiv=@WebhooksAktiv, nSyncIntervallMinuten=@SyncIntervallMinuten
+                WHERE kWooCommerceShop=@Id", shop);
+        }
+
+        public async Task UpdateWooCommerceSyncTimeAsync(int shopId)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("UPDATE tWooCommerceShop SET dLetzterSync=GETDATE() WHERE kWooCommerceShop=@Id", new { Id = shopId });
+        }
+
+        public async Task DeleteWooCommerceShopAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM tWooCommerceShop WHERE kWooCommerceShop=@Id", new { Id = id });
+        }
+
+        public async Task<List<Artikel>> GetArtikelByIdsAsync(List<int> ids)
+        {
+            if (ids == null || !ids.Any()) return new List<Artikel>();
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<Artikel>(@"
+                SELECT a.*, ab.cName, ab.cBeschreibung, ab.cKurzBeschreibung, ab.cUrlPath
+                FROM tArtikel a
+                LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel=ab.kArtikel AND ab.kSprache=1 AND ab.kPlattform=1
+                WHERE a.kArtikel IN @Ids", new { Ids = ids })).ToList();
+        }
+
+        public async Task<Dictionary<string, int>> GetAllBestaendeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            var result = await conn.QueryAsync<(string ArtNr, decimal Bestand)>(
+                "SELECT cArtNr, ISNULL(fLagerbestand, 0) FROM tArtikel WHERE cAktiv='Y'");
+            return result.ToDictionary(x => x.ArtNr, x => (int)x.Bestand);
+        }
+
+        public async Task<Dictionary<string, decimal>> GetAllPreiseAsync(int kundengruppe = 0)
+        {
+            var conn = await GetConnectionAsync();
+            var result = await conn.QueryAsync<(string ArtNr, decimal Preis)>(@"
+                SELECT a.cArtNr, ISNULL(p.fVKNetto, a.fVKNetto)
+                FROM tArtikel a
+                LEFT JOIN tPreis p ON a.kArtikel=p.kArtikel AND p.kKundengruppe=@Kg
+                WHERE a.cAktiv='Y'", new { Kg = kundengruppe });
+            return result.ToDictionary(x => x.ArtNr, x => x.Preis);
+        }
+
+        public async Task<Bestellung?> GetBestellungByExternerNrAsync(string externeNr)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleOrDefaultAsync<Bestellung>(
+                "SELECT * FROM tBestellung WHERE cExterneAuftragsnummer=@Nr", new { Nr = externeNr });
+        }
+
+        public async Task<List<KategorieSync>> GetKategorienAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<KategorieSync>(@"
+                SELECT k.kKategorie AS Id, k.kOberKategorie AS ParentId, ks.cName AS Name, ks.cBeschreibung AS Beschreibung, k.nEbene AS Ebene
+                FROM tKategorie k
+                LEFT JOIN tKategorieSprache ks ON k.kKategorie=ks.kKategorie AND ks.kSprache=1
+                WHERE k.nAktiv=1
+                ORDER BY k.nEbene, k.nSort")).ToList();
+        }
+
+        public class KategorieSync
+        {
+            public int Id { get; set; }
+            public int? ParentId { get; set; }
+            public string Name { get; set; } = "";
+            public string? Beschreibung { get; set; }
+            public int Ebene { get; set; }
+        }
+        #endregion
     }
 }

@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using NovviaERP.Core.Data;
+using NovviaERP.Core.Entities;
 using NovviaERP.Core.Services;
 
 namespace NovviaERP.WPF.Views
@@ -44,6 +48,7 @@ namespace NovviaERP.WPF.Views
                 await LadeKontenAsync();
                 await LadeEigeneFelderAsync();
                 LadeZahlungsanbieterAsync();
+                await LadeWooShopsAsync();
             }
             catch (Exception ex)
             {
@@ -735,6 +740,294 @@ namespace NovviaERP.WPF.Views
 
             txtPaymentStatus.Text = "Test abgeschlossen";
             MessageBox.Show(results.ToString(), "Verbindungstest", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        #endregion
+
+        #region WooCommerce Shops
+
+        private List<WooCommerceShop> _wooShops = new();
+        private WooCommerceShop? _selectedWooShop;
+
+        private async System.Threading.Tasks.Task LadeWooShopsAsync()
+        {
+            try
+            {
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                _wooShops = await db.GetWooCommerceShopsAsync();
+                dgWooShops.ItemsSource = _wooShops;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"WooCommerce Shops laden: {ex.Message}");
+            }
+        }
+
+        private void DgWooShops_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            _selectedWooShop = dgWooShops.SelectedItem as WooCommerceShop;
+            if (_selectedWooShop != null)
+            {
+                txtWooSecret.Password = _selectedWooShop.ConsumerSecret ?? "";
+                txtWooWebhookSecret.Text = _selectedWooShop.WebhookSecret ?? "(noch nicht generiert)";
+                txtWooCallbackUrl.Text = _selectedWooShop.WebhookCallbackUrl ?? "";
+            }
+        }
+
+        private void WooShopNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedWooShop = new WooCommerceShop
+            {
+                Name = "Neuer Shop",
+                Url = "https://",
+                Aktiv = true,
+                SyncIntervallMinuten = 15,
+                WebhookSecret = Guid.NewGuid().ToString("N")
+            };
+            _wooShops.Add(_selectedWooShop);
+            dgWooShops.ItemsSource = null;
+            dgWooShops.ItemsSource = _wooShops;
+            dgWooShops.SelectedItem = _selectedWooShop;
+
+            txtWooWebhookSecret.Text = _selectedWooShop.WebhookSecret;
+        }
+
+        private async void WooShopSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedWooShop == null) return;
+
+            try
+            {
+                _selectedWooShop.ConsumerSecret = txtWooSecret.Password;
+                _selectedWooShop.WebhookCallbackUrl = txtWooCallbackUrl.Text.Trim();
+
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                if (_selectedWooShop.Id == 0)
+                {
+                    _selectedWooShop.Id = await db.CreateWooCommerceShopAsync(_selectedWooShop);
+                }
+                else
+                {
+                    await db.UpdateWooCommerceShopAsync(_selectedWooShop);
+                }
+
+                await LadeWooShopsAsync();
+                MessageBox.Show("Shop gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void WooShopLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedWooShop == null || _selectedWooShop.Id == 0) return;
+
+            if (MessageBox.Show($"Shop '{_selectedWooShop.Name}' wirklich loeschen?", "Bestaetigung",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+            try
+            {
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                await db.DeleteWooCommerceShopAsync(_selectedWooShop.Id);
+                await LadeWooShopsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void WooShopTest_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedWooShop == null)
+            {
+                MessageBox.Show("Bitte zuerst einen Shop auswaehlen!", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var testModus = chkWooTestModus.IsChecked == true;
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                using var woo = new WooCommerceService(db, testModus);
+
+                var ok = await woo.TestConnectionAsync(_selectedWooShop);
+
+                if (testModus)
+                {
+                    ZeigeApiLog(woo.GetApiLog());
+                }
+
+                if (ok)
+                {
+                    MessageBox.Show($"Verbindung zu '{_selectedWooShop.Name}' erfolgreich!", "Test OK",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show($"Verbindung zu '{_selectedWooShop.Name}' fehlgeschlagen!\n\nBitte URL und Zugangsdaten pruefen.",
+                        "Test FEHLGESCHLAGEN", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void WooShopWebhooks_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedWooShop == null)
+            {
+                MessageBox.Show("Bitte zuerst einen Shop auswaehlen!", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtWooCallbackUrl.Text))
+            {
+                MessageBox.Show("Bitte zuerst eine Webhook Callback URL eingeben!", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                using var woo = new WooCommerceService(db, true);
+
+                var success = await woo.SetupWebhooksAsync(_selectedWooShop, txtWooCallbackUrl.Text.Trim());
+                ZeigeApiLog(woo.GetApiLog());
+
+                if (success)
+                {
+                    _selectedWooShop.WebhooksAktiv = true;
+                    _selectedWooShop.WebhookCallbackUrl = txtWooCallbackUrl.Text.Trim();
+                    await db.UpdateWooCommerceShopAsync(_selectedWooShop);
+                    await LadeWooShopsAsync();
+
+                    MessageBox.Show("Webhooks erfolgreich im Shop registriert!\n\n" +
+                        "Folgende Events werden jetzt gesendet:\n" +
+                        "- order.created\n- order.updated\n- product.updated\n- product.deleted",
+                        "Webhooks eingerichtet", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("Webhooks konnten nicht eingerichtet werden.\nBitte pruefen Sie die Verbindung zum Shop.",
+                        "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void WooSyncKategorien_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedWooShop == null) return;
+
+            try
+            {
+                var testModus = chkWooTestModus.IsChecked == true;
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                using var woo = new WooCommerceService(db, testModus);
+
+                var kategorien = await db.GetKategorienAsync();
+                var result = await woo.SyncAllCategoriesAsync(_selectedWooShop, kategorien);
+
+                if (testModus) ZeigeApiLog(woo.GetApiLog());
+
+                MessageBox.Show($"Kategorien Sync abgeschlossen:\n\n" +
+                    $"Erstellt: {result.Erstellt}\n" +
+                    $"Uebersprungen: {result.Uebersprungen}\n" +
+                    $"Fehler: {result.Fehler}",
+                    "Sync-Ergebnis", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void WooSyncArtikel_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedWooShop == null) return;
+
+            try
+            {
+                var testModus = chkWooTestModus.IsChecked == true;
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                using var woo = new WooCommerceService(db, testModus);
+
+                var artikel = (await db.GetArtikelAsync(null, aktiv: true, limit: 10000)).ToList();
+                var result = await woo.SyncAllProductsAsync(_selectedWooShop, artikel);
+
+                await db.UpdateWooCommerceSyncTimeAsync(_selectedWooShop.Id);
+                await LadeWooShopsAsync();
+
+                if (testModus) ZeigeApiLog(woo.GetApiLog());
+
+                MessageBox.Show($"Artikel Sync abgeschlossen:\n\n" +
+                    $"Erstellt: {result.Erstellt}\n" +
+                    $"Aktualisiert: {result.Aktualisiert}\n" +
+                    $"Fehler: {result.Fehler}",
+                    "Sync-Ergebnis", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void WooImportBestellungen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedWooShop == null) return;
+
+            try
+            {
+                var testModus = chkWooTestModus.IsChecked == true;
+                var db = App.Services.GetRequiredService<JtlDbContext>();
+                using var woo = new WooCommerceService(db, testModus);
+
+                var result = await woo.ImportAllOrdersAsync(_selectedWooShop);
+
+                if (testModus) ZeigeApiLog(woo.GetApiLog());
+
+                MessageBox.Show($"Bestellungen Import abgeschlossen:\n\n" +
+                    $"Importiert: {result.Erstellt}\n" +
+                    $"Uebersprungen: {result.Uebersprungen}\n" +
+                    $"Fehler: {result.Fehler}",
+                    "Import-Ergebnis", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ZeigeApiLog(List<WooCommerceService.ApiLogEntry> log)
+        {
+            var sb = new StringBuilder();
+            foreach (var entry in log)
+            {
+                sb.AppendLine($"[{entry.Zeitpunkt:HH:mm:ss}] {entry.Methode} {entry.Url}");
+                if (!string.IsNullOrEmpty(entry.RequestBody))
+                    sb.AppendLine($"  Request: {TruncateString(entry.RequestBody, 200)}");
+                sb.AppendLine($"  Response: {entry.StatusCode} ({entry.DauerMs}ms)");
+                if (!string.IsNullOrEmpty(entry.ResponseBody))
+                    sb.AppendLine($"  Body: {TruncateString(entry.ResponseBody, 200)}");
+                if (!string.IsNullOrEmpty(entry.Fehler))
+                    sb.AppendLine($"  FEHLER: {entry.Fehler}");
+                sb.AppendLine();
+            }
+            txtWooApiLog.Text = sb.ToString();
+        }
+
+        private static string TruncateString(string s, int maxLength)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            return s.Length > maxLength ? s[..maxLength] + "..." : s;
         }
 
         #endregion

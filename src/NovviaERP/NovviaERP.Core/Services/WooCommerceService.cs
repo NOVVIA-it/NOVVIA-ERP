@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using NovviaERP.Core.Data;
 using NovviaERP.Core.Entities;
@@ -12,14 +14,117 @@ using Serilog;
 
 namespace NovviaERP.Core.Services
 {
+    /// <summary>
+    /// WooCommerce Shop-Anbindung fuer NovviaERP
+    /// - Kategorien, Artikel, Preise, Bilder, Bestaende zum Shop synchronisieren
+    /// - Bestellungen und Zahlungen vom Shop importieren
+    /// - Webhooks fuer Echtzeit-Updates
+    /// </summary>
     public class WooCommerceService : IDisposable
     {
         private readonly JtlDbContext _db;
         private readonly HttpClient _http;
         private static readonly ILogger _log = Log.ForContext<WooCommerceService>();
 
-        public WooCommerceService(JtlDbContext db) { _db = db; _http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) }; }
+        private bool _testModus;
+        private readonly List<ApiLogEntry> _apiLog = new();
+
+        public WooCommerceService(JtlDbContext db, bool testModus = false)
+        {
+            _db = db;
+            _testModus = testModus;
+            _http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+        }
+
         public void Dispose() => _http.Dispose();
+
+        public void SetTestModus(bool aktiv) => _testModus = aktiv;
+        public List<ApiLogEntry> GetApiLog() => _apiLog.ToList();
+        public void ClearApiLog() => _apiLog.Clear();
+
+        public class ApiLogEntry
+        {
+            public DateTime Zeitpunkt { get; set; } = DateTime.Now;
+            public string Methode { get; set; } = "";
+            public string Url { get; set; } = "";
+            public string? RequestBody { get; set; }
+            public int StatusCode { get; set; }
+            public string? ResponseBody { get; set; }
+            public long DauerMs { get; set; }
+            public string? Fehler { get; set; }
+        }
+
+        private async Task<HttpResponseMessage> SendWithLoggingAsync(HttpMethod method, string url, object? body = null)
+        {
+            var entry = new ApiLogEntry { Methode = method.Method, Url = url };
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            try
+            {
+                HttpResponseMessage response;
+                if (body != null)
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(body);
+                    entry.RequestBody = json;
+
+                    if (_testModus)
+                        _log.Debug("WooCommerce API {Method} {Url}\nRequest: {Body}", method.Method, url, json);
+
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    var request = new HttpRequestMessage(method, url) { Content = content };
+                    response = await _http.SendAsync(request);
+                }
+                else
+                {
+                    if (_testModus)
+                        _log.Debug("WooCommerce API {Method} {Url}", method.Method, url);
+
+                    var request = new HttpRequestMessage(method, url);
+                    response = await _http.SendAsync(request);
+                }
+
+                sw.Stop();
+                entry.StatusCode = (int)response.StatusCode;
+                entry.DauerMs = sw.ElapsedMilliseconds;
+
+                if (_testModus)
+                {
+                    entry.ResponseBody = await response.Content.ReadAsStringAsync();
+                    _log.Debug("WooCommerce Response {Status} ({Ms}ms)\n{Body}",
+                        response.StatusCode, sw.ElapsedMilliseconds,
+                        entry.ResponseBody.Length > 2000 ? entry.ResponseBody[..2000] + "..." : entry.ResponseBody);
+                }
+
+                _apiLog.Add(entry);
+                return response;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                entry.DauerMs = sw.ElapsedMilliseconds;
+                entry.Fehler = ex.Message;
+                entry.StatusCode = 0;
+                _apiLog.Add(entry);
+
+                if (_testModus)
+                    _log.Error(ex, "WooCommerce API Fehler: {Method} {Url}", method.Method, url);
+
+                throw;
+            }
+        }
+
+        #region Sync Results
+        public class SyncResult
+        {
+            public string Typ { get; set; } = "";
+            public int Erstellt { get; set; }
+            public int Aktualisiert { get; set; }
+            public int Fehler { get; set; }
+            public int Uebersprungen { get; set; }
+            public string? FehlerMeldung { get; set; }
+            public List<string> Details { get; set; } = new();
+        }
+        #endregion
 
         private void SetAuth(WooCommerceShop shop)
         {
@@ -243,6 +348,423 @@ namespace NovviaERP.Core.Services
             var response = await _http.PostAsJsonAsync($"{shop.Url}/wp-json/wc/v3/products/categories", data);
             var json = await response.Content.ReadFromJsonAsync<JsonElement>();
             return json.GetProperty("id").GetInt32();
+        }
+
+        public async Task<SyncResult> SyncAllCategoriesAsync(WooCommerceShop shop, List<JtlDbContext.KategorieSync> kategorien)
+        {
+            SetAuth(shop);
+            var result = new SyncResult { Typ = "Kategorien" };
+            var existing = await GetCategoriesAsync(shop);
+            var existingByName = existing.ToDictionary(c => c.Name.ToLower(), c => c.WcId);
+
+            // Mapping von JTL Kategorie ID zu Name fuer Parent-Lookup
+            var kategorieIdToName = kategorien.ToDictionary(k => k.Id, k => k.Name);
+
+            foreach (var kat in kategorien.OrderBy(k => k.Ebene))
+            {
+                try
+                {
+                    if (existingByName.ContainsKey(kat.Name.ToLower()))
+                    {
+                        result.Uebersprungen++;
+                        continue;
+                    }
+                    int? parentWcId = null;
+                    if (kat.ParentId.HasValue && kategorieIdToName.TryGetValue(kat.ParentId.Value, out var parentName))
+                    {
+                        parentWcId = existingByName.GetValueOrDefault(parentName.ToLower());
+                    }
+                    var wcId = await CreateCategoryAsync(shop, kat.Name, parentWcId);
+                    existingByName[kat.Name.ToLower()] = wcId;
+                    result.Erstellt++;
+                }
+                catch (Exception ex)
+                {
+                    result.Fehler++;
+                    result.Details.Add($"{kat.Name}: {ex.Message}");
+                }
+            }
+            return result;
+        }
+        #endregion
+
+        #region Webhooks
+        public class WooWebhook
+        {
+            [JsonPropertyName("id")] public int Id { get; set; }
+            [JsonPropertyName("name")] public string Name { get; set; } = "";
+            [JsonPropertyName("topic")] public string Topic { get; set; } = "";
+            [JsonPropertyName("delivery_url")] public string DeliveryUrl { get; set; } = "";
+            [JsonPropertyName("secret")] public string Secret { get; set; } = "";
+            [JsonPropertyName("status")] public string Status { get; set; } = "active";
+        }
+
+        /// <summary>
+        /// Registriert Webhooks fuer Echtzeit-Updates im Shop
+        /// </summary>
+        public async Task<bool> SetupWebhooksAsync(WooCommerceShop shop, string callbackBaseUrl)
+        {
+            SetAuth(shop);
+            try
+            {
+                var webhookSecret = shop.WebhookSecret ?? Guid.NewGuid().ToString("N");
+                var webhooks = new[]
+                {
+                    new { name = "NovviaERP - Order Created", topic = "order.created" },
+                    new { name = "NovviaERP - Order Updated", topic = "order.updated" },
+                    new { name = "NovviaERP - Product Updated", topic = "product.updated" },
+                    new { name = "NovviaERP - Product Deleted", topic = "product.deleted" }
+                };
+
+                foreach (var wh in webhooks)
+                {
+                    var data = new
+                    {
+                        name = wh.name,
+                        topic = wh.topic,
+                        delivery_url = $"{callbackBaseUrl.TrimEnd('/')}/api/woocommerce/webhook/{shop.Id}",
+                        secret = webhookSecret,
+                        status = "active"
+                    };
+                    await _http.PostAsJsonAsync($"{shop.Url}/wp-json/wc/v3/webhooks", data);
+                    _log.Information("Webhook erstellt: {Topic} -> {Url}", wh.topic, data.delivery_url);
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, "Fehler beim Erstellen der Webhooks");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Listet alle registrierten Webhooks
+        /// </summary>
+        public async Task<List<WooWebhook>> GetWebhooksAsync(WooCommerceShop shop)
+        {
+            SetAuth(shop);
+            try
+            {
+                var response = await _http.GetFromJsonAsync<List<WooWebhook>>($"{shop.Url}/wp-json/wc/v3/webhooks");
+                return response ?? new List<WooWebhook>();
+            }
+            catch
+            {
+                return new List<WooWebhook>();
+            }
+        }
+
+        /// <summary>
+        /// Loescht einen Webhook
+        /// </summary>
+        public async Task<bool> DeleteWebhookAsync(WooCommerceShop shop, int webhookId)
+        {
+            SetAuth(shop);
+            try
+            {
+                var response = await _http.DeleteAsync($"{shop.Url}/wp-json/wc/v3/webhooks/{webhookId}?force=true");
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Validiert eine Webhook-Signatur
+        /// </summary>
+        public static bool ValidateWebhookSignature(string payload, string signature, string secret)
+        {
+            if (string.IsNullOrEmpty(secret)) return false;
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+            var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+            var computed = Convert.ToBase64String(hash);
+            return computed == signature;
+        }
+
+        /// <summary>
+        /// Verarbeitet eingehenden Webhook
+        /// </summary>
+        public async Task<WebhookProcessResult> ProcessWebhookAsync(WooCommerceShop shop, string topic, string payload)
+        {
+            var result = new WebhookProcessResult { Topic = topic };
+            try
+            {
+                switch (topic)
+                {
+                    case "order.created":
+                    case "order.updated":
+                        var orderJson = JsonSerializer.Deserialize<JsonElement>(payload);
+                        var orderId = orderJson.GetProperty("id").GetInt32();
+                        var orderNumber = orderJson.GetProperty("number").GetString() ?? "";
+                        var status = orderJson.GetProperty("status").GetString() ?? "";
+
+                        // Pruefen ob bereits importiert
+                        var existing = await _db.GetBestellungByExternerNrAsync(orderNumber);
+                        if (existing != null)
+                        {
+                            result.Aktion = "Status aktualisiert";
+                            result.Success = true;
+                        }
+                        else if (status == "processing" || status == "completed" || status == "on-hold")
+                        {
+                            // Neue Bestellung importieren
+                            var orders = await GetOrdersAsync(shop, status, 1);
+                            var order = orders.FirstOrDefault(o => o.Id == orderId);
+                            if (order != null)
+                            {
+                                var bestellung = await ImportOrderAsync(shop, order);
+                                result.Aktion = $"Bestellung {bestellung.BestellNr} importiert";
+                                result.Success = true;
+                            }
+                        }
+                        else
+                        {
+                            result.Aktion = $"Status '{status}' ignoriert";
+                            result.Success = true;
+                        }
+                        break;
+
+                    case "product.updated":
+                        result.Aktion = "Produkt-Update empfangen (keine Aktion)";
+                        result.Success = true;
+                        break;
+
+                    case "product.deleted":
+                        result.Aktion = "Produkt geloescht (keine Aktion)";
+                        result.Success = true;
+                        break;
+
+                    default:
+                        result.Aktion = $"Unbekanntes Topic: {topic}";
+                        result.Success = false;
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Aktion = $"Fehler: {ex.Message}";
+                result.Success = false;
+                _log.Error(ex, "Webhook-Verarbeitung fehlgeschlagen: {Topic}", topic);
+            }
+            return result;
+        }
+
+        public class WebhookProcessResult
+        {
+            public string Topic { get; set; } = "";
+            public string Aktion { get; set; } = "";
+            public bool Success { get; set; }
+        }
+        #endregion
+
+        #region Full Sync
+        /// <summary>
+        /// Synchronisiert alle Artikel zum Shop
+        /// </summary>
+        public async Task<SyncResult> SyncAllProductsAsync(WooCommerceShop shop, List<Artikel> artikel)
+        {
+            var result = new SyncResult { Typ = "Produkte" };
+            SetAuth(shop);
+
+            try
+            {
+                // Batch-Sync fuer bessere Performance
+                const int batchSize = 100;
+                for (int i = 0; i < artikel.Count; i += batchSize)
+                {
+                    var batch = artikel.Skip(i).Take(batchSize).ToList();
+                    var synced = await BatchSyncProductsAsync(shop, batch);
+                    result.Aktualisiert += synced;
+                }
+                _log.Information("WooCommerce Full Sync: {Count} Produkte", result.Aktualisiert);
+            }
+            catch (Exception ex)
+            {
+                result.FehlerMeldung = ex.Message;
+                _log.Error(ex, "WooCommerce Full Sync fehlgeschlagen");
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Synchronisiert nur Bestaende zum Shop
+        /// </summary>
+        public async Task<SyncResult> SyncAllStocksAsync(WooCommerceShop shop, Dictionary<string, int> bestaende)
+        {
+            var result = new SyncResult { Typ = "Bestaende" };
+            SetAuth(shop);
+
+            try
+            {
+                // Produkte aus Shop laden
+                var products = await GetAllProductsAsync(shop);
+                var productBySku = products.ToDictionary(p => p.Sku, p => p.Id);
+
+                foreach (var kvp in bestaende)
+                {
+                    if (!productBySku.TryGetValue(kvp.Key, out var wcId))
+                    {
+                        result.Uebersprungen++;
+                        continue;
+                    }
+
+                    try
+                    {
+                        await SyncStockAsync(shop, wcId, kvp.Value);
+                        result.Aktualisiert++;
+                    }
+                    catch
+                    {
+                        result.Fehler++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.FehlerMeldung = ex.Message;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Synchronisiert nur Preise zum Shop
+        /// </summary>
+        public async Task<SyncResult> SyncAllPricesAsync(WooCommerceShop shop, Dictionary<string, decimal> preise)
+        {
+            var result = new SyncResult { Typ = "Preise" };
+            SetAuth(shop);
+
+            try
+            {
+                var products = await GetAllProductsAsync(shop);
+                var productBySku = products.ToDictionary(p => p.Sku, p => p.Id);
+
+                foreach (var kvp in preise)
+                {
+                    if (!productBySku.TryGetValue(kvp.Key, out var wcId))
+                    {
+                        result.Uebersprungen++;
+                        continue;
+                    }
+
+                    try
+                    {
+                        await _http.PutAsJsonAsync($"{shop.Url}/wp-json/wc/v3/products/{wcId}",
+                            new { regular_price = kvp.Value.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) });
+                        result.Aktualisiert++;
+                    }
+                    catch
+                    {
+                        result.Fehler++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.FehlerMeldung = ex.Message;
+            }
+
+            return result;
+        }
+
+        private class WcProductBasic { public int Id { get; set; } public string Sku { get; set; } = ""; }
+
+        private async Task<List<WcProductBasic>> GetAllProductsAsync(WooCommerceShop shop)
+        {
+            var products = new List<WcProductBasic>();
+            int page = 1;
+
+            while (true)
+            {
+                var response = await _http.GetFromJsonAsync<JsonElement>(
+                    $"{shop.Url}/wp-json/wc/v3/products?per_page=100&page={page}");
+
+                if (response.ValueKind != JsonValueKind.Array || response.GetArrayLength() == 0)
+                    break;
+
+                foreach (var p in response.EnumerateArray())
+                {
+                    products.Add(new WcProductBasic
+                    {
+                        Id = p.GetProperty("id").GetInt32(),
+                        Sku = p.TryGetProperty("sku", out var sku) ? sku.GetString() ?? "" : ""
+                    });
+                }
+                page++;
+            }
+
+            return products;
+        }
+
+        /// <summary>
+        /// Importiert alle offenen Bestellungen
+        /// </summary>
+        public async Task<SyncResult> ImportAllOrdersAsync(WooCommerceShop shop, DateTime? seit = null)
+        {
+            var result = new SyncResult { Typ = "Bestellungen" };
+
+            try
+            {
+                var statuses = new[] { "processing", "on-hold", "completed" };
+                foreach (var status in statuses)
+                {
+                    var orders = await GetOrdersAsync(shop, status, 100);
+                    foreach (var order in orders)
+                    {
+                        // Pruefen ob bereits importiert
+                        var existing = await _db.GetBestellungByExternerNrAsync(order.Number);
+                        if (existing != null)
+                        {
+                            result.Uebersprungen++;
+                            continue;
+                        }
+
+                        if (seit.HasValue && order.DateCreated < seit.Value)
+                        {
+                            result.Uebersprungen++;
+                            continue;
+                        }
+
+                        try
+                        {
+                            await ImportOrderAsync(shop, order);
+                            result.Erstellt++;
+                        }
+                        catch (Exception ex)
+                        {
+                            result.Fehler++;
+                            result.Details.Add($"Order {order.Number}: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.FehlerMeldung = ex.Message;
+            }
+
+            return result;
+        }
+        #endregion
+
+        #region Connection Test
+        public async Task<bool> TestConnectionAsync(WooCommerceShop shop)
+        {
+            SetAuth(shop);
+            try
+            {
+                var response = await _http.GetAsync($"{shop.Url}/wp-json/wc/v3/system_status");
+                return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
         }
         #endregion
     }
