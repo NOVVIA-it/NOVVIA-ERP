@@ -68,24 +68,24 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Umsatz Monat -->
+            <!-- Umsatz 30 Tage -->
             <Border Grid.Column="0" Style="{StaticResource KpiCard}">
                 <StackPanel>
-                    <TextBlock Text="Umsatz Monat" FontSize="12" Foreground="#757575"/>
+                    <TextBlock Text="Umsatz (30 Tage)" FontSize="12" Foreground="#757575"/>
                     <TextBlock x:Name="txtUmsatzMonat" Text="0,00 EUR" FontSize="22" FontWeight="Bold" Foreground="#2196F3"/>
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                         <TextBlock x:Name="txtUmsatzTrend" Text="+0%" FontSize="12" Foreground="#4CAF50"/>
-                        <TextBlock Text=" vs. Vormonat" FontSize="10" Foreground="#9E9E9E"/>
+                        <TextBlock Text=" vs. Vorperiode" FontSize="10" Foreground="#9E9E9E"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
 
-            <!-- Auftraege Heute -->
+            <!-- Auftraege 30 Tage -->
             <Border Grid.Column="1" Style="{StaticResource KpiCard}">
                 <StackPanel>
-                    <TextBlock Text="Auftraege Heute" FontSize="12" Foreground="#757575"/>
+                    <TextBlock Text="Auftraege (30 Tage)" FontSize="12" Foreground="#757575"/>
                     <TextBlock x:Name="txtAuftraegeHeute" Text="0" FontSize="22" FontWeight="Bold" Foreground="#FF9800"/>
-                    <TextBlock x:Name="txtAuftraegeOffen" Text="0 offen" FontSize="12" Foreground="#9E9E9E"/>
+                    <TextBlock x:Name="txtAuftraegeOffen" Text="0 gesamt" FontSize="12" Foreground="#9E9E9E"/>
                 </StackPanel>
             </Border>
 
@@ -107,21 +107,21 @@
                 </StackPanel>
             </Border>
 
-            <!-- Versand Heute -->
+            <!-- Lieferscheine 30 Tage -->
             <Border Grid.Column="4" Style="{StaticResource KpiCard}">
                 <StackPanel>
-                    <TextBlock Text="Versand Heute" FontSize="12" Foreground="#757575"/>
+                    <TextBlock Text="Lieferscheine (30T)" FontSize="12" Foreground="#757575"/>
                     <TextBlock x:Name="txtVersandHeute" Text="0" FontSize="22" FontWeight="Bold" Foreground="#00BCD4"/>
-                    <TextBlock x:Name="txtVersandOffen" Text="0 offen" FontSize="12" Foreground="#9E9E9E"/>
+                    <TextBlock x:Name="txtVersandOffen" Text="0 gesamt" FontSize="12" Foreground="#9E9E9E"/>
                 </StackPanel>
             </Border>
 
             <!-- Neue Kunden -->
             <Border Grid.Column="5" Style="{StaticResource KpiCard}">
                 <StackPanel>
-                    <TextBlock Text="Neue Kunden" FontSize="12" Foreground="#757575"/>
+                    <TextBlock Text="Neue Kunden (30T)" FontSize="12" Foreground="#757575"/>
                     <TextBlock x:Name="txtNeueKunden" Text="0" FontSize="22" FontWeight="Bold" Foreground="#4CAF50"/>
-                    <TextBlock Text="diesen Monat" FontSize="12" Foreground="#9E9E9E"/>
+                    <TextBlock Text="letzte 30 Tage" FontSize="12" Foreground="#9E9E9E"/>
                 </StackPanel>
             </Border>
         </Grid>

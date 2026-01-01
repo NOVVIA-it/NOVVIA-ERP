@@ -66,30 +66,43 @@ namespace NovviaERP.WPF.Views
             {
                 var conn = await _db.GetConnectionAsync();
 
-                // JTL-Schema: Verkauf.tAuftrag, Rechnung.tRechnung, Lieferschein.tLieferschein
+                // KPIs basierend auf letzten 30 Tagen und Gesamtdaten
                 var kpis = await conn.QueryFirstOrDefaultAsync<DashboardKpis>(@"
                     DECLARE @Heute DATE = CAST(GETDATE() AS DATE);
-                    DECLARE @MonatStart DATE = DATEFROMPARTS(YEAR(@Heute), MONTH(@Heute), 1);
-                    DECLARE @VormonatStart DATE = DATEADD(MONTH, -1, @MonatStart);
-                    DECLARE @VormonatEnde DATE = DATEADD(DAY, -1, @MonatStart);
+                    DECLARE @Letzte30Tage DATE = DATEADD(DAY, -30, @Heute);
+                    DECLARE @Letzte60Tage DATE = DATEADD(DAY, -60, @Heute);
 
                     SELECT
-                        -- Umsatz aus Rechnung.tRechnungEckdaten
-                        ISNULL((SELECT SUM(re.fVKBruttoGesamt) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE r.dErstellt >= @MonatStart AND r.nStorno = 0), 0) AS UmsatzMonat,
-                        ISNULL((SELECT SUM(re.fVKBruttoGesamt) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE r.dErstellt >= @VormonatStart AND r.dErstellt <= @VormonatEnde AND r.nStorno = 0), 0) AS UmsatzVormonat,
-                        -- Auftraege aus Verkauf.tAuftrag
-                        (SELECT COUNT(*) FROM Verkauf.tAuftrag WHERE CAST(dErstellt AS DATE) = @Heute AND nStorno = 0) AS AuftraegeHeute,
-                        (SELECT COUNT(*) FROM Verkauf.tAuftrag WHERE nAuftragStatus IN (1,2) AND nStorno = 0) AS AuftraegeOffen,
-                        -- Rechnungen
-                        (SELECT COUNT(*) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE re.nZahlungStatus = 1 AND r.nStorno = 0) AS RechnungenOffen,
-                        ISNULL((SELECT SUM(re.fOffenerWert) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE re.nZahlungStatus = 1 AND r.nStorno = 0), 0) AS RechnungenOffenWert,
-                        (SELECT COUNT(*) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE re.nZahlungStatus = 1 AND re.dZahlungsziel < @Heute AND r.nStorno = 0) AS RechnungenUeberfaellig,
-                        ISNULL((SELECT SUM(re.fOffenerWert) FROM Rechnung.tRechnung r JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung WHERE re.nZahlungStatus = 1 AND re.dZahlungsziel < @Heute AND r.nStorno = 0), 0) AS RechnungenUeberfaelligWert,
-                        -- Versand aus Lieferschein
-                        (SELECT COUNT(*) FROM Lieferschein.tLieferschein WHERE CAST(dErstellt AS DATE) = @Heute) AS VersandHeute,
-                        (SELECT COUNT(*) FROM Verkauf.tAuftrag WHERE nAuftragStatus = 2 AND nStorno = 0) AS VersandOffen,
-                        -- Neue Kunden
-                        (SELECT COUNT(*) FROM dbo.tKunde WHERE CAST(dErstellt AS DATE) >= @MonatStart) AS NeueKundenMonat
+                        -- Umsatz letzte 30 Tage
+                        ISNULL((SELECT SUM(re.fVKBruttoGesamt) FROM Rechnung.tRechnung r
+                            JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                            WHERE r.dErstellt >= @Letzte30Tage AND r.nStorno = 0), 0) AS UmsatzMonat,
+                        -- Umsatz vorherige 30 Tage (zum Vergleich)
+                        ISNULL((SELECT SUM(re.fVKBruttoGesamt) FROM Rechnung.tRechnung r
+                            JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                            WHERE r.dErstellt >= @Letzte60Tage AND r.dErstellt < @Letzte30Tage AND r.nStorno = 0), 0) AS UmsatzVormonat,
+                        -- Auftraege gesamt offen (alle offenen, nicht nur heute)
+                        (SELECT COUNT(*) FROM Verkauf.tAuftrag WHERE dErstellt >= @Letzte30Tage AND nStorno = 0) AS AuftraegeHeute,
+                        (SELECT COUNT(*) FROM Verkauf.tAuftrag WHERE nStorno = 0) AS AuftraegeOffen,
+                        -- Rechnungen offen (alle mit offenem Status)
+                        (SELECT COUNT(*) FROM Rechnung.tRechnung r
+                            JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                            WHERE re.fOffenerWert > 0 AND r.nStorno = 0) AS RechnungenOffen,
+                        ISNULL((SELECT SUM(re.fOffenerWert) FROM Rechnung.tRechnung r
+                            JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                            WHERE re.fOffenerWert > 0 AND r.nStorno = 0), 0) AS RechnungenOffenWert,
+                        -- Ueberfaellig (Zahlungsziel ueberschritten)
+                        (SELECT COUNT(*) FROM Rechnung.tRechnung r
+                            JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                            WHERE re.fOffenerWert > 0 AND re.dZahlungsziel < @Heute AND r.nStorno = 0) AS RechnungenUeberfaellig,
+                        ISNULL((SELECT SUM(re.fOffenerWert) FROM Rechnung.tRechnung r
+                            JOIN Rechnung.tRechnungEckdaten re ON r.kRechnung = re.kRechnung
+                            WHERE re.fOffenerWert > 0 AND re.dZahlungsziel < @Heute AND r.nStorno = 0), 0) AS RechnungenUeberfaelligWert,
+                        -- Lieferscheine letzte 30 Tage
+                        (SELECT COUNT(*) FROM Lieferschein.tLieferschein WHERE dErstellt >= @Letzte30Tage) AS VersandHeute,
+                        (SELECT COUNT(*) FROM Lieferschein.tLieferschein) AS VersandOffen,
+                        -- Neue Kunden letzte 30 Tage
+                        (SELECT COUNT(*) FROM dbo.tKunde WHERE dErstellt >= @Letzte30Tage) AS NeueKundenMonat
                 ");
 
                 if (kpis != null)
