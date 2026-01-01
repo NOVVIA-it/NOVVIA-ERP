@@ -19,8 +19,14 @@ namespace NovviaERP.Core.Services
         private readonly string _connectionString;
         private SqlConnection? _connection;
         private static readonly ILogger _log = Log.ForContext<CoreService>();
+        private readonly LogService? _logService;
 
         public CoreService(string connectionString) => _connectionString = connectionString;
+
+        public CoreService(string connectionString, LogService logService) : this(connectionString)
+        {
+            _logService = logService;
+        }
 
         private async Task<SqlConnection> GetConnectionAsync()
         {
@@ -813,6 +819,18 @@ namespace NovviaERP.Core.Services
                 new { Nr = kunde.CKundenNr });
 
             _log.Information("Kunde {KundenNr} angelegt via SP (ID: {Id})", kunde.CKundenNr, kundeId);
+
+            // Log in NOVVIA.Log
+            if (_logService != null)
+            {
+                await _logService.LogStammdatenAsync(
+                    entityTyp: "Kunde",
+                    kEntity: kundeId,
+                    entityNr: kunde.CKundenNr,
+                    aktion: "Erstellt",
+                    beschreibung: $"Neuer Kunde: {adresse.CFirma ?? ""} {adresse.CVorname ?? ""} {adresse.CName ?? ""} ({adresse.CPLZ} {adresse.COrt})".Trim());
+            }
+
             return kundeId;
         }
 
@@ -937,6 +955,20 @@ namespace NovviaERP.Core.Services
             p.Add("@kBenutzer", 1);  // Standard-Benutzer
 
             await conn.ExecuteAsync("Kunde.spKundeUpdate", p, commandType: CommandType.StoredProcedure);
+
+            // Log in NOVVIA.Log
+            if (_logService != null)
+            {
+                var adressInfo = kunde.StandardAdresse != null
+                    ? $"{kunde.StandardAdresse.CFirma ?? ""} {kunde.StandardAdresse.CVorname ?? ""} {kunde.StandardAdresse.CName ?? ""}".Trim()
+                    : "";
+                await _logService.LogStammdatenAsync(
+                    entityTyp: "Kunde",
+                    kEntity: kunde.KKunde,
+                    entityNr: kunde.CKundenNr,
+                    aktion: "Geaendert",
+                    beschreibung: $"Kunde aktualisiert: {adressInfo}".Trim());
+            }
         }
 
         public async Task UpdateAdresseAsync(AdresseDetail adresse)
@@ -1338,6 +1370,17 @@ namespace NovviaERP.Core.Services
                 }
 
                 tx.Commit();
+
+                // Log in NOVVIA.Log
+                if (_logService != null)
+                {
+                    await _logService.LogStammdatenAsync(
+                        entityTyp: "Artikel",
+                        kEntity: artikel.KArtikel,
+                        entityNr: artikel.CArtNr,
+                        aktion: "Geaendert",
+                        beschreibung: $"Artikel aktualisiert: {artikel.Name ?? artikel.CArtNr}");
+                }
             }
             catch { tx.Rollback(); throw; }
         }
@@ -1402,6 +1445,18 @@ namespace NovviaERP.Core.Services
                     VALUES (@KArtikel, 1, 1, @Name, @Beschreibung, @KurzBeschreibung, @CSeo)", artikel, tx);
 
                 tx.Commit();
+
+                // Log in NOVVIA.Log
+                if (_logService != null)
+                {
+                    await _logService.LogStammdatenAsync(
+                        entityTyp: "Artikel",
+                        kEntity: artikelId,
+                        entityNr: artikel.CArtNr,
+                        aktion: "Erstellt",
+                        beschreibung: $"Neuer Artikel: {artikel.Name ?? artikel.CArtNr} (VK: {artikel.FVKNetto:N2} EUR, EK: {artikel.FEKNetto:N2} EUR)");
+                }
+
                 return artikelId;
             }
             catch { tx.Rollback(); throw; }
@@ -5146,6 +5201,10 @@ namespace NovviaERP.Core.Services
             await conn.ExecuteAsync(@"
                 INSERT INTO dbo.tKundenGruppe (cName, fRabatt, nNettoPreise) VALUES (@Name, @Rabatt, 0)",
                 new { Name = name, Rabatt = rabatt });
+
+            if (_logService != null)
+                await _logService.LogStammdatenAsync(entityTyp: "Kundengruppe", kEntity: 0, entityNr: name, aktion: "Erstellt",
+                    beschreibung: $"Kundengruppe '{name}' erstellt (Rabatt: {rabatt}%)");
         }
 
         public async Task UpdateKundengruppeAsync(int id, string name, decimal rabatt)
@@ -5154,12 +5213,20 @@ namespace NovviaERP.Core.Services
             await conn.ExecuteAsync(@"
                 UPDATE dbo.tKundenGruppe SET cName = @Name, fRabatt = @Rabatt WHERE kKundenGruppe = @Id",
                 new { Id = id, Name = name, Rabatt = rabatt });
+
+            if (_logService != null)
+                await _logService.LogStammdatenAsync(entityTyp: "Kundengruppe", kEntity: id, entityNr: name, aktion: "Geaendert",
+                    beschreibung: $"Kundengruppe '{name}' geaendert");
         }
 
         public async Task DeleteKundengruppeAsync(int id)
         {
             var conn = await GetConnectionAsync();
             await conn.ExecuteAsync("DELETE FROM dbo.tKundenGruppe WHERE kKundenGruppe = @Id", new { Id = id });
+
+            if (_logService != null)
+                await _logService.LogStammdatenAsync(entityTyp: "Kundengruppe", kEntity: id, entityNr: null, aktion: "Geloescht",
+                    beschreibung: $"Kundengruppe {id} geloescht");
         }
 
         // --- Kundenkategorien ---
@@ -5167,6 +5234,10 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
             await conn.ExecuteAsync("INSERT INTO dbo.tKundenKategorie (cName) VALUES (@Name)", new { Name = name });
+
+            if (_logService != null)
+                await _logService.LogStammdatenAsync(entityTyp: "Kundenkategorie", kEntity: 0, entityNr: name, aktion: "Erstellt",
+                    beschreibung: $"Kundenkategorie '{name}' erstellt");
         }
 
         public async Task UpdateKundenkategorieAsync(int id, string name)
@@ -5174,12 +5245,20 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
             await conn.ExecuteAsync("UPDATE dbo.tKundenKategorie SET cName = @Name WHERE kKundenKategorie = @Id",
                 new { Id = id, Name = name });
+
+            if (_logService != null)
+                await _logService.LogStammdatenAsync(entityTyp: "Kundenkategorie", kEntity: id, entityNr: name, aktion: "Geaendert",
+                    beschreibung: $"Kundenkategorie '{name}' geaendert");
         }
 
         public async Task DeleteKundenkategorieAsync(int id)
         {
             var conn = await GetConnectionAsync();
             await conn.ExecuteAsync("DELETE FROM dbo.tKundenKategorie WHERE kKundenKategorie = @Id", new { Id = id });
+
+            if (_logService != null)
+                await _logService.LogStammdatenAsync(entityTyp: "Kundenkategorie", kEntity: id, entityNr: null, aktion: "Geloescht",
+                    beschreibung: $"Kundenkategorie {id} geloescht");
         }
 
         // --- Zahlungsarten ---
