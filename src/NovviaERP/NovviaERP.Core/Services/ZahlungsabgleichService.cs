@@ -18,10 +18,27 @@ namespace NovviaERP.Core.Services
         private readonly LogService _logService;
         private static readonly ILogger _log = Log.ForContext<ZahlungsabgleichService>();
 
+        // Einstellungs-Schluessel
+        public const string SETTING_AUTOMATCH_SCHWELLE = "Zahlungsabgleich.AutoMatchSchwelle";
+        public const int DEFAULT_AUTOMATCH_SCHWELLE = 90;
+
         public ZahlungsabgleichService(JtlDbContext db, LogService? logService = null)
         {
             _db = db;
             _logService = logService ?? new LogService(db);
+        }
+
+        /// <summary>Liest die Auto-Matching Schwelle aus den Einstellungen</summary>
+        public async Task<int> GetAutoMatchSchwelleAsync()
+        {
+            return await _db.GetEinstellungIntAsync(SETTING_AUTOMATCH_SCHWELLE, DEFAULT_AUTOMATCH_SCHWELLE);
+        }
+
+        /// <summary>Setzt die Auto-Matching Schwelle</summary>
+        public async Task SetAutoMatchSchwelleAsync(int schwelle, int? kBenutzer = null)
+        {
+            await _db.SetEinstellungAsync(SETTING_AUTOMATCH_SCHWELLE, schwelle.ToString(),
+                "Auto-Matching Schwelle fuer Zahlungsabgleich (0-100%)", kBenutzer);
         }
 
         #region Auto-Matching
@@ -32,6 +49,10 @@ namespace NovviaERP.Core.Services
         public async Task<AutoMatchResult> AutoMatchAsync(int kBenutzer, bool nurVorschlaege = false)
         {
             var result = new AutoMatchResult();
+
+            // Auto-Match Schwelle aus Einstellungen laden
+            var schwelle = await GetAutoMatchSchwelleAsync();
+            result.SchwelleVerwendet = schwelle;
 
             // Offene Transaktionen laden
             var offeneUmsaetze = await _db.GetOffeneUmsaetzeAsync();
@@ -45,11 +66,11 @@ namespace NovviaERP.Core.Services
             var offeneRechnungen = await _db.GetOffeneRechnungenFuerMatchingAsync();
             var offeneAuftraege = await _db.GetOffeneAuftraegeFuerMatchingAsync();
 
-            _log.Information("Auto-Matching: {Umsaetze} Transaktionen gegen {Rechnungen} Rechnungen und {Auftraege} Auftraege",
-                offeneUmsaetze.Count, offeneRechnungen.Count, offeneAuftraege.Count);
+            _log.Information("Auto-Matching: {Umsaetze} Transaktionen gegen {Rechnungen} Rechnungen und {Auftraege} Auftraege (Schwelle: {Schwelle}%)",
+                offeneUmsaetze.Count, offeneRechnungen.Count, offeneAuftraege.Count, schwelle);
 
             await _logService.LogAsync("Zahlungsabgleich", "AutoMatch Start", "Zahlungsabgleich",
-                beschreibung: $"Auto-Matching gestartet: {offeneUmsaetze.Count} Transaktionen",
+                beschreibung: $"Auto-Matching gestartet: {offeneUmsaetze.Count} Transaktionen (Schwelle: {schwelle}%)",
                 kBenutzer: kBenutzer);
 
             foreach (var umsatz in offeneUmsaetze)
@@ -59,8 +80,8 @@ namespace NovviaERP.Core.Services
 
                 result.Vorschlaege.Add(match);
 
-                // Bei hoher Konfidenz (>= 90%) und nicht nur Vorschlaege: automatisch zuordnen
-                if (!nurVorschlaege && match.Konfidenz >= 90)
+                // Bei Konfidenz >= Schwelle und nicht nur Vorschlaege: automatisch zuordnen
+                if (!nurVorschlaege && match.Konfidenz >= schwelle)
                 {
                     try
                     {
@@ -907,6 +928,7 @@ namespace NovviaERP.Core.Services
         public class AutoMatchResult
         {
             public int AutoGematcht { get; set; }
+            public int SchwelleVerwendet { get; set; }
             public List<MatchVorschlag> Vorschlaege { get; set; } = new();
         }
 

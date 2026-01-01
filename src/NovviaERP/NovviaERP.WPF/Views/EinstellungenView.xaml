@@ -374,6 +374,28 @@
                         </StackPanel>
 
                         <TextBlock x:Name="txtPaymentStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
+
+                        <!-- Zahlungsabgleich Einstellungen -->
+                        <TextBlock Text="Zahlungsabgleich" FontSize="18" FontWeight="SemiBold" Margin="0,35,0,15"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="180"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Auto-Match Schwelle (%):" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtAutoMatchSchwelle" Grid.Column="1" Margin="0,3" Text="90"/>
+                            <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="Gray"
+                                       Text="Zahlungen mit Konfidenz >= Schwelle werden automatisch zugeordnet"/>
+
+                            <Button Grid.Row="1" Grid.ColumnSpan="2" Content="Zahlungsabgleich-Einstellungen speichern"
+                                    Click="ZahlungsabgleichEinstellungenSpeichern_Click" Margin="0,15,0,0" Padding="15,8"/>
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

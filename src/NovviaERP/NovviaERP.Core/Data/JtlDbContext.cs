@@ -1657,5 +1657,81 @@ namespace NovviaERP.Core.Data
         }
 
         #endregion
+
+        #region NOVVIA Einstellungen (FirmaEinstellung)
+
+        /// <summary>Liest eine Einstellung aus NOVVIA.FirmaEinstellung</summary>
+        public async Task<string?> GetEinstellungAsync(string schluessel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleOrDefaultAsync<string>(
+                "SELECT cWert FROM NOVVIA.FirmaEinstellung WHERE cSchluessel = @Schluessel",
+                new { Schluessel = schluessel });
+        }
+
+        /// <summary>Liest eine Einstellung als Integer</summary>
+        public async Task<int> GetEinstellungIntAsync(string schluessel, int defaultWert = 0)
+        {
+            var wert = await GetEinstellungAsync(schluessel);
+            return int.TryParse(wert, out var result) ? result : defaultWert;
+        }
+
+        /// <summary>Liest eine Einstellung als Decimal</summary>
+        public async Task<decimal> GetEinstellungDecimalAsync(string schluessel, decimal defaultWert = 0)
+        {
+            var wert = await GetEinstellungAsync(schluessel);
+            return decimal.TryParse(wert, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var result) ? result : defaultWert;
+        }
+
+        /// <summary>Liest eine Einstellung als Boolean</summary>
+        public async Task<bool> GetEinstellungBoolAsync(string schluessel, bool defaultWert = false)
+        {
+            var wert = await GetEinstellungAsync(schluessel);
+            if (string.IsNullOrEmpty(wert)) return defaultWert;
+            return wert == "1" || wert.Equals("true", StringComparison.OrdinalIgnoreCase) || wert.Equals("ja", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Speichert oder aktualisiert eine Einstellung</summary>
+        public async Task SetEinstellungAsync(string schluessel, string wert, string? beschreibung = null, int? kBenutzer = null)
+        {
+            var conn = await GetConnectionAsync();
+            var exists = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM NOVVIA.FirmaEinstellung WHERE cSchluessel = @Schluessel",
+                new { Schluessel = schluessel }) > 0;
+
+            if (exists)
+            {
+                await conn.ExecuteAsync(@"UPDATE NOVVIA.FirmaEinstellung
+                    SET cWert = @Wert, dGeaendert = GETDATE(), kGeaendertVon = @Benutzer
+                    WHERE cSchluessel = @Schluessel",
+                    new { Schluessel = schluessel, Wert = wert, Benutzer = kBenutzer });
+            }
+            else
+            {
+                await conn.ExecuteAsync(@"INSERT INTO NOVVIA.FirmaEinstellung (cSchluessel, cWert, cBeschreibung, dGeaendert, kGeaendertVon)
+                    VALUES (@Schluessel, @Wert, @Beschreibung, GETDATE(), @Benutzer)",
+                    new { Schluessel = schluessel, Wert = wert, Beschreibung = beschreibung, Benutzer = kBenutzer });
+            }
+        }
+
+        /// <summary>Alle Einstellungen abrufen</summary>
+        public async Task<IEnumerable<NovviaEinstellung>> GetAlleEinstellungenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<NovviaEinstellung>(
+                "SELECT cSchluessel, cWert, cBeschreibung, dGeaendert, kGeaendertVon FROM NOVVIA.FirmaEinstellung ORDER BY cSchluessel");
+        }
+
+        public class NovviaEinstellung
+        {
+            public string CSchluessel { get; set; } = "";
+            public string? CWert { get; set; }
+            public string? CBeschreibung { get; set; }
+            public DateTime? DGeaendert { get; set; }
+            public int? KGeaendertVon { get; set; }
+        }
+
+        #endregion
     }
 }

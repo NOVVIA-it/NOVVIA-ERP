@@ -146,6 +146,7 @@ namespace NovviaERP.Core.Services
             string? entityNr = null,
             string? beschreibung = null,
             string? details = null,
+            decimal? betragBrutto = null,
             int? kBenutzer = null,
             int severity = 0)
         {
@@ -158,6 +159,7 @@ namespace NovviaERP.Core.Services
                 entityNr: entityNr,
                 beschreibung: beschreibung,
                 details: details,
+                betragBrutto: betragBrutto,
                 kBenutzer: kBenutzer,
                 severity: severity);
         }

@@ -48,6 +48,7 @@ namespace NovviaERP.WPF.Views
                 await LadeKontenAsync();
                 await LadeEigeneFelderAsync();
                 LadeZahlungsanbieterAsync();
+                await LadeZahlungsabgleichEinstellungenAsync();
                 await LadeWooShopsAsync();
                 await LadeLogsAsync();
             }
@@ -741,6 +742,48 @@ namespace NovviaERP.WPF.Views
 
             txtPaymentStatus.Text = "Test abgeschlossen";
             MessageBox.Show(results.ToString(), "Verbindungstest", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private async System.Threading.Tasks.Task LadeZahlungsabgleichEinstellungenAsync()
+        {
+            try
+            {
+                var zahlungsabgleichService = App.Services.GetService<ZahlungsabgleichService>();
+                if (zahlungsabgleichService != null)
+                {
+                    var schwelle = await zahlungsabgleichService.GetAutoMatchSchwelleAsync();
+                    txtAutoMatchSchwelle.Text = schwelle.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Zahlungsabgleich-Einstellungen laden: {ex.Message}");
+            }
+        }
+
+        private async void ZahlungsabgleichEinstellungenSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!int.TryParse(txtAutoMatchSchwelle.Text, out var schwelle) || schwelle < 0 || schwelle > 100)
+                {
+                    MessageBox.Show("Bitte geben Sie eine gueltige Schwelle zwischen 0 und 100 ein.", "Hinweis",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var zahlungsabgleichService = App.Services.GetService<ZahlungsabgleichService>();
+                if (zahlungsabgleichService != null)
+                {
+                    await zahlungsabgleichService.SetAutoMatchSchwelleAsync(schwelle);
+                    MessageBox.Show($"Auto-Match Schwelle wurde auf {schwelle}% gesetzt.", "Erfolg",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         #endregion
