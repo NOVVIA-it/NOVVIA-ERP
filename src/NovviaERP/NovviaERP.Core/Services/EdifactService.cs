@@ -32,6 +32,11 @@ namespace NovviaERP.Core.Services
             _db = db;
         }
 
+        public EdifactService(string connectionString)
+        {
+            _db = new JtlDbContext(connectionString);
+        }
+
         public void Dispose() { }
 
         #region ORDERS - Bestellungen empfangen
@@ -320,7 +325,7 @@ namespace NovviaERP.Core.Services
                 sb.Append("UNA:+.? '");
 
                 // UNB - Interchange Header
-                sb.Append($"UNB+UNOA:2+{partner.EigeneGLN}:14+{partner.PartnerGLN}:14+{now:yyMMdd}:{now:HHmm}+{interchangeRef}'");
+                sb.Append($"UNB+UNOA:2+{partner.CEigeneGLN}:14+{partner.CPartnerGLN}:14+{now:yyMMdd}:{now:HHmm}+{interchangeRef}'");
 
                 // UNH - Message Header
                 sb.Append($"UNH+{messageRef}+ORDRSP:D:96A:UN'");
@@ -345,7 +350,7 @@ namespace NovviaERP.Core.Services
                 sb.Append($"NAD+BY+{auftrag.cGLN ?? ""}::9'");
 
                 // NAD - Supplier
-                sb.Append($"NAD+SU+{partner.EigeneGLN}::9'");
+                sb.Append($"NAD+SU+{partner.CEigeneGLN}::9'");
 
                 // Positionen
                 int segCount = 7;
@@ -454,7 +459,7 @@ namespace NovviaERP.Core.Services
                 sb.Append("UNA:+.? '");
 
                 // UNB
-                sb.Append($"UNB+UNOA:2+{partner.EigeneGLN}:14+{partner.PartnerGLN}:14+{now:yyMMdd}:{now:HHmm}+{interchangeRef}'");
+                sb.Append($"UNB+UNOA:2+{partner.CEigeneGLN}:14+{partner.CPartnerGLN}:14+{now:yyMMdd}:{now:HHmm}+{interchangeRef}'");
 
                 // UNH
                 sb.Append($"UNH+{messageRef}+DESADV:D:96A:UN'");
@@ -472,7 +477,7 @@ namespace NovviaERP.Core.Services
                 sb.Append($"NAD+CN+{lieferschein.cGLN ?? ""}::9++{CleanEdifact(lieferschein.KundeName ?? "")}+{CleanEdifact(lieferschein.LieferStrasse ?? "")}+{CleanEdifact(lieferschein.LieferOrt ?? "")}++{lieferschein.LieferPLZ ?? ""}'");
 
                 // NAD - Consignor (Versender)
-                sb.Append($"NAD+CZ+{partner.EigeneGLN}::9'");
+                sb.Append($"NAD+CZ+{partner.CEigeneGLN}::9'");
 
                 int segCount = 7;
 
@@ -578,7 +583,7 @@ namespace NovviaERP.Core.Services
                 sb.Append("UNA:+.? '");
 
                 // UNB
-                sb.Append($"UNB+UNOA:2+{partner.EigeneGLN}:14+{partner.PartnerGLN}:14+{now:yyMMdd}:{now:HHmm}+{interchangeRef}'");
+                sb.Append($"UNB+UNOA:2+{partner.CEigeneGLN}:14+{partner.CPartnerGLN}:14+{now:yyMMdd}:{now:HHmm}+{interchangeRef}'");
 
                 // UNH
                 sb.Append($"UNH+{messageRef}+INVOIC:D:96A:UN'");
@@ -596,7 +601,7 @@ namespace NovviaERP.Core.Services
                 sb.Append($"NAD+BY+{rechnung.cGLN ?? ""}::9++{CleanEdifact(rechnung.KundeName ?? "")}+{CleanEdifact(rechnung.cStrasse ?? "")}+{CleanEdifact(rechnung.cOrt ?? "")}++{rechnung.cPLZ ?? ""}+{rechnung.cLand ?? "DE"}'");
 
                 // NAD - Supplier
-                sb.Append($"NAD+SU+{partner.EigeneGLN}::9++{CleanEdifact(partner.EigeneFirma ?? "")}+{CleanEdifact(partner.EigeneStrasse ?? "")}+{CleanEdifact(partner.EigeneOrt ?? "")}++{partner.EigenePLZ ?? ""}+DE'");
+                sb.Append($"NAD+SU+{partner.CEigeneGLN}::9++{CleanEdifact(partner.CEigeneFirma ?? "")}+{CleanEdifact(partner.CEigeneStrasse ?? "")}+{CleanEdifact(partner.CEigeneOrt ?? "")}++{partner.CEigenePLZ ?? ""}+DE'");
 
                 // RFF - VAT Number
                 if (!string.IsNullOrEmpty(rechnung.cUstId))
@@ -697,24 +702,75 @@ namespace NovviaERP.Core.Services
                     INSERT INTO NOVVIA.EdifactPartner
                     (cName, cPartnerGLN, cEigeneGLN, cEigeneFirma, cEigeneStrasse, cEigenePLZ, cEigeneOrt,
                      cProtokoll, cHost, nPort, cBenutzer, cPasswort, cVerzeichnisIn, cVerzeichnisOut, nAktiv)
-                    VALUES (@Name, @PartnerGLN, @EigeneGLN, @EigeneFirma, @EigeneStrasse, @EigenePLZ, @EigeneOrt,
-                            @Protokoll, @Host, @Port, @Benutzer, @Passwort, @VerzeichnisIn, @VerzeichnisOut, @Aktiv);
+                    VALUES (@CName, @CPartnerGLN, @CEigeneGLN, @CEigeneFirma, @CEigeneStrasse, @CEigenePLZ, @CEigeneOrt,
+                            @CProtokoll, @CHost, @NPort, @CBenutzer, @CPasswort, @CVerzeichnisIn, @CVerzeichnisOut, @NAktiv);
                     SELECT SCOPE_IDENTITY()", partner);
             }
             else
             {
                 await conn.ExecuteAsync(@"
                     UPDATE NOVVIA.EdifactPartner SET
-                        cName = @Name, cPartnerGLN = @PartnerGLN, cEigeneGLN = @EigeneGLN,
-                        cEigeneFirma = @EigeneFirma, cEigeneStrasse = @EigeneStrasse,
-                        cEigenePLZ = @EigenePLZ, cEigeneOrt = @EigeneOrt,
-                        cProtokoll = @Protokoll, cHost = @Host, nPort = @Port,
-                        cBenutzer = @Benutzer, cPasswort = @Passwort,
-                        cVerzeichnisIn = @VerzeichnisIn, cVerzeichnisOut = @VerzeichnisOut,
-                        nAktiv = @Aktiv
+                        cName = @CName, cPartnerGLN = @CPartnerGLN, cEigeneGLN = @CEigeneGLN,
+                        cEigeneFirma = @CEigeneFirma, cEigeneStrasse = @CEigeneStrasse,
+                        cEigenePLZ = @CEigenePLZ, cEigeneOrt = @CEigeneOrt,
+                        cProtokoll = @CProtokoll, cHost = @CHost, nPort = @NPort,
+                        cBenutzer = @CBenutzer, cPasswort = @CPasswort,
+                        cVerzeichnisIn = @CVerzeichnisIn, cVerzeichnisOut = @CVerzeichnisOut,
+                        nAktiv = @NAktiv
                     WHERE kPartner = @KPartner", partner);
                 return partner.KPartner;
             }
+        }
+
+        /// <summary>
+        /// Loescht einen EDIFACT-Partner
+        /// </summary>
+        public async Task DeletePartnerAsync(int partnerId)
+        {
+            var conn = await _db.GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM NOVVIA.EdifactPartner WHERE kPartner = @Id", new { Id = partnerId });
+        }
+
+        /// <summary>
+        /// Testet die Verbindung zu einem Partner
+        /// </summary>
+        public async Task<bool> TestConnectionAsync(int partnerId)
+        {
+            var conn = await _db.GetConnectionAsync();
+            var partner = await conn.QueryFirstOrDefaultAsync<EdifactPartner>(
+                "SELECT * FROM NOVVIA.EdifactPartner WHERE kPartner = @Id", new { Id = partnerId });
+
+            if (partner == null) return false;
+
+            // TODO: Echte Verbindungspruefung je nach Protokoll
+            // Fuer jetzt: Dummy-Implementierung
+            return !string.IsNullOrEmpty(partner.CHost);
+        }
+
+        /// <summary>
+        /// Holt Log-Eintraege mit optionalen Filtern
+        /// </summary>
+        public async Task<IEnumerable<EdifactLogEntry>> GetLogAsync(int? partnerId = null, string? richtung = null, string? typ = null, string? status = null)
+        {
+            var conn = await _db.GetConnectionAsync();
+            var sql = @"
+                SELECT l.*, p.cName AS PartnerName
+                FROM NOVVIA.EdifactLog l
+                LEFT JOIN NOVVIA.EdifactPartner p ON l.kPartner = p.kPartner
+                WHERE 1=1";
+
+            if (partnerId.HasValue)
+                sql += " AND l.kPartner = @PartnerId";
+            if (!string.IsNullOrEmpty(richtung))
+                sql += " AND l.cRichtung = @Richtung";
+            if (!string.IsNullOrEmpty(typ))
+                sql += " AND l.cNachrichtentyp = @Typ";
+            if (!string.IsNullOrEmpty(status))
+                sql += " AND l.cStatus = @Status";
+
+            sql += " ORDER BY l.dErstellt DESC";
+
+            return await conn.QueryAsync<EdifactLogEntry>(sql, new { PartnerId = partnerId, Richtung = richtung, Typ = typ, Status = status });
         }
 
         #endregion
@@ -952,21 +1008,21 @@ namespace NovviaERP.Core.Services
     public class EdifactPartner
     {
         public int KPartner { get; set; }
-        public string Name { get; set; } = "";
-        public string PartnerGLN { get; set; } = "";
-        public string EigeneGLN { get; set; } = "";
-        public string? EigeneFirma { get; set; }
-        public string? EigeneStrasse { get; set; }
-        public string? EigenePLZ { get; set; }
-        public string? EigeneOrt { get; set; }
-        public string Protokoll { get; set; } = "SFTP"; // SFTP, FTP, AS2, Verzeichnis
-        public string? Host { get; set; }
-        public int Port { get; set; } = 22;
-        public string? Benutzer { get; set; }
-        public string? Passwort { get; set; }
-        public string? VerzeichnisIn { get; set; }
-        public string? VerzeichnisOut { get; set; }
-        public bool Aktiv { get; set; } = true;
+        public string CName { get; set; } = "";
+        public string CPartnerGLN { get; set; } = "";
+        public string CEigeneGLN { get; set; } = "";
+        public string? CEigeneFirma { get; set; }
+        public string? CEigeneStrasse { get; set; }
+        public string? CEigenePLZ { get; set; }
+        public string? CEigeneOrt { get; set; }
+        public string CProtokoll { get; set; } = "SFTP"; // SFTP, FTP, AS2, Verzeichnis
+        public string? CHost { get; set; }
+        public int NPort { get; set; } = 22;
+        public string? CBenutzer { get; set; }
+        public string? CPasswort { get; set; }
+        public string? CVerzeichnisIn { get; set; }
+        public string? CVerzeichnisOut { get; set; }
+        public bool NAktiv { get; set; } = true;
     }
 
     public class EdifactOrder
@@ -1016,6 +1072,25 @@ namespace NovviaERP.Core.Services
         public bool Erfolg { get; set; }
         public int ImportierteNachrichten { get; set; }
         public List<string> FehlerNachrichten { get; set; } = new();
+    }
+
+    public class EdifactLogEntry
+    {
+        public int KLog { get; set; }
+        public int KPartner { get; set; }
+        public string? PartnerName { get; set; }
+        public string CRichtung { get; set; } = "";
+        public string CNachrichtentyp { get; set; } = "";
+        public string? CInterchangeRef { get; set; }
+        public string? CMessageRef { get; set; }
+        public string? CDokumentNr { get; set; }
+        public string? CDateiname { get; set; }
+        public string CStatus { get; set; } = "NEU";
+        public string? CFehler { get; set; }
+        public int? KBestellung { get; set; }
+        public int? KRechnung { get; set; }
+        public int? KLieferschein { get; set; }
+        public DateTime DErstellt { get; set; }
     }
 
     #endregion

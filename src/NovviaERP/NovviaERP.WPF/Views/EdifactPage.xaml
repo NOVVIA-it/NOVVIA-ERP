@@ -1,0 +1,236 @@
+<UserControl x:Class="NovviaERP.WPF.Views.EdifactPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#f5f5f5">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="20,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="EDIFACT" FontSize="24" FontWeight="SemiBold" Foreground="#333"/>
+                    <TextBlock Text="Pharma-Grosshandel EDI" FontSize="14" Foreground="#888" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Nachrichten abrufen" Click="Abrufen_Click" Padding="15,8" Margin="0,0,10,0"
+                            Background="#4CAF50" Foreground="White" BorderThickness="0"/>
+                    <Button Content="+ Neuer Partner" Click="NeuerPartner_Click" Padding="15,8"
+                            Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- TabControl -->
+        <TabControl Grid.Row="1" Margin="20,15,20,20" BorderThickness="1" BorderBrush="#ddd">
+
+            <!-- Tab: Partner -->
+            <TabItem Header="Partner" Padding="15,8">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Partner-Toolbar -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="EDI-Partner konfigurieren" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Button Content="Verbindung testen" Click="TestVerbindung_Click" Padding="10,5" Margin="20,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Partner-Grid -->
+                    <DataGrid x:Name="dgPartner" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" GridLinesVisibility="Horizontal"
+                              BorderThickness="1" BorderBrush="#ddd" RowBackground="White" AlternatingRowBackground="#fafafa"
+                              MouseDoubleClick="Partner_DoubleClick" SelectionChanged="Partner_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="180"/>
+                            <DataGridTextColumn Header="Partner-GLN" Binding="{Binding CPartnerGLN}" Width="140"/>
+                            <DataGridTextColumn Header="Eigene GLN" Binding="{Binding CEigeneGLN}" Width="140"/>
+                            <DataGridTextColumn Header="Protokoll" Binding="{Binding CProtokoll}" Width="80"/>
+                            <DataGridTextColumn Header="Host" Binding="{Binding CHost}" Width="200"/>
+                            <DataGridTextColumn Header="Verz. In" Binding="{Binding CVerzeichnisIn}" Width="120"/>
+                            <DataGridTextColumn Header="Verz. Out" Binding="{Binding CVerzeichnisOut}" Width="120"/>
+                            <DataGridTemplateColumn Header="Aktiv" Width="60">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Ellipse Width="12" Height="12" HorizontalAlignment="Center"
+                                                 Fill="{Binding NAktiv, Converter={StaticResource BoolToColorConverter}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Partner-Buttons -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button x:Name="btnPartnerBearbeiten" Content="Bearbeiten" Click="PartnerBearbeiten_Click" Padding="12,5" IsEnabled="False"/>
+                        <Button x:Name="btnPartnerLoeschen" Content="Loeschen" Click="PartnerLoeschen_Click" Padding="12,5" Margin="10,0,0,0" IsEnabled="False"
+                                Background="#dc3545" Foreground="White" BorderThickness="0"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab: Nachrichten-Log -->
+            <TabItem Header="Nachrichten-Log" Padding="15,8">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Log-Filter -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Partner:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <ComboBox x:Name="cmbLogPartner" Width="180" Height="28" SelectionChanged="LogFilter_Changed"
+                                  DisplayMemberPath="CName" SelectedValuePath="KPartner"/>
+
+                        <TextBlock Text="Richtung:" VerticalAlignment="Center" Margin="20,0,8,0"/>
+                        <ComboBox x:Name="cmbLogRichtung" Width="100" Height="28" SelectionChanged="LogFilter_Changed">
+                            <ComboBoxItem Content="Alle" IsSelected="True"/>
+                            <ComboBoxItem Content="IN" Tag="IN"/>
+                            <ComboBoxItem Content="OUT" Tag="OUT"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Typ:" VerticalAlignment="Center" Margin="20,0,8,0"/>
+                        <ComboBox x:Name="cmbLogTyp" Width="120" Height="28" SelectionChanged="LogFilter_Changed">
+                            <ComboBoxItem Content="Alle" IsSelected="True"/>
+                            <ComboBoxItem Content="ORDERS" Tag="ORDERS"/>
+                            <ComboBoxItem Content="ORDRSP" Tag="ORDRSP"/>
+                            <ComboBoxItem Content="DESADV" Tag="DESADV"/>
+                            <ComboBoxItem Content="INVOIC" Tag="INVOIC"/>
+                        </ComboBox>
+
+                        <TextBlock Text="Status:" VerticalAlignment="Center" Margin="20,0,8,0"/>
+                        <ComboBox x:Name="cmbLogStatus" Width="120" Height="28" SelectionChanged="LogFilter_Changed">
+                            <ComboBoxItem Content="Alle" IsSelected="True"/>
+                            <ComboBoxItem Content="NEU" Tag="NEU"/>
+                            <ComboBoxItem Content="VERARBEITET" Tag="VERARBEITET"/>
+                            <ComboBoxItem Content="FEHLER" Tag="FEHLER"/>
+                        </ComboBox>
+
+                        <Button Content="Aktualisieren" Click="LogAktualisieren_Click" Padding="12,5" Margin="20,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Log-Grid -->
+                    <DataGrid x:Name="dgLog" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" GridLinesVisibility="Horizontal"
+                              BorderThickness="1" BorderBrush="#ddd" RowBackground="White" AlternatingRowBackground="#fafafa"
+                              MouseDoubleClick="Log_DoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy HH:mm}" Width="130"/>
+                            <DataGridTextColumn Header="Partner" Binding="{Binding PartnerName}" Width="150"/>
+                            <DataGridTextColumn Header="Richtung" Binding="{Binding CRichtung}" Width="70"/>
+                            <DataGridTextColumn Header="Typ" Binding="{Binding CNachrichtentyp}" Width="80"/>
+                            <DataGridTextColumn Header="Interchange-Ref" Binding="{Binding CInterchangeRef}" Width="120"/>
+                            <DataGridTextColumn Header="Dokument-Nr" Binding="{Binding CDokumentNr}" Width="120"/>
+                            <DataGridTextColumn Header="Datei" Binding="{Binding CDateiname}" Width="200"/>
+                            <DataGridTemplateColumn Header="Status" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="3" Padding="6,2" HorizontalAlignment="Left">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#ffc107"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CStatus}" Value="VERARBEITET">
+                                                            <Setter Property="Background" Value="#28a745"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding CStatus}" Value="FEHLER">
+                                                            <Setter Property="Background" Value="#dc3545"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding CStatus}" Foreground="White" FontSize="11"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Fehler" Binding="{Binding CFehler}" Width="250"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab: Import/Export -->
+            <TabItem Header="Import / Export" Padding="15,8">
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Import -->
+                    <Border BorderBrush="#ddd" BorderThickness="1" Padding="15" CornerRadius="4">
+                        <StackPanel>
+                            <TextBlock Text="ORDERS importieren" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                            <TextBlock Text="Partner:" Margin="0,0,0,5"/>
+                            <ComboBox x:Name="cmbImportPartner" Height="28" Margin="0,0,0,15"
+                                      DisplayMemberPath="CName" SelectedValuePath="KPartner"/>
+
+                            <TextBlock Text="EDIFACT-Datei:" Margin="0,0,0,5"/>
+                            <Grid Margin="0,0,0,15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="txtImportDatei" IsReadOnly="True" Height="28" Padding="5"/>
+                                <Button Grid.Column="1" Content="..." Width="40" Click="ImportDateiWaehlen_Click" Margin="5,0,0,0"/>
+                            </Grid>
+
+                            <Button Content="ORDERS importieren" Click="ImportOrders_Click" Padding="15,10"
+                                    Background="#0078D4" Foreground="White" BorderThickness="0" HorizontalAlignment="Left"/>
+
+                            <TextBlock x:Name="txtImportStatus" Text="" Margin="0,15,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Export -->
+                    <Border Grid.Column="2" BorderBrush="#ddd" BorderThickness="1" Padding="15" CornerRadius="4">
+                        <StackPanel>
+                            <TextBlock Text="Nachrichten exportieren" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                            <TextBlock Text="Partner:" Margin="0,0,0,5"/>
+                            <ComboBox x:Name="cmbExportPartner" Height="28" Margin="0,0,0,15"
+                                      DisplayMemberPath="CName" SelectedValuePath="KPartner"/>
+
+                            <TextBlock Text="Nachrichtentyp:" Margin="0,0,0,5"/>
+                            <ComboBox x:Name="cmbExportTyp" Height="28" Margin="0,0,0,15">
+                                <ComboBoxItem Content="ORDRSP - Bestellbestaetigung" Tag="ORDRSP" IsSelected="True"/>
+                                <ComboBoxItem Content="DESADV - Lieferavis" Tag="DESADV"/>
+                                <ComboBoxItem Content="INVOIC - Rechnung" Tag="INVOIC"/>
+                            </ComboBox>
+
+                            <TextBlock Text="Bestellung/Rechnung:" Margin="0,0,0,5"/>
+                            <Grid Margin="0,0,0,15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="txtExportDokument" Height="28" Padding="5"/>
+                                <Button Grid.Column="1" Content="Suchen" Click="ExportDokumentSuchen_Click" Margin="5,0,0,0" Padding="10,0"/>
+                            </Grid>
+
+                            <Button Content="Nachricht generieren" Click="ExportGenerieren_Click" Padding="15,10"
+                                    Background="#4CAF50" Foreground="White" BorderThickness="0" HorizontalAlignment="Left"/>
+
+                            <TextBlock x:Name="txtExportStatus" Text="" Margin="0,15,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+    </Grid>
+</UserControl>

@@ -81,6 +81,7 @@
                     <Button Style="{StaticResource NavButton}" Content="Lieferanten" Click="NavLieferanten_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Bestellungen (Einkauf)" Click="NavLieferantenBestellungen_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Eingangsrechnungen" Click="NavEingangsrechnungen_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="EDIFACT (EDI)" Click="NavEdifact_Click"/>
 
                     <TextBlock Text="LOGISTIK" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
                     <Button Style="{StaticResource NavButton}" Content="Lager" Click="NavLager_Click"/>

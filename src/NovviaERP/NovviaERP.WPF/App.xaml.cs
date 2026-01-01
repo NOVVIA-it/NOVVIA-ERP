@@ -152,6 +152,7 @@ namespace NovviaERP.WPF
             services.AddSingleton(sp => new EinkaufService(ConnectionString!));
             services.AddSingleton(sp => new MSV3Service(ConnectionString!));
             services.AddSingleton(sp => new ABdataService(ConnectionString!));
+            services.AddSingleton(sp => new EdifactService(ConnectionString!));
 
             // Core Service (Kunden, Artikel, Bestellungen)
             services.AddSingleton(sp => new CoreService(ConnectionString!));
@@ -201,6 +202,7 @@ namespace NovviaERP.WPF
             services.AddTransient<EinstellungenView>();
             services.AddTransient<TestView>();
             services.AddTransient<AmeiseView>();
+            services.AddTransient<EdifactPage>();
         }
     }
 }

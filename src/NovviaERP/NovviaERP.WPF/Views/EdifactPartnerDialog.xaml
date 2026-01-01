@@ -1,0 +1,141 @@
+<Window x:Class="NovviaERP.WPF.Views.EdifactPartnerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="EDIFACT Partner" Width="500" Height="550"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Grunddaten -->
+                <TextBlock Text="Grunddaten" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,10"/>
+
+                <TextBlock Text="Name:" Margin="0,0,0,5"/>
+                <TextBox x:Name="txtName" Height="28" Padding="5" Margin="0,0,0,10"/>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Partner-GLN:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtPartnerGLN" Height="28" Padding="5"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Eigene GLN:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtEigeneGLN" Height="28" Padding="5"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Eigene Firma:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtEigeneFirma" Height="28" Padding="5"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Eigene Strasse:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtEigeneStrasse" Height="28" Padding="5"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="PLZ:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtEigenePLZ" Height="28" Padding="5"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Ort:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtEigeneOrt" Height="28" Padding="5"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Verbindung -->
+                <TextBlock Text="Verbindung" FontWeight="SemiBold" FontSize="14" Margin="0,10,0,10"/>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="80"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Protokoll:" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="cmbProtokoll" Height="28">
+                            <ComboBoxItem Content="SFTP" IsSelected="True"/>
+                            <ComboBoxItem Content="FTP"/>
+                            <ComboBoxItem Content="AS2"/>
+                            <ComboBoxItem Content="Verzeichnis"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Host:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtHost" Height="28" Padding="5"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Port:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtPort" Height="28" Padding="5" Text="22"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Benutzer:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtBenutzer" Height="28" Padding="5"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Passwort:" Margin="0,0,0,5"/>
+                        <PasswordBox x:Name="txtPasswort" Height="28" Padding="5"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Eingangsverzeichnis:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtVerzeichnisIn" Height="28" Padding="5" Text="/in"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Ausgangsverzeichnis:" Margin="0,0,0,5"/>
+                        <TextBox x:Name="txtVerzeichnisOut" Height="28" Padding="5" Text="/out"/>
+                    </StackPanel>
+                </Grid>
+
+                <CheckBox x:Name="chkAktiv" Content="Partner aktiv" IsChecked="True" Margin="0,10,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Abbrechen" Width="100" Padding="10,8" Click="Abbrechen_Click"/>
+            <Button Content="Speichern" Width="100" Padding="10,8" Margin="10,0,0,0"
+                    Background="#0078D4" Foreground="White" BorderThickness="0" Click="Speichern_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
