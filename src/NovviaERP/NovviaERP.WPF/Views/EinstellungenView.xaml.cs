@@ -547,8 +547,6 @@ namespace NovviaERP.WPF.Views
 
                 // Optionen
                 chkLagerAktiv.IsChecked = lager.NAktiv;
-                chkLagerBestandGesperrt.IsChecked = lager.NBestandGesperrt;
-                chkLagerAuslieferungGesperrt.IsChecked = lager.NAuslieferungGesperrt;
 
                 // Adresse (aus erweiterten Daten laden, falls vorhanden)
                 txtLagerStrasse.Text = lager.CStrasse ?? "";
@@ -572,8 +570,6 @@ namespace NovviaERP.WPF.Views
             txtLagerKuerzel.Text = "";
             cmbLagerTyp.SelectedIndex = 0;
             chkLagerAktiv.IsChecked = true;
-            chkLagerBestandGesperrt.IsChecked = false;
-            chkLagerAuslieferungGesperrt.IsChecked = false;
             txtLagerStrasse.Text = "";
             txtLagerPLZ.Text = "";
             txtLagerOrt.Text = "";
@@ -649,9 +645,6 @@ namespace NovviaERP.WPF.Views
 
         private async void LagerSpeichern_Click(object sender, RoutedEventArgs e)
         {
-            // Debug-Info anzeigen
-            System.Diagnostics.Debug.WriteLine($"LagerSpeichern_Click: _selectedLagerId = {_selectedLagerId}, Name = '{txtLagerName.Text}'");
-
             // Validierung
             if (string.IsNullOrWhiteSpace(txtLagerName.Text))
             {
@@ -681,9 +674,7 @@ namespace NovviaERP.WPF.Views
                 }
                 else
                 {
-                    // Bestehendes Lager aktualisieren mit allen Feldern (direkt in tWarenLager)
-                    System.Diagnostics.Debug.WriteLine($"UPDATE Lager: ID={_selectedLagerId.Value}, Name={txtLagerName.Text.Trim()}, Strasse={txtLagerStrasse.Text.Trim()}");
-
+                    // Bestehendes Lager aktualisieren
                     var rowsAffected = await _core.UpdateWarenlagerAsync(
                         kWarenLager: _selectedLagerId.Value,
                         name: txtLagerName.Text.Trim(),
@@ -698,7 +689,7 @@ namespace NovviaERP.WPF.Views
                         telefon: txtLagerTelefon.Text.Trim(),
                         email: txtLagerEmail.Text.Trim());
 
-                    txtLagerStatus.Text = $"Lager '{txtLagerName.Text}' gespeichert (ID: {_selectedLagerId.Value}, Zeilen: {rowsAffected})!";
+                    txtLagerStatus.Text = $"Lager '{txtLagerName.Text}' gespeichert!";
                 }
 
                 txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);

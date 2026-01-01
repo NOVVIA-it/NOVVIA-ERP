@@ -397,16 +397,10 @@
                                 </ComboBox>
                             </Grid>
 
-                            <!-- Optionen (JTL-Style) -->
+                            <!-- Optionen -->
                             <TextBlock Text="Optionen" FontSize="16" FontWeight="SemiBold" Margin="0,25,0,15"/>
                             <StackPanel>
                                 <CheckBox x:Name="chkLagerAktiv" Content="Lager ist aktiv" IsChecked="True" Margin="0,0,0,8"/>
-                                <CheckBox x:Name="chkLagerBestandGesperrt" Content="Fuer den verfuegbaren Bestand sperren" Margin="0,0,0,4"/>
-                                <TextBlock Text="Die Bestaende stehen nicht im Onlineshop und auf Marktplaetzen zur Verfuegung."
-                                           Foreground="Gray" FontSize="11" Margin="20,0,0,8"/>
-                                <CheckBox x:Name="chkLagerAuslieferungGesperrt" Content="Fuer Auslieferung sperren" Margin="0,0,0,4"/>
-                                <TextBlock Text="Die Bestaende koennen nicht fuer Auftraege verwendet werden."
-                                           Foreground="Gray" FontSize="11" Margin="20,0,0,8"/>
                             </StackPanel>
 
                             <!-- Adresse -->

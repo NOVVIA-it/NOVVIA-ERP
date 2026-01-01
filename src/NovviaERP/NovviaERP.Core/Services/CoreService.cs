@@ -3658,7 +3658,7 @@ namespace NovviaERP.Core.Services
             string? ansprechpartnerName = null, string? telefon = null, string? email = null)
         {
             var conn = await GetConnectionAsync();
-            var rowsAffected = await conn.ExecuteAsync(@"
+            return await conn.ExecuteAsync(@"
                 UPDATE tWarenLager
                 SET cName = @Name,
                     cKuerzel = @Kuerzel,
@@ -3687,7 +3687,6 @@ namespace NovviaERP.Core.Services
                     Telefon = telefon ?? "",
                     Email = email ?? ""
                 });
-            return rowsAffected;
         }
 
         /// <summary>
@@ -3743,11 +3742,6 @@ namespace NovviaERP.Core.Services
             public string? CAnsprechpartner { get; set; }  // Zusammengesetzt aus Vorname+Name
             public string? CTelefon { get; set; }
             public string? CEmail { get; set; }
-
-            // JTL-Style Optionen (Flags - in tWarenLager nicht direkt vorhanden,
-            // aber wir koennten sie in NOVVIA.LagerEinstellung speichern)
-            public bool NBestandGesperrt { get; set; }
-            public bool NAuslieferungGesperrt { get; set; }
         }
 
         /// <summary>
