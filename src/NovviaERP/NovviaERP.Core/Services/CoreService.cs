@@ -3653,24 +3653,24 @@ namespace NovviaERP.Core.Services
         /// <summary>
         /// Warenlager aktualisieren (JTL-Style mit Adresse)
         /// </summary>
-        public async Task UpdateWarenlagerAsync(int kWarenLager, string name, string kuerzel, bool aktiv,
+        public async Task<int> UpdateWarenlagerAsync(int kWarenLager, string name, string kuerzel, bool aktiv,
             string? lagerTyp = null, string? strasse = null, string? plz = null, string? ort = null, string? land = null,
             string? ansprechpartnerName = null, string? telefon = null, string? email = null)
         {
             var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync(@"
+            var rowsAffected = await conn.ExecuteAsync(@"
                 UPDATE tWarenLager
                 SET cName = @Name,
                     cKuerzel = @Kuerzel,
                     nAktiv = @Aktiv,
-                    cLagerTyp = COALESCE(@LagerTyp, cLagerTyp),
-                    cStrasse = COALESCE(@Strasse, cStrasse),
-                    cPLZ = COALESCE(@PLZ, cPLZ),
-                    cOrt = COALESCE(@Ort, cOrt),
-                    cLand = COALESCE(@Land, cLand),
-                    cAnsprechpartnerName = COALESCE(@AnsprechpartnerName, cAnsprechpartnerName),
-                    cAnsprechpartnerTel = COALESCE(@Telefon, cAnsprechpartnerTel),
-                    cAnsprechpartnerEMail = COALESCE(@Email, cAnsprechpartnerEMail)
+                    cLagerTyp = @LagerTyp,
+                    cStrasse = @Strasse,
+                    cPLZ = @PLZ,
+                    cOrt = @Ort,
+                    cLand = @Land,
+                    cAnsprechpartnerName = @AnsprechpartnerName,
+                    cAnsprechpartnerTel = @Telefon,
+                    cAnsprechpartnerEMail = @Email
                 WHERE kWarenLager = @Id",
                 new
                 {
@@ -3678,15 +3678,16 @@ namespace NovviaERP.Core.Services
                     Name = name,
                     Kuerzel = kuerzel,
                     Aktiv = aktiv ? 1 : 0,
-                    LagerTyp = lagerTyp,
-                    Strasse = strasse,
-                    PLZ = plz,
-                    Ort = ort,
-                    Land = land,
-                    AnsprechpartnerName = ansprechpartnerName,
-                    Telefon = telefon,
-                    Email = email
+                    LagerTyp = lagerTyp ?? "Standard",
+                    Strasse = strasse ?? "",
+                    PLZ = plz ?? "",
+                    Ort = ort ?? "",
+                    Land = land ?? "",
+                    AnsprechpartnerName = ansprechpartnerName ?? "",
+                    Telefon = telefon ?? "",
+                    Email = email ?? ""
                 });
+            return rowsAffected;
         }
 
         /// <summary>

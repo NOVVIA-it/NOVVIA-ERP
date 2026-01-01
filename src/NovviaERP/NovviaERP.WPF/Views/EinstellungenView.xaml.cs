@@ -682,7 +682,9 @@ namespace NovviaERP.WPF.Views
                 else
                 {
                     // Bestehendes Lager aktualisieren mit allen Feldern (direkt in tWarenLager)
-                    await _core.UpdateWarenlagerAsync(
+                    System.Diagnostics.Debug.WriteLine($"UPDATE Lager: ID={_selectedLagerId.Value}, Name={txtLagerName.Text.Trim()}, Strasse={txtLagerStrasse.Text.Trim()}");
+
+                    var rowsAffected = await _core.UpdateWarenlagerAsync(
                         kWarenLager: _selectedLagerId.Value,
                         name: txtLagerName.Text.Trim(),
                         kuerzel: kuerzel,
@@ -696,7 +698,7 @@ namespace NovviaERP.WPF.Views
                         telefon: txtLagerTelefon.Text.Trim(),
                         email: txtLagerEmail.Text.Trim());
 
-                    txtLagerStatus.Text = $"Lager '{txtLagerName.Text}' gespeichert (ID: {_selectedLagerId.Value})!";
+                    txtLagerStatus.Text = $"Lager '{txtLagerName.Text}' gespeichert (ID: {_selectedLagerId.Value}, Zeilen: {rowsAffected})!";
                 }
 
                 txtLagerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
