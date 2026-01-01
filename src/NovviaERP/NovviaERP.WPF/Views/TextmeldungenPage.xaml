@@ -1,0 +1,170 @@
+<UserControl x:Class="NovviaERP.WPF.Views.TextmeldungenPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#f0f2f5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Textmeldungen" FontSize="28" FontWeight="Bold"/>
+
+        <Grid Grid.Row="1" Margin="0,15,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="400"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Linke Seite: Liste -->
+            <Border Background="White" CornerRadius="5" Padding="0" BorderBrush="#ddd" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="10,10,10,5">
+                        <Button Content="Neu" Click="TextmeldungNeu_Click" Padding="12,6" Margin="0,0,8,0"
+                                Background="#0078D4" Foreground="White"/>
+                        <Button x:Name="btnTextmeldungLoeschen" Content="Loeschen" Click="TextmeldungLoeschen_Click"
+                                Padding="12,6" IsEnabled="False"/>
+                    </StackPanel>
+
+                    <ListBox x:Name="lstTextmeldungen" Grid.Row="1" Margin="10,5,10,10" BorderThickness="0"
+                             SelectionChanged="LstTextmeldungen_SelectionChanged">
+                        <ListBox.Resources>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0078D4"/>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
+                        </ListBox.Resources>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="5,3">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="8" Height="8" CornerRadius="4" Margin="0,0,8,0"
+                                                VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#2196F3"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding NTyp}" Value="1">
+                                                            <Setter Property="Background" Value="#FF9800"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding NTyp}" Value="2">
+                                                            <Setter Property="Background" Value="#f44336"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                        </Border>
+                                        <TextBlock Text="{Binding CTitel}" FontWeight="SemiBold" Width="230"/>
+                                        <TextBlock Text="{Binding TypBezeichnung}" Foreground="Gray" FontSize="11"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding BereicheText}" Foreground="#666" FontSize="11" Margin="16,2,0,0"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="5"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#0078D4"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <!-- Rechte Seite: Details -->
+            <Border Grid.Column="1" Background="White" CornerRadius="5" Margin="15,0,0,0" Padding="20,15"
+                    BorderBrush="#ddd" BorderThickness="1">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Textmeldung bearbeiten" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,15"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="350"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Titel:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtMeldungTitel" Grid.Column="1"/>
+
+                            <TextBlock Text="Typ:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                            <ComboBox x:Name="cmbMeldungTyp" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
+                                <ComboBoxItem Content="Info" Tag="0"/>
+                                <ComboBoxItem Content="Warnung" Tag="1"/>
+                                <ComboBoxItem Content="Wichtig" Tag="2"/>
+                            </ComboBox>
+
+                            <TextBlock Text="Text:" VerticalAlignment="Top" Grid.Row="2" Margin="0,8,0,0"/>
+                            <TextBox x:Name="txtMeldungText" Grid.Row="2" Grid.Column="1" Margin="0,8,0,0"
+                                     TextWrapping="Wrap" AcceptsReturn="True" Height="100"/>
+                        </Grid>
+
+                        <!-- Bereiche -->
+                        <TextBlock Text="Bereiche (wo soll die Meldung angezeigt werden?)" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10"/>
+                        <WrapPanel>
+                            <CheckBox x:Name="chkMeldungEinkauf" Content="Einkauf" Margin="0,0,20,5"/>
+                            <CheckBox x:Name="chkMeldungVerkauf" Content="Verkauf" Margin="0,0,20,5"/>
+                            <CheckBox x:Name="chkMeldungStammdaten" Content="Stammdaten" Margin="0,0,20,5"/>
+                            <CheckBox x:Name="chkMeldungDokumente" Content="Dokumente" Margin="0,0,20,5"/>
+                            <CheckBox x:Name="chkMeldungOnline" Content="Online/Shop" Margin="0,0,20,5"/>
+                        </WrapPanel>
+
+                        <!-- Optionen -->
+                        <TextBlock Text="Optionen" FontSize="14" FontWeight="SemiBold" Margin="0,15,0,10"/>
+                        <StackPanel>
+                            <CheckBox x:Name="chkMeldungAktiv" Content="Meldung ist aktiv" IsChecked="True" Margin="0,0,0,5"/>
+                            <CheckBox x:Name="chkMeldungPopup" Content="Als Popup anzeigen (bei Auswahl)" IsChecked="True" Margin="0,0,0,5"/>
+                        </StackPanel>
+
+                        <!-- Gueltigkeit -->
+                        <TextBlock Text="Gueltigkeit (optional)" FontSize="14" FontWeight="SemiBold" Margin="0,15,0,10"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Von:" VerticalAlignment="Center" Width="40"/>
+                            <DatePicker x:Name="dpMeldungVon" Width="130"/>
+                            <TextBlock Text="Bis:" VerticalAlignment="Center" Width="40" Margin="20,0,0,0"/>
+                            <DatePicker x:Name="dpMeldungBis" Width="130"/>
+                        </StackPanel>
+
+                        <!-- Zugewiesene Entitaeten -->
+                        <TextBlock Text="Zugewiesen an" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10"/>
+                        <ListBox x:Name="lstMeldungEntities" Height="120" IsEnabled="False" BorderBrush="#ddd">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="5,2">
+                                        <TextBlock Text="{Binding CEntityTyp}" FontWeight="SemiBold" Width="80"/>
+                                        <TextBlock Text=" - ID: " Foreground="Gray"/>
+                                        <TextBlock Text="{Binding KEntity}" Foreground="Gray"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Text="Hinweis: Textmeldungen werden direkt in Kunde/Artikel/Lieferant zugewiesen."
+                                   FontSize="11" Foreground="Gray" Margin="0,5,0,0"/>
+
+                        <!-- Speichern -->
+                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                            <Button Content="Speichern" Click="TextmeldungSpeichern_Click" Padding="20,8"
+                                    Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="txtMeldungStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

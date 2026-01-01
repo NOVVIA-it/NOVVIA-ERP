@@ -151,6 +151,7 @@ namespace NovviaERP.WPF.Views
 
                     // Textmeldungen laden
                     await pnlTextmeldungen.LoadAsync("Artikel", _artikelId.Value, "Stammdaten");
+                    await pnlTextmeldungen.ShowPopupAsync("Artikel", _artikelId.Value, "Stammdaten", txtName.Text);
 
                     txtStatus.Text = "Artikel geladen";
                 }

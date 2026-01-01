@@ -84,6 +84,19 @@ namespace NovviaERP.WPF.Controls
         }
 
         /// <summary>
+        /// Loescht die angezeigten Meldungen
+        /// </summary>
+        public void Clear()
+        {
+            _entityTyp = "";
+            _kEntity = 0;
+            _bereich = null;
+            _meldungen = null;
+            lstMeldungen.ItemsSource = null;
+            pnlMeldungen.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>
         /// Zeigt Popup-Meldungen an (fuer Entity-Auswahl)
         /// </summary>
         public async System.Threading.Tasks.Task ShowPopupAsync(string entityTyp, int kEntity, string bereich, string entityName)

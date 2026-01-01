@@ -107,6 +107,8 @@ namespace NovviaERP.WPF.Views
                 await LadeLieferantStammdatenAsync(lieferant.KLieferant);
                 await LadeLieferantMSV3ConfigAsync(lieferant.KLieferant);
                 await LadeLieferantEigeneFelderAsync(lieferant.KLieferant);
+                await pnlTextmeldungen.LoadAsync("Lieferant", lieferant.KLieferant, "Einkauf");
+                await pnlTextmeldungen.ShowPopupAsync("Lieferant", lieferant.KLieferant, "Einkauf", lieferant.CFirma ?? "");
             }
             else
             {
@@ -115,6 +117,7 @@ namespace NovviaERP.WPF.Views
                 _lieferantEigeneFelder.Clear();
                 dgLieferantEigeneFelder.ItemsSource = null;
                 pnlLieferantDetail.Visibility = Visibility.Collapsed;
+                pnlTextmeldungen.Clear();
             }
         }
 

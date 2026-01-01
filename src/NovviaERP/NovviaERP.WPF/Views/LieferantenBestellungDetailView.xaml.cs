@@ -139,7 +139,7 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void Lieferant_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void Lieferant_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (cboLieferant.SelectedItem is CoreService.LieferantRef lieferant)
             {
@@ -151,6 +151,14 @@ namespace NovviaERP.WPF.Views
                 txtLiefTelefon.Text = lieferant.CTelefon;
                 txtLiefFax.Text = lieferant.CFax;
                 txtLiefEmail.Text = lieferant.CEmail;
+
+                // Lieferanten-Textmeldungen laden
+                await pnlTextmeldungen.LoadAsync("Lieferant", lieferant.KLieferant, "Einkauf");
+                await pnlTextmeldungen.ShowPopupAsync("Lieferant", lieferant.KLieferant, "Einkauf", lieferant.CFirma ?? "");
+            }
+            else
+            {
+                pnlTextmeldungen.Clear();
             }
         }
 

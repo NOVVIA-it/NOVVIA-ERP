@@ -297,6 +297,13 @@ namespace NovviaERP.WPF.Views
                 // Kunde ID merken
                 _kundeId = _bestellung.TKunde_KKunde;
 
+                // Kunden-Textmeldungen laden
+                if (_kundeId > 0)
+                {
+                    await pnlTextmeldungen.LoadAsync("Kunde", _kundeId, "Verkauf");
+                    await pnlTextmeldungen.ShowPopupAsync("Kunde", _kundeId, "Verkauf", _bestellung.KundeFirma ?? _bestellung.KundeName ?? "");
+                }
+
                 // Adressen
                 var ra = _bestellung.Rechnungsadresse;
                 var la = _bestellung.Lieferadresse;

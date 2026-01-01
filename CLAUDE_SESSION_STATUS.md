@@ -2,65 +2,71 @@
 
 ## Zuletzt abgeschlossen
 
-### Dashboard KPIs auf 30 Tage - ERLEDIGT
-- Umsatz, Auftraege, Lieferscheine, Neue Kunden zeigen letzte 30 Tage
-- SQL-Queries verwenden DATEADD(DAY, -30, GETDATE())
-- Labels in XAML angepasst "(30 Tage)" / "(30T)"
+### Textmeldungen-System - ERLEDIGT
+Neue NOVVIA Tabellen:
+- NOVVIA.Textmeldung - Meldungen mit Titel, Text, Typ
+- NOVVIA.EntityTextmeldung - Zuordnung zu Artikel/Kunde/Lieferant
+
+Bereiche (Mehrfachauswahl):
+- Einkauf, Verkauf, Stammdaten, Dokumente, Online
+
+Features:
+- Eigene Page unter Tools-Menue (TextmeldungenPage)
+- TextmeldungPanel Control fuer Views
+- Integration in KundeDetailView und ArtikelDetailView
+- Farbcodierung nach Typ (Info=blau, Warnung=gelb, Wichtig=rot)
+- Gueltigkeit mit Von/Bis Datum
+- Popup-Option konfigurierbar
 
 ### Benutzer & Rollen Verwaltung - ERLEDIGT
-- Neuer Tab "Benutzer & Rollen" in Einstellungen
-- Sub-Tab Benutzer: CRUD, Passwort-Reset, Rollen-Zuweisung
-- Sub-Tab Rollen: CRUD, Admin-Flag, System-Rolle-Schutz
-- Nutzt NOVVIA.Benutzer und NOVVIA.Rolle Tabellen
-- Passwort-Hashing mit SHA256
+- Tab "Benutzer & Rollen" in Einstellungen
+- Benutzer CRUD mit Passwort-Reset und Rollen-Zuweisung
+- Rollen CRUD mit Admin-Flag und System-Rolle-Schutz
 
-### Spalteneinstellungen in Datenbank - ERLEDIGT
-- DataGridColumnConfig speichert in NOVVIA.BenutzerEinstellung
-- Spaltenbreite, Sichtbarkeit und Reihenfolge persistiert
+### Dashboard KPIs auf 30 Tage - ERLEDIGT
+- Alle KPIs zeigen jetzt letzte 30 Tage statt aktueller Monat
 
-### NOVVIA FirmaEinstellung Pharma - BEHOBEN
-- MERGE-Statement Spaltenname korrigiert
+## Offene Punkte
 
-### Lager speichern - ERLEDIGT
-- ListBox-Markierung bleibt sichtbar
-- UpdateWarenlagerAsync funktioniert korrekt
+### Textmeldungen - KOMPLETT
+Alle Features implementiert:
+- Zentrale Verwaltung unter Tools/Textmeldungen
+- Integration in KundeDetailView, ArtikelDetailView, LieferantenView
+- Integration in BestellungDetailView (Auftragseingabe) - zeigt Kunden-Meldungen
+- Integration in LieferantenBestellungDetailView - zeigt Lieferanten-Meldungen
+- Automatisches Popup bei Entity-Auswahl (wenn Meldung als Popup markiert)
+
+## Git Status
+- Branch: main
+- Letzter Commit: d15d0a4 "Textmeldungen als eigene Page unter Tools + erweiterte Integration"
+- Alle Aenderungen committed
 
 ## Dateien geaendert (diese Session)
 
-**NovviaERP.WPF/Views/EinstellungenView.xaml**
-- Neuer Tab "Benutzer & Rollen" mit Sub-Tabs
-- Benutzer-Liste, Details, Rollen-Zuweisung
-- Rollen-Liste, Details, Benutzer-Anzeige
+**Neue Dateien:**
+- NovviaERP.WPF/Controls/TextmeldungPanel.xaml
+- NovviaERP.WPF/Controls/TextmeldungPanel.xaml.cs
+- NovviaERP.WPF/Views/TextmeldungenPage.xaml (eigene Page unter Tools)
+- NovviaERP.WPF/Views/TextmeldungenPage.xaml.cs
 
-**NovviaERP.WPF/Views/EinstellungenView.xaml.cs**
-- LadeBenutzerAsync/LadeRollenAsync
-- Benutzer CRUD Event-Handler
-- Rollen CRUD Event-Handler
-
-**NovviaERP.Core/Services/CoreService.cs**
-- NovviaBenutzer, NovviaRolle, RolleSelection DTOs
-- GetNovviaBenutzerAsync, GetNovviaRollenAsync
-- CreateNovviaBenutzerAsync, UpdateNovviaBenutzerAsync
-- CreateNovviaRolleAsync, UpdateNovviaRolleAsync
-- SetBenutzerRollenAsync, SetBenutzerPasswortAsync
-- DeleteNovviaBenutzerAsync, DeleteNovviaRolleAsync
-
-**NovviaERP.WPF/Views/DashboardPage.xaml**
-- Labels auf "(30 Tage)" geaendert
-
-**NovviaERP.WPF/Views/DashboardPage.xaml.cs**
-- KPI-Queries auf 30-Tage-Zeitraum umgestellt
-
-## Git Status
-- Branch: main (up to date)
-- Letzter Commit: 642972a "Benutzer & Rollen Verwaltung in Einstellungen"
-- Alle Aenderungen committed und gepusht
+**Geaendert:**
+- NovviaERP.Core/Services/CoreService.cs - Textmeldung DTOs und Methoden
+- NovviaERP.WPF/Views/EinstellungenView.xaml - Benutzer/Rollen Tabs (Textmeldungen entfernt)
+- NovviaERP.WPF/Views/EinstellungenView.xaml.cs - Code-Behind (Textmeldungen entfernt)
+- NovviaERP.WPF/Views/MainWindow.xaml - Textmeldungen Button in Tools-Menue
+- NovviaERP.WPF/Views/MainWindow.xaml.cs - NavTextmeldungen_Click Handler
+- NovviaERP.WPF/Views/KundeDetailView.xaml - TextmeldungPanel
+- NovviaERP.WPF/Views/KundeDetailView.xaml.cs - LoadAsync
+- NovviaERP.WPF/Views/ArtikelDetailView.xaml - TextmeldungPanel
+- NovviaERP.WPF/Views/ArtikelDetailView.xaml.cs - LoadAsync
+- NovviaERP.WPF/Views/DashboardPage.xaml - 30-Tage Labels
+- NovviaERP.WPF/Views/DashboardPage.xaml.cs - 30-Tage Queries
 
 ## NOVVIA Schema Tabellen
-- NOVVIA.Benutzer - Benutzer-Stammdaten
-- NOVVIA.Rolle - Rollen-Definitionen
-- NOVVIA.BenutzerRolle - M:N Zuordnung
-- NOVVIA.Recht - Rechte-Katalog
-- NOVVIA.RolleRecht - Rechte pro Rolle
-- NOVVIA.BenutzerEinstellung - Benutzer-Einstellungen
-- NOVVIA.FirmaEinstellung - Firma-weite Einstellungen
+- NOVVIA.Benutzer
+- NOVVIA.Rolle
+- NOVVIA.BenutzerRolle
+- NOVVIA.Textmeldung (NEU)
+- NOVVIA.EntityTextmeldung (NEU)
+- NOVVIA.BenutzerEinstellung
+- NOVVIA.FirmaEinstellung

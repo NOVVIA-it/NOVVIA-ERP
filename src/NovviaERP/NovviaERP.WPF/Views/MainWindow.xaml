@@ -91,6 +91,7 @@
                     <Button Style="{StaticResource NavButton}" Content="Zahlungsabgleich" Click="NavZahlungsabgleich_Click"/>
 
                     <TextBlock Text="TOOLS" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <Button Style="{StaticResource NavButton}" Content="Textmeldungen" Click="NavTextmeldungen_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Ameise (Import/Export)" Click="NavAmeise_Click"/>
 
                     <TextBlock Text="SYSTEM" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>

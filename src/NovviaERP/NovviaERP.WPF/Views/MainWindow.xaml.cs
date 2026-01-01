@@ -44,6 +44,7 @@ namespace NovviaERP.WPF.Views
         private void NavZahlungsabgleich_Click(object sender, RoutedEventArgs e) => contentMain.Content = new ZahlungsabgleichView();
         private void NavImport_Click(object sender, RoutedEventArgs e) => contentMain.Content = new ImportView();
         private void NavEigeneFelder_Click(object sender, RoutedEventArgs e) => contentMain.Content = new EigeneFelderView();
+        private void NavTextmeldungen_Click(object sender, RoutedEventArgs e) => contentMain.Content = new TextmeldungenPage();
         private void NavAmeise_Click(object sender, RoutedEventArgs e) => ShowView<AmeiseView>();
         private void NavEinstellungen_Click(object sender, RoutedEventArgs e) => ShowView<EinstellungenView>();
         private void NavTest_Click(object sender, RoutedEventArgs e) => contentMain.Content = new TestView();
