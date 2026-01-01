@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -10,23 +11,25 @@ namespace NovviaERP.WPF.Controls
     /// <summary>
     /// Helfer-Klasse für DataGrid Spalten-Konfiguration
     /// Ermöglicht Benutzern, Spalten ein-/auszublenden und speichert die Einstellungen
+    /// Speichert in NOVVIA.BenutzerEinstellung Tabelle
     /// </summary>
     public static class DataGridColumnConfig
     {
         private static UserViewSettings? _settings;
         private static int? _currentUserId;
-        private static AppDataService? _appData;
+        private static CoreService? _core;
         private static DispatcherTimer? _saveTimer;
         private static readonly Dictionary<string, (DataGrid Grid, string ViewName)> _pendingSaves = new();
+        private static bool _settingsLoaded = false;
 
-        private static string SettingsKey => $"view_settings_{App.BenutzerId}";
+        private static string SettingsKey => $"Spalten.AllViews";
 
-        private static AppDataService AppData
+        private static CoreService Core
         {
             get
             {
-                _appData ??= App.Services.GetRequiredService<AppDataService>();
-                return _appData;
+                _core ??= App.Services.GetRequiredService<CoreService>();
+                return _core;
             }
         }
 
@@ -39,9 +42,37 @@ namespace NovviaERP.WPF.Controls
                 {
                     _settings = null;
                     _currentUserId = App.BenutzerId;
+                    _settingsLoaded = false;
                 }
-                _settings ??= AppData.Load<UserViewSettings>(SettingsKey) ?? new UserViewSettings();
+                if (_settings == null)
+                {
+                    _settings = new UserViewSettings();
+                    // Async laden im Hintergrund
+                    _ = LoadSettingsFromDbAsync();
+                }
                 return _settings;
+            }
+        }
+
+        private static async Task LoadSettingsFromDbAsync()
+        {
+            if (_settingsLoaded) return;
+            try
+            {
+                var json = await Core.GetBenutzerEinstellungAsync(App.BenutzerId, SettingsKey);
+                if (!string.IsNullOrEmpty(json))
+                {
+                    var loaded = JsonSerializer.Deserialize<UserViewSettings>(json);
+                    if (loaded != null)
+                    {
+                        _settings = loaded;
+                    }
+                }
+                _settingsLoaded = true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Spalteneinstellungen laden: {ex.Message}");
             }
         }
 
@@ -50,20 +81,47 @@ namespace NovviaERP.WPF.Controls
         /// </summary>
         public static void ApplySettings(DataGrid grid, string viewName)
         {
-            var viewSettings = Settings.GetViewSettings(viewName);
+            // Sync-Wrapper - versucht sofort anzuwenden, lädt ggf. nach
+            DoApplySettings(grid, viewName);
+        }
+
+        /// <summary>
+        /// Wendet gespeicherte Spalten-Einstellungen auf ein DataGrid an (async)
+        /// </summary>
+        public static async Task ApplySettingsAsync(DataGrid grid, string viewName)
+        {
+            await LoadSettingsFromDbAsync();
+            DoApplySettings(grid, viewName);
+        }
+
+        private static void DoApplySettings(DataGrid grid, string viewName)
+        {
+            if (_settings == null) return;
+
+            var viewSettings = _settings.GetViewSettings(viewName);
             foreach (var column in grid.Columns)
             {
                 var header = column.Header?.ToString();
                 if (string.IsNullOrEmpty(header)) continue;
 
                 // Sichtbarkeit
-                var isVisible = Settings.GetColumnVisibility(viewName, header, column.Visibility == Visibility.Visible);
+                var isVisible = _settings.GetColumnVisibility(viewName, header, column.Visibility == Visibility.Visible);
                 column.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
 
                 // Spaltenbreite
                 if (viewSettings.Columns.TryGetValue(header, out var colSettings) && colSettings.Width > 0)
                 {
                     column.Width = new DataGridLength(colSettings.Width);
+                }
+
+                // DisplayIndex (Reihenfolge)
+                if (colSettings != null && colSettings.DisplayIndex >= 0 && colSettings.DisplayIndex < grid.Columns.Count)
+                {
+                    try
+                    {
+                        column.DisplayIndex = colSettings.DisplayIndex;
+                    }
+                    catch { /* DisplayIndex Konflikte ignorieren */ }
                 }
             }
         }
@@ -73,17 +131,28 @@ namespace NovviaERP.WPF.Controls
         /// </summary>
         public static void EnableColumnChooser(DataGrid grid, string viewName)
         {
-            // Wende gespeicherte Einstellungen an
-            ApplySettings(grid, viewName);
+            // Async Einstellungen laden und anwenden
+            _ = InitializeAsync(grid, viewName);
+        }
 
-            // Kontext-Menü für Spalten-Header
-            grid.ColumnHeaderStyle = CreateHeaderStyle(grid, viewName);
+        private static async Task InitializeAsync(DataGrid grid, string viewName)
+        {
+            // Warte bis Einstellungen geladen sind
+            await LoadSettingsFromDbAsync();
 
-            // Spaltenbreiten speichern wenn geändert
-            grid.ColumnReordered += (s, e) => SaveColumnWidths(grid, viewName);
-            grid.Loaded += (s, e) =>
+            // Auf UI-Thread anwenden
+            grid.Dispatcher.Invoke(() =>
             {
-                // Breiten speichern nach dem Laden (um initiale Breiten zu haben)
+                // Wende gespeicherte Einstellungen an
+                DoApplySettings(grid, viewName);
+
+                // Kontext-Menü für Spalten-Header
+                grid.ColumnHeaderStyle = CreateHeaderStyle(grid, viewName);
+
+                // Spaltenbreiten speichern wenn geändert
+                grid.ColumnReordered += (s, e) => SaveColumnWidths(grid, viewName);
+
+                // Breiten speichern nach dem Laden
                 foreach (DataGridColumn col in grid.Columns)
                 {
                     // Breiten-Änderung überwachen mittels DependencyProperty
@@ -91,7 +160,7 @@ namespace NovviaERP.WPF.Controls
                         DataGridColumn.ActualWidthProperty, typeof(DataGridColumn));
                     dpd?.AddValueChanged(col, (sender, args) => SaveColumnWidths(grid, viewName));
                 }
-            };
+            });
         }
 
         private static void SaveColumnWidths(DataGrid grid, string viewName)
@@ -119,7 +188,9 @@ namespace NovviaERP.WPF.Controls
 
         private static void DoSaveColumnWidths(DataGrid grid, string viewName)
         {
-            var viewSettings = Settings.GetViewSettings(viewName);
+            if (_settings == null) return;
+
+            var viewSettings = _settings.GetViewSettings(viewName);
             foreach (var column in grid.Columns)
             {
                 var header = column.Header?.ToString();
@@ -130,6 +201,7 @@ namespace NovviaERP.WPF.Controls
 
                 viewSettings.Columns[header].Width = column.ActualWidth;
                 viewSettings.Columns[header].IsVisible = column.Visibility == Visibility.Visible;
+                viewSettings.Columns[header].DisplayIndex = column.DisplayIndex;
             }
             SaveSettings();
         }
@@ -223,7 +295,21 @@ namespace NovviaERP.WPF.Controls
 
         private static void SaveSettings()
         {
-            AppData.Save(SettingsKey, Settings);
+            // Async in DB speichern
+            _ = SaveSettingsToDbAsync();
+        }
+
+        private static async Task SaveSettingsToDbAsync()
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(_settings);
+                await Core.SaveBenutzerEinstellungAsync(App.BenutzerId, SettingsKey, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Spalteneinstellungen speichern: {ex.Message}");
+            }
         }
 
         /// <summary>
