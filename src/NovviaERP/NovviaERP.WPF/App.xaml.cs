@@ -4,6 +4,7 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Data;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Services;
 using NovviaERP.WPF.Views;
 using Serilog;
 
@@ -83,6 +84,9 @@ namespace NovviaERP.WPF
                 var services = new ServiceCollection();
                 ConfigureServices(services);
                 Services = services.BuildServiceProvider();
+
+                // Theme-Einstellungen laden (pro Mandant aus NOVVIA.Config)
+                _ = ThemeService.LoadSettingsAsync(ConnectionString!);
 
                 // Hauptfenster öffnen
                 var mainWindow = new MainWindow();

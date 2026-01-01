@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
+using NovviaERP.Core.Services.Base;
 using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
@@ -11,15 +12,29 @@ namespace NovviaERP.WPF.Views
     {
         private readonly CoreService _core;
         private List<CoreService.RechnungUebersicht> _rechnungen = new();
+        private ComboBox? _cmbStatus;
 
         public RechnungenView()
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
+
             Loaded += async (s, e) =>
             {
+                // Status-Filter hinzufuegen
+                _cmbStatus = filterBar.AddFilter("Status:", new[]
+                {
+                    new { Text = "Alle", Value = (int?)null },
+                    new { Text = "Offen", Value = (int?)0 },
+                    new { Text = "Bezahlt", Value = (int?)1 },
+                    new { Text = "Ueberfaellig", Value = (int?)2 },
+                    new { Text = "Storniert", Value = (int?)3 }
+                }, "Text");
+
                 // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
                 DataGridColumnConfig.EnableColumnChooser(dgRechnungen, "RechnungenView");
+
+                // Daten sofort laden (kein Aktualisieren-Button)
                 await LadeRechnungenAsync();
             };
         }
@@ -29,18 +44,37 @@ namespace NovviaERP.WPF.Views
             try
             {
                 txtStatus.Text = "Lade Rechnungen...";
+                filterBar.SetLoading(true);
 
+                // Status aus Filter lesen
                 int? status = null;
-                if (cmbStatus.SelectedItem is ComboBoxItem item && !string.IsNullOrEmpty(item.Tag?.ToString()))
-                    status = int.Parse(item.Tag.ToString()!);
+                if (_cmbStatus?.SelectedItem != null)
+                {
+                    var selected = _cmbStatus.SelectedItem;
+                    var valueProp = selected.GetType().GetProperty("Value");
+                    if (valueProp != null)
+                        status = valueProp.GetValue(selected) as int?;
+                }
 
-                var suche = txtSuche.Text.Trim();
+                // JTL-Zeitraum in Datum umwandeln
+                var zeitraum = filterBar.Zeitraum;
+                DateTime? vonDatum = null;
+                DateTime? bisDatum = null;
+
+                if (!string.IsNullOrEmpty(zeitraum) && zeitraum != "Alle")
+                {
+                    var (von, bis) = BaseDatabaseService.JtlZeitraumZuDatum(zeitraum);
+                    vonDatum = von;
+                    bisDatum = bis;
+                }
+
+                var suche = filterBar.Suchbegriff;
 
                 _rechnungen = (await _core.GetAllRechnungenAsync(
                     suche: string.IsNullOrEmpty(suche) ? null : suche,
                     status: status,
-                    vonDatum: dpVon.SelectedDate,
-                    bisDatum: dpBis.SelectedDate
+                    vonDatum: vonDatum,
+                    bisDatum: bisDatum
                 )).ToList();
 
                 dgRechnungen.ItemsSource = _rechnungen;
@@ -56,6 +90,7 @@ namespace NovviaERP.WPF.Views
                 txtSummeBrutto.Text = $"{summeBrutto:N2}";
                 txtSummeOffen.Text = $"{summeOffen:N2}";
 
+                filterBar.Anzahl = anzahl;
                 txtAnzahl.Text = $"({anzahl} Rechnungen, {summeOffen:N2} EUR offen)";
                 txtStatus.Text = $"{anzahl} Rechnungen geladen";
             }
@@ -64,101 +99,22 @@ namespace NovviaERP.WPF.Views
                 txtStatus.Text = $"Fehler: {ex.Message}";
                 MessageBox.Show($"Fehler beim Laden:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        #region Event Handlers
-
-        private async void Suchen_Click(object sender, RoutedEventArgs e) => await LadeRechnungenAsync();
-        private async void Aktualisieren_Click(object sender, RoutedEventArgs e) => await LadeRechnungenAsync();
-
-        private async void Status_Changed(object sender, SelectionChangedEventArgs e)
-        {
-            if (!IsLoaded) return;
-            await LadeRechnungenAsync();
-        }
-
-        private async void Datum_Changed(object sender, SelectionChangedEventArgs e)
-        {
-            if (!IsLoaded) return;
-            // Bei manueller Datumseingabe auf "Eigener Zeitraum" wechseln
-            if (cmbZeitraum.SelectedItem is ComboBoxItem item && item.Tag?.ToString() != "eigener")
-            {
-                _skipDateUpdate = true;
-                cmbZeitraum.SelectedIndex = 8; // Eigener Zeitraum
-                _skipDateUpdate = false;
-            }
-            await LadeRechnungenAsync();
-        }
-
-        private bool _skipDateUpdate = false;
-
-        private async void Zeitraum_Changed(object sender, SelectionChangedEventArgs e)
-        {
-            if (!IsLoaded || _skipDateUpdate) return;
-
-            var tag = (cmbZeitraum.SelectedItem as ComboBoxItem)?.Tag?.ToString();
-            var heute = DateTime.Today;
-
-            // Datum-Events unterdrücken während wir die Werte setzen
-            _skipDateUpdate = true;
-            try
-            {
-                switch (tag)
-                {
-                    case "alle":
-                        dpVon.SelectedDate = null;
-                        dpBis.SelectedDate = null;
-                        break;
-                    case "heute":
-                        dpVon.SelectedDate = heute;
-                        dpBis.SelectedDate = heute;
-                        break;
-                    case "gestern":
-                        dpVon.SelectedDate = heute.AddDays(-1);
-                        dpBis.SelectedDate = heute.AddDays(-1);
-                        break;
-                    case "diesewoche":
-                        var wochenstart = heute.AddDays(-(int)heute.DayOfWeek + (int)DayOfWeek.Monday);
-                        if (heute.DayOfWeek == DayOfWeek.Sunday) wochenstart = wochenstart.AddDays(-7);
-                        dpVon.SelectedDate = wochenstart;
-                        dpBis.SelectedDate = heute;
-                        break;
-                    case "letztewoche":
-                        var letzteWochenstart = heute.AddDays(-(int)heute.DayOfWeek + (int)DayOfWeek.Monday - 7);
-                        if (heute.DayOfWeek == DayOfWeek.Sunday) letzteWochenstart = letzteWochenstart.AddDays(-7);
-                        dpVon.SelectedDate = letzteWochenstart;
-                        dpBis.SelectedDate = letzteWochenstart.AddDays(6);
-                        break;
-                    case "diesermonat":
-                        dpVon.SelectedDate = new DateTime(heute.Year, heute.Month, 1);
-                        dpBis.SelectedDate = heute;
-                        break;
-                    case "letztermonat":
-                        var letzterMonat = heute.AddMonths(-1);
-                        dpVon.SelectedDate = new DateTime(letzterMonat.Year, letzterMonat.Month, 1);
-                        dpBis.SelectedDate = new DateTime(letzterMonat.Year, letzterMonat.Month, DateTime.DaysInMonth(letzterMonat.Year, letzterMonat.Month));
-                        break;
-                    case "diesesjahr":
-                        dpVon.SelectedDate = new DateTime(heute.Year, 1, 1);
-                        dpBis.SelectedDate = heute;
-                        break;
-                    case "eigener":
-                        // Eigener Zeitraum - keine Aenderung an DatePickern
-                        break;
-                }
-            }
             finally
             {
-                _skipDateUpdate = false;
+                filterBar.SetLoading(false);
             }
+        }
 
+        #region FilterBar Events
+
+        private async void FilterBar_SucheGestartet(object? sender, EventArgs e)
+        {
             await LadeRechnungenAsync();
         }
 
-        private async void TxtSuche_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter) await LadeRechnungenAsync();
-        }
+        #endregion
+
+        #region DataGrid Events
 
         private void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -175,6 +131,10 @@ namespace NovviaERP.WPF.Views
             if (dgRechnungen.SelectedItem is CoreService.RechnungUebersicht rechnung)
                 NavigateToRechnung(rechnung.KRechnung);
         }
+
+        #endregion
+
+        #region Button Click Events
 
         private void Oeffnen_Click(object sender, RoutedEventArgs e)
         {
@@ -193,7 +153,6 @@ namespace NovviaERP.WPF.Views
             if (dgRechnungen.SelectedItem is not CoreService.RechnungUebersicht rechnung) return;
             if (rechnung.NStorno || rechnung.Offen <= 0) return;
 
-            // Einfacher Zahlungsdialog
             var input = Microsoft.VisualBasic.Interaction.InputBox(
                 $"Zahlungsbetrag fuer Rechnung {rechnung.CRechnungsNr}:\n\nOffener Betrag: {rechnung.Offen:N2} EUR",
                 "Zahlung erfassen",
@@ -203,7 +162,7 @@ namespace NovviaERP.WPF.Views
 
             if (!decimal.TryParse(input.Replace(".", ","), out var betrag) || betrag <= 0)
             {
-                MessageBox.Show("Ungültiger Betrag!", "Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Ungueltiger Betrag!", "Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -225,7 +184,7 @@ namespace NovviaERP.WPF.Views
             if (rechnung.NStorno) return;
 
             var result = MessageBox.Show(
-                $"Rechnung {rechnung.CRechnungsNr} wirklich stornieren?\n\nDer zugehörige Auftrag wird wieder bearbeitbar.",
+                $"Rechnung {rechnung.CRechnungsNr} wirklich stornieren?\n\nDer zugehoerige Auftrag wird wieder bearbeitbar.",
                 "Stornieren",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);

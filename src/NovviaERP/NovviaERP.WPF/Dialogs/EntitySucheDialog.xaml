@@ -1,0 +1,85 @@
+<Window x:Class="NovviaERP.WPF.Dialogs.EntitySucheDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Suche" Width="700" Height="500" WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize" ShowInTaskbar="False">
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Filter-Bereich -->
+        <Border Background="#f8f9fa" BorderBrush="#ddd" BorderThickness="1" Padding="15" CornerRadius="4">
+            <StackPanel>
+                <!-- Kunde/Lieferant Filter -->
+                <Grid x:Name="gridKundeFilter" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Kategorie:" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="cmbKategorie" Grid.Column="1" Margin="0,0,15,0"
+                              DisplayMemberPath="CName" SelectedValuePath="KKundenKategorie"/>
+                    <TextBlock Text="Gruppe:" Grid.Column="2" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="cmbGruppe" Grid.Column="3"
+                              DisplayMemberPath="CName" SelectedValuePath="KKundenGruppe"/>
+                </Grid>
+
+                <!-- Artikel Filter -->
+                <Grid x:Name="gridArtikelFilter" Margin="0,0,0,10" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Warengruppe:" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="cmbWarengruppe" Grid.Column="1"
+                              DisplayMemberPath="CName" SelectedValuePath="KWarengruppe"/>
+                </Grid>
+
+                <!-- Textsuche -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Suchbegriff:" VerticalAlignment="Center"/>
+                    <TextBox x:Name="txtSuche" Grid.Column="1" Padding="8,6" FontSize="14"
+                             KeyDown="TxtSuche_KeyDown"/>
+                    <Button x:Name="btnSuchen" Grid.Column="2" Content="Suchen" Padding="20,8"
+                            Margin="10,0,0,0" Click="Suchen_Click"/>
+                </Grid>
+
+                <TextBlock x:Name="txtHinweis" Margin="0,8,0,0" Foreground="#666" FontSize="11" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Ergebnisse Header -->
+        <TextBlock Grid.Row="1" x:Name="txtErgebnisse" Text="Ergebnisse:" FontWeight="SemiBold" Margin="0,15,0,5"/>
+
+        <!-- Ergebnisliste -->
+        <DataGrid Grid.Row="2" x:Name="dgErgebnisse" AutoGenerateColumns="False" IsReadOnly="True"
+                  SelectionMode="Single" MouseDoubleClick="DgErgebnisse_DoubleClick"
+                  BorderBrush="#ddd" BorderThickness="1" RowHeight="28"
+                  GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Nr" Binding="{Binding Nr}" Width="120"/>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/>
+                <DataGridTextColumn Header="Info" Binding="{Binding Extra}" Width="150"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Button Content="Abbrechen" Width="100" Padding="10,8" Click="Abbrechen_Click"/>
+            <Button x:Name="btnUebernehmen" Content="Uebernehmen" Width="120" Padding="10,8" Margin="10,0,0,0"
+                    Background="#0078D4" Foreground="White" FontWeight="SemiBold" BorderThickness="0"
+                    Click="Uebernehmen_Click" IsEnabled="False"/>
+        </StackPanel>
+    </Grid>
+</Window>

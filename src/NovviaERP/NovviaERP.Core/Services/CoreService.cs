@@ -272,6 +272,8 @@ namespace NovviaERP.Core.Services
             public string CLagerArtikel { get; set; } = "Y";
             public int? KHersteller { get; set; }
             public string? Hersteller { get; set; }
+            public int? KWarengruppe { get; set; }
+            public string? Warengruppe { get; set; }
 
             public bool Aktiv => CAktiv == "Y";
             public bool UnterMindestbestand => NLagerbestand < NMidestbestand;
@@ -663,6 +665,40 @@ namespace NovviaERP.Core.Services
                 ORDER BY k.cKundenNr";
 
             var result = await conn.QueryAsync<KundeUebersicht>(sql, new { Limit = limit, Suche = $"%{suchbegriff}%" });
+            return result.ToList();
+        }
+
+        /// <summary>Erweiterte Kundensuche mit Kategorie und Gruppe Filter</summary>
+        public async Task<List<KundeUebersicht>> SearchKundenErweitertAsync(string suchbegriff, int? kategorieId = null, int? gruppeId = null, int limit = 50)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@Limit)
+                    k.kKunde, k.cKundenNr, k.cSperre, k.kKundenGruppe, k.dErstellt,
+                    a.cFirma, a.cVorname, a.cName, a.cStrasse, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel,
+                    kg.cName AS Kundengruppe,
+                    0 AS Umsatz
+                FROM tkunde k
+                LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
+                LEFT JOIN tKundenGruppe kg ON kg.kKundenGruppe = k.kKundenGruppe
+                WHERE k.cSperre != 'Y'
+                  AND (@Suche = '' OR k.cKundenNr LIKE @Suche
+                       OR a.cFirma LIKE @Suche
+                       OR a.cName LIKE @Suche
+                       OR a.cVorname LIKE @Suche
+                       OR a.cStrasse LIKE @Suche
+                       OR a.cPLZ LIKE @Suche
+                       OR a.cOrt LIKE @Suche)
+                  AND (@KategorieId IS NULL OR k.kKundenKategorie = @KategorieId)
+                  AND (@GruppeId IS NULL OR k.kKundenGruppe = @GruppeId)
+                ORDER BY k.cKundenNr";
+
+            var result = await conn.QueryAsync<KundeUebersicht>(sql, new {
+                Limit = limit,
+                Suche = string.IsNullOrEmpty(suchbegriff) ? "" : $"%{suchbegriff}%",
+                KategorieId = kategorieId,
+                GruppeId = gruppeId
+            });
             return result.ToList();
         }
 
@@ -1207,6 +1243,42 @@ namespace NovviaERP.Core.Services
             sql += " ORDER BY ab.cName, a.cArtNr";
 
             return await conn.QueryAsync<ArtikelUebersicht>(sql, new { Limit = limit, Suche = $"%{suche}%", HerstellerId = herstellerId, WarengruppeId = warengruppeId });
+        }
+
+        /// <summary>Erweiterte Artikelsuche mit Warengruppe Filter</summary>
+        public async Task<List<ArtikelUebersicht>> SearchArtikelErweitertAsync(string suchbegriff, int? warengruppeId = null, int limit = 50)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@Limit)
+                    a.kArtikel, a.cArtNr, a.cBarcode, a.fVKNetto, a.fEKNetto, a.kWarengruppe,
+                    ISNULL(lb.fLagerbestand, 0) AS NLagerbestand,
+                    ISNULL(a.nMidestbestand, 0) AS NMidestbestand,
+                    a.cAktiv, a.cLagerArtikel, a.kHersteller,
+                    ab.cName AS Name,
+                    h.cName AS Hersteller,
+                    wg.cName AS Warengruppe,
+                    ISNULL((SELECT TOP 1 fSteuersatz FROM tSteuersatz WHERE kSteuerklasse = a.kSteuerklasse ORDER BY nPrio DESC), 19) AS FMwSt,
+                    ISNULL(a.fVKNetto * (1 + ISNULL((SELECT TOP 1 fSteuersatz FROM tSteuersatz WHERE kSteuerklasse = a.kSteuerklasse ORDER BY nPrio DESC), 19) / 100), a.fVKNetto) AS FVKBrutto
+                FROM tArtikel a
+                LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
+                LEFT JOIN tHersteller h ON a.kHersteller = h.kHersteller
+                LEFT JOIN tWarengruppe wg ON a.kWarengruppe = wg.kWarengruppe
+                LEFT JOIN tlagerbestand lb ON a.kArtikel = lb.kArtikel
+                WHERE a.nDelete = 0 AND a.cAktiv = 'Y'
+                  AND (@Suche = '' OR a.cArtNr LIKE @Suche
+                       OR a.cBarcode LIKE @Suche
+                       OR ab.cName LIKE @Suche
+                       OR a.cHAN LIKE @Suche)
+                  AND (@WarengruppeId IS NULL OR a.kWarengruppe = @WarengruppeId)
+                ORDER BY ab.cName, a.cArtNr";
+
+            var result = await conn.QueryAsync<ArtikelUebersicht>(sql, new {
+                Limit = limit,
+                Suche = string.IsNullOrEmpty(suchbegriff) ? "" : $"%{suchbegriff}%",
+                WarengruppeId = warengruppeId
+            });
+            return result.ToList();
         }
 
         public async Task<ArtikelDetail?> GetArtikelByIdAsync(int artikelId)
@@ -3565,6 +3637,33 @@ namespace NovviaERP.Core.Services
                 WHERE cAktiv = 'Y'
                 ORDER BY cFirma";
             return await conn.QueryAsync<LieferantRef>(sql);
+        }
+
+        /// <summary>Erweiterte Lieferantensuche (wie Kunden: Name, Firma, Strasse, Ort)</summary>
+        public async Task<List<LieferantRef>> SearchLieferantenErweitertAsync(string suchbegriff, int limit = 50)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@Limit)
+                    kLieferant AS KLieferant, cFirma AS CFirma, cStrasse AS CStrasse,
+                    cPLZ AS CPLZ, cOrt AS COrt, cLand AS CLand,
+                    COALESCE(cTelZentralle, cTelDurchwahl, '') AS CTelefon,
+                    cFax AS CFax, cEMail AS CEmail
+                FROM dbo.tLieferant
+                WHERE cAktiv = 'Y'
+                  AND (@Suche = '' OR cFirma LIKE @Suche
+                       OR cStrasse LIKE @Suche
+                       OR cPLZ LIKE @Suche
+                       OR cOrt LIKE @Suche
+                       OR CAST(kLieferant AS NVARCHAR) = @SuchExakt)
+                ORDER BY cFirma";
+
+            var result = await conn.QueryAsync<LieferantRef>(sql, new {
+                Limit = limit,
+                Suche = string.IsNullOrEmpty(suchbegriff) ? "" : $"%{suchbegriff}%",
+                SuchExakt = suchbegriff ?? ""
+            });
+            return result.ToList();
         }
 
         /// <summary>
@@ -7647,6 +7746,9 @@ namespace NovviaERP.Core.Services
                     return bereiche.Count > 0 ? string.Join(", ", bereiche) : "-";
                 }
             }
+
+            // UI-Helper (nicht in DB)
+            public string ZuweisungenText { get; set; } = "";
         }
 
         public class EntityTextmeldung

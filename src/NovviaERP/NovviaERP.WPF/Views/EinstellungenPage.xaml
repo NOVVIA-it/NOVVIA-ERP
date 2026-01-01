@@ -1,6 +1,7 @@
 <Page x:Class="NovviaERP.WPF.Views.EinstellungenPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:base="clr-namespace:NovviaERP.WPF.Controls.Base"
       Title="Einstellungen" Background="#f0f2f5">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -338,6 +339,13 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
+            </TabItem>
+
+            <!-- Design Tab -->
+            <TabItem Header="Design">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <base:ThemeSettingsControl x:Name="themeSettings" Margin="15"/>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
     </Grid>

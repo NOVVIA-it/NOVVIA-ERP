@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using NovviaERP.Core.Services;
 
 namespace NovviaERP.WPF.Views
@@ -10,13 +12,22 @@ namespace NovviaERP.WPF.Views
     {
         private readonly CoreService _core;
         private List<CoreService.Textmeldung>? _textmeldungen;
-        private CoreService.Textmeldung? _selectedMeldung;
 
         public TextmeldungenPage()
         {
             InitializeComponent();
             _core = new CoreService(App.ConnectionString);
-            Loaded += async (s, e) => await LadeTextmeldungenAsync();
+            Loaded += async (s, e) =>
+            {
+                try
+                {
+                    await LadeTextmeldungenAsync();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Laden der Textmeldungen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            };
         }
 
         private async System.Threading.Tasks.Task LadeTextmeldungenAsync()
@@ -24,78 +35,120 @@ namespace NovviaERP.WPF.Views
             try
             {
                 _textmeldungen = await _core.GetTextmeldungenAsync();
+
+                // Zuweisungen Text pro Meldung laden
+                foreach (var meldung in _textmeldungen)
+                {
+                    var entities = await _core.GetTextmeldungEntitiesAsync(meldung.KTextmeldung);
+                    meldung.ZuweisungenText = entities.Count > 0
+                        ? $"{entities.Count} Zuweisung(en)"
+                        : "Alle";
+                }
+
                 lstTextmeldungen.ItemsSource = _textmeldungen;
+
+                // Leer-Hinweis anzeigen
+                txtLeerHinweis.Visibility = (_textmeldungen == null || _textmeldungen.Count == 0) ? Visibility.Visible : Visibility.Collapsed;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Textmeldungen laden: {ex.Message}");
+                MessageBox.Show($"Fehler beim Laden:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private async void LstTextmeldungen_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void LstTextmeldungen_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (lstTextmeldungen.SelectedItem is CoreService.Textmeldung meldung)
+            var selected = lstTextmeldungen.SelectedItem != null;
+            btnBearbeiten.IsEnabled = selected;
+            btnLoeschen.IsEnabled = selected;
+        }
+
+        private void LstTextmeldungen_DoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (lstTextmeldungen.SelectedItem is CoreService.Textmeldung)
             {
-                _selectedMeldung = meldung;
-                btnTextmeldungLoeschen.IsEnabled = true;
-
-                txtMeldungTitel.Text = meldung.CTitel;
-                txtMeldungText.Text = meldung.CText;
-                cmbMeldungTyp.SelectedIndex = meldung.NTyp;
-
-                chkMeldungEinkauf.IsChecked = meldung.NBereichEinkauf;
-                chkMeldungVerkauf.IsChecked = meldung.NBereichVerkauf;
-                chkMeldungStammdaten.IsChecked = meldung.NBereichStammdaten;
-                chkMeldungDokumente.IsChecked = meldung.NBereichDokumente;
-                chkMeldungOnline.IsChecked = meldung.NBereichOnline;
-
-                chkMeldungAktiv.IsChecked = meldung.NAktiv;
-                chkMeldungPopup.IsChecked = meldung.NPopupAnzeigen;
-
-                dpMeldungVon.SelectedDate = meldung.DGueltigVon;
-                dpMeldungBis.SelectedDate = meldung.DGueltigBis;
-
-                // Zugewiesene Entitaeten laden
-                var entities = await _core.GetTextmeldungEntitiesAsync(meldung.KTextmeldung);
-                lstMeldungEntities.ItemsSource = entities;
-
-                txtMeldungStatus.Text = $"Textmeldung ID: {meldung.KTextmeldung}";
-                txtMeldungStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
+                TextmeldungBearbeiten_Click(sender, e);
             }
         }
 
-        private void TextmeldungNeu_Click(object sender, RoutedEventArgs e)
+        private async void TextmeldungNeu_Click(object sender, RoutedEventArgs e)
         {
-            _selectedMeldung = null;
-            btnTextmeldungLoeschen.IsEnabled = false;
+            var dialog = new TextmeldungDialog();
+            dialog.Owner = Window.GetWindow(this);
 
-            txtMeldungTitel.Text = "";
-            txtMeldungText.Text = "";
-            cmbMeldungTyp.SelectedIndex = 0;
+            if (dialog.ShowDialog() == true && dialog.Meldung != null)
+            {
+                try
+                {
+                    var newId = await _core.CreateTextmeldungAsync(dialog.Meldung, App.BenutzerId);
 
-            chkMeldungEinkauf.IsChecked = false;
-            chkMeldungVerkauf.IsChecked = false;
-            chkMeldungStammdaten.IsChecked = true;
-            chkMeldungDokumente.IsChecked = false;
-            chkMeldungOnline.IsChecked = false;
+                    // Entities speichern
+                    foreach (var entity in dialog.Entities)
+                    {
+                        await _core.AddEntityTextmeldungAsync(newId, entity.CEntityTyp, entity.KEntity, App.BenutzerId);
+                    }
 
-            chkMeldungAktiv.IsChecked = true;
-            chkMeldungPopup.IsChecked = true;
+                    await LadeTextmeldungenAsync();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Anlegen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
 
-            dpMeldungVon.SelectedDate = null;
-            dpMeldungBis.SelectedDate = null;
+        private async void TextmeldungBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            if (lstTextmeldungen.SelectedItem is not CoreService.Textmeldung meldung) return;
 
-            lstMeldungEntities.ItemsSource = null;
-            txtMeldungTitel.Focus();
-            txtMeldungStatus.Text = "Neue Textmeldung";
-            txtMeldungStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
+            // Entities laden
+            var existingEntities = await _core.GetTextmeldungEntitiesAsync(meldung.KTextmeldung);
+
+            var dialog = new TextmeldungDialog(meldung);
+            dialog.SetEntities(existingEntities);
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.Meldung != null)
+            {
+                try
+                {
+                    await _core.UpdateTextmeldungAsync(dialog.Meldung, App.BenutzerId);
+
+                    // Entities synchronisieren
+                    var newEntities = dialog.Entities.ToList();
+
+                    // Entfernte loeschen
+                    foreach (var existing in existingEntities)
+                    {
+                        if (!newEntities.Any(n => n.CEntityTyp == existing.CEntityTyp && n.KEntity == existing.KEntity))
+                        {
+                            await _core.RemoveEntityTextmeldungAsync(existing.KEntityTextmeldung);
+                        }
+                    }
+
+                    // Neue hinzufuegen
+                    foreach (var newEntity in newEntities)
+                    {
+                        if (!existingEntities.Any(e => e.CEntityTyp == newEntity.CEntityTyp && e.KEntity == newEntity.KEntity))
+                        {
+                            await _core.AddEntityTextmeldungAsync(meldung.KTextmeldung, newEntity.CEntityTyp, newEntity.KEntity, App.BenutzerId);
+                        }
+                    }
+
+                    await LadeTextmeldungenAsync();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         private async void TextmeldungLoeschen_Click(object sender, RoutedEventArgs e)
         {
-            if (_selectedMeldung == null) return;
+            if (lstTextmeldungen.SelectedItem is not CoreService.Textmeldung meldung) return;
 
-            var result = MessageBox.Show($"Textmeldung '{_selectedMeldung.CTitel}' wirklich loeschen?\n\n" +
+            var result = MessageBox.Show($"Textmeldung '{meldung.CTitel}' wirklich loeschen?\n\n" +
                 "Alle Zuweisungen zu Kunden/Artikeln/Lieferanten werden ebenfalls entfernt.",
                 "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
@@ -103,84 +156,12 @@ namespace NovviaERP.WPF.Views
 
             try
             {
-                await _core.DeleteTextmeldungAsync(_selectedMeldung.KTextmeldung);
-                await LadeTextmeldungenAsync();
-                TextmeldungNeu_Click(sender, e);
-                txtMeldungStatus.Text = "Textmeldung geloescht.";
-                txtMeldungStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        private async void TextmeldungSpeichern_Click(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(txtMeldungTitel.Text))
-            {
-                MessageBox.Show("Bitte einen Titel eingeben.", "Hinweis",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(txtMeldungText.Text))
-            {
-                MessageBox.Show("Bitte einen Text eingeben.", "Hinweis",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            // Mindestens ein Bereich muss ausgewaehlt sein
-            if (chkMeldungEinkauf.IsChecked != true && chkMeldungVerkauf.IsChecked != true &&
-                chkMeldungStammdaten.IsChecked != true && chkMeldungDokumente.IsChecked != true &&
-                chkMeldungOnline.IsChecked != true)
-            {
-                MessageBox.Show("Bitte mindestens einen Bereich auswaehlen.", "Hinweis",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            try
-            {
-                var meldung = new CoreService.Textmeldung
-                {
-                    CTitel = txtMeldungTitel.Text.Trim(),
-                    CText = txtMeldungText.Text.Trim(),
-                    NTyp = cmbMeldungTyp.SelectedIndex,
-                    NBereichEinkauf = chkMeldungEinkauf.IsChecked == true,
-                    NBereichVerkauf = chkMeldungVerkauf.IsChecked == true,
-                    NBereichStammdaten = chkMeldungStammdaten.IsChecked == true,
-                    NBereichDokumente = chkMeldungDokumente.IsChecked == true,
-                    NBereichOnline = chkMeldungOnline.IsChecked == true,
-                    NAktiv = chkMeldungAktiv.IsChecked == true,
-                    NPopupAnzeigen = chkMeldungPopup.IsChecked == true,
-                    DGueltigVon = dpMeldungVon.SelectedDate,
-                    DGueltigBis = dpMeldungBis.SelectedDate
-                };
-
-                if (_selectedMeldung == null)
-                {
-                    // Neue Meldung
-                    var newId = await _core.CreateTextmeldungAsync(meldung, App.BenutzerId);
-                    txtMeldungStatus.Text = $"Textmeldung '{meldung.CTitel}' angelegt (ID: {newId})!";
-                }
-                else
-                {
-                    // Bestehende Meldung
-                    meldung.KTextmeldung = _selectedMeldung.KTextmeldung;
-                    await _core.UpdateTextmeldungAsync(meldung, App.BenutzerId);
-                    txtMeldungStatus.Text = $"Textmeldung '{meldung.CTitel}' gespeichert!";
-                }
-
-                txtMeldungStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+                await _core.DeleteTextmeldungAsync(meldung.KTextmeldung);
                 await LadeTextmeldungenAsync();
             }
             catch (Exception ex)
             {
-                txtMeldungStatus.Text = $"Fehler: {ex.Message}";
-                txtMeldungStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+                MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

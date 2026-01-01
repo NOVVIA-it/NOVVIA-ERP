@@ -1732,7 +1732,7 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void BenutzerNeu_Click(object sender, RoutedEventArgs e)
+        private async void BenutzerNeu_Click(object sender, RoutedEventArgs e)
         {
             _selectedBenutzer = null;
             btnBenutzerLoeschen.IsEnabled = false;
@@ -1746,7 +1746,10 @@ namespace NovviaERP.WPF.Views
             chkBenutzerAktiv.IsChecked = true;
             chkBenutzerGesperrt.IsChecked = false;
 
-            lstBenutzerRollen.ItemsSource = null;
+            // Alle Rollen laden (keine ausgewaehlt)
+            _benutzerRollen = await _core.GetBenutzerRollenSelectionAsync(0);
+            lstBenutzerRollen.ItemsSource = _benutzerRollen;
+
             txtBenutzerName.Focus();
             txtBenutzerStatus.Text = "Neuer Benutzer - Benutzername und Passwort eingeben.";
             txtBenutzerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
@@ -1893,22 +1896,30 @@ namespace NovviaERP.WPF.Views
         {
             if (lstRollen.SelectedItem is CoreService.NovviaRolle rolle)
             {
-                _selectedRolle = rolle;
-                btnRolleLoeschen.IsEnabled = !rolle.NIstSystem;
+                try
+                {
+                    _selectedRolle = rolle;
+                    btnRolleLoeschen.IsEnabled = !rolle.NIstSystem;
 
-                txtRolleName.Text = rolle.CName;
-                txtRolleBezeichnung.Text = rolle.CBezeichnung;
-                txtRolleBeschreibung.Text = rolle.CBeschreibung ?? "";
-                chkRolleAktiv.IsChecked = rolle.NAktiv;
-                chkRolleAdmin.IsChecked = rolle.NIstAdmin;
-                chkRolleSystem.IsChecked = rolle.NIstSystem;
+                    txtRolleName.Text = rolle.CName;
+                    txtRolleBezeichnung.Text = rolle.CBezeichnung;
+                    txtRolleBeschreibung.Text = rolle.CBeschreibung ?? "";
+                    chkRolleAktiv.IsChecked = rolle.NAktiv;
+                    chkRolleAdmin.IsChecked = rolle.NIstAdmin;
+                    chkRolleSystem.IsChecked = rolle.NIstSystem;
 
-                // Benutzer mit dieser Rolle laden
-                var benutzerMitRolle = await _core.GetBenutzerMitRolleAsync(rolle.KRolle);
-                lstRolleBenutzer.ItemsSource = benutzerMitRolle;
+                    // Benutzer mit dieser Rolle laden
+                    var benutzerMitRolle = await _core.GetBenutzerMitRolleAsync(rolle.KRolle);
+                    lstRolleBenutzer.ItemsSource = benutzerMitRolle;
 
-                txtRolleStatus.Text = $"Rolle ID: {rolle.KRolle}";
-                txtRolleStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
+                    txtRolleStatus.Text = $"Rolle ID: {rolle.KRolle}";
+                    txtRolleStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
+                }
+                catch (Exception ex)
+                {
+                    txtRolleStatus.Text = $"Fehler: {ex.Message}";
+                    txtRolleStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+                }
             }
         }
 

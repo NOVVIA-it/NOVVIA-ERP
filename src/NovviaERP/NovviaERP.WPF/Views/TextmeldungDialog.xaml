@@ -1,0 +1,105 @@
+<Window x:Class="NovviaERP.WPF.Views.TextmeldungDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Textmeldung" Width="600" Height="650" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" ShowInTaskbar="False">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,20,20,10">
+            <StackPanel>
+                <!-- Titel -->
+                <TextBlock Text="Titel" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <TextBox x:Name="txtTitel" Padding="8,6" FontSize="14"/>
+
+                <!-- Typ -->
+                <TextBlock Text="Typ" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                <ComboBox x:Name="cmbTyp" Padding="8,6" Width="200" HorizontalAlignment="Left">
+                    <ComboBoxItem Content="Info (blau)" Tag="0"/>
+                    <ComboBoxItem Content="Warnung (gelb)" Tag="1"/>
+                    <ComboBoxItem Content="Wichtig (rot)" Tag="2"/>
+                </ComboBox>
+
+                <!-- Text -->
+                <TextBlock Text="Meldungstext" FontWeight="SemiBold" Margin="0,15,0,5"/>
+                <TextBox x:Name="txtText" TextWrapping="Wrap" AcceptsReturn="True"
+                         Height="80" Padding="8,6" FontSize="13"/>
+
+                <!-- Zuweisungen -->
+                <TextBlock Text="Zuweisungen (optional - wenn leer gilt fuer alle)" FontWeight="SemiBold" Margin="0,20,0,8"/>
+
+                <Border BorderBrush="#ddd" BorderThickness="1" Padding="10" Background="#fafafa">
+                    <StackPanel>
+                        <!-- Entity hinzufuegen Buttons -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Button Content="+ Kunde" Padding="15,6" Click="SucheKunde_Click" Margin="0,0,10,0"/>
+                            <Button Content="+ Artikel" Padding="15,6" Click="SucheArtikel_Click" Margin="0,0,10,0"/>
+                            <Button Content="+ Lieferant" Padding="15,6" Click="SucheLieferant_Click"/>
+                        </StackPanel>
+
+                        <!-- Zugewiesene Entities -->
+                        <TextBlock Text="Zugewiesen:" FontWeight="SemiBold" Margin="0,5,0,5" FontSize="11"/>
+                        <ListBox x:Name="lstEntities" MaxHeight="120" BorderBrush="#ddd">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="3">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="70"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding CEntityTyp}" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding EntityNr}" Foreground="#555"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding EntityName}" Foreground="#333"/>
+                                        <Button Grid.Column="3" Content="X" Padding="6,2" FontSize="10"
+                                                Click="EntityEntfernen_Click" Tag="{Binding}" Cursor="Hand"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock x:Name="txtKeineZuweisungen" Text="Keine Zuweisungen - gilt fuer alle"
+                                   Foreground="#888" FontSize="11" FontStyle="Italic" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Bereiche -->
+                <TextBlock Text="Anzeigebereiche" FontWeight="SemiBold" Margin="0,20,0,8"/>
+                <WrapPanel>
+                    <CheckBox x:Name="chkEinkauf" Content="Einkauf" Margin="0,0,20,5"/>
+                    <CheckBox x:Name="chkVerkauf" Content="Verkauf" Margin="0,0,20,5"/>
+                    <CheckBox x:Name="chkStammdaten" Content="Stammdaten" Margin="0,0,20,5"/>
+                    <CheckBox x:Name="chkDokumente" Content="Dokumente" Margin="0,0,20,5"/>
+                    <CheckBox x:Name="chkOnline" Content="Online/Shop" Margin="0,0,0,5"/>
+                </WrapPanel>
+
+                <!-- Optionen -->
+                <TextBlock Text="Optionen" FontWeight="SemiBold" Margin="0,15,0,8"/>
+                <CheckBox x:Name="chkAktiv" Content="Meldung ist aktiv" IsChecked="True" Margin="0,0,0,5"/>
+                <CheckBox x:Name="chkPopup" Content="Als Popup anzeigen" IsChecked="True"/>
+
+                <!-- Gueltigkeit -->
+                <TextBlock Text="Gueltigkeit (optional)" FontWeight="SemiBold" Margin="0,15,0,8"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Von:" VerticalAlignment="Center" Width="35"/>
+                    <DatePicker x:Name="dpVon" Width="130"/>
+                    <TextBlock Text="Bis:" VerticalAlignment="Center" Width="35" Margin="15,0,0,0"/>
+                    <DatePicker x:Name="dpBis" Width="130"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Buttons -->
+        <Border Grid.Row="1" Background="#f8f9fa" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="20,15">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Abbrechen" Width="100" Padding="10,8" Click="Abbrechen_Click"/>
+                <Button x:Name="btnSpeichern" Content="Speichern" Width="100" Padding="10,8" Margin="10,0,0,0"
+                        Background="#0078D4" Foreground="White" FontWeight="SemiBold" BorderThickness="0"
+                        Click="Speichern_Click"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
