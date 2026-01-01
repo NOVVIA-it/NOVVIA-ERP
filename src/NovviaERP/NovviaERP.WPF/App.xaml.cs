@@ -132,6 +132,9 @@ namespace NovviaERP.WPF
             services.AddSingleton(sp => new ZahlungsabgleichService(sp.GetRequiredService<JtlDbContext>()));
             services.AddSingleton(sp => new SepaService(sp.GetRequiredService<JtlDbContext>()));
 
+            // Log-Service (für zentrale Protokollierung)
+            services.AddSingleton(sp => new LogService(sp.GetRequiredService<JtlDbContext>()));
+
             // AppData Service (lokale Einstellungen, Mappings, Cache)
             services.AddSingleton<AppDataService>();
 

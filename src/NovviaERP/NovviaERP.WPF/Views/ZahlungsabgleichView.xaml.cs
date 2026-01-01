@@ -80,6 +80,12 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
+                if (_sepa == null)
+                {
+                    txtStatus.Text = "SEPA-Service nicht verfuegbar";
+                    return;
+                }
+
                 txtStatus.Text = "Lade SEPA-Lastschriften...";
 
                 var rechnungen = await _sepa.GetSepaFaelligAsync();
@@ -220,6 +226,12 @@ namespace NovviaERP.WPF.Views
 
         private async void SepaExport_Click(object sender, RoutedEventArgs e)
         {
+            if (_sepa == null)
+            {
+                MessageBox.Show("SEPA-Service nicht verfuegbar.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             var selected = _sepaRechnungen.Where(r => r.IsSelected).ToList();
 
             if (selected.Count == 0)

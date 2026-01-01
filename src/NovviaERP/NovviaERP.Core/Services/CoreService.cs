@@ -406,6 +406,7 @@ namespace NovviaERP.Core.Services
             public DateTime DatumAnzeige => DExternesDatum ?? DErstellt;
 
             public string? CStatus { get; set; }
+            public byte? NAuftragStatus { get; set; }  // JTL nAuftragStatus
             public int TKunde_KKunde { get; set; }
             public string? KundeName { get; set; }
             public string? KundeFirma { get; set; }
@@ -418,6 +419,18 @@ namespace NovviaERP.Core.Services
             public int? KShop { get; set; }
             public string? ShopName { get; set; }
             public byte NStorno { get; set; }
+
+            // Status-Helper für UI-Farben
+            public string StatusFarbe => CStatus switch
+            {
+                "Offen" => "#FFA500",        // Orange
+                "In Bearbeitung" => "#1E90FF", // Blau
+                "Versandbereit" => "#9370DB",  // Lila
+                "Versendet" => "#32CD32",      // Grün
+                "Abgeschlossen" => "#228B22",  // Dunkelgrün
+                "Storniert" => "#DC143C",      // Rot
+                _ => "#808080"                 // Grau
+            };
 
             // Rechnungsadresse
             public string? ReFirma { get; set; }
@@ -454,6 +467,7 @@ namespace NovviaERP.Core.Services
             public string? CInetBestellNr { get; set; }
             public DateTime DErstellt { get; set; }
             public string? CStatus { get; set; }
+            public byte? NAuftragStatus { get; set; }  // JTL nAuftragStatus: 0=Offen,1=InBearbeitung,2=Versandbereit,3=Versendet,4=Abgeschlossen,255=Storniert
             public int TKunde_KKunde { get; set; }
 
             // Kunde
@@ -1478,7 +1492,19 @@ namespace NovviaERP.Core.Services
                     -- JTL Datumslogik: Externes Datum und Wawi-Datum
                     CASE WHEN va.dExternesErstelldatum > '1900-01-02' THEN va.dExternesErstelldatum ELSE NULL END AS DExternesDatum,
                     CASE WHEN va.dErstelltWawi > '1900-01-02' THEN va.dErstelltWawi ELSE NULL END AS DErstelltWawi,
-                    b.cStatus,
+                    -- JTL-native Status berechnet aus nAuftragStatus
+                    CASE
+                        WHEN b.nStorno = 1 THEN 'Storniert'
+                        WHEN va.nAuftragStatus = 255 THEN 'Storniert'
+                        WHEN b.dVersandt > '1900-01-02' THEN 'Versendet'
+                        WHEN va.nAuftragStatus = 4 THEN 'Abgeschlossen'
+                        WHEN va.nAuftragStatus = 3 THEN 'Versendet'
+                        WHEN va.nAuftragStatus = 2 THEN 'Versandbereit'
+                        WHEN va.nAuftragStatus = 1 THEN 'In Bearbeitung'
+                        WHEN va.nAuftragStatus = 0 THEN 'Offen'
+                        ELSE 'Offen'
+                    END AS CStatus,
+                    va.nAuftragStatus AS NAuftragStatus,
                     b.tKunde_kKunde,
                     CASE WHEN b.dVersandt > '1900-01-02' THEN b.dVersandt ELSE NULL END AS DVersandt,
                     CASE WHEN b.dBezahlt > '1900-01-02' THEN b.dBezahlt ELSE NULL END AS DBezahlt,
@@ -1505,7 +1531,20 @@ namespace NovviaERP.Core.Services
                 LEFT JOIN tShop s ON b.kShop = s.kShop
                 WHERE b.nStorno = 0";
 
-            if (!string.IsNullOrEmpty(status)) sql += " AND b.cStatus = @Status";
+            if (!string.IsNullOrEmpty(status))
+            {
+                // Status-Filter basierend auf JTL nAuftragStatus
+                sql += status switch
+                {
+                    "Offen" => " AND (va.nAuftragStatus = 0 OR va.nAuftragStatus IS NULL) AND b.nStorno = 0",
+                    "In Bearbeitung" => " AND va.nAuftragStatus = 1 AND b.nStorno = 0",
+                    "Versandbereit" => " AND va.nAuftragStatus = 2 AND b.nStorno = 0",
+                    "Versendet" => " AND (va.nAuftragStatus = 3 OR b.dVersandt > '1900-01-02') AND b.nStorno = 0",
+                    "Abgeschlossen" => " AND va.nAuftragStatus = 4 AND b.nStorno = 0",
+                    "Storniert" => " AND (b.nStorno = 1 OR va.nAuftragStatus = 255)",
+                    _ => ""
+                };
+            }
             if (von.HasValue) sql += " AND b.dErstellt >= @Von";
             if (bis.HasValue) sql += " AND b.dErstellt <= @Bis";
             if (kundeId.HasValue) sql += " AND b.tKunde_kKunde = @KundeId";
@@ -1601,7 +1640,22 @@ namespace NovviaERP.Core.Services
             var conn = await GetConnectionAsync();
 
             var bestellung = await conn.QueryFirstOrDefaultAsync<BestellungDetail>(@"
-                SELECT b.*,
+                SELECT b.kBestellung, b.cBestellNr, b.cInetBestellNr, b.dErstellt, b.dVersandt, b.dBezahlt,
+                       b.cIdentCode, b.nStorno, b.kShop, b.tKunde_kKunde, b.cAnmerkung,
+                       b.tVersandArt_kVersandArt, b.kZahlungsart,
+                       -- JTL-native Status berechnet
+                       CASE
+                           WHEN b.nStorno = 1 THEN 'Storniert'
+                           WHEN va.nAuftragStatus = 255 THEN 'Storniert'
+                           WHEN b.dVersandt > '1900-01-02' THEN 'Versendet'
+                           WHEN va.nAuftragStatus = 4 THEN 'Abgeschlossen'
+                           WHEN va.nAuftragStatus = 3 THEN 'Versendet'
+                           WHEN va.nAuftragStatus = 2 THEN 'Versandbereit'
+                           WHEN va.nAuftragStatus = 1 THEN 'In Bearbeitung'
+                           WHEN va.nAuftragStatus = 0 THEN 'Offen'
+                           ELSE 'Offen'
+                       END AS CStatus,
+                       va.nAuftragStatus AS NAuftragStatus,
                        k.cKundenNr,
                        a.cName AS KundeName, a.cFirma AS KundeFirma, a.cMail AS KundeMail, a.cTel AS KundeTel,
                        v.cName AS VersandartName,
@@ -1610,6 +1664,7 @@ namespace NovviaERP.Core.Services
                        ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtNetto,
                        ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100) * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
                 FROM tBestellung b
+                LEFT JOIN Verkauf.tAuftrag va ON va.kAuftrag = b.kBestellung
                 LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
                 OUTER APPLY (SELECT TOP 1 * FROM tAdresse WHERE kKunde = k.kKunde AND nStandard = 1 ORDER BY nTyp) a
                 LEFT JOIN tVersandArt v ON b.tVersandArt_kVersandArt = v.kVersandArt
@@ -6357,6 +6412,8 @@ namespace NovviaERP.Core.Services
             int limit = 500)
         {
             var conn = await GetConnectionAsync();
+            // Quarantaene-Lager aus Einstellungen lesen (Standard: kWarenLager=3)
+            var quarantaeneLager = await GetQuarantaeneLagerIdAsync();
             var sql = @"
                 SELECT TOP (@Limit)
                     we.kWarenLagerEingang AS KWarenLagerEingang,
@@ -6371,10 +6428,14 @@ namespace NovviaERP.Core.Services
                     ISNULL(wl.cName, 'Unbekannt') AS CLagerName,
                     we.dErstellt AS DEingang,
                     we.cLieferscheinNr AS CLieferscheinNr,
-                    ISNULL(cs.nGesperrt, 0) AS NGesperrt,
-                    ISNULL(cs.nQuarantaene, 0) AS NQuarantaene,
-                    cs.cSperrgrund AS CSperrgrund,
-                    cs.dGesperrtAm AS DGesperrtAm,
+                    -- JTL-konform: Quarantaene = konfiguriertes Quarantaene-Lager
+                    CASE WHEN wlp.kWarenLager = @QuarantaeneLager THEN 1 ELSE 0 END AS NGesperrt,
+                    CASE WHEN wlp.kWarenLager = @QuarantaeneLager THEN 1 ELSE 0 END AS NQuarantaene,
+                    -- Sperrgrund aus Kommentar auslesen (Format: QUARANTAENE|OriginalPlatz|Grund)
+                    CASE WHEN we.cKommentar LIKE 'QUARANTAENE|%' THEN
+                        SUBSTRING(we.cKommentar, CHARINDEX('|', we.cKommentar, CHARINDEX('|', we.cKommentar) + 1) + 1, LEN(we.cKommentar))
+                    ELSE NULL END AS CSperrgrund,
+                    NULL AS DGesperrtAm,
                     CASE
                         WHEN we.dMHD IS NULL THEN 'Kein MHD'
                         WHEN we.dMHD < GETDATE() THEN 'Abgelaufen'
@@ -6387,7 +6448,6 @@ namespace NovviaERP.Core.Services
                 LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 AND ab.kPlattform = 1
                 LEFT JOIN dbo.tWarenLagerPlatz wlp ON we.kWarenLagerPlatz = wlp.kWarenLagerPlatz
                 LEFT JOIN dbo.tWarenLager wl ON wlp.kWarenLager = wl.kWarenLager
-                LEFT JOIN NOVVIA.ChargenStatus cs ON we.kWarenLagerEingang = cs.kWarenLagerEingang
                 WHERE we.cChargenNr IS NOT NULL
                   AND we.cChargenNr <> ''";
 
@@ -6401,9 +6461,9 @@ namespace NovviaERP.Core.Services
             if (!string.IsNullOrEmpty(suche))
                 sql += @" AND (we.cChargenNr LIKE @Suche OR a.cArtNr LIKE @Suche OR ab.cName LIKE @Suche)";
             if (nurGesperrt)
-                sql += " AND ISNULL(cs.nGesperrt, 0) = 1";
+                sql += " AND wlp.kWarenLager = @QuarantaeneLager";
             if (nurQuarantaene)
-                sql += " AND ISNULL(cs.nQuarantaene, 0) = 1";
+                sql += " AND wlp.kWarenLager = @QuarantaeneLager";
             if (nurAbgelaufen)
                 sql += " AND we.dMHD < GETDATE()";
 
@@ -6414,7 +6474,8 @@ namespace NovviaERP.Core.Services
                 Limit = limit,
                 KArtikel = kArtikel,
                 KWarenlager = kWarenlager,
-                Suche = $"%{suche}%"
+                Suche = $"%{suche}%",
+                QuarantaeneLager = quarantaeneLager
             });
         }
 
@@ -6482,44 +6543,137 @@ namespace NovviaERP.Core.Services
             return await conn.QueryAsync<ChargenBewegung>(sql, new { ChargenNr = chargenNr, KArtikel = kArtikel });
         }
 
+        #region Pharma Einstellungen - Quarantaene-Lager
+
+        public const string SETTING_QUARANTAENE_LAGER = "Pharma.QuarantaeneLager";
+        public const int DEFAULT_QUARANTAENE_LAGER = 3;
+
+        /// <summary>Liest das konfigurierte Quarantaene-Lager (kWarenLager)</summary>
+        public async Task<int> GetQuarantaeneLagerIdAsync()
+        {
+            var conn = await GetConnectionAsync();
+            var wert = await conn.QueryFirstOrDefaultAsync<string>(
+                "SELECT cWert FROM NOVVIA.FirmaEinstellung WHERE cSchluessel = @Schluessel",
+                new { Schluessel = SETTING_QUARANTAENE_LAGER });
+            return int.TryParse(wert, out var result) ? result : DEFAULT_QUARANTAENE_LAGER;
+        }
+
+        /// <summary>Setzt das Quarantaene-Lager</summary>
+        public async Task SetQuarantaeneLagerIdAsync(int kWarenLager)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                MERGE INTO NOVVIA.FirmaEinstellung AS target
+                USING (SELECT @Schluessel AS cSchluessel) AS source
+                ON target.cSchluessel = source.cSchluessel
+                WHEN MATCHED THEN UPDATE SET cWert = @Wert, dGeaendert = GETDATE()
+                WHEN NOT MATCHED THEN INSERT (cSchluessel, cWert, cBeschreibung, dErstellt)
+                    VALUES (@Schluessel, @Wert, 'Quarantaene-Lager (kWarenLager)', GETDATE());",
+                new { Schluessel = SETTING_QUARANTAENE_LAGER, Wert = kWarenLager.ToString() });
+        }
+
+        #endregion
+
         /// <summary>
-        /// Charge sperren
+        /// Charge sperren (in Quarantaene-Lager verschieben) - JTL-konform
         /// </summary>
         public async Task ChargeSperre(int kWarenLagerEingang, string sperrgrund, string? sperrvermerk, int kBenutzer)
         {
-            var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync("EXEC NOVVIA.spChargeSperre @kWarenLagerEingang, @cSperrgrund, @cSperrvermerk, @kBenutzer",
-                new { kWarenLagerEingang, cSperrgrund = sperrgrund, cSperrvermerk = sperrvermerk, kBenutzer });
+            // In JTL wird Sperrung durch Umlagerung ins Quarantaene-Lager realisiert
+            await ChargeInQuarantaene(kWarenLagerEingang, sperrgrund, kBenutzer);
         }
 
         /// <summary>
-        /// Charge freigeben
+        /// Charge freigeben (aus Quarantaene-Lager zurueck ins Hauptlager) - JTL-konform
         /// </summary>
         public async Task ChargeFreigabe(int kWarenLagerEingang, string? hinweis, int kBenutzer)
         {
-            var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync("EXEC NOVVIA.spChargeFreigabe @kWarenLagerEingang, @cHinweis, @kBenutzer",
-                new { kWarenLagerEingang, cHinweis = hinweis, kBenutzer });
+            // In JTL wird Freigabe durch Umlagerung zurueck ins Hauptlager realisiert
+            await ChargeAusQuarantaene(kWarenLagerEingang, hinweis, kBenutzer);
         }
 
         /// <summary>
-        /// Charge in Quarantäne verschieben
+        /// Charge in Quarantaene-Lager verschieben - JTL-konform per Lagerplatztransfer
         /// </summary>
         public async Task ChargeInQuarantaene(int kWarenLagerEingang, string grund, int kBenutzer)
         {
             var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync("EXEC NOVVIA.spChargeQuarantaene @kWarenLagerEingang, @cGrund, @kBenutzer",
-                new { kWarenLagerEingang, cGrund = grund, kBenutzer });
+
+            // Quarantaene-Lager aus Einstellungen lesen
+            var quarantaeneLager = await GetQuarantaeneLagerIdAsync();
+            var quarantaenePlatz = await conn.QueryFirstOrDefaultAsync<int?>(
+                "SELECT TOP 1 kWarenLagerPlatz FROM tWarenLagerPlatz WHERE kWarenLager = @KWarenLager",
+                new { KWarenLager = quarantaeneLager });
+
+            if (quarantaenePlatz == null)
+            {
+                // Quarantaene-Lagerplatz anlegen falls nicht vorhanden
+                quarantaenePlatz = await conn.QuerySingleAsync<int>(@"
+                    INSERT INTO tWarenLagerPlatz (kWarenLager, cName, cKuerzel, dErstellt, nSort)
+                    VALUES (@KWarenLager, 'Quarantaene', 'QUA', GETDATE(), 0);
+                    SELECT SCOPE_IDENTITY();",
+                    new { KWarenLager = quarantaeneLager });
+            }
+
+            // Ursprungslagerplatz merken (im Kommentar speichern)
+            var original = await conn.QueryFirstOrDefaultAsync<(int KWarenLagerPlatz, string? Kommentar)>(
+                "SELECT kWarenLagerPlatz, cKommentar FROM tWarenLagerEingang WHERE kWarenLagerEingang = @Id",
+                new { Id = kWarenLagerEingang });
+
+            // Umlagerung durchfuehren
+            await conn.ExecuteAsync(@"
+                UPDATE tWarenLagerEingang
+                SET kWarenLagerPlatz = @QuarantaenePlatz,
+                    cKommentar = @Kommentar
+                WHERE kWarenLagerEingang = @Id",
+                new {
+                    Id = kWarenLagerEingang,
+                    QuarantaenePlatz = quarantaenePlatz,
+                    Kommentar = $"QUARANTAENE|{original.KWarenLagerPlatz}|{grund}"
+                });
         }
 
         /// <summary>
-        /// Charge aus Quarantäne zurückholen
+        /// Charge aus Quarantaene zurueck ins Ursprungslager - JTL-konform
         /// </summary>
         public async Task ChargeAusQuarantaene(int kWarenLagerEingang, string? hinweis, int kBenutzer)
         {
             var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync("EXEC NOVVIA.spChargeAusQuarantaene @kWarenLagerEingang, @cHinweis, @kBenutzer",
-                new { kWarenLagerEingang, cHinweis = hinweis, kBenutzer });
+
+            // Ursprungslagerplatz aus Kommentar auslesen
+            var kommentar = await conn.QueryFirstOrDefaultAsync<string?>(
+                "SELECT cKommentar FROM tWarenLagerEingang WHERE kWarenLagerEingang = @Id",
+                new { Id = kWarenLagerEingang });
+
+            int? originalPlatz = null;
+            if (!string.IsNullOrEmpty(kommentar) && kommentar.StartsWith("QUARANTAENE|"))
+            {
+                var parts = kommentar.Split('|');
+                if (parts.Length >= 2 && int.TryParse(parts[1], out var platz))
+                    originalPlatz = platz;
+            }
+
+            // Falls kein Ursprungslagerplatz bekannt, Standard-Lagerplatz (Lager MSK, kWarenLager=1)
+            if (originalPlatz == null)
+            {
+                originalPlatz = await conn.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT TOP 1 kWarenLagerPlatz FROM tWarenLagerPlatz WHERE kWarenLager = 1");
+            }
+
+            if (originalPlatz == null)
+                throw new InvalidOperationException("Kein Ziellagerplatz fuer Freigabe gefunden.");
+
+            // Zurueck umlagern
+            await conn.ExecuteAsync(@"
+                UPDATE tWarenLagerEingang
+                SET kWarenLagerPlatz = @OriginalPlatz,
+                    cKommentar = @Kommentar
+                WHERE kWarenLagerEingang = @Id",
+                new {
+                    Id = kWarenLagerEingang,
+                    OriginalPlatz = originalPlatz,
+                    Kommentar = $"Freigabe: {hinweis ?? ""}"
+                });
         }
 
         public class ChargenBestand
