@@ -149,6 +149,9 @@ namespace NovviaERP.WPF.Views
                     Controls.DataGridColumnConfig.EnableColumnChooser(dgChargenAusgaenge, "ArtikelChargenAusgaenge");
                     await LadeChargenAusgaengeAsync();
 
+                    // Textmeldungen laden
+                    await pnlTextmeldungen.LoadAsync("Artikel", _artikelId.Value, "Stammdaten");
+
                     txtStatus.Text = "Artikel geladen";
                 }
                 else

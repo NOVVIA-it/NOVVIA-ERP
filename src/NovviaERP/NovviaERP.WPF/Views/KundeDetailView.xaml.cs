@@ -32,6 +32,8 @@ namespace NovviaERP.WPF.Views
                     await LadeReferenzdatenAsync();
                     await LadeKundeAsync();
                     await LadeValidierungAsync();
+                    if (_kundeId.HasValue)
+                        await pnlTextmeldungen.LoadAsync("Kunde", _kundeId.Value, "Stammdaten");
                 }
                 catch (Exception ex)
                 {
