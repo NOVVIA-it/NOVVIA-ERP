@@ -11,6 +11,7 @@ using Microsoft.Win32;
 using NovviaERP.Core.Entities;
 using NovviaERP.Core.Services;
 using NovviaERP.WPF.Controls;
+using NovviaERP.WPF.Controls.Base;
 
 namespace NovviaERP.WPF.Views
 {
@@ -45,13 +46,14 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
-                // Spalten-Konfiguration für alle DataGrids
-                DataGridColumnConfig.EnableColumnChooser(dgLieferanten, "LieferantenView");
-                DataGridColumnConfig.EnableColumnChooser(dgBestellungen, "LieferantenView.Bestellungen");
-                DataGridColumnConfig.EnableColumnChooser(dgBestellPositionen, "LieferantenView.Positionen");
-                DataGridColumnConfig.EnableColumnChooser(dgABdataArtikel, "LieferantenView.ABdata");
-                DataGridColumnConfig.EnableColumnChooser(dgMSV3Log, "LieferantenView.MSV3Log");
-                DataGridColumnConfig.EnableColumnChooser(dgLieferantEigeneFelder, "LieferantenView.EigeneFelder");
+                // GridStyleHelper für alle DataGrids initialisieren
+                await GridStyleHelper.Instance.LoadSettingsAsync(_coreService, App.BenutzerId);
+                GridStyleHelper.InitializeGrid(dgLieferanten, "LieferantenView");
+                GridStyleHelper.InitializeGrid(dgBestellungen, "LieferantenView.Bestellungen");
+                GridStyleHelper.InitializeGrid(dgBestellPositionen, "LieferantenView.Positionen");
+                GridStyleHelper.InitializeGrid(dgABdataArtikel, "LieferantenView.ABdata");
+                GridStyleHelper.InitializeGrid(dgMSV3Log, "LieferantenView.MSV3Log");
+                GridStyleHelper.InitializeGrid(dgLieferantEigeneFelder, "LieferantenView.EigeneFelder");
 
                 await LadeLieferantenAsync();
                 await LadeBestellungenAsync();

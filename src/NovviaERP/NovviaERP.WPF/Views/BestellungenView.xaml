@@ -64,9 +64,7 @@
         <DataGrid x:Name="dgBestellungen"
                   AutoGenerateColumns="False" IsReadOnly="True"
                   SelectionMode="Single" SelectionUnit="FullRow"
-                  GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                  BorderThickness="1" BorderBrush="#ddd"
-                  RowBackground="White" AlternatingRowBackground="#fafafa"
+                  HeadersVisibility="Column" BorderThickness="0"
                   MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Best-Nr." Binding="{Binding CBestellNr}" Width="100"/>

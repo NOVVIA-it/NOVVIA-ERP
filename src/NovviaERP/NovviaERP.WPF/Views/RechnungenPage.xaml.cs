@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using NovviaERP.Core.Entities;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls.Base;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NovviaERP.WPF.Views
@@ -16,7 +17,11 @@ namespace NovviaERP.WPF.Views
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
-            Loaded += async (s, e) => await LadeRechnungenAsync();
+            Loaded += async (s, e) =>
+            {
+                await GridStyleHelper.InitializeGridAsync(dgRechnungen, "RechnungenPage", _core, App.BenutzerId);
+                await LadeRechnungenAsync();
+            };
         }
 
         private async System.Threading.Tasks.Task LadeRechnungenAsync()

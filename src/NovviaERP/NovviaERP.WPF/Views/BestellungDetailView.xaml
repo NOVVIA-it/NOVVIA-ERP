@@ -387,8 +387,7 @@
                             <StackPanel Margin="10">
                                 <TextBlock Text="Eigene Felder" FontWeight="SemiBold" Foreground="#666" Margin="0,0,0,10"/>
                                 <DataGrid x:Name="dgEigeneFelder" AutoGenerateColumns="False" CanUserAddRows="False"
-                                          HeadersVisibility="Column" BorderThickness="1" BorderBrush="#ddd"
-                                          RowBackground="White" AlternatingRowBackground="#fafafa" Height="200">
+                                          HeadersVisibility="Column" BorderThickness="0" Height="200">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Feldname" Binding="{Binding FeldName}" Width="150" IsReadOnly="True"/>
                                         <DataGridTextColumn Header="Wert" Binding="{Binding Wert}" Width="*"/>

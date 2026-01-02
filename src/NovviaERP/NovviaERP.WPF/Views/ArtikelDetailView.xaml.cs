@@ -8,6 +8,7 @@ using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls.Base;
 
 namespace NovviaERP.WPF.Views
 {
@@ -92,6 +93,10 @@ namespace NovviaERP.WPF.Views
             {
                 txtStatus.Text = "Lade Stammdaten...";
 
+                // GridStyleHelper für alle DataGrids initialisieren
+                await GridStyleHelper.Instance.LoadSettingsAsync(_coreService, App.BenutzerId);
+                InitializeAllGrids();
+
                 // Stammdaten laden
                 _hersteller = (await _coreService.GetHerstellerAsync()).ToList();
                 cmbHersteller.ItemsSource = _hersteller;
@@ -145,6 +150,11 @@ namespace NovviaERP.WPF.Views
                     // Lager
                     txtAufLager.Text = _artikel.NLagerbestand.ToString("N0");
                     chkBestandsfuehrung.IsChecked = _artikel.CLagerArtikel == "Y";
+
+                    // Lageroptionen
+                    chkSeriennummer.IsChecked = _artikel.NSeriennummernVerfolgung > 0;
+                    chkMHD.IsChecked = _artikel.NMHD > 0;
+                    chkCharge.IsChecked = _artikel.NCharge > 0;
 
                     // Gewicht
                     txtGewicht.Text = _artikel.FGewicht?.ToString("N3") ?? "";
@@ -429,6 +439,34 @@ namespace NovviaERP.WPF.Views
             public decimal FBruttoPreis { get; set; }
             public int AnzahlStaffeln { get; set; }
             public int? KPreis { get; set; }
+        }
+
+        private void InitializeAllGrids()
+        {
+            // Tab Allgemein - Preise
+            GridStyleHelper.InitializeGrid(dgPreiseGlobal, "ArtikelDetail.PreiseGlobal");
+            GridStyleHelper.InitializeGrid(dgKundenpreise, "ArtikelDetail.Kundenpreise");
+
+            // Tab Bestaende
+            GridStyleHelper.InitializeGrid(dgBestaende, "ArtikelDetail.Bestaende");
+            GridStyleHelper.InitializeGrid(dgChargen, "ArtikelDetail.Chargen");
+            GridStyleHelper.InitializeGrid(dgSeriennummern, "ArtikelDetail.Seriennummern");
+
+            // Tab Lieferanten
+            GridStyleHelper.InitializeGrid(dgArtikelLieferanten, "ArtikelDetail.Lieferanten");
+
+            // Tab Bilder
+            GridStyleHelper.InitializeGrid(dgBilder, "ArtikelDetail.Bilder");
+
+            // Tab Attribute/Merkmale
+            GridStyleHelper.InitializeGrid(dgAttribute, "ArtikelDetail.Attribute");
+            GridStyleHelper.InitializeGrid(dgMerkmale, "ArtikelDetail.Merkmale");
+
+            // Tab Stueckliste
+            GridStyleHelper.InitializeGrid(dgStueckliste, "ArtikelDetail.Stueckliste");
+
+            // Tab Sonderpreise
+            GridStyleHelper.InitializeGrid(dgSonderpreise, "ArtikelDetail.Sonderpreise");
         }
 
         #region Tab-Wechsel und Lazy Loading

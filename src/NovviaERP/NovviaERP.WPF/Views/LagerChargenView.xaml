@@ -71,8 +71,7 @@
                     </Grid.RowDefinitions>
                 <DataGrid x:Name="dgChargen" AutoGenerateColumns="False" IsReadOnly="True"
                           SelectionMode="Single" SelectionUnit="FullRow"
-                          GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                          RowBackground="White" AlternatingRowBackground="#fafafa"
+                          HeadersVisibility="Column" BorderThickness="0"
                           MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="ChargenNr" Binding="{Binding CChargenNr}" Width="120" FontWeight="SemiBold"/>
@@ -181,8 +180,7 @@
 
                     <DataGrid x:Name="dgAusgaenge" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
                               SelectionMode="Single" SelectionUnit="FullRow"
-                              GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                              RowBackground="White" AlternatingRowBackground="#fafafa">
+                              HeadersVisibility="Column" BorderThickness="0">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Datum" Binding="{Binding DAusgang, StringFormat=dd.MM.yyyy}" Width="90"/>
                             <DataGridTextColumn Header="ChargenNr" Binding="{Binding CChargenNr}" Width="120" FontWeight="SemiBold"/>
@@ -238,8 +236,7 @@
 
                     <DataGrid x:Name="dgVerfolgung" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
                               SelectionMode="Single" SelectionUnit="FullRow"
-                              GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                              RowBackground="White" AlternatingRowBackground="#fafafa">
+                              HeadersVisibility="Column" BorderThickness="0">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy HH:mm}" Width="130"/>
                             <DataGridTextColumn Header="Aktion" Binding="{Binding AktionText}" Width="120"/>

@@ -681,7 +681,7 @@ namespace NovviaERP.Core.Services
                             JOIN Verkauf.tAuftragEckdaten ae ON au.kAuftrag = ae.kAuftrag
                             WHERE au.kKunde = k.kKunde AND au.nStorno = 0), 0) AS Umsatz
                 FROM dbo.tKunde k
-                LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
+                OUTER APPLY (SELECT TOP 1 * FROM tAdresse WHERE kKunde = k.kKunde ORDER BY nStandard DESC, kAdresse) a
                 LEFT JOIN tKundenGruppe kg ON kg.kKundenGruppe = k.kKundenGruppe
                 LEFT JOIN tKundenKategorie kk ON kk.kKundenKategorie = k.kKundenKategorie
                 LEFT JOIN tLand l ON l.cISO = a.cISO

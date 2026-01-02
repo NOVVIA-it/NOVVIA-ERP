@@ -10,6 +10,7 @@ using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
 using NovviaERP.WPF.Controls;
+using NovviaERP.WPF.Controls.Base;
 
 namespace NovviaERP.WPF.Views
 {
@@ -20,8 +21,11 @@ namespace NovviaERP.WPF.Views
         private List<ArtikelListItem> _artikel = new();
         private List<KategorieNode> _kategorien = new();
         private int? _selectedKategorieId;
+        private int? _selectedArtikelId;
         private bool _initialized = false;
         private CancellationTokenSource? _searchCts;
+        private List<CoreService.CustomQueryInfo> _customQueries = new();
+        private int? _activeCustomQueryId;
 
         public ArtikelView()
         {
@@ -38,13 +42,15 @@ namespace NovviaERP.WPF.Views
             if (_initialized) return;
             _initialized = true;
 
-            // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
-            DataGridColumnConfig.EnableColumnChooser(dgArtikel, "ArtikelViewJTL");
+            // Grid-Formatierung und Spalten-Konfiguration
+            await GridStyleHelper.InitializeGridAsync(dgArtikel, "ArtikelViewJTL", _coreService, App.BenutzerId);
 
             try
             {
                 txtStatus.Text = "Lade Kategorien...";
                 await LadeKategorienAsync();
+                txtStatus.Text = "Lade Custom Queries...";
+                await LadeCustomQueriesAsync();
                 txtStatus.Text = "Lade Artikel...";
                 await LadeArtikelAsync();
                 txtStatus.Text = "Bereit";
@@ -52,6 +58,103 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        private async Task LadeCustomQueriesAsync()
+        {
+            try
+            {
+                // Custom Queries für Artikel laden (kKontext = 2)
+                _customQueries = (await _coreService.GetCustomQueriesAsync(2)).ToList();
+
+                if (spEigeneUebersichten != null)
+                {
+                    // Alle dynamischen Buttons entfernen (ausser + Button)
+                    var buttonsToRemove = spEigeneUebersichten.Children.OfType<Button>()
+                        .Where(b => b.Tag is int).ToList();
+                    foreach (var btn in buttonsToRemove)
+                        spEigeneUebersichten.Children.Remove(btn);
+
+                    // Neue Buttons für Custom Queries hinzufügen (vor dem + Button)
+                    int insertIndex = 0;
+                    bool isFirst = true;
+                    foreach (var query in _customQueries)
+                    {
+                        var btn = new Button
+                        {
+                            Content = query.CName,
+                            Padding = new Thickness(10, 5, 10, 5),
+                            FontSize = 11,
+                            Background = isFirst
+                                ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(224, 224, 224))
+                                : System.Windows.Media.Brushes.Transparent,
+                            BorderThickness = new Thickness(0),
+                            Cursor = System.Windows.Input.Cursors.Hand,
+                            Tag = query.KCustomerQuery
+                        };
+                        btn.Click += CustomQuerySubTab_Click;
+                        spEigeneUebersichten.Children.Insert(insertIndex++, btn);
+
+                        if (isFirst)
+                        {
+                            _activeCustomQueryId = query.KCustomerQuery;
+                            isFirst = false;
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private async void CustomQuerySubTab_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not int queryId)
+                return;
+
+            // Alle Sub-Tab Buttons zuruecksetzen
+            ResetEigeneUebersichtenButtons();
+            btn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(224, 224, 224));
+
+            _activeCustomQueryId = queryId;
+
+            // Query ausfuehren wenn ein Artikel ausgewaehlt ist
+            if (_selectedArtikelId.HasValue)
+            {
+                await ExecuteCustomQueryAsync(queryId, _selectedArtikelId.Value);
+            }
+        }
+
+        private void ResetEigeneUebersichtenButtons()
+        {
+            // Alle dynamischen Buttons zuruecksetzen
+            var transparent = System.Windows.Media.Brushes.Transparent;
+            if (spEigeneUebersichten != null)
+            {
+                foreach (var btn in spEigeneUebersichten.Children.OfType<Button>().Where(b => b.Tag is int))
+                {
+                    btn.Background = transparent;
+                }
+            }
+        }
+
+        private void AddCustomQuery_Click(object sender, RoutedEventArgs e)
+        {
+            // TODO: Dialog zum Erstellen einer neuen Custom Query öffnen
+            MessageBox.Show("Neue Übersicht erstellen...\n\nDiese Funktion wird in einer zukünftigen Version verfügbar sein.",
+                "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private async Task ExecuteCustomQueryAsync(int queryId, int kArtikel)
+        {
+            try
+            {
+                var results = await _coreService.ExecuteCustomQueryAsync(queryId, kArtikel);
+                dgHistory.ItemsSource = results.ToList();
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Query-Fehler: {ex.Message}";
             }
         }
 
@@ -119,6 +222,7 @@ namespace NovviaERP.WPF.Views
             public string? CArtNr { get; set; }
             public string? Name { get; set; }
             public decimal FVKNetto { get; set; }
+            public decimal FVKBrutto { get; set; }
             public decimal FEKNetto { get; set; }
             public decimal FUVP { get; set; }
             public decimal NLagerbestand { get; set; }
@@ -129,8 +233,26 @@ namespace NovviaERP.WPF.Views
             public decimal InAuftraegen { get; set; }
             public decimal ImZulauf { get; set; }
             public decimal Gewinn => FVKNetto - FEKNetto;
+            public decimal GewinnProzent => FEKNetto > 0 ? Math.Round(((FVKNetto - FEKNetto) / FEKNetto) * 100, 2) : 0;
             public bool Aktiv { get; set; }
             public string? Hersteller { get; set; }
+            public string? Warengruppe { get; set; }
+
+            // Erweiterte Felder
+            public string? CBarcode { get; set; }
+            public string? CHAN { get; set; }
+            public string? CASIN { get; set; }
+            public string? CISBN { get; set; }
+            public string? CUPC { get; set; }
+            public string? CTaric { get; set; }
+            public int NSort { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public DateTime? DLetzteAenderung { get; set; }
+            public decimal FGewicht { get; set; }
+            public string? CMasseinheit { get; set; }
+            public bool TopArtikel { get; set; }
+            public bool Neu { get; set; }
+            public bool OnlineShop { get; set; }
         }
 
         private async Task LadeArtikelAsync()
@@ -153,16 +275,32 @@ namespace NovviaERP.WPF.Views
                     CArtNr = a.CArtNr,
                     Name = a.Name,
                     FVKNetto = a.FVKNetto,
+                    FVKBrutto = a.FVKBrutto,
                     FEKNetto = a.FEKNetto,
                     FUVP = a.FUVP,
                     NLagerbestand = a.NLagerbestand,
                     NMidestbestand = a.NMidestbestand,
-                    Verfuegbar = a.NLagerbestand, // TODO: Reservierungen abziehen
-                    AufEinkaufsliste = 0, // TODO: Aus tEinkaufsliste
-                    InAuftraegen = 0, // TODO: Aus offenen Auftraegen
-                    ImZulauf = 0, // TODO: Aus Lieferantenbestellungen
+                    Verfuegbar = a.FVerfuegbar,
+                    AufEinkaufsliste = a.FAufEinkaufsliste,
+                    InAuftraegen = a.FInAuftraegen,
+                    ImZulauf = a.FImZulauf,
                     Aktiv = a.Aktiv,
-                    Hersteller = a.Hersteller
+                    Hersteller = a.Hersteller,
+                    Warengruppe = a.Warengruppe,
+                    CBarcode = a.CBarcode,
+                    CHAN = a.CHAN,
+                    CASIN = a.CASIN,
+                    CISBN = a.CISBN,
+                    CUPC = a.CUPC,
+                    CTaric = a.CTaric,
+                    NSort = a.NSort,
+                    DErstellt = a.DErstellt,
+                    DLetzteAenderung = a.DLetzteAenderung,
+                    FGewicht = a.FGewicht,
+                    CMasseinheit = a.CMasseinheit,
+                    TopArtikel = a.NTopArtikel == 1,
+                    Neu = a.NNeu == 1,
+                    OnlineShop = a.NOnlineShop == 1
                 }).ToList();
 
                 if (nurInaktive)
@@ -212,6 +350,13 @@ namespace NovviaERP.WPF.Views
             await LadeArtikelAsync();
         }
 
+        private async void CmbArtikelFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Nur reagieren wenn initialisiert
+            if (!_initialized) return;
+            await LadeArtikelAsync();
+        }
+
         #endregion
 
         #region Artikel Details (bei Auswahl)
@@ -220,27 +365,69 @@ namespace NovviaERP.WPF.Views
         {
             if (dgArtikel.SelectedItem is ArtikelListItem artikel)
             {
+                _selectedArtikelId = artikel.KArtikel;
                 await LadeArtikelDetailsAsync(artikel.KArtikel);
+
+                // Custom Query ausfuehren wenn eine aktiv ist
+                if (_activeCustomQueryId.HasValue)
+                {
+                    await ExecuteCustomQueryAsync(_activeCustomQueryId.Value, artikel.KArtikel);
+                }
             }
             else
             {
-                dgLieferanten.ItemsSource = null;
-                dgPreise.ItemsSource = null;
-                dgSonderpreise.ItemsSource = null;
-                dgHistory.ItemsSource = null;
+                _selectedArtikelId = null;
+                ClearArtikelDetails();
             }
+        }
+
+        private void ClearArtikelDetails()
+        {
+            dgBestaende.ItemsSource = null;
+            dgLieferanten.ItemsSource = null;
+            dgPreise.ItemsSource = null;
+            dgSonderpreise.ItemsSource = null;
+            dgVerknuepfte.ItemsSource = null;
+            dgHistory.ItemsSource = null;
         }
 
         private async Task LadeArtikelDetailsAsync(int kArtikel)
         {
             try
             {
+                // Bestände laden
+                var bestaende = await _coreService.GetArtikelBestaendeAsync(kArtikel);
+                dgBestaende.ItemsSource = bestaende.Select(b => new
+                {
+                    Lager = b.CLagerName ?? "",
+                    Menge = b.FAufLager,
+                    Verfuegbar = b.FAufLager // TODO: Reservierungen abziehen
+                }).ToList();
+
                 // Lieferanten laden
                 var lieferanten = await _coreService.GetArtikelLieferantenAsync(kArtikel);
                 dgLieferanten.ItemsSource = lieferanten.Select(l => new
                 {
                     Kontakt = l.Kontakt,
                     Firmenname = l.Firmenname
+                }).ToList();
+
+                // Preise laden (Kundengruppen-Preise)
+                var preise = await _coreService.GetArtikelKundengruppenPreiseAsync(kArtikel);
+                dgPreise.ItemsSource = preise.Select(p => new
+                {
+                    Kundengruppe = p.CKundengruppe ?? "",
+                    VKNetto = p.FNettoPreis,
+                    VKBrutto = p.FNettoPreis * 1.19m // TODO: Steuersatz aus Artikel
+                }).ToList();
+
+                // Sonderpreise laden
+                var sonderpreise = await _coreService.GetArtikelSonderpreiseAsync(kArtikel);
+                dgSonderpreise.ItemsSource = sonderpreise.Select(s => new
+                {
+                    Typ = s.CKundengruppe ?? "Sonderpreis",
+                    Preis = s.FSonderpreisNetto,
+                    GueltigBis = s.DEnde
                 }).ToList();
 
                 // History laden
@@ -259,26 +446,6 @@ namespace NovviaERP.WPF.Views
                 }).ToList();
             }
             catch { }
-        }
-
-        #endregion
-
-        #region Sub-Tabs
-
-        private void SubTab_Click(object sender, RoutedEventArgs e)
-        {
-            // Reset all buttons
-            btnHistory.Background = System.Windows.Media.Brushes.Transparent;
-            btnVkJeKunde.Background = System.Windows.Media.Brushes.Transparent;
-            btnVkMonat.Background = System.Windows.Media.Brushes.Transparent;
-            btnVkUebersicht.Background = System.Windows.Media.Brushes.Transparent;
-            btnChargen.Background = System.Windows.Media.Brushes.Transparent;
-
-            if (sender is Button btn)
-            {
-                btn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(224, 224, 224));
-                // TODO: Switch content based on tag
-            }
         }
 
         #endregion
@@ -379,6 +546,44 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        private async void ContextMenu_Aktivieren_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgArtikel.SelectedItem is not ArtikelListItem artikel) return;
+
+            try
+            {
+                await _coreService.SetArtikelAktivAsync(artikel.KArtikel, true);
+                txtStatus.Text = $"Artikel {artikel.CArtNr} aktiviert";
+                await LadeArtikelAsync();
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Text = $"Fehler: {ex.Message}";
+            }
+        }
+
+        private void ContextMenu_KategorieVerschieben_Click(object sender, RoutedEventArgs e)
+        {
+            // TODO: Dialog zum Verschieben in eine andere Kategorie
+            MessageBox.Show("Funktion noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ContextMenu_KategorieEntfernen_Click(object sender, RoutedEventArgs e)
+        {
+            // TODO: Artikel aus aktueller Kategorie entfernen
+            MessageBox.Show("Funktion noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void BtnArtikel_Click(object sender, RoutedEventArgs e)
+        {
+            // Öffne das ContextMenu des Buttons
+            if (sender is Button btn && btn.ContextMenu != null)
+            {
+                btn.ContextMenu.PlacementTarget = btn;
+                btn.ContextMenu.IsOpen = true;
             }
         }
 

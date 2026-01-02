@@ -7,6 +7,7 @@ using NovviaERP.Core.Data;
 using NovviaERP.Core.Infrastructure.Jtl;
 using NovviaERP.Core.Services;
 using NovviaERP.WPF.Controls;
+using NovviaERP.WPF.Controls.Base;
 using System.Threading.Tasks;
 using Dapper;
 
@@ -31,6 +32,10 @@ namespace NovviaERP.WPF.Views
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
             _db = App.Services.GetRequiredService<JtlDbContext>();
+            Loaded += async (s, e) =>
+            {
+                await GridStyleHelper.InitializeGridAsync(dgEigeneFelder, "BestellungDetail.EigeneFelder", _core, App.BenutzerId);
+            };
         }
 
         /// <summary>

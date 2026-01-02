@@ -4,6 +4,7 @@ using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
 using NovviaERP.WPF.Controls;
+using NovviaERP.WPF.Controls.Base;
 
 namespace NovviaERP.WPF.Views
 {
@@ -18,8 +19,11 @@ namespace NovviaERP.WPF.Views
             _core = App.Services.GetRequiredService<CoreService>();
             Loaded += async (s, e) =>
             {
-                // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
-                DataGridColumnConfig.EnableColumnChooser(dgChargen, "LagerChargenView");
+                // GridStyleHelper für alle DataGrids initialisieren
+                await GridStyleHelper.Instance.LoadSettingsAsync(_core, App.BenutzerId);
+                GridStyleHelper.InitializeGrid(dgChargen, "LagerChargenView");
+                GridStyleHelper.InitializeGrid(dgAusgaenge, "LagerChargenView.Ausgaenge");
+                GridStyleHelper.InitializeGrid(dgVerfolgung, "LagerChargenView.Verfolgung");
                 await InitializeAsync();
             };
         }

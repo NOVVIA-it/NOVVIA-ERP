@@ -86,23 +86,12 @@
         <DataGrid x:Name="dgBestellungen" Grid.Row="2" Margin="20,15,20,0"
                   AutoGenerateColumns="False" IsReadOnly="True"
                   SelectionMode="Single" SelectionUnit="FullRow"
-                  GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                  BorderThickness="1" BorderBrush="#ddd"
-                  RowBackground="White" AlternatingRowBackground="#fafafa"
+                  HeadersVisibility="Column" BorderThickness="0"
                   MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged">
-            <DataGrid.ColumnHeaderStyle>
-                <Style TargetType="DataGridColumnHeader">
-                    <Setter Property="Background" Value="#f8f8f8"/>
-                    <Setter Property="Padding" Value="10,8"/>
-                    <Setter Property="BorderBrush" Value="#ddd"/>
-                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
-                </Style>
-            </DataGrid.ColumnHeaderStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Bestellnr." Binding="{Binding CBestellNr}" Width="100"/>
                 <DataGridTextColumn Header="Externe Nr." Binding="{Binding CInetBestellNr}" Width="110"/>
-                <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy HH:mm}" Width="120"/>
+                <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy HH:mm}" Width="120" SortMemberPath="DErstellt" CanUserSort="True"/>
                 <DataGridTextColumn Header="Kd-Nr." Binding="{Binding CKundenNr}" Width="80"/>
                 <DataGridTextColumn Header="Firma" Binding="{Binding KundeFirma}" Width="180"/>
                 <DataGridTextColumn Header="Name" Binding="{Binding KundeName}" Width="140"/>

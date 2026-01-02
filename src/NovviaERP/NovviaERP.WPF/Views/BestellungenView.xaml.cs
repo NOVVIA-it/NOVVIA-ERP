@@ -4,6 +4,7 @@ using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
 using NovviaERP.WPF.Controls;
+using NovviaERP.WPF.Controls.Base;
 
 namespace NovviaERP.WPF.Views
 {
@@ -17,8 +18,8 @@ namespace NovviaERP.WPF.Views
             _core = App.Services.GetRequiredService<CoreService>();
             Loaded += async (s, e) =>
             {
-                // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
-                DataGridColumnConfig.EnableColumnChooser(dgBestellungen, "BestellungenView");
+                // GridStyleHelper initialisieren (inkl. Spalten-Konfiguration)
+                await GridStyleHelper.InitializeGridAsync(dgBestellungen, "BestellungenView", _core, App.BenutzerId);
                 await LadeBestellungenAsync();
             };
         }
