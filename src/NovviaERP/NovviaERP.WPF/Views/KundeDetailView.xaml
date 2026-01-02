@@ -3,13 +3,30 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:NovviaERP.WPF.Controls"
              Background="#f5f5f5">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <DockPanel LastChildFill="True">
+        <!-- Footer ZUERST (DockPanel.Dock=Bottom) damit er immer sichtbar ist -->
+        <Border DockPanel.Dock="Bottom" Background="White" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="15,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="txtStatus" Foreground="#666" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="💾 Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,8,0"
+                            Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    <Button Content="❌ Abbrechen" Click="Zurueck_Click" Padding="12,8"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Rest des Inhalts -->
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
 
         <!-- Header -->
         <Border Background="#0078D4" Padding="15,10">
@@ -38,7 +55,7 @@
         <!-- Main Content -->
         <TabControl Grid.Row="2" Margin="10,10,10,5">
             <!-- Tab: Kundendaten -->
-            <TabItem Header="Kundendaten">
+            <TabItem Header="👤 Kundendaten">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -46,11 +63,11 @@
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="220"/>
+                        <RowDefinition Height="180"/>
                     </Grid.RowDefinitions>
 
                     <!-- Linke Spalte: Allgemeine Infos + Kundendaten -->
-                    <ScrollViewer Grid.RowSpan="2" VerticalScrollBarVisibility="Auto" Margin="5">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="5">
                         <StackPanel>
                             <!-- Allgemeine Informationen -->
                             <GroupBox Header="Allgemeine Informationen" Margin="0,0,0,10">
@@ -175,7 +192,7 @@
 
                             <!-- Tabs: Adressen, Ansprechpartner, Bankverbindungen, Onlineshop -->
                             <TabControl Height="220">
-                                <TabItem Header="Adressen">
+                                <TabItem Header="📍 Adressen">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="*"/>
@@ -200,7 +217,7 @@
                                         </StackPanel>
                                     </Grid>
                                 </TabItem>
-                                <TabItem Header="Ansprechpartner">
+                                <TabItem Header="👥 Ansprechpartner">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="*"/>
@@ -224,7 +241,7 @@
                                         </StackPanel>
                                     </Grid>
                                 </TabItem>
-                                <TabItem Header="Bankverbindungen">
+                                <TabItem Header="🏦 Bankverbindungen">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="*"/>
@@ -247,7 +264,7 @@
                                         </StackPanel>
                                     </Grid>
                                 </TabItem>
-                                <TabItem Header="Onlineshop">
+                                <TabItem Header="🛒 Onlineshop">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="*"/>
@@ -382,7 +399,7 @@
                     <Border Grid.Row="1" Grid.ColumnSpan="2" Background="White" BorderBrush="#ddd" BorderThickness="1" Margin="5,0,5,5">
                         <TabControl x:Name="tcKundenDaten" BorderThickness="0">
                             <!-- Tab: Auftraege -->
-                            <TabItem Header="Auftraege">
+                            <TabItem Header="📦 Aufträge">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="*"/>
@@ -415,7 +432,7 @@
                                 </Grid>
                             </TabItem>
                             <!-- Tab: Rechnungen -->
-                            <TabItem Header="Rechnungen">
+                            <TabItem Header="🧾 Rechnungen">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="*"/>
@@ -448,7 +465,7 @@
                                 </Grid>
                             </TabItem>
                             <!-- Tab: Gutschriften -->
-                            <TabItem Header="Gutschriften">
+                            <TabItem Header="💸 Gutschriften">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="*"/>
@@ -479,7 +496,7 @@
             </TabItem>
 
             <!-- Tab: Eigene Felder / Validierung -->
-            <TabItem Header="Eigene Felder">
+            <TabItem Header="📝 Eigene Felder">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <StackPanel MaxWidth="500" HorizontalAlignment="Left">
                         <GroupBox Header="Validierung (Pharma)" Margin="0,0,0,20">
@@ -523,21 +540,6 @@
                 </ScrollViewer>
             </TabItem>
         </TabControl>
-
-        <!-- Footer -->
-        <Border Grid.Row="3" Background="White" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="15,10">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="txtStatus" Foreground="#666" VerticalAlignment="Center"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,8,0"
-                            Background="#0078D4" Foreground="White" BorderThickness="0"/>
-                    <Button Content="Abbrechen" Click="Zurueck_Click" Padding="12,8"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-    </Grid>
+        </Grid>
+    </DockPanel>
 </UserControl>
