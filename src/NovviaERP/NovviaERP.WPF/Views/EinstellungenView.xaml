@@ -1111,6 +1111,107 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- Vorlagen-Import Tab -->
+            <TabItem Header="Vorlagen-Import">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="15">
+                        <TextBlock Text="JTL List &amp; Label Vorlagen" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
+                        <TextBlock Text="Hier koennen Sie JTL-Vorlagen anzeigen und Bilder/Logos exportieren." Foreground="Gray" Margin="0,0,0,20"/>
+
+                        <!-- Statistik -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <Border Background="#e3f2fd" CornerRadius="5" Padding="15,10" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="Vorlagen" FontSize="11" Foreground="Gray"/>
+                                    <TextBlock x:Name="txtVorlagenAnzahl" Text="0" FontSize="20" FontWeight="Bold" Foreground="#1976d2"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="#e8f5e9" CornerRadius="5" Padding="15,10" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="Bilder/Logos" FontSize="11" Foreground="Gray"/>
+                                    <TextBlock x:Name="txtBilderAnzahl" Text="0" FontSize="20" FontWeight="Bold" Foreground="#388e3c"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="#fff3e0" CornerRadius="5" Padding="15,10" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="E-Mail Vorlagen" FontSize="11" Foreground="Gray"/>
+                                    <TextBlock x:Name="txtEmailVorlagenAnzahl" Text="0" FontSize="20" FontWeight="Bold" Foreground="#f57c00"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- JTL Bilder -->
+                        <GroupBox Header="JTL Bilder / Logos" Margin="0,0,0,20">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="200"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <DataGrid x:Name="dgJtlBilder" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="250"/>
+                                        <DataGridTextColumn Header="Groesse" Binding="{Binding SizeText}" Width="100"/>
+                                        <DataGridTextColumn Header="Geaendert" Binding="{Binding LastModified, StringFormat=dd.MM.yyyy}" Width="100"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+                                    <Button Content="Ausgewaehltes Bild exportieren" Click="VorlagenBildExport_Click" Padding="15,8" Margin="0,0,10,0"/>
+                                    <Button Content="Alle Bilder exportieren" Click="VorlagenAlleBilderExport_Click" Padding="15,8" Margin="0,0,10,0"/>
+                                    <Button Content="Bild in NOVVIA importieren" Click="VorlagenBildImport_Click" Padding="15,8" Background="#0078D4" Foreground="White"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- JTL Vorlagen (List &amp; Label) -->
+                        <GroupBox Header="JTL Formular-Vorlagen (List &amp; Label - nur Anzeige)" Margin="0,0,0,20">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="200"/>
+                                </Grid.RowDefinitions>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <ComboBox x:Name="cmbVorlagenTypFilter" Width="150" SelectionChanged="VorlagenTypFilter_Changed">
+                                        <ComboBoxItem Content="Alle Typen" IsSelected="True" Tag=""/>
+                                        <ComboBoxItem Content="Rechnungen" Tag="15"/>
+                                        <ComboBoxItem Content="Etiketten" Tag="128"/>
+                                        <ComboBoxItem Content="Angebote" Tag="1"/>
+                                        <ComboBoxItem Content="Gutschriften" Tag="4"/>
+                                        <ComboBoxItem Content="Standard" Tag="31"/>
+                                        <ComboBoxItem Content="Bausteine" Tag="32"/>
+                                    </ComboBox>
+                                    <Button Content="Aktualisieren" Margin="15,0,0,0" Padding="10,5" Click="VorlagenAktualisieren_Click"/>
+                                </StackPanel>
+                                <DataGrid Grid.Row="1" x:Name="dgJtlVorlagen" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60"/>
+                                        <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="200"/>
+                                        <DataGridTextColumn Header="Typ" Binding="{Binding TypName}" Width="120"/>
+                                        <DataGridTextColumn Header="Groesse" Binding="{Binding SizeText}" Width="80"/>
+                                        <DataGridTextColumn Header="Geaendert" Binding="{Binding LastModified, StringFormat=dd.MM.yyyy HH:mm}" Width="130"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Hinweis -->
+                        <Border Background="#fff3e0" Padding="15" CornerRadius="5">
+                            <StackPanel>
+                                <TextBlock Text="Hinweis zu List &amp; Label Vorlagen" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#666">
+                                    Die JTL-Formularvorlagen verwenden das proprietaere "List &amp; Label" Format von combit.
+                                    Diese koennen nicht direkt in NOVVIA bearbeitet werden, da dafuer eine kostenpflichtige Lizenz erforderlich waere.
+                                    Bilder und Logos koennen jedoch exportiert und in NOVVIA-Formulare importiert werden.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock x:Name="txtVorlagenStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- Benutzer & Rollen Tab -->
             <TabItem Header="Benutzer &amp; Rollen">
                 <TabControl Margin="10">

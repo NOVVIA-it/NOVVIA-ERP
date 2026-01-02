@@ -8053,6 +8053,119 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region JTL Vorlagen
+
+        public class JtlVorlageDto
+        {
+            public int Id { get; set; }
+            public string Name { get; set; } = "";
+            public string Typ { get; set; } = "";
+            public int VorlagenTyp { get; set; }
+            public long DataSize { get; set; }
+            public DateTime? LastModified { get; set; }
+            public string TypName { get; set; } = "";
+            public string SizeText { get; set; } = "";
+        }
+
+        public async Task<IEnumerable<JtlVorlageDto>> GetJtlVorlagenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            var vorlagen = await conn.QueryAsync<JtlVorlageDto>(@"
+                SELECT kVorlage AS Id, cName AS Name, cTyp AS Typ, nVorlagentyp AS VorlagenTyp,
+                       DATALENGTH(bDaten) AS DataSize, dLastModification AS LastModified
+                FROM Report.tVorlage
+                WHERE cTyp IN ('ll/project/lst', 'll/project/lbl')
+                ORDER BY cName");
+
+            return vorlagen.Select(v =>
+            {
+                v.TypName = GetVorlagenTypName(v.VorlagenTyp);
+                v.SizeText = FormatFileSize(v.DataSize);
+                return v;
+            });
+        }
+
+        public async Task<IEnumerable<JtlVorlageDto>> GetJtlBilderAsync()
+        {
+            var conn = await GetConnectionAsync();
+            var bilder = await conn.QueryAsync<JtlVorlageDto>(@"
+                SELECT kVorlage AS Id, cName AS Name, cTyp AS Typ, nVorlagentyp AS VorlagenTyp,
+                       DATALENGTH(bDaten) AS DataSize, dLastModification AS LastModified
+                FROM Report.tVorlage
+                WHERE cTyp = 'resource/image'
+                ORDER BY cName");
+
+            return bilder.Select(b =>
+            {
+                b.SizeText = FormatFileSize(b.DataSize);
+                return b;
+            });
+        }
+
+        public async Task<int> GetJtlEmailVorlagenCountAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleAsync<int>(
+                "SELECT COUNT(*) FROM Report.tVorlage WHERE cTyp = 'mail/template/xml'");
+        }
+
+        public async Task<byte[]> GetJtlVorlageDatenAsync(int id)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleAsync<byte[]>(
+                "SELECT bDaten FROM Report.tVorlage WHERE kVorlage = @Id",
+                new { Id = id });
+        }
+
+        public async Task SaveFormularBildAsync(string name, byte[] data)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Tabelle erstellen falls nicht vorhanden
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='NOVVIA' AND TABLE_NAME='FormularBild')
+                BEGIN
+                    CREATE TABLE NOVVIA.FormularBild (
+                        kFormularBild INT IDENTITY(1,1) PRIMARY KEY,
+                        cName NVARCHAR(200) NOT NULL,
+                        bDaten VARBINARY(MAX) NOT NULL,
+                        dErstellt DATETIME DEFAULT GETDATE()
+                    )
+                END");
+
+            // Bild speichern oder aktualisieren
+            await conn.ExecuteAsync(@"
+                IF EXISTS (SELECT 1 FROM NOVVIA.FormularBild WHERE cName = @Name)
+                    UPDATE NOVVIA.FormularBild SET bDaten = @Data WHERE cName = @Name
+                ELSE
+                    INSERT INTO NOVVIA.FormularBild (cName, bDaten) VALUES (@Name, @Data)",
+                new { Name = name, Data = data });
+        }
+
+        private static string GetVorlagenTypName(int typ) => typ switch
+        {
+            1 => "Angebot",
+            2 => "Auftragsbestaetigung",
+            4 => "Gutschrift",
+            8 => "Lieferschein",
+            15 => "Rechnung",
+            16 => "Export",
+            31 => "Standard",
+            32 => "Baustein",
+            128 => "Etikett",
+            256 => "ZUGFeRD",
+            _ => $"Typ {typ}"
+        };
+
+        private static string FormatFileSize(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+            return $"{bytes / (1024.0 * 1024.0):F1} MB";
+        }
+
+        #endregion
     }
 
     #region Benutzerrechte DTOs

@@ -13,29 +13,90 @@
         <Grid Grid.Column="0" Background="#F5F5F5">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="200"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="180"/>
             </Grid.RowDefinitions>
 
-            <!-- Formulare -->
+            <!-- Formulare TabControl -->
             <TextBlock Text="Formulare" FontWeight="Bold" Margin="10"/>
-            <ListBox Grid.Row="1" x:Name="FormularListe" Margin="10,0"
-                     ItemsSource="{Binding Formulare}"
-                     SelectedItem="{Binding SelectedFormular}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding Icon}" Width="25"/>
-                            <TextBlock Text="{Binding Name}"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <TabControl Grid.Row="1" Margin="5,0,5,5">
+                <TabItem Header="NOVVIA">
+                    <ListBox x:Name="FormularListe"
+                             ItemsSource="{Binding Formulare}"
+                             SelectedItem="{Binding SelectedFormular}"
+                             SelectionChanged="FormularListe_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Icon}" Width="25"/>
+                                    <TextBlock Text="{Binding Name}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </TabItem>
+                <TabItem Header="JTL">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <ComboBox x:Name="cmbJtlTypFilter" Margin="5" SelectionChanged="JtlTypFilter_Changed">
+                            <ComboBoxItem Content="Alle Typen" IsSelected="True" Tag=""/>
+                            <ComboBoxItem Content="Rechnungen" Tag="15"/>
+                            <ComboBoxItem Content="Lieferscheine" Tag="15"/>
+                            <ComboBoxItem Content="Etiketten" Tag="128"/>
+                            <ComboBoxItem Content="Angebote" Tag="1"/>
+                            <ComboBoxItem Content="Gutschriften" Tag="4"/>
+                        </ComboBox>
+                        <ListBox Grid.Row="1" x:Name="JtlVorlagenListe"
+                                 ItemsSource="{Binding JtlVorlagen}"
+                                 SelectedItem="{Binding SelectedJtlVorlage}"
+                                 SelectionChanged="JtlVorlagenListe_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Icon}" Width="25"/>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding TypName}" FontSize="10" Foreground="Gray"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Bilder">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <ListBox x:Name="JtlBilderListe"
+                                 ItemsSource="{Binding JtlBilder}"
+                                 SelectionChanged="JtlBilderListe_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🖼️" Width="25"/>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}"/>
+                                            <TextBlock Text="{Binding SizeText}" FontSize="10" Foreground="Gray"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Button Grid.Row="1" Content="Bild exportieren" Margin="5" Click="ExportBild_Click"/>
+                    </Grid>
+                </TabItem>
+            </TabControl>
 
             <!-- Verfügbare Elemente -->
-            <TextBlock Grid.Row="2" Text="Elemente" FontWeight="Bold" Margin="10"/>
-            <ListBox Grid.Row="3" x:Name="ElementeListe" Margin="10,0,10,10"
+            <TextBlock Grid.Row="2" Text="Elemente" FontWeight="Bold" Margin="10,5,10,5"/>
+            <ListBox Grid.Row="3" x:Name="ElementeListe" Margin="5,0,5,5"
                      PreviewMouseLeftButtonDown="ElementeListe_PreviewMouseLeftButtonDown">
                 <ListBoxItem Tag="TextBlock">📝 Text</ListBoxItem>
                 <ListBoxItem Tag="TextBox">✏️ Eingabefeld</ListBoxItem>

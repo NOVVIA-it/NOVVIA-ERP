@@ -29,7 +29,11 @@ namespace NovviaERP.WPF.Views
             DataContext = this;
             _db = db;
             LoadDatenfelder();
-            Loaded += async (s, e) => await LoadFormulareAsync();
+            Loaded += async (s, e) =>
+            {
+                await LoadFormulareAsync();
+                await LoadJtlVorlagenAsync();
+            };
         }
 
         #region Properties
@@ -37,12 +41,18 @@ namespace NovviaERP.WPF.Views
         public FormularDefinition? SelectedFormular { get; set; }
         public FormularElement? SelectedElement { get; set; }
         public ObservableCollection<string> VerfuegbareFelder { get; } = new();
-        
+
+        // JTL Vorlagen
+        public ObservableCollection<JtlVorlageInfo> JtlVorlagen { get; } = new();
+        public ObservableCollection<JtlVorlageInfo> JtlBilder { get; } = new();
+        public JtlVorlageInfo? SelectedJtlVorlage { get; set; }
+        private List<JtlVorlageInfo> _alleJtlVorlagen = new();
+
         public string StatusText { get; set; } = "Bereit";
         public string MousePosition { get; set; } = "0, 0";
         public double CanvasWidth { get; set; } = 595; // A4 bei 72 DPI
         public double CanvasHeight { get; set; } = 842;
-        
+
         public ObservableCollection<string> Schriftarten { get; } = new()
         {
             "Arial", "Calibri", "Times New Roman", "Courier New", "Verdana", "Tahoma"
@@ -86,6 +96,163 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Laden der Formulare:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async System.Threading.Tasks.Task LoadJtlVorlagenAsync()
+        {
+            try
+            {
+                var conn = await _db.GetConnectionAsync();
+
+                // List & Label Vorlagen laden (nur ll/project/lst und ll/project/lbl)
+                var vorlagen = await conn.QueryAsync<JtlVorlageInfo>(@"
+                    SELECT kVorlage AS Id, cName AS Name, cTyp AS Typ, nVorlagentyp AS VorlagenTyp,
+                           DATALENGTH(bDaten) AS DataSize, dLastModification AS LastModified
+                    FROM Report.tVorlage
+                    WHERE cTyp IN ('ll/project/lst', 'll/project/lbl')
+                    ORDER BY cName");
+
+                // Bilder laden
+                var bilder = await conn.QueryAsync<JtlVorlageInfo>(@"
+                    SELECT kVorlage AS Id, cName AS Name, cTyp AS Typ, nVorlagentyp AS VorlagenTyp,
+                           DATALENGTH(bDaten) AS DataSize, dLastModification AS LastModified
+                    FROM Report.tVorlage
+                    WHERE cTyp = 'resource/image'
+                    ORDER BY cName");
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    _alleJtlVorlagen.Clear();
+                    JtlVorlagen.Clear();
+                    JtlBilder.Clear();
+
+                    foreach (var v in vorlagen)
+                    {
+                        v.Icon = v.Typ == "ll/project/lbl" ? "🏷️" : "📄";
+                        v.TypName = GetVorlagenTypName(v.VorlagenTyp);
+                        _alleJtlVorlagen.Add(v);
+                        JtlVorlagen.Add(v);
+                    }
+
+                    foreach (var b in bilder)
+                    {
+                        b.Icon = "🖼️";
+                        b.SizeText = FormatFileSize(b.DataSize);
+                        JtlBilder.Add(b);
+                    }
+
+                    StatusText = $"{Formulare.Count} NOVVIA, {JtlVorlagen.Count} JTL Vorlagen, {JtlBilder.Count} Bilder";
+                    OnPropertyChanged(nameof(StatusText));
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der JTL-Vorlagen: {ex.Message}");
+            }
+        }
+
+        private string GetVorlagenTypName(int typ) => typ switch
+        {
+            1 => "Angebot",
+            2 => "Auftragsbestaetigung",
+            4 => "Gutschrift",
+            8 => "Lieferschein",
+            15 => "Rechnung",
+            16 => "Export",
+            31 => "Standard",
+            32 => "Baustein",
+            128 => "Etikett",
+            256 => "ZUGFeRD",
+            _ => $"Typ {typ}"
+        };
+
+        private string FormatFileSize(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+            return $"{bytes / (1024.0 * 1024.0):F1} MB";
+        }
+
+        private void FormularListe_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (FormularListe.SelectedItem is FormularDefinition formular)
+            {
+                SelectedFormular = formular;
+                StatusText = $"Formular: {formular.Name}";
+                OnPropertyChanged(nameof(StatusText));
+            }
+        }
+
+        private void JtlTypFilter_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            ApplyJtlFilter();
+        }
+
+        private void ApplyJtlFilter()
+        {
+            var filtered = _alleJtlVorlagen.AsEnumerable();
+
+            if (cmbJtlTypFilter.SelectedItem is System.Windows.Controls.ComboBoxItem item &&
+                !string.IsNullOrEmpty(item.Tag?.ToString()))
+            {
+                var typ = int.Parse(item.Tag.ToString()!);
+                filtered = filtered.Where(v => v.VorlagenTyp == typ);
+            }
+
+            JtlVorlagen.Clear();
+            foreach (var v in filtered)
+                JtlVorlagen.Add(v);
+        }
+
+        private void JtlVorlagenListe_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (JtlVorlagenListe.SelectedItem is JtlVorlageInfo vorlage)
+            {
+                SelectedJtlVorlage = vorlage;
+                StatusText = $"JTL Vorlage: {vorlage.Name} ({vorlage.TypName})";
+                OnPropertyChanged(nameof(StatusText));
+            }
+        }
+
+        private void JtlBilderListe_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (JtlBilderListe.SelectedItem is JtlVorlageInfo bild)
+            {
+                StatusText = $"Bild: {bild.Name} ({bild.SizeText})";
+                OnPropertyChanged(nameof(StatusText));
+            }
+        }
+
+        private async void ExportBild_Click(object sender, RoutedEventArgs e)
+        {
+            if (JtlBilderListe.SelectedItem is not JtlVorlageInfo bild) return;
+
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                FileName = bild.Name,
+                Filter = "PNG Bild|*.png|JPEG Bild|*.jpg|Alle Dateien|*.*"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                try
+                {
+                    var conn = await _db.GetConnectionAsync();
+                    var data = await conn.QuerySingleAsync<byte[]>(
+                        "SELECT bDaten FROM Report.tVorlage WHERE kVorlage = @Id",
+                        new { Id = bild.Id });
+
+                    System.IO.File.WriteAllBytes(dialog.FileName, data);
+                    MessageBox.Show($"Bild exportiert nach:\n{dialog.FileName}", "Export erfolgreich",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Export:\n{ex.Message}", "Fehler",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
@@ -448,6 +615,19 @@ namespace NovviaERP.WPF.Views
         public string? BorderColor { get; set; }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+    }
+
+    public class JtlVorlageInfo
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Typ { get; set; } = "";
+        public int VorlagenTyp { get; set; }
+        public long DataSize { get; set; }
+        public DateTime? LastModified { get; set; }
+        public string Icon { get; set; } = "📄";
+        public string TypName { get; set; } = "";
+        public string SizeText { get; set; } = "";
     }
 
     public class RelayCommand : ICommand

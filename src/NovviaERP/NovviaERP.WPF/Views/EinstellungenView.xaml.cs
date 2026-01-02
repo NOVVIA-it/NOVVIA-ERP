@@ -57,6 +57,7 @@ namespace NovviaERP.WPF.Views
                 await LadeNovviaEinstellungenAsync();
                 await LadeBenutzerAsync();
                 await LadeRollenAsync();
+                await LadeVorlagenAsync();
             }
             catch (Exception ex)
             {
@@ -2018,6 +2019,148 @@ namespace NovviaERP.WPF.Views
             {
                 txtRolleStatus.Text = $"Fehler: {ex.Message}";
                 txtRolleStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+            }
+        }
+
+        #endregion
+
+        #region Vorlagen-Import
+
+        private List<CoreService.JtlVorlageDto> _alleJtlVorlagen = new();
+        private List<CoreService.JtlVorlageDto> _alleJtlBilder = new();
+
+        private async System.Threading.Tasks.Task LadeVorlagenAsync()
+        {
+            try
+            {
+                var vorlagen = await _core.GetJtlVorlagenAsync();
+                var bilder = await _core.GetJtlBilderAsync();
+
+                _alleJtlVorlagen = vorlagen.ToList();
+                _alleJtlBilder = bilder.ToList();
+
+                dgJtlVorlagen.ItemsSource = _alleJtlVorlagen;
+                dgJtlBilder.ItemsSource = _alleJtlBilder;
+
+                txtVorlagenAnzahl.Text = _alleJtlVorlagen.Count.ToString();
+                txtBilderAnzahl.Text = _alleJtlBilder.Count.ToString();
+
+                // E-Mail Vorlagen zaehlen
+                var emailCount = await _core.GetJtlEmailVorlagenCountAsync();
+                txtEmailVorlagenAnzahl.Text = emailCount.ToString();
+            }
+            catch (Exception ex)
+            {
+                txtVorlagenStatus.Text = $"Fehler: {ex.Message}";
+                txtVorlagenStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+            }
+        }
+
+        private void VorlagenTypFilter_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+
+            var filtered = _alleJtlVorlagen.AsEnumerable();
+
+            if (cmbVorlagenTypFilter.SelectedItem is ComboBoxItem item &&
+                !string.IsNullOrEmpty(item.Tag?.ToString()))
+            {
+                var typ = int.Parse(item.Tag.ToString()!);
+                filtered = filtered.Where(v => v.VorlagenTyp == typ);
+            }
+
+            dgJtlVorlagen.ItemsSource = filtered.ToList();
+        }
+
+        private async void VorlagenAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeVorlagenAsync();
+            txtVorlagenStatus.Text = "Vorlagen aktualisiert.";
+            txtVorlagenStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+        }
+
+        private async void VorlagenBildExport_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgJtlBilder.SelectedItem is not CoreService.JtlVorlageDto bild) return;
+
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                FileName = bild.Name,
+                Filter = "PNG Bild|*.png|JPEG Bild|*.jpg|Alle Dateien|*.*"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                try
+                {
+                    var data = await _core.GetJtlVorlageDatenAsync(bild.Id);
+                    File.WriteAllBytes(dialog.FileName, data);
+                    txtVorlagenStatus.Text = $"Bild exportiert: {dialog.FileName}";
+                    txtVorlagenStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Export:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private async void VorlagenAlleBilderExport_Click(object sender, RoutedEventArgs e)
+        {
+            // Zielordner abfragen
+            var targetPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "JTL-Bilder");
+            var result = MessageBox.Show(
+                $"Alle {_alleJtlBilder.Count} Bilder werden nach folgendem Ordner exportiert:\n\n{targetPath}\n\nFortfahren?",
+                "Bilder exportieren",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    Directory.CreateDirectory(targetPath);
+                    int count = 0;
+                    foreach (var bild in _alleJtlBilder)
+                    {
+                        var data = await _core.GetJtlVorlageDatenAsync(bild.Id);
+                        var filename = Path.Combine(targetPath, $"{bild.Name}.png");
+                        File.WriteAllBytes(filename, data);
+                        count++;
+                    }
+                    txtVorlagenStatus.Text = $"{count} Bilder exportiert nach: {targetPath}";
+                    txtVorlagenStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+
+                    // Ordner oeffnen
+                    System.Diagnostics.Process.Start("explorer.exe", targetPath);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Export:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private async void VorlagenBildImport_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgJtlBilder.SelectedItem is not CoreService.JtlVorlageDto bild)
+            {
+                MessageBox.Show("Bitte waehlen Sie zuerst ein Bild aus.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var data = await _core.GetJtlVorlageDatenAsync(bild.Id);
+
+                // In NOVVIA.FormularBild speichern
+                await _core.SaveFormularBildAsync(bild.Name, data);
+
+                txtVorlagenStatus.Text = $"Bild '{bild.Name}' in NOVVIA importiert.";
+                txtVorlagenStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Import:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
