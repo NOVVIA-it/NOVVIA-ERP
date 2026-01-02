@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Data;
 using NovviaERP.Core.Entities;
@@ -2180,6 +2181,445 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Import:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Grid-Formatierung
+
+        private async void GridEinstellungenSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Grid-Einstellungen zusammenstellen
+                var settings = new Dictionary<string, string>
+                {
+                    // Allgemein
+                    { "Grid.Zeilenhoehe", txtGridZeilenhoehe.Text },
+                    { "Grid.Schriftgroesse", txtGridSchriftgroesse.Text },
+                    { "Grid.Schriftart", (cmbGridSchriftart.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Segoe UI" },
+                    { "Grid.GridLines", (cmbGridLinien.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "All" },
+
+                    // Header
+                    { "Grid.HeaderHoehe", txtGridHeaderHoehe.Text },
+                    { "Grid.HeaderBackground", txtGridHeaderBg.Text },
+                    { "Grid.HeaderForeground", txtGridHeaderFg.Text },
+                    { "Grid.HeaderFontWeight", (cmbGridHeaderFontWeight.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "SemiBold" },
+                    { "Grid.HeaderBorderColor", txtGridHeaderBorderColor.Text },
+                    { "Grid.HeaderBorderWidth", txtGridHeaderBorderWidth.Text },
+
+                    // Zeile 1
+                    { "Grid.RowBackground", txtGridRowBg.Text },
+                    { "Grid.RowForeground", txtGridRowFg.Text },
+                    { "Grid.RowFontWeight", (cmbGridRowFontWeight.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Normal" },
+                    { "Grid.RowBorderColor", txtGridRowBorderColor.Text },
+                    { "Grid.RowBorderWidth", txtGridRowBorderWidth.Text },
+
+                    // Zeile 2 (Alternierend)
+                    { "Grid.RowAltBackground", txtGridRowAltBg.Text },
+                    { "Grid.RowAltForeground", txtGridRowAltFg.Text },
+                    { "Grid.RowAltFontWeight", (cmbGridRowAltFontWeight.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Normal" },
+                    { "Grid.ZebraStreifen", (chkGridZebraStreifen.IsChecked == true).ToString() },
+
+                    // Selektion
+                    { "Grid.SelectionBackground", txtGridSelectionBg.Text },
+                    { "Grid.SelectionForeground", txtGridSelectionFg.Text },
+
+                    // Datumsformatierung
+                    { "Grid.DatumFormat", (cmbDatumFormat.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "dd.MM.yyyy" },
+                    { "Grid.DatumZeitFormat", (cmbDatumZeitFormat.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "dd.MM.yyyy HH:mm" },
+                    { "Grid.ZeitFormat", (cmbZeitFormat.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "HH:mm" },
+
+                    // Zahlenformatierung
+                    { "Grid.Tausendertrennzeichen", (cmbTausenderTrenner.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "." },
+                    { "Grid.Dezimaltrennzeichen", (cmbDezimalTrenner.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "," },
+                    { "Grid.Dezimalstellen", txtDezimalstellen.Text },
+                    { "Grid.WaehrungSymbol", (cmbWaehrungSymbol.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "EUR" },
+                    { "Grid.WaehrungAnzeigen", (chkWaehrungAnzeigen.IsChecked == true).ToString() }
+                };
+
+                // Speichern in NOVVIA.BenutzerEinstellung
+                foreach (var kv in settings)
+                {
+                    await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, kv.Key, kv.Value);
+                }
+
+                // GridStyleHelper aktualisieren
+                await Controls.Base.GridStyleHelper.Instance.LoadSettingsAsync(_core, App.BenutzerId);
+
+                txtGridStatus.Text = "Einstellungen gespeichert und angewendet.";
+                txtGridStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+
+                // Vorschau aktualisieren
+                ApplyGridFormatierungToVorschau();
+                UpdateFormatVorschau();
+            }
+            catch (Exception ex)
+            {
+                txtGridStatus.Text = $"Fehler: {ex.Message}";
+                txtGridStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+            }
+        }
+
+        private void UpdateFormatVorschau()
+        {
+            try
+            {
+                var datumFormat = (cmbDatumFormat.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "dd.MM.yyyy";
+                var tausender = (cmbTausenderTrenner.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                if (tausender == "(kein)") tausender = "";
+                var dezimal = (cmbDezimalTrenner.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? ",";
+                var waehrung = (cmbWaehrungSymbol.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "EUR";
+
+                txtFormatVorschauDatum.Text = DateTime.Now.ToString(datumFormat);
+
+                var culture = (System.Globalization.CultureInfo)System.Globalization.CultureInfo.CurrentCulture.Clone();
+                culture.NumberFormat.NumberGroupSeparator = tausender ?? ".";
+                culture.NumberFormat.NumberDecimalSeparator = dezimal;
+
+                var betrag = 1234.56m.ToString("N2", culture);
+                txtFormatVorschauBetrag.Text = chkWaehrungAnzeigen.IsChecked == true ? $"{betrag} {waehrung}" : betrag;
+                txtFormatVorschauMenge.Text = 42m.ToString("N0", culture);
+            }
+            catch { }
+        }
+
+        private void GridVorschauAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            ApplyGridFormatierungToVorschau();
+            txtGridStatus.Text = "Vorschau aktualisiert.";
+            txtGridStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+        }
+
+        private void ApplyGridFormatierungToVorschau()
+        {
+            try
+            {
+                // Zeilenhoehe
+                if (double.TryParse(txtGridZeilenhoehe.Text, out var rowHeight))
+                    dgGridVorschau.RowHeight = rowHeight;
+
+                // Header-Hoehe
+                if (double.TryParse(txtGridHeaderHoehe.Text, out var headerHeight))
+                    dgGridVorschau.ColumnHeaderHeight = headerHeight;
+
+                // Schriftgroesse
+                if (double.TryParse(txtGridSchriftgroesse.Text, out var fontSize))
+                    dgGridVorschau.FontSize = fontSize;
+
+                // Schriftart
+                var fontFamily = (cmbGridSchriftart.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Segoe UI";
+                dgGridVorschau.FontFamily = new System.Windows.Media.FontFamily(fontFamily);
+
+                // Gitternetzlinien
+                var gridLines = (cmbGridLinien.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "All";
+                dgGridVorschau.GridLinesVisibility = gridLines switch
+                {
+                    "Horizontal" => DataGridGridLinesVisibility.Horizontal,
+                    "Vertical" => DataGridGridLinesVisibility.Vertical,
+                    "None" => DataGridGridLinesVisibility.None,
+                    _ => DataGridGridLinesVisibility.All
+                };
+
+                // Gitternetzlinien-Farbe (verwende Row Border Color)
+                try
+                {
+                    var lineColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(txtGridRowBorderColor.Text);
+                    dgGridVorschau.HorizontalGridLinesBrush = new System.Windows.Media.SolidColorBrush(lineColor);
+                    dgGridVorschau.VerticalGridLinesBrush = new System.Windows.Media.SolidColorBrush(lineColor);
+                }
+                catch { }
+
+                // Zeilen-Hintergrund
+                try
+                {
+                    var rowBg = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(txtGridRowBg.Text);
+                    dgGridVorschau.RowBackground = new System.Windows.Media.SolidColorBrush(rowBg);
+                }
+                catch { }
+
+                // Zebrastreifen
+                if (chkGridZebraStreifen.IsChecked == true)
+                {
+                    try
+                    {
+                        var altColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(txtGridRowAltBg.Text);
+                        dgGridVorschau.AlternatingRowBackground = new System.Windows.Media.SolidColorBrush(altColor);
+                    }
+                    catch { }
+                }
+                else
+                {
+                    dgGridVorschau.AlternatingRowBackground = null;
+                }
+
+                // Row Style mit Textfarbe und Schriftstaerke
+                var rowStyle = new Style(typeof(DataGridRow));
+                try
+                {
+                    var rowFg = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(txtGridRowFg.Text);
+                    rowStyle.Setters.Add(new Setter(DataGridRow.ForegroundProperty, new System.Windows.Media.SolidColorBrush(rowFg)));
+                }
+                catch { }
+                var rowFontWeight = (cmbGridRowFontWeight.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Normal";
+                rowStyle.Setters.Add(new Setter(DataGridRow.FontWeightProperty, rowFontWeight == "Bold" ? FontWeights.Bold : rowFontWeight == "SemiBold" ? FontWeights.SemiBold : FontWeights.Normal));
+
+                // Selektion Trigger
+                var selectionTrigger = new Trigger { Property = DataGridRow.IsSelectedProperty, Value = true };
+                try
+                {
+                    var selBg = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(txtGridSelectionBg.Text);
+                    var selFg = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(txtGridSelectionFg.Text);
+                    selectionTrigger.Setters.Add(new Setter(DataGridRow.BackgroundProperty, new System.Windows.Media.SolidColorBrush(selBg)));
+                    selectionTrigger.Setters.Add(new Setter(DataGridRow.ForegroundProperty, new System.Windows.Media.SolidColorBrush(selFg)));
+                }
+                catch { }
+                rowStyle.Triggers.Add(selectionTrigger);
+                dgGridVorschau.RowStyle = rowStyle;
+
+                // Header Style
+                var headerStyle = new Style(typeof(DataGridColumnHeader));
+                try
+                {
+                    var headerBg = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(txtGridHeaderBg.Text);
+                    var headerFg = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(txtGridHeaderFg.Text);
+                    var headerBorder = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(txtGridHeaderBorderColor.Text);
+                    headerStyle.Setters.Add(new Setter(DataGridColumnHeader.BackgroundProperty, new System.Windows.Media.SolidColorBrush(headerBg)));
+                    headerStyle.Setters.Add(new Setter(DataGridColumnHeader.ForegroundProperty, new System.Windows.Media.SolidColorBrush(headerFg)));
+                    headerStyle.Setters.Add(new Setter(DataGridColumnHeader.BorderBrushProperty, new System.Windows.Media.SolidColorBrush(headerBorder)));
+
+                    if (double.TryParse(txtGridHeaderBorderWidth.Text, out var borderWidth))
+                        headerStyle.Setters.Add(new Setter(DataGridColumnHeader.BorderThicknessProperty, new Thickness(0, 0, borderWidth, borderWidth)));
+
+                    headerStyle.Setters.Add(new Setter(DataGridColumnHeader.PaddingProperty, new Thickness(8, 4, 8, 4)));
+                }
+                catch { }
+                var headerFontWeight = (cmbGridHeaderFontWeight.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "SemiBold";
+                headerStyle.Setters.Add(new Setter(DataGridColumnHeader.FontWeightProperty, headerFontWeight == "Bold" ? FontWeights.Bold : headerFontWeight == "SemiBold" ? FontWeights.SemiBold : FontWeights.Normal));
+                dgGridVorschau.ColumnHeaderStyle = headerStyle;
+
+                // Beispieldaten fuer Vorschau
+                dgGridVorschau.ItemsSource = new[]
+                {
+                    new { Artikelnr = "ART-001", Bezeichnung = "Beispielartikel 1", Lagerbestand = 42, VKNetto = 19.99m },
+                    new { Artikelnr = "ART-002", Bezeichnung = "Beispielartikel 2", Lagerbestand = 15, VKNetto = 29.50m },
+                    new { Artikelnr = "ART-003", Bezeichnung = "Beispielartikel 3", Lagerbestand = 0, VKNetto = 9.95m },
+                    new { Artikelnr = "ART-004", Bezeichnung = "Beispielartikel 4", Lagerbestand = 128, VKNetto = 149.00m }
+                };
+            }
+            catch (Exception ex)
+            {
+                txtGridStatus.Text = $"Vorschau-Fehler: {ex.Message}";
+                txtGridStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Orange);
+            }
+        }
+
+        private async void GridEinstellungenReset_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show("Alle Einstellungen auf Standard zuruecksetzen?",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                // Allgemeine Standardwerte
+                txtGridZeilenhoehe.Text = "28";
+                txtGridSchriftgroesse.Text = "12";
+                cmbGridSchriftart.SelectedIndex = 0; // Segoe UI
+                cmbGridLinien.SelectedIndex = 0; // All
+
+                // Header Standardwerte
+                txtGridHeaderHoehe.Text = "32";
+                txtGridHeaderBg.Text = "#f0f0f0";
+                txtGridHeaderFg.Text = "#333333";
+                cmbGridHeaderFontWeight.SelectedIndex = 1; // SemiBold
+                txtGridHeaderBorderColor.Text = "#cccccc";
+                txtGridHeaderBorderWidth.Text = "1";
+
+                // Zeile 1 Standardwerte
+                txtGridRowBg.Text = "#ffffff";
+                txtGridRowFg.Text = "#333333";
+                cmbGridRowFontWeight.SelectedIndex = 0; // Normal
+                txtGridRowBorderColor.Text = "#e0e0e0";
+                txtGridRowBorderWidth.Text = "1";
+
+                // Zeile 2 Standardwerte
+                txtGridRowAltBg.Text = "#f9f9f9";
+                txtGridRowAltFg.Text = "#333333";
+                cmbGridRowAltFontWeight.SelectedIndex = 0; // Normal
+                chkGridZebraStreifen.IsChecked = true;
+
+                // Selektion Standardwerte
+                txtGridSelectionBg.Text = "#0078D4";
+                txtGridSelectionFg.Text = "#ffffff";
+
+                // Datum Standardwerte
+                cmbDatumFormat.SelectedIndex = 0; // dd.MM.yyyy
+                cmbDatumZeitFormat.SelectedIndex = 0; // dd.MM.yyyy HH:mm
+                cmbZeitFormat.SelectedIndex = 0; // HH:mm
+
+                // Zahlen Standardwerte
+                cmbTausenderTrenner.SelectedIndex = 0; // .
+                cmbDezimalTrenner.SelectedIndex = 0; // ,
+                txtDezimalstellen.Text = "2";
+                cmbWaehrungSymbol.SelectedIndex = 0; // EUR
+                chkWaehrungAnzeigen.IsChecked = true;
+
+                // Speichern
+                GridEinstellungenSpeichern_Click(sender, e);
+
+                txtGridStatus.Text = "Alle Einstellungen auf Standard zurueckgesetzt.";
+                txtGridStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+            }
+        }
+
+        private async System.Threading.Tasks.Task LadeGridEinstellungenAsync()
+        {
+            try
+            {
+                var settings = await _core.GetBenutzerEinstellungenAsync(App.BenutzerId, "Grid.");
+
+                foreach (var setting in settings)
+                {
+                    switch (setting.Key)
+                    {
+                        // Allgemein
+                        case "Grid.Zeilenhoehe":
+                            txtGridZeilenhoehe.Text = setting.Value;
+                            break;
+                        case "Grid.Schriftgroesse":
+                            txtGridSchriftgroesse.Text = setting.Value;
+                            break;
+                        case "Grid.Schriftart":
+                            SelectComboByContent(cmbGridSchriftart, setting.Value);
+                            break;
+                        case "Grid.GridLines":
+                            SelectComboByTag(cmbGridLinien, setting.Value);
+                            break;
+
+                        // Header
+                        case "Grid.HeaderHoehe":
+                            txtGridHeaderHoehe.Text = setting.Value;
+                            break;
+                        case "Grid.HeaderBackground":
+                            txtGridHeaderBg.Text = setting.Value;
+                            break;
+                        case "Grid.HeaderForeground":
+                            txtGridHeaderFg.Text = setting.Value;
+                            break;
+                        case "Grid.HeaderFontWeight":
+                            SelectComboByContent(cmbGridHeaderFontWeight, setting.Value);
+                            break;
+                        case "Grid.HeaderBorderColor":
+                            txtGridHeaderBorderColor.Text = setting.Value;
+                            break;
+                        case "Grid.HeaderBorderWidth":
+                            txtGridHeaderBorderWidth.Text = setting.Value;
+                            break;
+
+                        // Zeile 1
+                        case "Grid.RowBackground":
+                            txtGridRowBg.Text = setting.Value;
+                            break;
+                        case "Grid.RowForeground":
+                            txtGridRowFg.Text = setting.Value;
+                            break;
+                        case "Grid.RowFontWeight":
+                            SelectComboByContent(cmbGridRowFontWeight, setting.Value);
+                            break;
+                        case "Grid.RowBorderColor":
+                            txtGridRowBorderColor.Text = setting.Value;
+                            break;
+                        case "Grid.RowBorderWidth":
+                            txtGridRowBorderWidth.Text = setting.Value;
+                            break;
+
+                        // Zeile 2
+                        case "Grid.RowAltBackground":
+                            txtGridRowAltBg.Text = setting.Value;
+                            break;
+                        case "Grid.RowAltForeground":
+                            txtGridRowAltFg.Text = setting.Value;
+                            break;
+                        case "Grid.RowAltFontWeight":
+                            SelectComboByContent(cmbGridRowAltFontWeight, setting.Value);
+                            break;
+                        case "Grid.ZebraStreifen":
+                            chkGridZebraStreifen.IsChecked = setting.Value == "True";
+                            break;
+
+                        // Selektion
+                        case "Grid.SelectionBackground":
+                            txtGridSelectionBg.Text = setting.Value;
+                            break;
+                        case "Grid.SelectionForeground":
+                            txtGridSelectionFg.Text = setting.Value;
+                            break;
+
+                        // Datumsformatierung
+                        case "Grid.DatumFormat":
+                            SelectComboByContent(cmbDatumFormat, setting.Value);
+                            break;
+                        case "Grid.DatumZeitFormat":
+                            SelectComboByContent(cmbDatumZeitFormat, setting.Value);
+                            break;
+                        case "Grid.ZeitFormat":
+                            SelectComboByContent(cmbZeitFormat, setting.Value);
+                            break;
+
+                        // Zahlenformatierung
+                        case "Grid.Tausendertrennzeichen":
+                            SelectComboByContent(cmbTausenderTrenner, setting.Value);
+                            break;
+                        case "Grid.Dezimaltrennzeichen":
+                            SelectComboByContent(cmbDezimalTrenner, setting.Value);
+                            break;
+                        case "Grid.Dezimalstellen":
+                            txtDezimalstellen.Text = setting.Value;
+                            break;
+                        case "Grid.WaehrungSymbol":
+                            SelectComboByContent(cmbWaehrungSymbol, setting.Value);
+                            break;
+                        case "Grid.WaehrungAnzeigen":
+                            chkWaehrungAnzeigen.IsChecked = setting.Value == "True";
+                            break;
+                    }
+                }
+
+                // GridStyleHelper aktualisieren
+                await Controls.Base.GridStyleHelper.Instance.LoadSettingsAsync(_core, App.BenutzerId);
+
+                // Vorschau aktualisieren
+                ApplyGridFormatierungToVorschau();
+                UpdateFormatVorschau();
+            }
+            catch
+            {
+                // Bei Fehler: Standardwerte beibehalten
+            }
+        }
+
+        private void SelectComboByContent(ComboBox combo, string value)
+        {
+            for (int i = 0; i < combo.Items.Count; i++)
+            {
+                if ((combo.Items[i] as ComboBoxItem)?.Content?.ToString() == value)
+                {
+                    combo.SelectedIndex = i;
+                    return;
+                }
+            }
+        }
+
+        private void SelectComboByTag(ComboBox combo, string value)
+        {
+            for (int i = 0; i < combo.Items.Count; i++)
+            {
+                if ((combo.Items[i] as ComboBoxItem)?.Tag?.ToString() == value)
+                {
+                    combo.SelectedIndex = i;
+                    return;
+                }
             }
         }
 

@@ -1120,6 +1120,329 @@
                         <TextBlock Text="Passen Sie Farben und Stil der Anwendung an." Foreground="Gray" Margin="0,0,0,20"/>
 
                         <base:ThemeSettingsControl x:Name="themeSettings"/>
+
+                        <!-- Grid-Formatierung -->
+                        <GroupBox Header="Grid-Formatierung" Margin="0,25,0,0">
+                            <StackPanel Margin="15">
+                                <!-- Allgemeine Einstellungen -->
+                                <TextBlock Text="Allgemein" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="30"/>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Text="Zeilenhoehe:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtGridZeilenhoehe" Grid.Column="1" Text="28"/>
+
+                                    <TextBlock Text="Schriftart:" VerticalAlignment="Center" Grid.Column="3"/>
+                                    <ComboBox x:Name="cmbGridSchriftart" Grid.Column="4">
+                                        <ComboBoxItem Content="Segoe UI" IsSelected="True"/>
+                                        <ComboBoxItem Content="Arial"/>
+                                        <ComboBoxItem Content="Calibri"/>
+                                        <ComboBoxItem Content="Consolas"/>
+                                        <ComboBoxItem Content="Tahoma"/>
+                                    </ComboBox>
+
+                                    <TextBlock Text="Schriftgroesse:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                                    <TextBox x:Name="txtGridSchriftgroesse" Grid.Row="1" Grid.Column="1" Text="12" Margin="0,8,0,0"/>
+
+                                    <TextBlock Text="Gitternetzlinien:" VerticalAlignment="Center" Grid.Row="1" Grid.Column="3" Margin="0,8,0,0"/>
+                                    <ComboBox x:Name="cmbGridLinien" Grid.Row="1" Grid.Column="4" Margin="0,8,0,0">
+                                        <ComboBoxItem Content="Alle" Tag="All" IsSelected="True"/>
+                                        <ComboBoxItem Content="Horizontal" Tag="Horizontal"/>
+                                        <ComboBoxItem Content="Vertikal" Tag="Vertical"/>
+                                        <ComboBoxItem Content="Keine" Tag="None"/>
+                                    </ComboBox>
+                                </Grid>
+
+                                <!-- Header-Zeile -->
+                                <TextBlock Text="Header-Zeile" FontWeight="SemiBold" FontSize="14" Margin="0,20,0,10"/>
+                                <Border BorderBrush="#ddd" BorderThickness="1" Padding="10" CornerRadius="3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Hintergrund:" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtGridHeaderBg" Grid.Column="1" Text="#f0f0f0"/>
+
+                                        <TextBlock Text="Textfarbe:" VerticalAlignment="Center" Grid.Column="3"/>
+                                        <TextBox x:Name="txtGridHeaderFg" Grid.Column="4" Text="#333333"/>
+
+                                        <TextBlock Text="Schriftstaerke:" VerticalAlignment="Center" Grid.Column="6"/>
+                                        <ComboBox x:Name="cmbGridHeaderFontWeight" Grid.Column="7">
+                                            <ComboBoxItem Content="Normal"/>
+                                            <ComboBoxItem Content="SemiBold" IsSelected="True"/>
+                                            <ComboBoxItem Content="Bold"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Rahmenfarbe:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtGridHeaderBorderColor" Grid.Row="1" Grid.Column="1" Text="#cccccc" Margin="0,8,0,0"/>
+
+                                        <TextBlock Text="Rahmenstaerke:" VerticalAlignment="Center" Grid.Row="1" Grid.Column="3" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtGridHeaderBorderWidth" Grid.Row="1" Grid.Column="4" Text="1" Margin="0,8,0,0"/>
+
+                                        <TextBlock Text="Hoehe:" VerticalAlignment="Center" Grid.Row="1" Grid.Column="6" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtGridHeaderHoehe" Grid.Row="1" Grid.Column="7" Text="32" Margin="0,8,0,0"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Zeile 1 (Gerade Zeilen) -->
+                                <TextBlock Text="Zeile 1 (Gerade Zeilen)" FontWeight="SemiBold" FontSize="14" Margin="0,15,0,10"/>
+                                <Border BorderBrush="#ddd" BorderThickness="1" Padding="10" CornerRadius="3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Hintergrund:" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtGridRowBg" Grid.Column="1" Text="#ffffff"/>
+
+                                        <TextBlock Text="Textfarbe:" VerticalAlignment="Center" Grid.Column="3"/>
+                                        <TextBox x:Name="txtGridRowFg" Grid.Column="4" Text="#333333"/>
+
+                                        <TextBlock Text="Schriftstaerke:" VerticalAlignment="Center" Grid.Column="6"/>
+                                        <ComboBox x:Name="cmbGridRowFontWeight" Grid.Column="7">
+                                            <ComboBoxItem Content="Normal" IsSelected="True"/>
+                                            <ComboBoxItem Content="SemiBold"/>
+                                            <ComboBoxItem Content="Bold"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Rahmenfarbe:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtGridRowBorderColor" Grid.Row="1" Grid.Column="1" Text="#e0e0e0" Margin="0,8,0,0"/>
+
+                                        <TextBlock Text="Rahmenstaerke:" VerticalAlignment="Center" Grid.Row="1" Grid.Column="3" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtGridRowBorderWidth" Grid.Row="1" Grid.Column="4" Text="1" Margin="0,8,0,0"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Zeile 2 (Ungerade/Alternierende Zeilen) -->
+                                <TextBlock Text="Zeile 2 (Ungerade Zeilen / Zebrastreifen)" FontWeight="SemiBold" FontSize="14" Margin="0,15,0,10"/>
+                                <Border BorderBrush="#ddd" BorderThickness="1" Padding="10" CornerRadius="3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Hintergrund:" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtGridRowAltBg" Grid.Column="1" Text="#f9f9f9"/>
+
+                                        <TextBlock Text="Textfarbe:" VerticalAlignment="Center" Grid.Column="3"/>
+                                        <TextBox x:Name="txtGridRowAltFg" Grid.Column="4" Text="#333333"/>
+
+                                        <TextBlock Text="Schriftstaerke:" VerticalAlignment="Center" Grid.Column="6"/>
+                                        <ComboBox x:Name="cmbGridRowAltFontWeight" Grid.Column="7">
+                                            <ComboBoxItem Content="Normal" IsSelected="True"/>
+                                            <ComboBoxItem Content="SemiBold"/>
+                                            <ComboBoxItem Content="Bold"/>
+                                        </ComboBox>
+
+                                        <CheckBox x:Name="chkGridZebraStreifen" Content="Zebrastreifen aktivieren" IsChecked="True" Grid.Row="1" Margin="0,8,0,0"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Selektion -->
+                                <TextBlock Text="Selektion (ausgewaehlte Zeile)" FontWeight="SemiBold" FontSize="14" Margin="0,15,0,10"/>
+                                <Border BorderBrush="#ddd" BorderThickness="1" Padding="10" CornerRadius="3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="20"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Text="Hintergrund:" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtGridSelectionBg" Grid.Column="1" Text="#0078D4"/>
+
+                                        <TextBlock Text="Textfarbe:" VerticalAlignment="Center" Grid.Column="3"/>
+                                        <TextBox x:Name="txtGridSelectionFg" Grid.Column="4" Text="#ffffff"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- Datums- und Zahlenformatierung -->
+                        <GroupBox Header="Datums- und Zahlenformatierung" Margin="0,20,0,0">
+                            <StackPanel Margin="15">
+                                <!-- Datumsformate -->
+                                <TextBlock Text="Datumsformate" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,10"/>
+                                <Border BorderBrush="#ddd" BorderThickness="1" Padding="10" CornerRadius="3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="30"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Datum:" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cmbDatumFormat" Grid.Column="1">
+                                            <ComboBoxItem Content="dd.MM.yyyy" IsSelected="True"/>
+                                            <ComboBoxItem Content="dd/MM/yyyy"/>
+                                            <ComboBoxItem Content="yyyy-MM-dd"/>
+                                            <ComboBoxItem Content="dd. MMM yyyy"/>
+                                            <ComboBoxItem Content="d. MMMM yyyy"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Datum + Zeit:" VerticalAlignment="Center" Grid.Column="3"/>
+                                        <ComboBox x:Name="cmbDatumZeitFormat" Grid.Column="4">
+                                            <ComboBoxItem Content="dd.MM.yyyy HH:mm" IsSelected="True"/>
+                                            <ComboBoxItem Content="dd.MM.yyyy HH:mm:ss"/>
+                                            <ComboBoxItem Content="dd/MM/yyyy HH:mm"/>
+                                            <ComboBoxItem Content="yyyy-MM-dd HH:mm"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Zeit:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                                        <ComboBox x:Name="cmbZeitFormat" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
+                                            <ComboBoxItem Content="HH:mm" IsSelected="True"/>
+                                            <ComboBoxItem Content="HH:mm:ss"/>
+                                            <ComboBoxItem Content="hh:mm tt"/>
+                                        </ComboBox>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Zahlenformate -->
+                                <TextBlock Text="Zahlenformate" FontWeight="SemiBold" FontSize="14" Margin="0,15,0,10"/>
+                                <Border BorderBrush="#ddd" BorderThickness="1" Padding="10" CornerRadius="3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="140"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="30"/>
+                                            <ColumnDefinition Width="140"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <TextBlock Text="Tausendertrenner:" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="cmbTausenderTrenner" Grid.Column="1">
+                                            <ComboBoxItem Content="." IsSelected="True"/>
+                                            <ComboBoxItem Content=","/>
+                                            <ComboBoxItem Content=" "/>
+                                            <ComboBoxItem Content="(kein)"/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Dezimaltrenner:" VerticalAlignment="Center" Grid.Column="3"/>
+                                        <ComboBox x:Name="cmbDezimalTrenner" Grid.Column="4">
+                                            <ComboBoxItem Content="," IsSelected="True"/>
+                                            <ComboBoxItem Content="."/>
+                                        </ComboBox>
+
+                                        <TextBlock Text="Dezimalstellen:" VerticalAlignment="Center" Grid.Row="1" Margin="0,8,0,0"/>
+                                        <TextBox x:Name="txtDezimalstellen" Grid.Row="1" Grid.Column="1" Text="2" Margin="0,8,0,0"/>
+
+                                        <TextBlock Text="Waehrungssymbol:" VerticalAlignment="Center" Grid.Row="1" Grid.Column="3" Margin="0,8,0,0"/>
+                                        <ComboBox x:Name="cmbWaehrungSymbol" Grid.Row="1" Grid.Column="4" Margin="0,8,0,0">
+                                            <ComboBoxItem Content="EUR" IsSelected="True"/>
+                                            <ComboBoxItem Content="€"/>
+                                            <ComboBoxItem Content="CHF"/>
+                                            <ComboBoxItem Content="USD"/>
+                                            <ComboBoxItem Content="$"/>
+                                        </ComboBox>
+
+                                        <CheckBox x:Name="chkWaehrungAnzeigen" Content="Waehrungssymbol anzeigen" IsChecked="True" Grid.Row="2" Margin="0,8,0,0"/>
+
+                                        <!-- Vorschau -->
+                                        <Border Grid.Row="3" Grid.ColumnSpan="6" Background="#f5f5f5" Padding="10" Margin="0,10,0,0" CornerRadius="3">
+                                            <StackPanel>
+                                                <TextBlock Text="Vorschau:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="Datum: " Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtFormatVorschauDatum" Text="02.01.2026" Margin="0,0,20,0"/>
+                                                    <TextBlock Text="Betrag: " Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtFormatVorschauBetrag" Text="1.234,56 EUR" Margin="0,0,20,0"/>
+                                                    <TextBlock Text="Menge: " Foreground="Gray"/>
+                                                    <TextBlock x:Name="txtFormatVorschauMenge" Text="42"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- Vorschau -->
+                        <GroupBox Header="Vorschau" Margin="0,20,0,0">
+                            <DataGrid x:Name="dgGridVorschau" Height="150" Margin="10" AutoGenerateColumns="False"
+                                      IsReadOnly="True" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Artikelnr." Width="100"/>
+                                    <DataGridTextColumn Header="Bezeichnung" Width="200"/>
+                                    <DataGridTextColumn Header="Lagerbestand" Width="100"/>
+                                    <DataGridTextColumn Header="VK Netto" Width="100"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <!-- Speichern-Buttons -->
+                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                            <Button Content="Grid-Einstellungen speichern" Click="GridEinstellungenSpeichern_Click" Padding="20,10"
+                                    Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                            <Button Content="Vorschau aktualisieren" Click="GridVorschauAktualisieren_Click" Padding="15,10" Margin="15,0,0,0"/>
+                            <Button Content="Auf Standard zuruecksetzen" Click="GridEinstellungenReset_Click" Padding="15,10" Margin="15,0,0,0"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="txtGridStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

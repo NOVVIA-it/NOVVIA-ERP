@@ -26,100 +26,29 @@
             </StackPanel>
         </Border>
 
-        <!-- Meldungsliste -->
+        <!-- Meldungsliste als DataGrid -->
         <Border Grid.Row="2" Background="White" Margin="15">
-            <ListBox x:Name="lstTextmeldungen" BorderThickness="1" BorderBrush="#ddd"
-                     SelectionChanged="LstTextmeldungen_SelectionChanged"
-                     MouseDoubleClick="LstTextmeldungen_DoubleClick">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Border Padding="12,10" BorderBrush="#eee" BorderThickness="0,0,0,1">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- Typ-Indikator -->
-                                <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Top" Margin="0,5,12,0">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Background" Value="#2196F3"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding NTyp}" Value="1">
-                                                    <Setter Property="Background" Value="#FF9800"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding NTyp}" Value="2">
-                                                    <Setter Property="Background" Value="#f44336"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                </Border>
-
-                                <!-- Inhalt -->
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="{Binding CTitel}" FontWeight="SemiBold" FontSize="14"/>
-                                    <TextBlock Text="{Binding CText}" Foreground="#555" FontSize="12"
-                                               TextTrimming="CharacterEllipsis" MaxWidth="600" Margin="0,4,0,0"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                        <TextBlock Text="{Binding TypBezeichnung}" Foreground="#888" FontSize="11"/>
-                                        <TextBlock Text=" | " Foreground="#ccc" FontSize="11"/>
-                                        <TextBlock Text="{Binding BereicheText}" Foreground="#888" FontSize="11"/>
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- Status -->
-                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
-                                    <Border Padding="8,3" CornerRadius="3" HorizontalAlignment="Right">
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Background" Value="#e8f5e9"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding NAktiv}" Value="False">
-                                                        <Setter Property="Background" Value="#f5f5f5"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                        <TextBlock FontSize="11">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="Aktiv"/>
-                                                    <Setter Property="Foreground" Value="#4caf50"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding NAktiv}" Value="False">
-                                                            <Setter Property="Text" Value="Inaktiv"/>
-                                                            <Setter Property="Foreground" Value="#999"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </Border>
-                                    <TextBlock Text="{Binding ZuweisungenText}" Foreground="#888" FontSize="10"
-                                               HorizontalAlignment="Right" Margin="0,4,0,0"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="0"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#e3f2fd"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#f5f5f5"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ListBox.ItemContainerStyle>
-            </ListBox>
+            <DataGrid x:Name="dgTextmeldungen" BorderThickness="1" BorderBrush="#ddd"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                      SelectionMode="Single" SelectionUnit="FullRow"
+                      SelectionChanged="DgTextmeldungen_SelectionChanged"
+                      MouseDoubleClick="DgTextmeldungen_DoubleClick">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="ID" Binding="{Binding KTextmeldung}" Width="60"/>
+                    <DataGridTextColumn Header="Titel" Binding="{Binding CTitel}" Width="200"/>
+                    <DataGridTextColumn Header="Text" Binding="{Binding CText}" Width="300"/>
+                    <DataGridTextColumn Header="Typ" Binding="{Binding TypBezeichnung}" Width="100"/>
+                    <DataGridTextColumn Header="Bereiche" Binding="{Binding BereicheText}" Width="150"/>
+                    <DataGridTextColumn Header="Entity-Typ" Binding="{Binding CEntityTyp}" Width="100"/>
+                    <DataGridTextColumn Header="Zuweisungen" Binding="{Binding ZuweisungenText}" Width="120"/>
+                    <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding NAktiv}" Width="60"/>
+                    <DataGridTextColumn Header="Prioritaet" Binding="{Binding NPrioritaet}" Width="80"/>
+                    <DataGridTextColumn Header="Gueltig von" Binding="{Binding DGueltigVon, StringFormat=dd.MM.yyyy}" Width="100"/>
+                    <DataGridTextColumn Header="Gueltig bis" Binding="{Binding DGueltigBis, StringFormat=dd.MM.yyyy}" Width="100"/>
+                    <DataGridTextColumn Header="Erstellt" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy HH:mm}" Width="130"/>
+                    <DataGridTextColumn Header="Erstellt von" Binding="{Binding CErstelltVon}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
         </Border>
 
         <!-- Leer-Hinweis -->

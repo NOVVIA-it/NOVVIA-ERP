@@ -35,9 +35,9 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="*" MinHeight="250"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="350"/>
+            <RowDefinition Height="*" MinHeight="200"/>
+            <RowDefinition Height="5"/>
+            <RowDefinition Height="350" MinHeight="150"/>
         </Grid.RowDefinitions>
 
         <!-- OBERER BEREICH: Kundenliste -->
@@ -76,14 +76,13 @@
                     <TextBox Grid.Column="2" x:Name="txtPLZ" Style="{StaticResource FilterTextBox}" Margin="5,0,0,0" ToolTip="PLZ"/>
                     <TextBlock Grid.Column="3" Text="PLZ" VerticalAlignment="Center" Margin="3,0,8,0" Foreground="#888" FontSize="10"/>
                     <TextBox Grid.Column="4" x:Name="txtAuftragRechnung" Style="{StaticResource FilterTextBox}" ToolTip="Auftrags-/Rechnungsnummer..."/>
-                    <ComboBox Grid.Column="5" x:Name="cboKategorie" Style="{StaticResource FilterComboBox}" Width="100" Margin="8,0">
-                        <ComboBoxItem Content="Kategorie..." IsSelected="True"/>
+                    <ComboBox Grid.Column="5" x:Name="cboKategorie" Style="{StaticResource FilterComboBox}" Width="100" Margin="8,0"
+                              SelectionChanged="Filter_Changed">
+                        <ComboBoxItem Content="Alle Kategorien" IsSelected="True"/>
                     </ComboBox>
                     <ComboBox Grid.Column="6" x:Name="cboKundengruppe" Style="{StaticResource FilterComboBox}"
-                              DisplayMemberPath="CName" SelectionChanged="Filter_Changed">
-                        <ComboBox.Items>
-                            <ComboBoxItem Content="Alle Gruppen" IsSelected="True"/>
-                        </ComboBox.Items>
+                              SelectionChanged="Filter_Changed">
+                        <ComboBoxItem Content="Alle Gruppen" IsSelected="True"/>
                     </ComboBox>
                     <TextBox Grid.Column="7" x:Name="txtLabel" Style="{StaticResource FilterTextBox}" Width="100" Margin="8,0" ToolTip="Label suchen..."/>
                     <StackPanel Grid.Column="8" Orientation="Horizontal">
@@ -93,25 +92,14 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Kundenliste DataGrid -->
+                <!-- Kundenliste DataGrid - Styling durch GridStyleHelper -->
                 <DataGrid x:Name="dgKunden" Grid.Row="2" Margin="0"
                           AutoGenerateColumns="False" IsReadOnly="True"
                           SelectionMode="Single" SelectionUnit="FullRow"
-                          GridLinesVisibility="All" HeadersVisibility="Column"
-                          BorderThickness="0" HorizontalGridLinesBrush="#e0e0e0" VerticalGridLinesBrush="#e0e0e0"
-                          RowBackground="White" AlternatingRowBackground="#f9f9f9"
+                          HeadersVisibility="Column" BorderThickness="0"
                           MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged"
-                          CanUserResizeColumns="True" CanUserReorderColumns="True"
-                          FontSize="12">
-                    <DataGrid.ColumnHeaderStyle>
-                        <Style TargetType="DataGridColumnHeader">
-                            <Setter Property="Background" Value="#f5f5f5"/>
-                            <Setter Property="Padding" Value="8,5"/>
-                            <Setter Property="BorderBrush" Value="#ddd"/>
-                            <Setter Property="BorderThickness" Value="0,0,1,1"/>
-                            <Setter Property="FontWeight" Value="Normal"/>
-                        </Style>
-                    </DataGrid.ColumnHeaderStyle>
+                          CanUserResizeColumns="True" CanUserReorderColumns="True">
+                    <!-- ColumnHeaderStyle wird programmatisch von GridStyleHelper gesetzt -->
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Kundennummer" Binding="{Binding CKundenNr}" Width="60"/>
                         <DataGridTextColumn Header="Firma" Binding="{Binding CFirma}" Width="133"/>
@@ -125,6 +113,7 @@
                         <DataGridTextColumn Header="Strasse" Binding="{Binding CStrasse}" Width="169"/>
                         <DataGridTextColumn Header="Land" Binding="{Binding CLand}" Width="78"/>
                         <DataGridTextColumn Header="Kundengruppe" Binding="{Binding Kundengruppe}" Width="94"/>
+                        <DataGridTextColumn Header="Kategorie" Binding="{Binding Kategorie}" Width="94"/>
                         <DataGridTextColumn Header="Webseite" Binding="{Binding CWww}" Width="192"/>
                         <DataGridTextColumn Header="Label" Binding="{Binding CLabel}" Width="120"/>
                         <DataGridTextColumn Header="Ust-IdNr." Binding="{Binding CUstId}" Width="100"/>
@@ -161,8 +150,9 @@
             </Grid>
         </Border>
 
-        <!-- TRENNLINIE -->
-        <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="#e0e0e0"/>
+        <!-- BEWEGLICHER TRENNBALKEN -->
+        <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="#d0d0d0"
+                      ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS"/>
 
         <!-- UNTERER BEREICH: Details + Historie -->
         <Grid Grid.Row="2">

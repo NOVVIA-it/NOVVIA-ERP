@@ -63,6 +63,8 @@ namespace NovviaERP.Core.Services
             public string? CSperre { get; set; }
             public int? KKundenGruppe { get; set; }
             public string? Kundengruppe { get; set; }
+            public int? KKundenKategorie { get; set; }
+            public string? Kategorie { get; set; }
             public string? CWww { get; set; }
             public string? CLabel { get; set; }
             public string? CUstId { get; set; }
@@ -295,8 +297,35 @@ namespace NovviaERP.Core.Services
             public int? KWarengruppe { get; set; }
             public string? Warengruppe { get; set; }
 
+            // Erweiterte Felder
+            public string? CHAN { get; set; }
+            public string? CASIN { get; set; }
+            public string? CISBN { get; set; }
+            public string? CUPC { get; set; }
+            public string? CTaric { get; set; }
+            public int NSort { get; set; }
+            public decimal FAufEinkaufsliste { get; set; }
+            public decimal FInAuftraegen { get; set; }
+            public decimal FImZulauf { get; set; }
+            public decimal FVerfuegbar { get; set; }
+            public DateTime? DErstellt { get; set; }
+            public DateTime? DLetzteAenderung { get; set; }
+            public DateTime? DLetzterEK { get; set; }
+            public DateTime? DLetzterVK { get; set; }
+            public string? CSeriennummer { get; set; }
+            public decimal FGewicht { get; set; }
+            public decimal FLaenge { get; set; }
+            public decimal FBreite { get; set; }
+            public decimal FHoehe { get; set; }
+            public string? CMasseinheit { get; set; }
+            public int NTopArtikel { get; set; }
+            public int NNeu { get; set; }
+            public int NOnlineShop { get; set; }
+
             public bool Aktiv => CAktiv == "Y";
-            public bool UnterMindestbestand => NLagerbestand < NMidestbestand;
+            public bool UnterMindestbestand => NLagerbestand < NMidestbestand && NMidestbestand > 0;
+            public decimal Gewinn => FVKNetto - FEKNetto;
+            public decimal GewinnProzent => FEKNetto > 0 ? ((FVKNetto - FEKNetto) / FEKNetto) * 100 : 0;
         }
 
         public class ArtikelDetail
@@ -636,7 +665,7 @@ namespace NovviaERP.Core.Services
 
         #region Kunden
 
-        public async Task<IEnumerable<KundeUebersicht>> GetKundenAsync(string? suche = null, string? plz = null, int? kundengruppeId = null, bool nurAktive = false, int limit = 200, int offset = 0)
+        public async Task<IEnumerable<KundeUebersicht>> GetKundenAsync(string? suche = null, string? plz = null, int? kundengruppeId = null, int? kategorieId = null, bool nurAktive = false, int limit = 200, int offset = 0)
         {
             var conn = await GetConnectionAsync();
             var sql = @"
@@ -645,6 +674,7 @@ namespace NovviaERP.Core.Services
                     a.cFirma, a.cVorname, a.cName, a.cAnrede, a.cStrasse, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel, a.cMobil, a.cFax, a.cUSTID AS CUstId,
                     l.cName AS CLand,
                     kg.cName AS Kundengruppe,
+                    kk.cName AS Kategorie,
                     ISNULL((SELECT TOP 1 lb.cName FROM tKundeLabel kl JOIN tLabel lb ON kl.kLabel = lb.kLabel WHERE kl.kKunde = k.kKunde), '') AS CLabel,
                     ISNULL((SELECT SUM(ae.fWertNetto)
                             FROM Verkauf.tAuftrag au
@@ -653,11 +683,13 @@ namespace NovviaERP.Core.Services
                 FROM dbo.tKunde k
                 LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
                 LEFT JOIN tKundenGruppe kg ON kg.kKundenGruppe = k.kKundenGruppe
+                LEFT JOIN tKundenKategorie kk ON kk.kKundenKategorie = k.kKundenKategorie
                 LEFT JOIN tLand l ON l.cISO = a.cISO
                 WHERE 1=1";
 
             if (nurAktive) sql += " AND k.cSperre != 'Y'";
             if (kundengruppeId.HasValue) sql += " AND k.kKundenGruppe = @KundengruppeId";
+            if (kategorieId.HasValue) sql += " AND k.kKundenKategorie = @KategorieId";
             if (!string.IsNullOrEmpty(plz)) sql += " AND a.cPLZ LIKE @PLZ";
             if (!string.IsNullOrEmpty(suche))
             {
@@ -671,7 +703,7 @@ namespace NovviaERP.Core.Services
             sql += " ORDER BY ISNULL(a.cFirma, a.cName), a.cVorname";
             sql += " OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY";
 
-            return await conn.QueryAsync<KundeUebersicht>(sql, new { Limit = limit, Offset = offset, Suche = $"%{suche}%", PLZ = $"{plz}%", KundengruppeId = kundengruppeId });
+            return await conn.QueryAsync<KundeUebersicht>(sql, new { Limit = limit, Offset = offset, Suche = $"%{suche}%", PLZ = $"{plz}%", KundengruppeId = kundengruppeId, KategorieId = kategorieId });
         }
 
         /// <summary>Kundensuche fuer Dialoge - gibt Liste zurueck</summary>
@@ -1506,14 +1538,40 @@ namespace NovviaERP.Core.Services
                     a.kArtikel, a.cArtNr, a.cBarcode, a.fVKNetto, a.fEKNetto, a.fUVP AS FUVP,
                     ISNULL(lb.fLagerbestand, 0) AS NLagerbestand,
                     ISNULL(a.nMidestbestand, 0) AS NMidestbestand,
-                    a.cAktiv, a.cLagerArtikel, a.kHersteller,
+                    a.cAktiv, a.cLagerArtikel, a.kHersteller, a.kWarengruppe,
                     ab.cName AS Name,
                     h.cName AS Hersteller,
+                    wg.cName AS Warengruppe,
                     ISNULL((SELECT TOP 1 fSteuersatz FROM tSteuersatz WHERE kSteuerklasse = a.kSteuerklasse ORDER BY nPrio DESC), 19) AS FMwSt,
-                    ISNULL(a.fVKNetto * (1 + ISNULL((SELECT TOP 1 fSteuersatz FROM tSteuersatz WHERE kSteuerklasse = a.kSteuerklasse ORDER BY nPrio DESC), 19) / 100), a.fVKNetto) AS FVKBrutto
+                    ISNULL(a.fVKNetto * (1 + ISNULL((SELECT TOP 1 fSteuersatz FROM tSteuersatz WHERE kSteuerklasse = a.kSteuerklasse ORDER BY nPrio DESC), 19) / 100), a.fVKNetto) AS FVKBrutto,
+                    -- Erweiterte Felder
+                    a.cHAN AS CHAN, a.cASIN AS CASIN, a.cISBN AS CISBN, a.cUPC AS CUPC, a.cTARIC AS CTaric,
+                    ISNULL(a.nSort, 0) AS NSort,
+                    a.dErstelldatum AS DErstellt,
+                    a.dMod AS DLetzteAenderung,
+                    a.fGewicht AS FGewicht,
+                    a.fLaenge AS FLaenge, a.fBreite AS FBreite, a.fHoehe AS FHoehe,
+                    me.cCode AS CMasseinheit,
+                    CASE WHEN a.cTopArtikel = 'Y' THEN 1 ELSE 0 END AS NTopArtikel,
+                    CASE WHEN a.cNeu = 'Y' THEN 1 ELSE 0 END AS NNeu,
+                    CASE WHEN a.cInet = 'Y' THEN 1 ELSE 0 END AS NOnlineShop,
+                    -- Berechnet: Verfuegbar = Bestand (Reservierungen sind bereits im Bestand beruecksichtigt)
+                    ISNULL(lb.fLagerbestand, 0) AS FVerfuegbar,
+                    -- In Auftraegen (offene Auftraege - nicht storniert, nicht komplett ausgeliefert)
+                    ISNULL((SELECT SUM(ap.fAnzahl) FROM Verkauf.tAuftragPosition ap
+                            INNER JOIN Verkauf.tAuftrag au ON ap.kAuftrag = au.kAuftrag
+                            WHERE ap.kArtikel = a.kArtikel AND au.nStorno = 0 AND au.nKomplettAusgeliefert = 0), 0) AS FInAuftraegen,
+                    -- Im Zulauf (offene Lieferantenbestellungen - nicht storniert, nicht komplett ausgeliefert)
+                    ISNULL((SELECT SUM(bp.nAnzahl) FROM dbo.tBestellpos bp
+                            INNER JOIN dbo.tBestellung b ON bp.tBestellung_kBestellung = b.kBestellung
+                            WHERE bp.tArtikel_kArtikel = a.kArtikel AND b.nStorno = 0 AND b.nKomplettAusgeliefert = 0), 0) AS FImZulauf,
+                    -- Auf Einkaufsliste
+                    ISNULL((SELECT SUM(fAnzahl) FROM dbo.tArtikelEinkaufsliste WHERE kArtikel = a.kArtikel), 0) AS FAufEinkaufsliste
                 FROM tArtikel a
                 LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
                 LEFT JOIN tHersteller h ON a.kHersteller = h.kHersteller
+                LEFT JOIN tWarengruppe wg ON a.kWarengruppe = wg.kWarengruppe
+                LEFT JOIN tMassEinheit me ON a.kMassEinheit = me.kMassEinheit
                 LEFT JOIN tlagerbestand lb ON a.kArtikel = lb.kArtikel";
 
             if (kategorieId.HasValue)
@@ -1629,12 +1687,20 @@ namespace NovviaERP.Core.Services
                     kg.cName AS CKundengruppe,
                     ISNULL(kg.fRabatt, 0) AS FRabatt,
                     ISNULL(pd.nAnzahlAb, 0) AS NAnzahlAb,
-                    ISNULL(pd.fNettoPreis, 0) AS FNettoPreis,
+                    -- Preis: Entweder Kundengruppen-Preis oder Artikel-VK (mit optionalem Rabatt)
+                    CASE
+                        WHEN pd.fNettoPreis IS NOT NULL AND pd.fNettoPreis > 0 THEN pd.fNettoPreis
+                        WHEN pd.fProzent IS NOT NULL AND pd.fProzent <> 0 THEN a.fVKNetto * (1 - pd.fProzent / 100)
+                        WHEN kg.fRabatt IS NOT NULL AND kg.fRabatt > 0 THEN a.fVKNetto * (1 - kg.fRabatt / 100)
+                        ELSE ISNULL(a.fVKNetto, 0)
+                    END AS FNettoPreis,
                     ISNULL(pd.fProzent, 0) AS FProzent,
                     p.kPreis AS KPreis
                 FROM dbo.tKundenGruppe kg
-                LEFT JOIN dbo.tPreis p ON p.kKundenGruppe = kg.kKundenGruppe AND p.kArtikel = @KArtikel
+                CROSS JOIN dbo.tArtikel a
+                LEFT JOIN dbo.tPreis p ON p.kKundenGruppe = kg.kKundenGruppe AND p.kArtikel = a.kArtikel
                 LEFT JOIN dbo.tPreisDetail pd ON p.kPreis = pd.kPreis AND pd.nAnzahlAb = 0
+                WHERE a.kArtikel = @KArtikel
                 ORDER BY kg.cName",
                 new { KArtikel = kArtikel });
         }
@@ -2561,6 +2627,58 @@ namespace NovviaERP.Core.Services
             public int? NAnzahl { get; set; }
             public string? CKundengruppe { get; set; }
             public decimal FSonderpreisNetto { get; set; }
+        }
+
+        /// <summary>
+        /// Eigene Übersichten (Custom Queries) für einen Kontext laden
+        /// kKontext: 1 = Kunde, 2 = Artikel, 3 = Auftrag, etc.
+        /// </summary>
+        public async Task<IEnumerable<CustomQueryInfo>> GetCustomQueriesAsync(int kKontext)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<CustomQueryInfo>(@"
+                SELECT kCustomerQuery, cName, CAST(cQueryText AS NVARCHAR(MAX)) AS CQueryText, kKontext
+                FROM dbo.tCustomerQuery
+                WHERE kKontext = @KKontext
+                ORDER BY cName",
+                new { KKontext = kKontext });
+        }
+
+        /// <summary>
+        /// Eine Custom Query für einen bestimmten Key (z.B. kArtikel) ausführen
+        /// </summary>
+        public async Task<IEnumerable<dynamic>> ExecuteCustomQueryAsync(int kCustomerQuery, int key)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Query laden
+            var queryText = await conn.QueryFirstOrDefaultAsync<string>(
+                "SELECT CAST(cQueryText AS NVARCHAR(MAX)) FROM dbo.tCustomerQuery WHERE kCustomerQuery = @KCustomerQuery",
+                new { KCustomerQuery = kCustomerQuery });
+
+            if (string.IsNullOrEmpty(queryText))
+                return Enumerable.Empty<dynamic>();
+
+            // @Key Parameter ersetzen
+            var finalQuery = queryText.Replace("@Key", key.ToString()).Replace("@key", key.ToString());
+
+            try
+            {
+                return await conn.QueryAsync<dynamic>(finalQuery);
+            }
+            catch
+            {
+                // Bei Fehlern leere Liste zurückgeben
+                return Enumerable.Empty<dynamic>();
+            }
+        }
+
+        public class CustomQueryInfo
+        {
+            public int KCustomerQuery { get; set; }
+            public string CName { get; set; } = "";
+            public string CQueryText { get; set; } = "";
+            public int KKontext { get; set; }
         }
 
         #endregion

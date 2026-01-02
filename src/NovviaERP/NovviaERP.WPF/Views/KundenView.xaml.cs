@@ -5,6 +5,7 @@ using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
 using NovviaERP.WPF.Controls;
+using NovviaERP.WPF.Controls.Base;
 
 namespace NovviaERP.WPF.Views
 {
@@ -27,13 +28,14 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
-                // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
-                DataGridColumnConfig.EnableColumnChooser(dgKunden, "KundenView");
-                DataGridColumnConfig.EnableColumnChooser(dgKundeAuftraege, "KundenView.Auftraege");
-                DataGridColumnConfig.EnableColumnChooser(dgKundeRechnungen, "KundenView.Rechnungen");
-                DataGridColumnConfig.EnableColumnChooser(dgKundeAdressen, "KundenView.Adressen");
-                DataGridColumnConfig.EnableColumnChooser(dgAnsprechpartner, "KundenView.Ansprechpartner");
-                DataGridColumnConfig.EnableColumnChooser(dgTickets, "KundenView.Tickets");
+                // ZENTRALE GRID-INITIALISIERUNG: Styling + Spalten-Konfiguration in richtiger Reihenfolge
+                await GridStyleHelper.Instance.LoadSettingsAsync(_core, App.BenutzerId);
+                GridStyleHelper.InitializeGrid(dgKunden, "KundenView");
+                GridStyleHelper.InitializeGrid(dgKundeAuftraege, "KundenView.Auftraege");
+                GridStyleHelper.InitializeGrid(dgKundeRechnungen, "KundenView.Rechnungen");
+                GridStyleHelper.InitializeGrid(dgKundeAdressen, "KundenView.Adressen");
+                GridStyleHelper.InitializeGrid(dgAnsprechpartner, "KundenView.Ansprechpartner");
+                GridStyleHelper.InitializeGrid(dgTickets, "KundenView.Tickets");
 
                 // Kundengruppen laden
                 var gruppen = (await _core.GetKundengruppenAsync()).ToList();
@@ -41,6 +43,13 @@ namespace NovviaERP.WPF.Views
                 cboKundengruppe.Items.Add(new ComboBoxItem { Content = "Alle Gruppen", IsSelected = true });
                 foreach (var g in gruppen)
                     cboKundengruppe.Items.Add(new ComboBoxItem { Content = g.CName, Tag = g.KKundenGruppe });
+
+                // Kundenkategorien laden
+                var kategorien = (await _core.GetKundenkategorienAsync()).ToList();
+                cboKategorie.Items.Clear();
+                cboKategorie.Items.Add(new ComboBoxItem { Content = "Alle Kategorien", IsSelected = true });
+                foreach (var k in kategorien)
+                    cboKategorie.Items.Add(new ComboBoxItem { Content = k.CName, Tag = k.KKundenKategorie });
 
                 // Kunden laden
                 await LadeKundenAsync();
@@ -64,10 +73,14 @@ namespace NovviaERP.WPF.Views
                 var suche = string.IsNullOrWhiteSpace(txtSuche.Text) ? null : txtSuche.Text.Trim();
                 var plz = string.IsNullOrWhiteSpace(txtPLZ.Text) ? null : txtPLZ.Text.Trim();
                 int? gruppeId = null;
-                if (cboKundengruppe.SelectedItem is ComboBoxItem item && item.Tag is int id)
-                    gruppeId = id;
+                int? kategorieId = null;
 
-                _kunden = (await _core.GetKundenAsync(suche: suche, plz: plz, kundengruppeId: gruppeId, limit: PageSize)).ToList();
+                if (cboKundengruppe.SelectedItem is ComboBoxItem gruppeItem && gruppeItem.Tag is int gId)
+                    gruppeId = gId;
+                if (cboKategorie.SelectedItem is ComboBoxItem katItem && katItem.Tag is int kId)
+                    kategorieId = kId;
+
+                _kunden = (await _core.GetKundenAsync(suche: suche, plz: plz, kundengruppeId: gruppeId, kategorieId: kategorieId, limit: PageSize)).ToList();
                 dgKunden.ItemsSource = _kunden;
                 txtAnzahl.Text = $"{_kunden.Count} Kunde(n)";
                 _currentPage = 0;

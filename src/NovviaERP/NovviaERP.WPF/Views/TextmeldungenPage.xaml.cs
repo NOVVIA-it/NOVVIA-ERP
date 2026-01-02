@@ -5,6 +5,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
+using NovviaERP.WPF.Controls.Base;
 
 namespace NovviaERP.WPF.Views
 {
@@ -21,6 +23,9 @@ namespace NovviaERP.WPF.Views
             {
                 try
                 {
+                    // ZENTRALE GRID-INITIALISIERUNG: Styling + Spalten-Konfiguration in richtiger Reihenfolge
+                    await GridStyleHelper.InitializeGridAsync(dgTextmeldungen, "TextmeldungenPage", _core, App.BenutzerId);
+
                     await LadeTextmeldungenAsync();
                 }
                 catch (Exception ex)
@@ -45,7 +50,7 @@ namespace NovviaERP.WPF.Views
                         : "Alle";
                 }
 
-                lstTextmeldungen.ItemsSource = _textmeldungen;
+                dgTextmeldungen.ItemsSource = _textmeldungen;
 
                 // Leer-Hinweis anzeigen
                 txtLeerHinweis.Visibility = (_textmeldungen == null || _textmeldungen.Count == 0) ? Visibility.Visible : Visibility.Collapsed;
@@ -56,16 +61,16 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void LstTextmeldungen_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void DgTextmeldungen_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var selected = lstTextmeldungen.SelectedItem != null;
+            var selected = dgTextmeldungen.SelectedItem != null;
             btnBearbeiten.IsEnabled = selected;
             btnLoeschen.IsEnabled = selected;
         }
 
-        private void LstTextmeldungen_DoubleClick(object sender, MouseButtonEventArgs e)
+        private void DgTextmeldungen_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (lstTextmeldungen.SelectedItem is CoreService.Textmeldung)
+            if (dgTextmeldungen.SelectedItem is CoreService.Textmeldung)
             {
                 TextmeldungBearbeiten_Click(sender, e);
             }
@@ -99,7 +104,7 @@ namespace NovviaERP.WPF.Views
 
         private async void TextmeldungBearbeiten_Click(object sender, RoutedEventArgs e)
         {
-            if (lstTextmeldungen.SelectedItem is not CoreService.Textmeldung meldung) return;
+            if (dgTextmeldungen.SelectedItem is not CoreService.Textmeldung meldung) return;
 
             // Entities laden
             var existingEntities = await _core.GetTextmeldungEntitiesAsync(meldung.KTextmeldung);
@@ -146,7 +151,7 @@ namespace NovviaERP.WPF.Views
 
         private async void TextmeldungLoeschen_Click(object sender, RoutedEventArgs e)
         {
-            if (lstTextmeldungen.SelectedItem is not CoreService.Textmeldung meldung) return;
+            if (dgTextmeldungen.SelectedItem is not CoreService.Textmeldung meldung) return;
 
             var result = MessageBox.Show($"Textmeldung '{meldung.CTitel}' wirklich loeschen?\n\n" +
                 "Alle Zuweisungen zu Kunden/Artikeln/Lieferanten werden ebenfalls entfernt.",

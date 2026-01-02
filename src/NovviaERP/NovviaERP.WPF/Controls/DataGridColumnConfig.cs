@@ -5,6 +5,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls.Base;
 
 namespace NovviaERP.WPF.Controls
 {
@@ -275,17 +276,59 @@ namespace NovviaERP.WPF.Controls
         private static Style CreateHeaderStyle(DataGrid grid, string viewName)
         {
             var style = new Style(typeof(DataGridColumnHeader));
-            style.Setters.Add(new Setter(DataGridColumnHeader.BackgroundProperty, System.Windows.Media.Brushes.White));
-            style.Setters.Add(new Setter(DataGridColumnHeader.PaddingProperty, new Thickness(10, 8, 10, 8)));
-            style.Setters.Add(new Setter(DataGridColumnHeader.FontWeightProperty, FontWeights.SemiBold));
-            style.Setters.Add(new Setter(DataGridColumnHeader.BorderBrushProperty,
-                new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xDD, 0xDD, 0xDD))));
-            style.Setters.Add(new Setter(DataGridColumnHeader.BorderThicknessProperty, new Thickness(0, 0, 0, 1)));
 
+            // Hole Einstellungen von GridStyleHelper
+            var settings = GridStyleHelper.Instance.Settings;
+
+            // Hintergrund aus Design-Einstellungen
+            style.Setters.Add(new Setter(DataGridColumnHeader.BackgroundProperty,
+                ParseBrush(settings.HeaderHintergrund)));
+
+            // Textfarbe aus Design-Einstellungen
+            style.Setters.Add(new Setter(DataGridColumnHeader.ForegroundProperty,
+                ParseBrush(settings.HeaderTextfarbe)));
+
+            // Schriftstaerke aus Design-Einstellungen
+            style.Setters.Add(new Setter(DataGridColumnHeader.FontWeightProperty,
+                ParseFontWeight(settings.HeaderSchriftstaerke)));
+
+            // Padding
+            style.Setters.Add(new Setter(DataGridColumnHeader.PaddingProperty, new Thickness(8, 4, 8, 4)));
+
+            // Rahmen aus Design-Einstellungen
+            style.Setters.Add(new Setter(DataGridColumnHeader.BorderBrushProperty,
+                ParseBrush(settings.HeaderRahmenfarbe)));
+            style.Setters.Add(new Setter(DataGridColumnHeader.BorderThicknessProperty,
+                new Thickness(0, 0, settings.HeaderRahmenstaerke, settings.HeaderRahmenstaerke)));
+
+            // Kontextmenue fuer Spaltenauswahl
             var contextMenu = CreateColumnContextMenu(grid, viewName);
             style.Setters.Add(new Setter(DataGridColumnHeader.ContextMenuProperty, contextMenu));
 
             return style;
+        }
+
+        private static System.Windows.Media.SolidColorBrush ParseBrush(string colorString)
+        {
+            try
+            {
+                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(colorString);
+                return new System.Windows.Media.SolidColorBrush(color);
+            }
+            catch
+            {
+                return new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Transparent);
+            }
+        }
+
+        private static FontWeight ParseFontWeight(string weightString)
+        {
+            return weightString?.ToLower() switch
+            {
+                "bold" => FontWeights.Bold,
+                "semibold" => FontWeights.SemiBold,
+                _ => FontWeights.Normal
+            };
         }
 
         private static ContextMenu CreateColumnContextMenu(DataGrid grid, string viewName)
