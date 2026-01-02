@@ -1232,6 +1232,262 @@ namespace NovviaERP.Core.Services
 
         #endregion
 
+        #region Kunden - Adressen, Ansprechpartner, Bankverbindungen CRUD
+
+        /// <summary>
+        /// Adresse hinzufuegen
+        /// </summary>
+        public async Task<int> AddKundeAdresseAsync(int kundeId, AdresseDetail adresse)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                INSERT INTO dbo.tAdresse (kKunde, nTyp, nStandard, cFirma, cAnrede, cTitel, cVorname, cName,
+                    cStrasse, cAdressZusatz, cPLZ, cOrt, cLand, cTel, cMobil, cFax, cMail)
+                VALUES (@KKunde, @NTyp, @NStandard, @CFirma, @CAnrede, @CTitel, @CVorname, @CName,
+                    @CStrasse, @CAdressZusatz, @CPLZ, @COrt, @CLand, @CTel, @CMobil, @CFax, @CMail);
+                SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+            var id = await conn.ExecuteScalarAsync<int>(sql, new
+            {
+                KKunde = kundeId,
+                NTyp = adresse.NTyp,
+                NStandard = adresse.NStandard,
+                CFirma = adresse.CFirma,
+                CAnrede = adresse.CAnrede,
+                CTitel = adresse.CTitel,
+                CVorname = adresse.CVorname,
+                CName = adresse.CName,
+                CStrasse = adresse.CStrasse,
+                CAdressZusatz = adresse.CAdressZusatz,
+                CPLZ = adresse.CPLZ,
+                COrt = adresse.COrt,
+                CLand = adresse.CLand ?? "Deutschland",
+                CTel = adresse.CTel,
+                CMobil = adresse.CMobil,
+                CFax = adresse.CFax,
+                CMail = adresse.CMail
+            });
+
+            await _logService.LogStammdatenAsync("Kunde", kundeId, null, "Adresse hinzugefuegt",
+                $"Neue Adresse: {adresse.CStrasse}, {adresse.CPLZ} {adresse.COrt}");
+
+            return id;
+        }
+
+        /// <summary>
+        /// Adresse aktualisieren
+        /// </summary>
+        public async Task UpdateKundeAdresseAsync(AdresseDetail adresse)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                UPDATE dbo.tAdresse SET
+                    nTyp = @NTyp, nStandard = @NStandard, cFirma = @CFirma, cAnrede = @CAnrede, cTitel = @CTitel,
+                    cVorname = @CVorname, cName = @CName, cStrasse = @CStrasse, cAdressZusatz = @CAdressZusatz,
+                    cPLZ = @CPLZ, cOrt = @COrt, cLand = @CLand, cTel = @CTel, cMobil = @CMobil, cFax = @CFax, cMail = @CMail
+                WHERE kAdresse = @KAdresse";
+
+            await conn.ExecuteAsync(sql, new
+            {
+                KAdresse = adresse.KAdresse,
+                NTyp = adresse.NTyp,
+                NStandard = adresse.NStandard,
+                CFirma = adresse.CFirma,
+                CAnrede = adresse.CAnrede,
+                CTitel = adresse.CTitel,
+                CVorname = adresse.CVorname,
+                CName = adresse.CName,
+                CStrasse = adresse.CStrasse,
+                CAdressZusatz = adresse.CAdressZusatz,
+                CPLZ = adresse.CPLZ,
+                COrt = adresse.COrt,
+                CLand = adresse.CLand,
+                CTel = adresse.CTel,
+                CMobil = adresse.CMobil,
+                CFax = adresse.CFax,
+                CMail = adresse.CMail
+            });
+
+            await _logService.LogStammdatenAsync("Kunde", adresse.KKunde ?? 0, null, "Adresse geaendert",
+                $"Adresse aktualisiert: {adresse.CStrasse}, {adresse.CPLZ} {adresse.COrt}");
+        }
+
+        /// <summary>
+        /// Adresse loeschen
+        /// </summary>
+        public async Task DeleteKundeAdresseAsync(int adresseId)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Erst Kunde-ID und Adresse für Log holen
+            var adresse = await conn.QueryFirstOrDefaultAsync<(int KKunde, string? Strasse, string? Ort)>(
+                "SELECT kKunde, cStrasse, cOrt FROM dbo.tAdresse WHERE kAdresse = @Id", new { Id = adresseId });
+
+            await conn.ExecuteAsync("DELETE FROM dbo.tAdresse WHERE kAdresse = @Id", new { Id = adresseId });
+
+            if (adresse.KKunde > 0)
+                await _logService.LogStammdatenAsync("Kunde", adresse.KKunde, null, "Adresse geloescht",
+                    $"Adresse geloescht: {adresse.Strasse}, {adresse.Ort}");
+        }
+
+        /// <summary>
+        /// Ansprechpartner hinzufuegen
+        /// </summary>
+        public async Task<int> AddKundeAnsprechpartnerAsync(int kundeId, AnsprechpartnerDetail ansprechpartner)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                INSERT INTO dbo.tAnsprechpartner (kKunde, cAnrede, cVorName, cName, cAbteilung, cTel, cMobil, cFax, cMail)
+                VALUES (@KKunde, @CAnrede, @CVorName, @CName, @CAbteilung, @CTel, @CMobil, @CFax, @CMail);
+                SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+            var id = await conn.ExecuteScalarAsync<int>(sql, new
+            {
+                KKunde = kundeId,
+                CAnrede = ansprechpartner.CAnrede,
+                CVorName = ansprechpartner.CVorname,
+                CName = ansprechpartner.CName,
+                CAbteilung = ansprechpartner.CAbteilung,
+                CTel = ansprechpartner.CTel,
+                CMobil = ansprechpartner.CMobil,
+                CFax = ansprechpartner.CFax,
+                CMail = ansprechpartner.CMail
+            });
+
+            await _logService.LogStammdatenAsync("Kunde", kundeId, null, "Ansprechpartner hinzugefuegt",
+                $"Neuer Ansprechpartner: {ansprechpartner.CVorname} {ansprechpartner.CName}");
+
+            return id;
+        }
+
+        /// <summary>
+        /// Ansprechpartner aktualisieren
+        /// </summary>
+        public async Task UpdateKundeAnsprechpartnerAsync(AnsprechpartnerDetail ansprechpartner)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                UPDATE dbo.tAnsprechpartner SET
+                    cAnrede = @CAnrede, cVorName = @CVorName, cName = @CName, cAbteilung = @CAbteilung,
+                    cTel = @CTel, cMobil = @CMobil, cFax = @CFax, cMail = @CMail
+                WHERE kAnsprechpartner = @KAnsprechpartner";
+
+            await conn.ExecuteAsync(sql, new
+            {
+                KAnsprechpartner = ansprechpartner.KAnsprechpartner,
+                CAnrede = ansprechpartner.CAnrede,
+                CVorName = ansprechpartner.CVorname,
+                CName = ansprechpartner.CName,
+                CAbteilung = ansprechpartner.CAbteilung,
+                CTel = ansprechpartner.CTel,
+                CMobil = ansprechpartner.CMobil,
+                CFax = ansprechpartner.CFax,
+                CMail = ansprechpartner.CMail
+            });
+
+            await _logService.LogStammdatenAsync("Kunde", ansprechpartner.KKunde ?? 0, null, "Ansprechpartner geaendert",
+                $"Ansprechpartner aktualisiert: {ansprechpartner.CVorname} {ansprechpartner.CName}");
+        }
+
+        /// <summary>
+        /// Ansprechpartner loeschen
+        /// </summary>
+        public async Task DeleteKundeAnsprechpartnerAsync(int ansprechpartnerId)
+        {
+            var conn = await GetConnectionAsync();
+
+            var ap = await conn.QueryFirstOrDefaultAsync<(int KKunde, string? Vorname, string? Name)>(
+                "SELECT kKunde, cVorName, cName FROM dbo.tAnsprechpartner WHERE kAnsprechpartner = @Id", new { Id = ansprechpartnerId });
+
+            await conn.ExecuteAsync("DELETE FROM dbo.tAnsprechpartner WHERE kAnsprechpartner = @Id", new { Id = ansprechpartnerId });
+
+            if (ap.KKunde > 0)
+                await _logService.LogStammdatenAsync("Kunde", ap.KKunde, null, "Ansprechpartner geloescht",
+                    $"Ansprechpartner geloescht: {ap.Vorname} {ap.Name}");
+        }
+
+        /// <summary>
+        /// Bankverbindung hinzufuegen
+        /// </summary>
+        public async Task<int> AddKundeBankverbindungAsync(int kundeId, BankverbindungDetail bankverbindung)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                INSERT INTO dbo.tkontodaten (kKunde, nStandard, cBankName, cInhaber, cIBAN, cBIC, cBLZ, cKontoNr)
+                VALUES (@KKunde, @NStandard, @CBankName, @CInhaber, @CIBAN, @CBIC, @CBLZ, @CKontoNr);
+                SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+            var id = await conn.ExecuteScalarAsync<int>(sql, new
+            {
+                KKunde = kundeId,
+                NStandard = bankverbindung.NStandard,
+                CBankName = bankverbindung.CBankName,
+                CInhaber = bankverbindung.CInhaber,
+                CIBAN = bankverbindung.CIBAN,
+                CBIC = bankverbindung.CBIC,
+                CBLZ = bankverbindung.CBLZ,
+                CKontoNr = bankverbindung.CKontoNr
+            });
+
+            await _logService.LogStammdatenAsync("Kunde", kundeId, null, "Bankverbindung hinzugefuegt",
+                $"Neue Bankverbindung: {bankverbindung.CBankName} - {MaskIBAN(bankverbindung.CIBAN)}");
+
+            return id;
+        }
+
+        /// <summary>
+        /// Bankverbindung aktualisieren
+        /// </summary>
+        public async Task UpdateKundeBankverbindungAsync(BankverbindungDetail bankverbindung)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                UPDATE dbo.tkontodaten SET
+                    nStandard = @NStandard, cBankName = @CBankName, cInhaber = @CInhaber,
+                    cIBAN = @CIBAN, cBIC = @CBIC, cBLZ = @CBLZ, cKontoNr = @CKontoNr
+                WHERE kKontoDaten = @KKontoDaten";
+
+            await conn.ExecuteAsync(sql, new
+            {
+                KKontoDaten = bankverbindung.KKontoDaten,
+                NStandard = bankverbindung.NStandard,
+                CBankName = bankverbindung.CBankName,
+                CInhaber = bankverbindung.CInhaber,
+                CIBAN = bankverbindung.CIBAN,
+                CBIC = bankverbindung.CBIC,
+                CBLZ = bankverbindung.CBLZ,
+                CKontoNr = bankverbindung.CKontoNr
+            });
+
+            await _logService.LogStammdatenAsync("Kunde", bankverbindung.KKunde ?? 0, null, "Bankverbindung geaendert",
+                $"Bankverbindung aktualisiert: {bankverbindung.CBankName}");
+        }
+
+        /// <summary>
+        /// Bankverbindung loeschen
+        /// </summary>
+        public async Task DeleteKundeBankverbindungAsync(int kontodatenId)
+        {
+            var conn = await GetConnectionAsync();
+
+            var bv = await conn.QueryFirstOrDefaultAsync<(int KKunde, string? BankName)>(
+                "SELECT kKunde, cBankName FROM dbo.tkontodaten WHERE kKontoDaten = @Id", new { Id = kontodatenId });
+
+            await conn.ExecuteAsync("DELETE FROM dbo.tkontodaten WHERE kKontoDaten = @Id", new { Id = kontodatenId });
+
+            if (bv.KKunde > 0)
+                await _logService.LogStammdatenAsync("Kunde", bv.KKunde, null, "Bankverbindung geloescht",
+                    $"Bankverbindung geloescht: {bv.BankName}");
+        }
+
+        private static string MaskIBAN(string? iban)
+        {
+            if (string.IsNullOrEmpty(iban) || iban.Length < 10) return iban ?? "";
+            return iban.Substring(0, 4) + "****" + iban.Substring(iban.Length - 4);
+        }
+
+        #endregion
+
         #region Artikel
 
         public async Task<IEnumerable<ArtikelUebersicht>> GetArtikelAsync(string? suche = null, int? herstellerId = null, int? warengruppeId = null, bool nurAktive = true, bool nurUnterMindestbestand = false, int limit = 200)

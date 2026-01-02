@@ -553,60 +553,375 @@ namespace NovviaERP.WPF.Views
 
         #region Adressen Buttons
 
-        private void AdresseHinzufuegen_Click(object sender, RoutedEventArgs e)
+        private async void AdresseHinzufuegen_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Adresse hinzufuegen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private void AdresseBearbeiten_Click(object sender, RoutedEventArgs e)
-        {
-            if (dgAdressen.SelectedItem is CoreService.AdresseDetail adr)
+            if (!_kundeId.HasValue)
             {
-                MessageBox.Show($"Adresse bearbeiten: {adr.CStrasse}, {adr.COrt}\n\nNoch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Bitte erst den Kunden speichern.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dto = new AdresseDto { KKunde = _kundeId.Value, NTyp = 1 };
+            var dialog = new AdresseBearbeitenDialog(dto, "Neue Adresse");
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.IstGespeichert)
+            {
+                try
+                {
+                    var adresse = new CoreService.AdresseDetail
+                    {
+                        KKunde = _kundeId.Value,
+                        NTyp = (byte)dto.NTyp,
+                        NStandard = (byte)dto.NStandard,
+                        CFirma = dto.Firma,
+                        CAnrede = dto.Anrede,
+                        CTitel = dto.Titel,
+                        CVorname = dto.Vorname,
+                        CName = dto.Nachname,
+                        CStrasse = dto.Strasse,
+                        CAdressZusatz = dto.Adresszusatz,
+                        CPLZ = dto.PLZ,
+                        COrt = dto.Ort,
+                        CLand = dto.Land,
+                        CTel = dto.Telefon,
+                        CMobil = dto.Mobil,
+                        CFax = dto.Fax,
+                        CMail = dto.Email
+                    };
+                    await _coreService.AddKundeAdresseAsync(_kundeId.Value, adresse);
+                    await LadeKundeAsync(); // Neu laden
+                    MessageBox.Show("Adresse wurde hinzugefuegt.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
-        private void AdresseLoeschen_Click(object sender, RoutedEventArgs e)
+        private async void AdresseBearbeiten_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Adresse loeschen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (dgAdressen.SelectedItem is not CoreService.AdresseDetail adr)
+            {
+                MessageBox.Show("Bitte eine Adresse auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dto = new AdresseDto
+            {
+                KAdresse = adr.KAdresse,
+                KKunde = adr.KKunde,
+                NTyp = adr.NTyp,
+                NStandard = adr.NStandard,
+                Firma = adr.CFirma,
+                Anrede = adr.CAnrede,
+                Titel = adr.CTitel,
+                Vorname = adr.CVorname,
+                Nachname = adr.CName,
+                Strasse = adr.CStrasse,
+                Adresszusatz = adr.CAdressZusatz,
+                PLZ = adr.CPLZ,
+                Ort = adr.COrt,
+                Land = adr.CLand,
+                Telefon = adr.CTel,
+                Mobil = adr.CMobil,
+                Fax = adr.CFax,
+                Email = adr.CMail
+            };
+
+            var dialog = new AdresseBearbeitenDialog(dto, "Adresse bearbeiten");
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.IstGespeichert)
+            {
+                try
+                {
+                    adr.NTyp = (byte)dto.NTyp;
+                    adr.NStandard = (byte)dto.NStandard;
+                    adr.CFirma = dto.Firma;
+                    adr.CAnrede = dto.Anrede;
+                    adr.CTitel = dto.Titel;
+                    adr.CVorname = dto.Vorname;
+                    adr.CName = dto.Nachname;
+                    adr.CStrasse = dto.Strasse;
+                    adr.CAdressZusatz = dto.Adresszusatz;
+                    adr.CPLZ = dto.PLZ;
+                    adr.COrt = dto.Ort;
+                    adr.CLand = dto.Land;
+                    adr.CTel = dto.Telefon;
+                    adr.CMobil = dto.Mobil;
+                    adr.CFax = dto.Fax;
+                    adr.CMail = dto.Email;
+
+                    await _coreService.UpdateKundeAdresseAsync(adr);
+                    await LadeKundeAsync();
+                    MessageBox.Show("Adresse wurde aktualisiert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private async void AdresseLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgAdressen.SelectedItem is not CoreService.AdresseDetail adr)
+            {
+                MessageBox.Show("Bitte eine Adresse auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var result = MessageBox.Show($"Adresse wirklich loeschen?\n\n{adr.CStrasse}\n{adr.CPLZ} {adr.COrt}",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    await _coreService.DeleteKundeAdresseAsync(adr.KAdresse);
+                    await LadeKundeAsync();
+                    MessageBox.Show("Adresse wurde geloescht.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         #endregion
 
         #region Ansprechpartner Buttons
 
-        private void AnsprechpartnerHinzufuegen_Click(object sender, RoutedEventArgs e)
+        private async void AnsprechpartnerHinzufuegen_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Ansprechpartner hinzufuegen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (!_kundeId.HasValue)
+            {
+                MessageBox.Show("Bitte erst den Kunden speichern.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dto = new AnsprechpartnerDto { KKunde = _kundeId.Value };
+            var dialog = new AnsprechpartnerDialog(dto, "Neuer Ansprechpartner");
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.IstGespeichert)
+            {
+                try
+                {
+                    var ap = new CoreService.AnsprechpartnerDetail
+                    {
+                        KKunde = _kundeId.Value,
+                        CAnrede = dto.Anrede,
+                        CVorname = dto.Vorname,
+                        CName = dto.Nachname,
+                        CAbteilung = dto.Abteilung,
+                        CTel = dto.Telefon,
+                        CMobil = dto.Mobil,
+                        CFax = dto.Fax,
+                        CMail = dto.Email
+                    };
+                    await _coreService.AddKundeAnsprechpartnerAsync(_kundeId.Value, ap);
+                    await LadeKundeAsync();
+                    MessageBox.Show("Ansprechpartner wurde hinzugefuegt.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
-        private void AnsprechpartnerBearbeiten_Click(object sender, RoutedEventArgs e)
+        private async void AnsprechpartnerBearbeiten_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Ansprechpartner bearbeiten - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (dgAnsprechpartner.SelectedItem is not CoreService.AnsprechpartnerDetail ap)
+            {
+                MessageBox.Show("Bitte einen Ansprechpartner auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dto = new AnsprechpartnerDto
+            {
+                KAnsprechpartner = ap.KAnsprechpartner,
+                KKunde = ap.KKunde,
+                Anrede = ap.CAnrede,
+                Vorname = ap.CVorname,
+                Nachname = ap.CName,
+                Abteilung = ap.CAbteilung,
+                Telefon = ap.CTel,
+                Mobil = ap.CMobil,
+                Fax = ap.CFax,
+                Email = ap.CMail
+            };
+
+            var dialog = new AnsprechpartnerDialog(dto, "Ansprechpartner bearbeiten");
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.IstGespeichert)
+            {
+                try
+                {
+                    ap.CAnrede = dto.Anrede;
+                    ap.CVorname = dto.Vorname;
+                    ap.CName = dto.Nachname;
+                    ap.CAbteilung = dto.Abteilung;
+                    ap.CTel = dto.Telefon;
+                    ap.CMobil = dto.Mobil;
+                    ap.CFax = dto.Fax;
+                    ap.CMail = dto.Email;
+
+                    await _coreService.UpdateKundeAnsprechpartnerAsync(ap);
+                    await LadeKundeAsync();
+                    MessageBox.Show("Ansprechpartner wurde aktualisiert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
-        private void AnsprechpartnerLoeschen_Click(object sender, RoutedEventArgs e)
+        private async void AnsprechpartnerLoeschen_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Ansprechpartner loeschen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (dgAnsprechpartner.SelectedItem is not CoreService.AnsprechpartnerDetail ap)
+            {
+                MessageBox.Show("Bitte einen Ansprechpartner auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var result = MessageBox.Show($"Ansprechpartner wirklich loeschen?\n\n{ap.CVorname} {ap.CName}",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    await _coreService.DeleteKundeAnsprechpartnerAsync(ap.KAnsprechpartner);
+                    await LadeKundeAsync();
+                    MessageBox.Show("Ansprechpartner wurde geloescht.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         #endregion
 
         #region Bankverbindung Buttons
 
-        private void BankverbindungHinzufuegen_Click(object sender, RoutedEventArgs e)
+        private async void BankverbindungHinzufuegen_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Bankverbindung hinzufuegen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (!_kundeId.HasValue)
+            {
+                MessageBox.Show("Bitte erst den Kunden speichern.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dto = new BankverbindungDto { KKunde = _kundeId.Value };
+            var dialog = new BankverbindungDialog(dto, "Neue Bankverbindung");
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.IstGespeichert)
+            {
+                try
+                {
+                    var bv = new CoreService.BankverbindungDetail
+                    {
+                        KKunde = _kundeId.Value,
+                        NStandard = (byte)dto.NStandard,
+                        CBankName = dto.BankName,
+                        CInhaber = dto.Inhaber,
+                        CIBAN = dto.IBAN,
+                        CBIC = dto.BIC,
+                        CBLZ = dto.BLZ,
+                        CKontoNr = dto.KontoNr
+                    };
+                    await _coreService.AddKundeBankverbindungAsync(_kundeId.Value, bv);
+                    await LadeKundeAsync();
+                    MessageBox.Show("Bankverbindung wurde hinzugefuegt.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
-        private void BankverbindungBearbeiten_Click(object sender, RoutedEventArgs e)
+        private async void BankverbindungBearbeiten_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Bankverbindung bearbeiten - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (dgBankverbindungen.SelectedItem is not CoreService.BankverbindungDetail bv)
+            {
+                MessageBox.Show("Bitte eine Bankverbindung auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var dto = new BankverbindungDto
+            {
+                KKontoDaten = bv.KKontoDaten,
+                KKunde = bv.KKunde,
+                NStandard = bv.NStandard,
+                BankName = bv.CBankName,
+                Inhaber = bv.CInhaber,
+                IBAN = bv.CIBAN,
+                BIC = bv.CBIC,
+                BLZ = bv.CBLZ,
+                KontoNr = bv.CKontoNr
+            };
+
+            var dialog = new BankverbindungDialog(dto, "Bankverbindung bearbeiten");
+            dialog.Owner = Window.GetWindow(this);
+
+            if (dialog.ShowDialog() == true && dialog.IstGespeichert)
+            {
+                try
+                {
+                    bv.NStandard = (byte)dto.NStandard;
+                    bv.CBankName = dto.BankName;
+                    bv.CInhaber = dto.Inhaber;
+                    bv.CIBAN = dto.IBAN;
+                    bv.CBIC = dto.BIC;
+                    bv.CBLZ = dto.BLZ;
+                    bv.CKontoNr = dto.KontoNr;
+
+                    await _coreService.UpdateKundeBankverbindungAsync(bv);
+                    await LadeKundeAsync();
+                    MessageBox.Show("Bankverbindung wurde aktualisiert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
-        private void BankverbindungLoeschen_Click(object sender, RoutedEventArgs e)
+        private async void BankverbindungLoeschen_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Bankverbindung loeschen - noch nicht implementiert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (dgBankverbindungen.SelectedItem is not CoreService.BankverbindungDetail bv)
+            {
+                MessageBox.Show("Bitte eine Bankverbindung auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var result = MessageBox.Show($"Bankverbindung wirklich loeschen?\n\n{bv.CBankName}\n{bv.CIBAN}",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    await _coreService.DeleteKundeBankverbindungAsync(bv.KKontoDaten);
+                    await LadeKundeAsync();
+                    MessageBox.Show("Bankverbindung wurde geloescht.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         #endregion

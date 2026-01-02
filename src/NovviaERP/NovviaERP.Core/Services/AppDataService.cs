@@ -738,6 +738,8 @@ namespace NovviaERP.Core.Services
         public bool IsVisible { get; set; } = true;
         public double Width { get; set; } = 100;
         public int DisplayIndex { get; set; }
+        public string? SortDirection { get; set; } // "Ascending", "Descending", or null
+        public int SortOrder { get; set; } = -1; // -1 = nicht sortiert, 0+ = Reihenfolge bei Multi-Sort
     }
 
     /// <summary>

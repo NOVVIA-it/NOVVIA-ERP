@@ -99,6 +99,13 @@ namespace NovviaERP.WPF.Controls
             if (_settings == null) return;
 
             var viewSettings = _settings.GetViewSettings(viewName);
+
+            // Sortierung zurücksetzen
+            grid.Items.SortDescriptions.Clear();
+
+            // Sortierte Spalten sammeln
+            var sortedColumns = new List<(DataGridColumn Column, string Header, ColumnSetting Settings)>();
+
             foreach (var column in grid.Columns)
             {
                 var header = column.Header?.ToString();
@@ -123,7 +130,36 @@ namespace NovviaERP.WPF.Controls
                     }
                     catch { /* DisplayIndex Konflikte ignorieren */ }
                 }
+
+                // Sortierung merken
+                if (colSettings != null && !string.IsNullOrEmpty(colSettings.SortDirection) && colSettings.SortOrder >= 0)
+                {
+                    sortedColumns.Add((column, header, colSettings));
+                }
             }
+
+            // Sortierung anwenden (in richtiger Reihenfolge)
+            foreach (var (column, header, colSettings) in sortedColumns.OrderBy(x => x.Settings.SortOrder))
+            {
+                var sortPath = GetSortMemberPath(column);
+                if (!string.IsNullOrEmpty(sortPath))
+                {
+                    var direction = colSettings.SortDirection == "Descending"
+                        ? System.ComponentModel.ListSortDirection.Descending
+                        : System.ComponentModel.ListSortDirection.Ascending;
+                    grid.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription(sortPath, direction));
+                    column.SortDirection = direction;
+                }
+            }
+        }
+
+        private static string? GetSortMemberPath(DataGridColumn column)
+        {
+            if (column is DataGridBoundColumn boundColumn && boundColumn.Binding is System.Windows.Data.Binding binding)
+                return binding.Path?.Path;
+            if (column is DataGridTextColumn textColumn && textColumn.Binding is System.Windows.Data.Binding textBinding)
+                return textBinding.Path?.Path;
+            return column.SortMemberPath;
         }
 
         /// <summary>
@@ -151,6 +187,14 @@ namespace NovviaERP.WPF.Controls
 
                 // Spaltenbreiten speichern wenn geändert
                 grid.ColumnReordered += (s, e) => SaveColumnWidths(grid, viewName);
+
+                // Sortierung speichern wenn geändert
+                grid.Sorting += (s, e) =>
+                {
+                    // Nach kurzer Verzögerung speichern (nachdem WPF die Sortierung angewendet hat)
+                    grid.Dispatcher.BeginInvoke(new Action(() => SaveColumnWidths(grid, viewName)),
+                        DispatcherPriority.Background);
+                };
 
                 // Breiten speichern nach dem Laden
                 foreach (DataGridColumn col in grid.Columns)
@@ -191,6 +235,15 @@ namespace NovviaERP.WPF.Controls
             if (_settings == null) return;
 
             var viewSettings = _settings.GetViewSettings(viewName);
+
+            // SortDescriptions zu Dictionary für schnellen Zugriff
+            var sortDict = new Dictionary<string, (System.ComponentModel.ListSortDirection Direction, int Order)>();
+            for (int i = 0; i < grid.Items.SortDescriptions.Count; i++)
+            {
+                var sd = grid.Items.SortDescriptions[i];
+                sortDict[sd.PropertyName] = (sd.Direction, i);
+            }
+
             foreach (var column in grid.Columns)
             {
                 var header = column.Header?.ToString();
@@ -202,6 +255,19 @@ namespace NovviaERP.WPF.Controls
                 viewSettings.Columns[header].Width = column.ActualWidth;
                 viewSettings.Columns[header].IsVisible = column.Visibility == Visibility.Visible;
                 viewSettings.Columns[header].DisplayIndex = column.DisplayIndex;
+
+                // Sortierung speichern
+                var sortPath = GetSortMemberPath(column);
+                if (!string.IsNullOrEmpty(sortPath) && sortDict.TryGetValue(sortPath, out var sortInfo))
+                {
+                    viewSettings.Columns[header].SortDirection = sortInfo.Direction.ToString();
+                    viewSettings.Columns[header].SortOrder = sortInfo.Order;
+                }
+                else
+                {
+                    viewSettings.Columns[header].SortDirection = null;
+                    viewSettings.Columns[header].SortOrder = -1;
+                }
             }
             SaveSettings();
         }
