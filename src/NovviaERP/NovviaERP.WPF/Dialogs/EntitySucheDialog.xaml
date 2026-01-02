@@ -46,13 +46,10 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="100"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Suchbegriff:" VerticalAlignment="Center"/>
                     <TextBox x:Name="txtSuche" Grid.Column="1" Padding="8,6" FontSize="14"
-                             KeyDown="TxtSuche_KeyDown"/>
-                    <Button x:Name="btnSuchen" Grid.Column="2" Content="Suchen" Padding="20,8"
-                            Margin="10,0,0,0" Click="Suchen_Click"/>
+                             TextChanged="TxtSuche_TextChanged"/>
                 </Grid>
 
                 <TextBlock x:Name="txtHinweis" Margin="0,8,0,0" Foreground="#666" FontSize="11" TextWrapping="Wrap"/>
@@ -65,7 +62,7 @@
         <!-- Ergebnisliste -->
         <DataGrid Grid.Row="2" x:Name="dgErgebnisse" AutoGenerateColumns="False" IsReadOnly="True"
                   SelectionMode="Single" MouseDoubleClick="DgErgebnisse_DoubleClick"
-                  BorderBrush="#ddd" BorderThickness="1" RowHeight="28"
+                  BorderBrush="#ddd" BorderThickness="1" RowHeight="22"
                   GridLinesVisibility="Horizontal" HeadersVisibility="Column">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Nr" Binding="{Binding Nr}" Width="120"/>

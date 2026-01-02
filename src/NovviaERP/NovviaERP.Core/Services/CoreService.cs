@@ -284,6 +284,7 @@ namespace NovviaERP.Core.Services
             public decimal FVKNetto { get; set; }
             public decimal FVKBrutto { get; set; }
             public decimal FEKNetto { get; set; }
+            public decimal FUVP { get; set; }
             public decimal FMwSt { get; set; } = 19m;
             public decimal NLagerbestand { get; set; }
             public decimal NMidestbestand { get; set; }
@@ -368,8 +369,9 @@ namespace NovviaERP.Core.Services
             public string? CUNNummer { get; set; }
             public string? CGefahrnr { get; set; }
 
-            // Suchbegriffe
+            // Suchbegriffe & Anmerkung
             public string? CSuchbegriffe { get; set; }
+            public string? CAnmerkung { get; set; }
 
             // Timestamps
             public DateTime? DErstelldatum { get; set; }
@@ -615,6 +617,12 @@ namespace NovviaERP.Core.Services
         public class SteuerklasseRef
         {
             public int KSteuerklasse { get; set; }
+            public string? CName { get; set; }
+        }
+
+        public class VersandklasseRef
+        {
+            public int KVersandklasse { get; set; }
             public string? CName { get; set; }
         }
 
@@ -1490,12 +1498,12 @@ namespace NovviaERP.Core.Services
 
         #region Artikel
 
-        public async Task<IEnumerable<ArtikelUebersicht>> GetArtikelAsync(string? suche = null, int? herstellerId = null, int? warengruppeId = null, bool nurAktive = true, bool nurUnterMindestbestand = false, int limit = 200)
+        public async Task<IEnumerable<ArtikelUebersicht>> GetArtikelAsync(string? suche = null, int? herstellerId = null, int? warengruppeId = null, int? kategorieId = null, bool nurAktive = true, bool nurUnterMindestbestand = false, int limit = 200)
         {
             var conn = await GetConnectionAsync();
             var sql = @"
                 SELECT TOP (@Limit)
-                    a.kArtikel, a.cArtNr, a.cBarcode, a.fVKNetto, a.fEKNetto,
+                    a.kArtikel, a.cArtNr, a.cBarcode, a.fVKNetto, a.fEKNetto, a.fUVP AS FUVP,
                     ISNULL(lb.fLagerbestand, 0) AS NLagerbestand,
                     ISNULL(a.nMidestbestand, 0) AS NMidestbestand,
                     a.cAktiv, a.cLagerArtikel, a.kHersteller,
@@ -1506,8 +1514,12 @@ namespace NovviaERP.Core.Services
                 FROM tArtikel a
                 LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
                 LEFT JOIN tHersteller h ON a.kHersteller = h.kHersteller
-                LEFT JOIN tlagerbestand lb ON a.kArtikel = lb.kArtikel
-                WHERE a.nDelete = 0";
+                LEFT JOIN tlagerbestand lb ON a.kArtikel = lb.kArtikel";
+
+            if (kategorieId.HasValue)
+                sql += " INNER JOIN tkategorieartikel ka ON a.kArtikel = ka.kArtikel AND ka.kKategorie = @KategorieId";
+
+            sql += " WHERE a.nDelete = 0";
 
             if (nurAktive) sql += " AND a.cAktiv = 'Y'";
             if (herstellerId.HasValue) sql += " AND a.kHersteller = @HerstellerId";
@@ -1522,7 +1534,7 @@ namespace NovviaERP.Core.Services
             }
             sql += " ORDER BY ab.cName, a.cArtNr";
 
-            return await conn.QueryAsync<ArtikelUebersicht>(sql, new { Limit = limit, Suche = $"%{suche}%", HerstellerId = herstellerId, WarengruppeId = warengruppeId });
+            return await conn.QueryAsync<ArtikelUebersicht>(sql, new { Limit = limit, Suche = $"%{suche}%", HerstellerId = herstellerId, WarengruppeId = warengruppeId, KategorieId = kategorieId });
         }
 
         /// <summary>Erweiterte Artikelsuche mit Warengruppe Filter</summary>
@@ -1573,13 +1585,14 @@ namespace NovviaERP.Core.Services
                        a.cLagerArtikel, a.cAktiv, a.cTopArtikel, a.cNeu, a.cTeilbar,
                        a.fGewicht, a.fArtGewicht, a.fBreite, a.fHoehe, a.fLaenge, a.fPackeinheit,
                        a.kSteuerklasse, a.kHersteller, a.kWarengruppe, a.kVersandklasse,
-                       a.nMHD, a.nCharge, a.cTaric, a.cHerkunftsland, a.cSuchbegriffe,
+                       a.nMHD, a.nCharge, ISNULL(a.nSeriennummernVerfolgung, 0) AS NSeriennummernVerfolgung,
+                       a.cTaric, a.cHerkunftsland, a.cUNNummer, a.cGefahrnr, a.cSuchbegriffe, a.cAnmerkung,
                        ab.cName AS Name, ab.cBeschreibung AS Beschreibung, ab.cKurzBeschreibung AS KurzBeschreibung, ab.cUrlPfad AS CSeo,
                        h.cName AS Hersteller,
                        sk.cName AS Steuerklasse,
                        wg.cName AS Warengruppe
                 FROM tArtikel a
-                LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1
+                LEFT JOIN tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 AND ab.kPlattform = 1
                 LEFT JOIN tHersteller h ON a.kHersteller = h.kHersteller
                 LEFT JOIN tSteuerklasse sk ON a.kSteuerklasse = sk.kSteuerklasse
                 LEFT JOIN tWarengruppe wg ON a.kWarengruppe = wg.kWarengruppe
@@ -1605,7 +1618,7 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
-        /// Kundengruppen-Preise fuer einen Artikel laden
+        /// Kundengruppen-Preise fuer einen Artikel laden (alle Kundengruppen, auch ohne Preise)
         /// </summary>
         public async Task<IEnumerable<KundengruppePreis>> GetArtikelKundengruppenPreiseAsync(int kArtikel)
         {
@@ -1614,15 +1627,92 @@ namespace NovviaERP.Core.Services
                 SELECT
                     kg.kKundenGruppe AS KKundengruppe,
                     kg.cName AS CKundengruppe,
+                    ISNULL(kg.fRabatt, 0) AS FRabatt,
+                    ISNULL(pd.nAnzahlAb, 0) AS NAnzahlAb,
+                    ISNULL(pd.fNettoPreis, 0) AS FNettoPreis,
+                    ISNULL(pd.fProzent, 0) AS FProzent,
+                    p.kPreis AS KPreis
+                FROM dbo.tKundenGruppe kg
+                LEFT JOIN dbo.tPreis p ON p.kKundenGruppe = kg.kKundenGruppe AND p.kArtikel = @KArtikel
+                LEFT JOIN dbo.tPreisDetail pd ON p.kPreis = pd.kPreis AND pd.nAnzahlAb = 0
+                ORDER BY kg.cName",
+                new { KArtikel = kArtikel });
+        }
+
+        /// <summary>
+        /// Staffelpreise fuer einen Artikel und eine Kundengruppe laden
+        /// </summary>
+        public async Task<IEnumerable<StaffelpreisDetail>> GetArtikelStaffelpreiseAsync(int kArtikel, int kKundenGruppe)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<StaffelpreisDetail>(@"
+                SELECT
+                    pd.kPreis AS KPreis,
                     pd.nAnzahlAb AS NAnzahlAb,
                     pd.fNettoPreis AS FNettoPreis,
                     pd.fProzent AS FProzent
                 FROM dbo.tPreis p
-                JOIN dbo.tKundenGruppe kg ON p.kKundenGruppe = kg.kKundenGruppe
                 JOIN dbo.tPreisDetail pd ON p.kPreis = pd.kPreis
-                WHERE p.kArtikel = @KArtikel
-                ORDER BY kg.cName, pd.nAnzahlAb",
-                new { KArtikel = kArtikel });
+                WHERE p.kArtikel = @KArtikel AND p.kKundenGruppe = @KKundenGruppe
+                ORDER BY pd.nAnzahlAb",
+                new { KArtikel = kArtikel, KKundenGruppe = kKundenGruppe });
+        }
+
+        /// <summary>
+        /// Staffelpreise fuer einen Artikel und eine Kundengruppe speichern
+        /// </summary>
+        public async Task SaveStaffelpreiseAsync(int kArtikel, int kKundenGruppe, IEnumerable<StaffelpreisDetail> staffelpreise)
+        {
+            var conn = await GetConnectionAsync();
+            using var tx = conn.BeginTransaction();
+
+            try
+            {
+                // Pruefen ob Preis-Eintrag existiert
+                var kPreis = await conn.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT kPreis FROM dbo.tPreis WHERE kArtikel = @kArtikel AND kKundenGruppe = @kKundenGruppe",
+                    new { kArtikel, kKundenGruppe }, tx);
+
+                var staffelList = staffelpreise.Where(s => s.FNettoPreis > 0 || s.FProzent != 0).ToList();
+
+                if (staffelList.Any())
+                {
+                    if (!kPreis.HasValue)
+                    {
+                        // Neuen Preis-Eintrag anlegen
+                        kPreis = await conn.QuerySingleAsync<int>(@"
+                            INSERT INTO dbo.tPreis (kArtikel, kKundenGruppe, kShop, kKunde)
+                            OUTPUT INSERTED.kPreis
+                            VALUES (@kArtikel, @kKundenGruppe, 0, 0)",
+                            new { kArtikel, kKundenGruppe }, tx);
+                    }
+
+                    // Alte Staffelpreise loeschen
+                    await conn.ExecuteAsync("DELETE FROM dbo.tPreisDetail WHERE kPreis = @kPreis", new { kPreis = kPreis.Value }, tx);
+
+                    // Neue Staffelpreise einfuegen
+                    foreach (var staffel in staffelList)
+                    {
+                        await conn.ExecuteAsync(@"
+                            INSERT INTO dbo.tPreisDetail (kPreis, nAnzahlAb, fNettoPreis, fProzent)
+                            VALUES (@kPreis, @nAnzahlAb, @fNettoPreis, @fProzent)",
+                            new { kPreis = kPreis.Value, nAnzahlAb = staffel.NAnzahlAb, fNettoPreis = staffel.FNettoPreis, fProzent = staffel.FProzent }, tx);
+                    }
+                }
+                else if (kPreis.HasValue)
+                {
+                    // Preis komplett loeschen wenn keine Staffelpreise mehr
+                    await conn.ExecuteAsync("DELETE FROM dbo.tPreisDetail WHERE kPreis = @kPreis", new { kPreis = kPreis.Value }, tx);
+                    await conn.ExecuteAsync("DELETE FROM dbo.tPreis WHERE kPreis = @kPreis", new { kPreis = kPreis.Value }, tx);
+                }
+
+                tx.Commit();
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
         }
 
         /// <summary>
@@ -1693,62 +1783,876 @@ namespace NovviaERP.Core.Services
         {
             public int KKundengruppe { get; set; }
             public string? CKundengruppe { get; set; }
+            public decimal FRabatt { get; set; }
+            public int NAnzahlAb { get; set; }
+            public decimal FNettoPreis { get; set; }
+            public decimal FProzent { get; set; }
+            public int? KPreis { get; set; }
+        }
+
+        public class StaffelpreisDetail
+        {
+            public int? KPreis { get; set; }
             public int NAnzahlAb { get; set; }
             public decimal FNettoPreis { get; set; }
             public decimal FProzent { get; set; }
         }
 
-        public async Task UpdateArtikelAsync(ArtikelDetail artikel)
+        #region Kundeneinzelpreise
+
+        /// <summary>
+        /// Kundeneinzelpreise fuer einen Artikel laden
+        /// </summary>
+        public async Task<IEnumerable<KundeneinzelpreisInfo>> GetArtikelKundeneinzelpreiseAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<KundeneinzelpreisInfo>(@"
+                SELECT
+                    p.kPreis AS KPreis,
+                    p.kKunde AS KKunde,
+                    k.cKundenNr AS CKundenNr,
+                    ISNULL(a.cFirma, '') AS CFirma,
+                    ISNULL(a.cVorname, '') AS CVorname,
+                    ISNULL(a.cName, '') AS CNachname,
+                    ISNULL(pd.fNettoPreis, 0) AS FNettoPreis,
+                    ISNULL(pd.fProzent, 0) AS FProzent
+                FROM dbo.tPreis p
+                JOIN dbo.tKunde k ON p.kKunde = k.kKunde
+                JOIN dbo.tAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                LEFT JOIN dbo.tPreisDetail pd ON p.kPreis = pd.kPreis AND pd.nAnzahlAb = 0
+                WHERE p.kArtikel = @KArtikel AND p.kKunde > 0
+                ORDER BY a.cFirma, a.cName",
+                new { KArtikel = kArtikel });
+        }
+
+        /// <summary>
+        /// Kundeneinzelpreis hinzufuegen oder aktualisieren (inkl. Staffelpreise)
+        /// </summary>
+        public async Task SaveKundeneinzelpreisAsync(int kArtikel, int kKunde, decimal? fNettoPreis, decimal? fProzent, List<StaffelpreisDto>? staffelpreise = null)
         {
             var conn = await GetConnectionAsync();
             using var tx = conn.BeginTransaction();
+
             try
             {
-                await conn.ExecuteAsync(@"
-                    UPDATE tArtikel SET
-                        cArtNr = @CArtNr, cBarcode = @CBarcode, cHAN = @CHAN, cISBN = @CISBN, nSort = @NSort,
-                        fVKNetto = @FVKNetto, fUVP = @FUVP, fEKNetto = @FEKNetto,
-                        nMidestbestand = @NMidestbestand, cLagerArtikel = @CLagerArtikel,
-                        fGewicht = @FGewicht, fBreite = @FBreite, fHoehe = @FHoehe, fLaenge = @FLaenge,
-                        kSteuerklasse = @KSteuerklasse, kHersteller = @KHersteller, kWarengruppe = @KWarengruppe,
-                        cAktiv = @CAktiv, cTopArtikel = @CTopArtikel, nMHD = @NMHD, nCharge = @NCharge,
-                        cTaric = @CTaric, cHerkunftsland = @CHerkunftsland, cSuchbegriffe = @CSuchbegriffe,
-                        dMod = GETDATE()
-                    WHERE kArtikel = @KArtikel", artikel, tx);
+                // Pruefen ob Preis existiert
+                var kPreis = await conn.QueryFirstOrDefaultAsync<int?>(
+                    "SELECT kPreis FROM dbo.tPreis WHERE kArtikel = @kArtikel AND kKunde = @kKunde",
+                    new { kArtikel, kKunde }, tx);
 
-                // Beschreibung
-                var hasDesc = await conn.QuerySingleAsync<int>(
-                    "SELECT COUNT(*) FROM tArtikelBeschreibung WHERE kArtikel = @Id AND kSprache = 1",
-                    new { Id = artikel.KArtikel }, tx);
+                bool hatPreise = (fNettoPreis.HasValue && fNettoPreis.Value > 0) ||
+                                 (fProzent.HasValue && fProzent.Value != 0) ||
+                                 (staffelpreise != null && staffelpreise.Any());
 
-                if (hasDesc > 0)
+                if (hatPreise)
                 {
+                    int preisId;
+                    if (kPreis.HasValue)
+                    {
+                        preisId = kPreis.Value;
+                        // Alte PreisDetails loeschen (werden neu eingefuegt)
+                        await conn.ExecuteAsync("DELETE FROM dbo.tPreisDetail WHERE kPreis = @kPreis", new { kPreis = preisId }, tx);
+                    }
+                    else
+                    {
+                        // Neuen Preis anlegen (kKundenGruppe=0 fuer Einzelkundenpreis)
+                        preisId = await conn.QuerySingleAsync<int>(@"
+                            INSERT INTO dbo.tPreis (kArtikel, kKundenGruppe, kShop, kKunde)
+                            OUTPUT INSERTED.kPreis
+                            VALUES (@kArtikel, 0, 0, @kKunde)",
+                            new { kArtikel, kKunde }, tx);
+                    }
+
+                    // Grundpreis (nAnzahlAb=0) einfuegen
                     await conn.ExecuteAsync(@"
-                        UPDATE tArtikelBeschreibung SET cName = @Name, cBeschreibung = @Beschreibung,
-                               cKurzBeschreibung = @KurzBeschreibung, cUrlPfad = @CSeo
-                        WHERE kArtikel = @KArtikel AND kSprache = 1", artikel, tx);
+                        INSERT INTO dbo.tPreisDetail (kPreis, nAnzahlAb, fNettoPreis, fProzent)
+                        VALUES (@kPreis, 0, @fNettoPreis, @fProzent)",
+                        new { kPreis = preisId, fNettoPreis = fNettoPreis ?? 0, fProzent = fProzent ?? 0 }, tx);
+
+                    // Staffelpreise einfuegen
+                    if (staffelpreise != null)
+                    {
+                        foreach (var staffel in staffelpreise.Where(s => s.NAnzahlAb > 0))
+                        {
+                            await conn.ExecuteAsync(@"
+                                INSERT INTO dbo.tPreisDetail (kPreis, nAnzahlAb, fNettoPreis, fProzent)
+                                VALUES (@kPreis, @nAnzahlAb, @fNettoPreis, @fProzent)",
+                                new { kPreis = preisId, nAnzahlAb = staffel.NAnzahlAb, fNettoPreis = staffel.FNettoPreis, fProzent = staffel.FProzent }, tx);
+                        }
+                    }
                 }
-                else
+                else if (kPreis.HasValue)
                 {
-                    await conn.ExecuteAsync(@"
-                        INSERT INTO tArtikelBeschreibung (kArtikel, kSprache, kPlattform, cName, cBeschreibung, cKurzBeschreibung, cUrlPfad)
-                        VALUES (@KArtikel, 1, 1, @Name, @Beschreibung, @KurzBeschreibung, @CSeo)", artikel, tx);
+                    // Preis loeschen
+                    await conn.ExecuteAsync("DELETE FROM dbo.tPreisDetail WHERE kPreis = @kPreis", new { kPreis = kPreis.Value }, tx);
+                    await conn.ExecuteAsync("DELETE FROM dbo.tPreis WHERE kPreis = @kPreis", new { kPreis = kPreis.Value }, tx);
                 }
 
                 tx.Commit();
-
-                // Log in NOVVIA.Log
-                if (_logService != null)
-                {
-                    await _logService.LogStammdatenAsync(
-                        entityTyp: "Artikel",
-                        kEntity: artikel.KArtikel,
-                        entityNr: artikel.CArtNr,
-                        aktion: "Geaendert",
-                        beschreibung: $"Artikel aktualisiert: {artikel.Name ?? artikel.CArtNr}");
-                }
             }
-            catch { tx.Rollback(); throw; }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Kundeneinzelpreis loeschen
+        /// </summary>
+        public async Task DeleteKundeneinzelpreisAsync(int kArtikel, int kKunde)
+        {
+            var conn = await GetConnectionAsync();
+            var kPreis = await conn.QueryFirstOrDefaultAsync<int?>(
+                "SELECT kPreis FROM dbo.tPreis WHERE kArtikel = @kArtikel AND kKunde = @kKunde",
+                new { kArtikel, kKunde });
+
+            if (kPreis.HasValue)
+            {
+                await conn.ExecuteAsync("DELETE FROM dbo.tPreisDetail WHERE kPreis = @kPreis", new { kPreis = kPreis.Value });
+                await conn.ExecuteAsync("DELETE FROM dbo.tPreis WHERE kPreis = @kPreis", new { kPreis = kPreis.Value });
+            }
+        }
+
+        public class KundeneinzelpreisInfo
+        {
+            public int KPreis { get; set; }
+            public int KKunde { get; set; }
+            public string CKundenNr { get; set; } = "";
+            public string CFirma { get; set; } = "";
+            public string CVorname { get; set; } = "";
+            public string CNachname { get; set; } = "";
+            public decimal FNettoPreis { get; set; }
+            public decimal FProzent { get; set; }
+        }
+
+        public class StaffelpreisDto
+        {
+            public int NAnzahlAb { get; set; }
+            public decimal FNettoPreis { get; set; }
+            public decimal FProzent { get; set; }
+        }
+
+        public class KundenStaffelpreisInfo
+        {
+            public int NAnzahlAb { get; set; }
+            public decimal FNettoPreis { get; set; }
+            public decimal FProzent { get; set; }
+        }
+
+        /// <summary>
+        /// Staffelpreise fuer einen Kunden und Artikel laden
+        /// </summary>
+        public async Task<IEnumerable<KundenStaffelpreisInfo>> GetKundenStaffelpreiseAsync(int kArtikel, int kKunde)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<KundenStaffelpreisInfo>(@"
+                SELECT pd.nAnzahlAb AS NAnzahlAb, pd.fNettoPreis AS FNettoPreis, pd.fProzent AS FProzent
+                FROM dbo.tPreisDetail pd
+                JOIN dbo.tPreis p ON pd.kPreis = p.kPreis
+                WHERE p.kArtikel = @kArtikel AND p.kKunde = @kKunde
+                ORDER BY pd.nAnzahlAb",
+                new { kArtikel, kKunde });
+        }
+
+        #endregion
+
+        #region Artikel-Detailmethoden (fuer ArtikelDetailView)
+
+        /// <summary>
+        /// Kategorien eines Artikels laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelKategorieZuweisung>> GetArtikelKategorienAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelKategorieZuweisung>(@"
+                SELECT
+                    ka.kKategorieArtikel, ka.kArtikel, ka.kKategorie,
+                    ks.cName AS CKategorieName,
+                    ks.cName AS CKategoriePfad
+                FROM dbo.tkategorieartikel ka
+                JOIN dbo.tkategorie k ON ka.kKategorie = k.kKategorie
+                LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1 AND ks.kPlattform = 1
+                WHERE ka.kArtikel = @KArtikel
+                ORDER BY ks.cName",
+                new { KArtikel = kArtikel });
+        }
+
+        public class ArtikelKategorieZuweisung
+        {
+            public int KKategorieArtikel { get; set; }
+            public int KArtikel { get; set; }
+            public int KKategorie { get; set; }
+            public string? CKategorieName { get; set; }
+            public string? CKategoriePfad { get; set; }
+        }
+
+        /// <summary>
+        /// Alle Kategorien laden (fuer Kategorie-Auswahl)
+        /// </summary>
+        public async Task<IEnumerable<KategorieInfo>> GetKategorienAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<KategorieInfo>(@"
+                SELECT
+                    k.kKategorie AS KKategorie,
+                    k.kOberKategorie AS KOberKategorie,
+                    ks.cName AS CName,
+                    k.nSort AS NSort
+                FROM dbo.tkategorie k
+                LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1 AND ks.kPlattform = 1
+                ORDER BY k.nSort, ks.cName");
+        }
+
+        public class KategorieInfo
+        {
+            public int KKategorie { get; set; }
+            public int? KOberKategorie { get; set; }
+            public string? CName { get; set; }
+            public int NSort { get; set; }
+        }
+
+        /// <summary>
+        /// Artikel einer Kategorie zuweisen
+        /// </summary>
+        public async Task AddArtikelKategorieAsync(int kArtikel, int kKategorie)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM dbo.tkategorieartikel WHERE kArtikel = @kArtikel AND kKategorie = @kKategorie)
+                INSERT INTO dbo.tkategorieartikel (kArtikel, kKategorie) VALUES (@kArtikel, @kKategorie)",
+                new { kArtikel, kKategorie });
+        }
+
+        /// <summary>
+        /// Artikel aus Kategorie entfernen
+        /// </summary>
+        public async Task RemoveArtikelKategorieAsync(int kArtikel, int kKategorie)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(
+                "DELETE FROM dbo.tkategorieartikel WHERE kArtikel = @kArtikel AND kKategorie = @kKategorie",
+                new { kArtikel, kKategorie });
+        }
+
+        /// <summary>
+        /// Artikelbeschreibung fuer Sprache und Plattform laden
+        /// </summary>
+        public async Task<ArtikelBeschreibungDetail?> GetArtikelBeschreibungAsync(int kArtikel, int kSprache = 1, int kPlattform = 1)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryFirstOrDefaultAsync<ArtikelBeschreibungDetail>(@"
+                SELECT
+                    ab.kArtikel, ab.kSprache, ab.kPlattform,
+                    ab.cName, ab.cBeschreibung, ab.cKurzBeschreibung,
+                    ab.cTitleTag, ab.cMetaDescription, ab.cMetaKeywords, ab.cUrlPfad
+                FROM dbo.tArtikelBeschreibung ab
+                WHERE ab.kArtikel = @KArtikel AND ab.kSprache = @KSprache AND ab.kPlattform = @KPlattform",
+                new { KArtikel = kArtikel, KSprache = kSprache, KPlattform = kPlattform });
+        }
+
+        public class ArtikelBeschreibungDetail
+        {
+            public int KArtikel { get; set; }
+            public int KSprache { get; set; }
+            public int KPlattform { get; set; }
+            public string? CName { get; set; }
+            public string? CBeschreibung { get; set; }
+            public string? CKurzBeschreibung { get; set; }
+            public string? CTitleTag { get; set; }
+            public string? CMetaDescription { get; set; }
+            public string? CMetaKeywords { get; set; }
+            public string? CUrlPfad { get; set; }
+        }
+
+        /// <summary>
+        /// Bestaende eines Artikels pro Lager laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelBestandDetail>> GetArtikelBestaendeAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelBestandDetail>(@"
+                SELECT
+                    wl.kWarenLager AS KWarenLager,
+                    wl.cName AS CLagerName,
+                    SUM(we.fAnzahlAktuell) AS FAufLager,
+                    wp.cKommentar AS CKommentar1,
+                    '' AS CKommentar2,
+                    wp.cName AS CLagerplatz
+                FROM dbo.tWarenLagerEingang we
+                JOIN dbo.tWarenLagerPlatz wp ON we.kWarenLagerPlatz = wp.kWarenLagerPlatz
+                JOIN dbo.tWarenLager wl ON wp.kWarenLager = wl.kWarenLager
+                WHERE we.kArtikel = @KArtikel AND we.fAnzahlAktuell > 0
+                GROUP BY wl.kWarenLager, wl.cName, wp.cKommentar, wp.cName
+                ORDER BY wl.cName",
+                new { KArtikel = kArtikel });
+        }
+
+        public class ArtikelBestandDetail
+        {
+            public int KWarenLager { get; set; }
+            public string? CLagerName { get; set; }
+            public decimal FAufLager { get; set; }
+            public string? CKommentar1 { get; set; }
+            public string? CKommentar2 { get; set; }
+            public string? CLagerplatz { get; set; }
+        }
+
+        /// <summary>
+        /// Chargen eines Artikels laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelChargeDetail>> GetArtikelChargenAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelChargeDetail>(@"
+                SELECT
+                    we.cChargenNr AS CChargenNr,
+                    we.dMHD AS DMHD,
+                    SUM(we.fAnzahlAktuell) AS FBestand,
+                    wl.cName AS CLagerName
+                FROM dbo.tWarenLagerEingang we
+                JOIN dbo.tWarenLagerPlatz wp ON we.kWarenLagerPlatz = wp.kWarenLagerPlatz
+                JOIN dbo.tWarenLager wl ON wp.kWarenLager = wl.kWarenLager
+                WHERE we.kArtikel = @KArtikel
+                  AND we.cChargenNr IS NOT NULL AND we.cChargenNr <> ''
+                  AND we.fAnzahlAktuell > 0
+                GROUP BY we.cChargenNr, we.dMHD, wl.cName
+                ORDER BY we.dMHD, we.cChargenNr",
+                new { KArtikel = kArtikel });
+        }
+
+        public class ArtikelChargeDetail
+        {
+            public string? CChargenNr { get; set; }
+            public DateTime? DMHD { get; set; }
+            public decimal FBestand { get; set; }
+            public string? CLagerName { get; set; }
+        }
+
+        /// <summary>
+        /// Seriennummern eines Artikels laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelSeriennummerDetail>> GetArtikelSeriennummernAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelSeriennummerDetail>(@"
+                SELECT
+                    sn.kSerialNumber AS KSerialNumber,
+                    sn.cSerialNumber AS CSeriennummer,
+                    wl.cName AS CLagerName,
+                    l.cFirma AS CLieferant,
+                    '' AS CBeschreibung1
+                FROM dbo.tSerialNumber sn
+                JOIN dbo.tWarenLager wl ON sn.kWarenlager = wl.kWarenLager
+                LEFT JOIN dbo.tWarenLagerEingang we ON sn.kWarenlagerEingang = we.kWarenLagerEingang
+                LEFT JOIN dbo.tLieferantenBestellungPos lbp ON we.kLieferantenBestellungPos = lbp.kLieferantenBestellungPos
+                LEFT JOIN dbo.tLieferantenBestellung lb ON lbp.kLieferantenBestellung = lb.kLieferantenBestellung
+                LEFT JOIN dbo.tLieferant l ON lb.kLieferant = l.kLieferant
+                WHERE sn.kArtikel = @KArtikel AND sn.nIsActive = 1
+                ORDER BY sn.cSerialNumber",
+                new { KArtikel = kArtikel });
+        }
+
+        public class ArtikelSeriennummerDetail
+        {
+            public int KSerialNumber { get; set; }
+            public string? CSeriennummer { get; set; }
+            public string? CLagerName { get; set; }
+            public string? CLieferant { get; set; }
+            public string? CBeschreibung1 { get; set; }
+        }
+
+        /// <summary>
+        /// Lagerbestand-Summen eines Artikels laden (aus tlagerbestand)
+        /// </summary>
+        public async Task<ArtikelLagerbestandSumme> GetArtikelLagerbestandSummeAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            var result = await conn.QueryFirstOrDefaultAsync<ArtikelLagerbestandSumme>(@"
+                SELECT
+                    ISNULL(fLagerbestand, 0) AS FAufLager,
+                    ISNULL(fInAuftraegen, 0) AS FReserviert,
+                    ISNULL(fZulauf, 0) AS FImZulauf,
+                    ISNULL(fVerfuegbar, 0) AS FVerfuegbar,
+                    ISNULL(fAufEinkaufsliste, 0) AS FAufEinkaufsliste,
+                    ISNULL(fVerfuegbarGesperrt, 0) AS FGesperrt
+                FROM dbo.tlagerbestand
+                WHERE kArtikel = @KArtikel",
+                new { KArtikel = kArtikel });
+
+            return result ?? new ArtikelLagerbestandSumme();
+        }
+
+        public class ArtikelLagerbestandSumme
+        {
+            public decimal FAufLager { get; set; }
+            public decimal FReserviert { get; set; }
+            public decimal FImZulauf { get; set; }
+            public decimal FVerfuegbar { get; set; }
+            public decimal FAufEinkaufsliste { get; set; }
+            public decimal FGesperrt { get; set; }
+        }
+
+        /// <summary>
+        /// Lieferanten eines Artikels laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelLieferantDetail>> GetArtikelLieferantenAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelLieferantDetail>(@"
+                SELECT
+                    la.kLiefArtikel, la.tArtikel_kArtikel AS KArtikel, la.tLieferant_kLieferant AS KLieferant,
+                    l.cFirma AS CLieferantName, l.cLiefNr AS CLieferantNr,
+                    la.cLiefArtNr AS CLiefArtNr, la.cName,
+                    la.fEKNetto, la.fMwSt, la.cVPEEinheit, la.nVPEMenge,
+                    la.nMindestAbnahme, la.nLieferzeit,
+                    la.nStandard, la.fLagerbestand, la.cSonstiges
+                FROM dbo.tliefartikel la
+                JOIN dbo.tLieferant l ON la.tLieferant_kLieferant = l.kLieferant
+                WHERE la.tArtikel_kArtikel = @KArtikel
+                ORDER BY la.nStandard DESC, l.cFirma",
+                new { KArtikel = kArtikel });
+        }
+
+        public class ArtikelLieferantDetail
+        {
+            public int KLiefArtikel { get; set; }
+            public int KArtikel { get; set; }
+            public int KLieferant { get; set; }
+            public string? CLieferantName { get; set; }
+            public string? CLieferantNr { get; set; }
+            public string? CLiefArtNr { get; set; }
+            public string? CName { get; set; }
+            public decimal? FEKNetto { get; set; }
+            public decimal? FMwSt { get; set; }
+            public string? CVPEEinheit { get; set; }
+            public int? NVPEMenge { get; set; }
+            public int? NMindestAbnahme { get; set; }
+            public int? NLieferzeit { get; set; }
+            public int NStandard { get; set; }
+            public decimal? FLagerbestand { get; set; }
+            public string? CSonstiges { get; set; }
+
+            // UI-Eigenschaften
+            public string? Kontakt => CLieferantNr;
+            public string? Firmenname => CLieferantName;
+        }
+
+        /// <summary>
+        /// Lagerbewegungen/History eines Artikels laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelHistoryEntry>> GetArtikelHistoryAsync(int kArtikel, int limit = 50)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelHistoryEntry>(@"
+                SELECT TOP (@Limit)
+                    lb.dErstellt AS Datum,
+                    lb.fAnzahl AS Anzahl,
+                    CASE
+                        WHEN lb.kWarenLagerPlatzBuchung > 0 THEN 'Umbuchung'
+                        WHEN lb.fAnzahl > 0 THEN 'Wareneingang'
+                        ELSE 'Warenausgang'
+                    END AS Art,
+                    ISNULL(b.cBestellNr, '') AS AuftragNr,
+                    lb.cKommentar AS Kommentar,
+                    lb.cMHD AS MHD,
+                    lb.cChargeNr AS Charge,
+                    ISNULL(k.cKundenNr, '') AS KundenNr,
+                    ISNULL(a.cFirma, ISNULL(a.cName, '')) AS Firma
+                FROM dbo.tLagerBuchung lb
+                LEFT JOIN dbo.tBestellung b ON lb.kBestellung = b.kBestellung
+                LEFT JOIN dbo.tKunde k ON b.kKunde = k.kKunde
+                LEFT JOIN dbo.tAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                WHERE lb.kArtikel = @KArtikel
+                ORDER BY lb.dErstellt DESC",
+                new { KArtikel = kArtikel, Limit = limit });
+        }
+
+        public class ArtikelHistoryEntry
+        {
+            public DateTime Datum { get; set; }
+            public decimal Anzahl { get; set; }
+            public string? Art { get; set; }
+            public string? AuftragNr { get; set; }
+            public string? Kommentar { get; set; }
+            public string? MHD { get; set; }
+            public string? Charge { get; set; }
+            public string? KundenNr { get; set; }
+            public string? Firma { get; set; }
+        }
+
+        /// <summary>
+        /// Lieferant zu einem Artikel hinzufuegen
+        /// </summary>
+        public async Task AddArtikelLieferantAsync(int kArtikel, int kLieferant)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Pruefen ob bereits vorhanden
+            var exists = await conn.QueryFirstOrDefaultAsync<int?>(
+                "SELECT kLiefArtikel FROM dbo.tliefartikel WHERE tArtikel_kArtikel = @kArtikel AND tLieferant_kLieferant = @kLieferant",
+                new { kArtikel, kLieferant });
+
+            if (exists.HasValue)
+                throw new InvalidOperationException("Lieferant ist bereits diesem Artikel zugeordnet.");
+
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tliefartikel (tArtikel_kArtikel, tLieferant_kLieferant, nStandard)
+                VALUES (@kArtikel, @kLieferant, 0)",
+                new { kArtikel, kLieferant });
+        }
+
+        /// <summary>
+        /// Standardlieferant fuer einen Artikel setzen
+        /// </summary>
+        public async Task SetArtikelStandardLieferantAsync(int kArtikel, int kLieferant)
+        {
+            var conn = await GetConnectionAsync();
+            using var tx = conn.BeginTransaction();
+
+            try
+            {
+                // Alle auf nicht-Standard setzen
+                await conn.ExecuteAsync(
+                    "UPDATE dbo.tliefartikel SET nStandard = 0 WHERE tArtikel_kArtikel = @kArtikel",
+                    new { kArtikel }, tx);
+
+                // Ausgewaehlten auf Standard setzen
+                await conn.ExecuteAsync(
+                    "UPDATE dbo.tliefartikel SET nStandard = 1 WHERE tArtikel_kArtikel = @kArtikel AND tLieferant_kLieferant = @kLieferant",
+                    new { kArtikel, kLieferant }, tx);
+
+                tx.Commit();
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Lieferant von einem Artikel entfernen
+        /// </summary>
+        public async Task RemoveArtikelLieferantAsync(int kArtikel, int kLieferant)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(
+                "DELETE FROM dbo.tliefartikel WHERE tArtikel_kArtikel = @kArtikel AND tLieferant_kLieferant = @kLieferant",
+                new { kArtikel, kLieferant });
+        }
+
+        /// <summary>
+        /// Bilder eines Artikels laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelBildDetail>> GetArtikelBilderAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelBildDetail>(@"
+                SELECT
+                    ap.kArtikelbildPlattform AS KArtikelPict, ap.kArtikel, ap.kBild, ap.nNr,
+                    b.cQuelle AS CPfad, ap.cBildname AS CDateiname, b.nBreite, b.nHoehe, b.nDateigroesse AS NGroesse,
+                    CASE WHEN ap.nNr = 1 THEN 1 ELSE 0 END AS NIstHauptbild
+                FROM dbo.tArtikelbildPlattform ap
+                JOIN dbo.tBild b ON ap.kBild = b.kBild
+                WHERE ap.kArtikel = @KArtikel
+                ORDER BY ap.nNr",
+                new { KArtikel = kArtikel });
+        }
+
+        public class ArtikelBildDetail
+        {
+            public int KArtikelPict { get; set; }
+            public int KArtikel { get; set; }
+            public int KBild { get; set; }
+            public int NNr { get; set; }
+            public string? CPfad { get; set; }
+            public string? CDateiname { get; set; }
+            public int? NBreite { get; set; }
+            public int? NHoehe { get; set; }
+            public int? NGroesse { get; set; }
+            public int NIstHauptbild { get; set; }
+        }
+
+        /// <summary>
+        /// Artikelbild loeschen
+        /// </summary>
+        public async Task DeleteArtikelBildAsync(int kBild)
+        {
+            var conn = await GetConnectionAsync();
+            using var tx = conn.BeginTransaction();
+
+            try
+            {
+                // Erst die Zuordnung loeschen
+                await conn.ExecuteAsync("DELETE FROM dbo.tArtikelbildPlattform WHERE kBild = @kBild", new { kBild }, tx);
+                // Dann das Bild selbst
+                await conn.ExecuteAsync("DELETE FROM dbo.tBild WHERE kBild = @kBild", new { kBild }, tx);
+                tx.Commit();
+            }
+            catch
+            {
+                tx.Rollback();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Attribute eines Artikels laden (ArtikelAttribut-Werte)
+        /// </summary>
+        public async Task<IEnumerable<ArtikelAttributWert>> GetArtikelAttributeByArtikelAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelAttributWert>(@"
+                SELECT
+                    aa.kArtikelAttribut, aa.kArtikel, aa.kAttribut,
+                    asp.cName AS CAttributName,
+                    COALESCE(aas.cWertVarchar, CAST(aas.nWertInt AS NVARCHAR), CAST(aas.fWertDecimal AS NVARCHAR), CAST(aas.dWertDateTime AS NVARCHAR)) AS CWert
+                FROM dbo.tArtikelAttribut aa
+                JOIN dbo.tAttributSprache asp ON aa.kAttribut = asp.kAttribut AND asp.kSprache = 1
+                LEFT JOIN dbo.tArtikelAttributSprache aas ON aa.kArtikelAttribut = aas.kArtikelAttribut AND aas.kSprache = 1
+                WHERE aa.kArtikel = @KArtikel
+                ORDER BY asp.cName",
+                new { KArtikel = kArtikel });
+        }
+
+        public class ArtikelAttributWert
+        {
+            public int KArtikelAttribut { get; set; }
+            public int KArtikel { get; set; }
+            public int KAttribut { get; set; }
+            public string? CAttributName { get; set; }
+            public string? CWert { get; set; }
+        }
+
+        /// <summary>
+        /// Merkmale eines Artikels laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelMerkmalWert>> GetArtikelMerkmaleAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelMerkmalWert>(@"
+                SELECT
+                    am.kMerkmal, am.kMerkmalWert, am.kArtikel,
+                    ms.cName AS CMerkmalName, mws.cWert AS CMerkmalWert
+                FROM dbo.tArtikelMerkmal am
+                JOIN dbo.tMerkmalSprache ms ON am.kMerkmal = ms.kMerkmal AND ms.kSprache = 1
+                LEFT JOIN dbo.tMerkmalWertSprache mws ON am.kMerkmalWert = mws.kMerkmalWert AND mws.kSprache = 1
+                WHERE am.kArtikel = @KArtikel
+                ORDER BY ms.cName",
+                new { KArtikel = kArtikel });
+        }
+
+        public class ArtikelMerkmalWert
+        {
+            public int KMerkmal { get; set; }
+            public int? KMerkmalWert { get; set; }
+            public int KArtikel { get; set; }
+            public string? CMerkmalName { get; set; }
+            public string? CMerkmalWert { get; set; }
+        }
+
+        /// <summary>
+        /// Stueckliste eines Artikels laden (kVaterArtikel = Parent, kArtikel = Komponente)
+        /// </summary>
+        public async Task<IEnumerable<StuecklistePosition>> GetArtikelStuecklisteAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<StuecklistePosition>(@"
+                SELECT
+                    s.kStueckliste, s.kVaterArtikel AS KArtikel, s.kArtikel AS KKomponente, s.fAnzahl AS FMenge,
+                    ab.cName AS CKomponenteName, a.cArtNr AS CKomponenteArtNr,
+                    ISNULL(pd.fNettoPreis, 0) AS FNettoVK,
+                    ISNULL(lb.fLagerbestand, 0) AS FLagerbestand
+                FROM dbo.tStueckliste s
+                JOIN dbo.tartikel a ON s.kArtikel = a.kArtikel
+                LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 AND ab.kPlattform = 1
+                LEFT JOIN dbo.tPreis p ON a.kArtikel = p.kArtikel AND p.kKundenGruppe = 0
+                LEFT JOIN dbo.tPreisDetail pd ON p.kPreis = pd.kPreis AND pd.nAnzahlAb = 0
+                LEFT JOIN dbo.tlagerbestand lb ON a.kArtikel = lb.kArtikel
+                WHERE s.kVaterArtikel = @KArtikel
+                ORDER BY ab.cName",
+                new { KArtikel = kArtikel });
+        }
+
+        public class StuecklistePosition
+        {
+            public int KStueckliste { get; set; }
+            public int KArtikel { get; set; }
+            public int KKomponente { get; set; }
+            public decimal FMenge { get; set; }
+            public string? CKomponenteName { get; set; }
+            public string? CKomponenteArtNr { get; set; }
+            public decimal FNettoVK { get; set; }
+            public decimal FLagerbestand { get; set; }
+        }
+
+        /// <summary>
+        /// Artikel zu Stueckliste hinzufuegen
+        /// </summary>
+        public async Task AddArtikelZuStuecklisteAsync(int kArtikel, int kKomponente, decimal fMenge)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Pruefen ob bereits vorhanden
+            var exists = await conn.QueryFirstOrDefaultAsync<int?>(
+                "SELECT kStueckliste FROM dbo.tStueckliste WHERE kVaterArtikel = @kArtikel AND kArtikel = @kKomponente",
+                new { kArtikel, kKomponente });
+
+            if (exists.HasValue)
+            {
+                // Update Menge
+                await conn.ExecuteAsync(
+                    "UPDATE dbo.tStueckliste SET fAnzahl = fAnzahl + @fMenge WHERE kStueckliste = @kStueckliste",
+                    new { kStueckliste = exists.Value, fMenge });
+            }
+            else
+            {
+                await conn.ExecuteAsync(@"
+                    INSERT INTO dbo.tStueckliste (kVaterArtikel, kArtikel, fAnzahl)
+                    VALUES (@kArtikel, @kKomponente, @fMenge)",
+                    new { kArtikel, kKomponente, fMenge });
+            }
+        }
+
+        /// <summary>
+        /// Komponente aus Stueckliste entfernen
+        /// </summary>
+        public async Task RemoveArtikelVonStuecklisteAsync(int kStueckliste)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(
+                "DELETE FROM dbo.tStueckliste WHERE kStueckliste = @kStueckliste",
+                new { kStueckliste });
+        }
+
+        /// <summary>
+        /// Sonderpreise eines Artikels laden
+        /// </summary>
+        public async Task<IEnumerable<ArtikelSonderpreisInfo>> GetArtikelSonderpreiseAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<ArtikelSonderpreisInfo>(@"
+                SELECT
+                    asp.kArtikelSonderpreis, asp.kArtikel,
+                    sp.kKundenGruppe,
+                    asp.nAktiv AS NAktiv, asp.nIstDatum AS NIstDatum, asp.nIstAnzahl AS NIstAnzahl,
+                    asp.dStart, asp.dEnde, asp.nAnzahl,
+                    kg.cName AS CKundengruppe,
+                    ISNULL(sp.fNettoPreis, 0) AS FSonderpreisNetto
+                FROM dbo.tArtikelSonderpreis asp
+                LEFT JOIN dbo.tSonderpreise sp ON asp.kArtikelSonderpreis = sp.kArtikelSonderpreis
+                LEFT JOIN dbo.tKundenGruppe kg ON sp.kKundenGruppe = kg.kKundenGruppe
+                WHERE asp.kArtikel = @KArtikel
+                ORDER BY kg.cName",
+                new { KArtikel = kArtikel });
+        }
+
+        public class ArtikelSonderpreisInfo
+        {
+            public int KArtikelSonderpreis { get; set; }
+            public int KArtikel { get; set; }
+            public int? KKundenGruppe { get; set; }
+            public int NAktiv { get; set; }
+            public int NIstDatum { get; set; }
+            public int NIstAnzahl { get; set; }
+            public DateTime? DStart { get; set; }
+            public DateTime? DEnde { get; set; }
+            public int? NAnzahl { get; set; }
+            public string? CKundengruppe { get; set; }
+            public decimal FSonderpreisNetto { get; set; }
+        }
+
+        #endregion
+
+        public async Task UpdateArtikelAsync(ArtikelDetail artikel)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Table-Valued Parameter vorbereiten
+            var table = new DataTable();
+            table.Columns.Add("kArtikel", typeof(int));
+            table.Columns.Add("cArtNr", typeof(string));
+            table.Columns.Add("cBarcode", typeof(string));
+            table.Columns.Add("cHAN", typeof(string));
+            table.Columns.Add("cISBN", typeof(string));
+            table.Columns.Add("fVKNetto", typeof(decimal));
+            table.Columns.Add("fUVP", typeof(decimal));
+            table.Columns.Add("fEKNetto", typeof(decimal));
+            table.Columns.Add("nMidestbestand", typeof(decimal));
+            table.Columns.Add("cLagerArtikel", typeof(string));
+            table.Columns.Add("cLagerAktiv", typeof(string));
+            table.Columns.Add("cLagerKleinerNull", typeof(string));
+            table.Columns.Add("fGewicht", typeof(decimal));
+            table.Columns.Add("fBreite", typeof(decimal));
+            table.Columns.Add("fHoehe", typeof(decimal));
+            table.Columns.Add("fLaenge", typeof(decimal));
+            table.Columns.Add("fPackeinheit", typeof(decimal));
+            table.Columns.Add("kSteuerklasse", typeof(int));
+            table.Columns.Add("kHersteller", typeof(int));
+            table.Columns.Add("kWarengruppe", typeof(int));
+            table.Columns.Add("kVersandklasse", typeof(int));
+            table.Columns.Add("cAktiv", typeof(string));
+            table.Columns.Add("cTopArtikel", typeof(string));
+            table.Columns.Add("cNeu", typeof(string));
+            table.Columns.Add("cTeilbar", typeof(string));
+            table.Columns.Add("nMHD", typeof(byte));
+            table.Columns.Add("nCharge", typeof(byte));
+            table.Columns.Add("nSeriennr", typeof(byte));
+            table.Columns.Add("cTaric", typeof(string));
+            table.Columns.Add("cHerkunftsland", typeof(string));
+            table.Columns.Add("cSuchbegriffe", typeof(string));
+            table.Columns.Add("nSort", typeof(int));
+            table.Columns.Add("cName", typeof(string));
+            table.Columns.Add("cBeschreibung", typeof(string));
+            table.Columns.Add("cKurzBeschreibung", typeof(string));
+            table.Columns.Add("cUrlPfad", typeof(string));
+
+            var row = table.NewRow();
+            row["kArtikel"] = artikel.KArtikel;
+            row["cArtNr"] = artikel.CArtNr ?? (object)DBNull.Value;
+            row["cBarcode"] = artikel.CBarcode ?? (object)DBNull.Value;
+            row["cHAN"] = artikel.CHAN ?? (object)DBNull.Value;
+            row["cISBN"] = artikel.CISBN ?? (object)DBNull.Value;
+            row["fVKNetto"] = artikel.FVKNetto;
+            row["fUVP"] = artikel.FUVP;
+            row["fEKNetto"] = artikel.FEKNetto;
+            row["nMidestbestand"] = artikel.NMidestbestand;
+            row["cLagerArtikel"] = artikel.CLagerArtikel ?? "N";
+            row["cLagerAktiv"] = artikel.CLagerAktiv ?? "Y";
+            row["cLagerKleinerNull"] = artikel.CLagerKleinerNull ?? "N";
+            row["fGewicht"] = artikel.FGewicht;
+            row["fBreite"] = artikel.FBreite;
+            row["fHoehe"] = artikel.FHoehe;
+            row["fLaenge"] = artikel.FLaenge;
+            row["fPackeinheit"] = artikel.FPackeinheit > 0 ? artikel.FPackeinheit : 1;
+            row["kSteuerklasse"] = artikel.KSteuerklasse ?? (object)DBNull.Value;
+            row["kHersteller"] = artikel.KHersteller ?? (object)DBNull.Value;
+            row["kWarengruppe"] = artikel.KWarengruppe ?? (object)DBNull.Value;
+            row["kVersandklasse"] = artikel.KVersandklasse ?? (object)DBNull.Value;
+            row["cAktiv"] = artikel.CAktiv ?? "Y";
+            row["cTopArtikel"] = artikel.CTopArtikel ?? "N";
+            row["cNeu"] = artikel.CNeu ?? "N";
+            row["cTeilbar"] = artikel.CTeilbar ?? "N";
+            row["nMHD"] = artikel.NMHD;
+            row["nCharge"] = artikel.NCharge;
+            row["nSeriennr"] = artikel.NSeriennummernVerfolgung;
+            row["cTaric"] = artikel.CTaric ?? (object)DBNull.Value;
+            row["cHerkunftsland"] = artikel.CHerkunftsland ?? (object)DBNull.Value;
+            row["cSuchbegriffe"] = artikel.CSuchbegriffe ?? (object)DBNull.Value;
+            row["nSort"] = artikel.NSort > 0 ? artikel.NSort : (object)DBNull.Value;
+            row["cName"] = artikel.Name ?? (object)DBNull.Value;
+            row["cBeschreibung"] = artikel.Beschreibung ?? (object)DBNull.Value;
+            row["cKurzBeschreibung"] = artikel.KurzBeschreibung ?? (object)DBNull.Value;
+            row["cUrlPfad"] = artikel.CSeo ?? (object)DBNull.Value;
+            table.Rows.Add(row);
+
+            var param = new DynamicParameters();
+            param.Add("@Daten", table.AsTableValuedParameter("NOVVIA.TYPE_ArtikelUpsert"));
+            param.Add("@kBenutzer", DBNull.Value);
+            param.Add("@cBenutzerName", DBNull.Value);
+
+            await conn.ExecuteAsync("NOVVIA.spArtikelUpdate", param, commandType: CommandType.StoredProcedure);
         }
 
         public async Task<IEnumerable<HerstellerRef>> GetHerstellerAsync()
@@ -1763,6 +2667,12 @@ namespace NovviaERP.Core.Services
             return await conn.QueryAsync<SteuerklasseRef>("SELECT kSteuerklasse, cName FROM tSteuerklasse ORDER BY cName");
         }
 
+        public async Task<IEnumerable<VersandklasseRef>> GetVersandklassenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<VersandklasseRef>("SELECT kVersandklasse, cName FROM tVersandklasse ORDER BY cName");
+        }
+
         public async Task<IEnumerable<WarengruppeRef>> GetWarengruppenAsync()
         {
             var conn = await GetConnectionAsync();
@@ -1772,60 +2682,97 @@ namespace NovviaERP.Core.Services
         public async Task<int> CreateArtikelAsync(ArtikelDetail artikel)
         {
             var conn = await GetConnectionAsync();
-            using var tx = conn.BeginTransaction();
-            try
-            {
-                // Artikelnummer generieren wenn leer
-                if (string.IsNullOrEmpty(artikel.CArtNr))
-                {
-                    var maxNr = await conn.QuerySingleOrDefaultAsync<string>(
-                        "SELECT TOP 1 cArtNr FROM tArtikel WHERE cArtNr LIKE 'ART%' ORDER BY cArtNr DESC",
-                        transaction: tx);
-                    if (maxNr != null && int.TryParse(maxNr.Replace("ART", ""), out var nr))
-                        artikel.CArtNr = $"ART{(nr + 1):D6}";
-                    else
-                        artikel.CArtNr = "ART000001";
-                }
 
-                // Artikel anlegen
-                var artikelId = await conn.QuerySingleAsync<int>(@"
-                    INSERT INTO tArtikel (cArtNr, cBarcode, cHAN, cISBN, cUPC, cASIN,
-                        fVKNetto, fUVP, fEKNetto, nMidestbestand, cLagerArtikel, cLagerAktiv, cLagerKleinerNull,
-                        fGewicht, fArtGewicht, fBreite, fHoehe, fLaenge, fPackeinheit,
-                        kSteuerklasse, kHersteller, kWarengruppe, kVersandklasse,
-                        cAktiv, cTopArtikel, cNeu, cTeilbar, nMHD, nCharge, nSeriennr,
-                        cTaric, cHerkunftsland, cSuchbegriffe, dErstellt, dMod)
-                    VALUES (@CArtNr, @CBarcode, @CHAN, @CISBN, @CUPC, @CASIN,
-                        @FVKNetto, @FUVP, @FEKNetto, @NMidestbestand, @CLagerArtikel, @CLagerAktiv, @CLagerKleinerNull,
-                        @FGewicht, @FArtGewicht, @FBreite, @FHoehe, @FLaenge, @FPackeinheit,
-                        @KSteuerklasse, @KHersteller, @KWarengruppe, @KVersandklasse,
-                        @CAktiv, @CTopArtikel, @CNeu, @CTeilbar, @NMHD, @NCharge, @NSeriennummernVerfolgung,
-                        @CTaric, @CHerkunftsland, @CSuchbegriffe, GETDATE(), GETDATE());
-                    SELECT SCOPE_IDENTITY();", artikel, tx);
+            // Table-Valued Parameter vorbereiten
+            var table = new DataTable();
+            table.Columns.Add("kArtikel", typeof(int));
+            table.Columns.Add("cArtNr", typeof(string));
+            table.Columns.Add("cBarcode", typeof(string));
+            table.Columns.Add("cHAN", typeof(string));
+            table.Columns.Add("cISBN", typeof(string));
+            table.Columns.Add("fVKNetto", typeof(decimal));
+            table.Columns.Add("fUVP", typeof(decimal));
+            table.Columns.Add("fEKNetto", typeof(decimal));
+            table.Columns.Add("nMidestbestand", typeof(decimal));
+            table.Columns.Add("cLagerArtikel", typeof(string));
+            table.Columns.Add("cLagerAktiv", typeof(string));
+            table.Columns.Add("cLagerKleinerNull", typeof(string));
+            table.Columns.Add("fGewicht", typeof(decimal));
+            table.Columns.Add("fBreite", typeof(decimal));
+            table.Columns.Add("fHoehe", typeof(decimal));
+            table.Columns.Add("fLaenge", typeof(decimal));
+            table.Columns.Add("fPackeinheit", typeof(decimal));
+            table.Columns.Add("kSteuerklasse", typeof(int));
+            table.Columns.Add("kHersteller", typeof(int));
+            table.Columns.Add("kWarengruppe", typeof(int));
+            table.Columns.Add("kVersandklasse", typeof(int));
+            table.Columns.Add("cAktiv", typeof(string));
+            table.Columns.Add("cTopArtikel", typeof(string));
+            table.Columns.Add("cNeu", typeof(string));
+            table.Columns.Add("cTeilbar", typeof(string));
+            table.Columns.Add("nMHD", typeof(byte));
+            table.Columns.Add("nCharge", typeof(byte));
+            table.Columns.Add("nSeriennr", typeof(byte));
+            table.Columns.Add("cTaric", typeof(string));
+            table.Columns.Add("cHerkunftsland", typeof(string));
+            table.Columns.Add("cSuchbegriffe", typeof(string));
+            table.Columns.Add("nSort", typeof(int));
+            table.Columns.Add("cName", typeof(string));
+            table.Columns.Add("cBeschreibung", typeof(string));
+            table.Columns.Add("cKurzBeschreibung", typeof(string));
+            table.Columns.Add("cUrlPfad", typeof(string));
 
-                artikel.KArtikel = artikelId;
+            var row = table.NewRow();
+            row["kArtikel"] = DBNull.Value; // NULL bei Insert
+            row["cArtNr"] = string.IsNullOrEmpty(artikel.CArtNr) ? DBNull.Value : artikel.CArtNr;
+            row["cBarcode"] = artikel.CBarcode ?? (object)DBNull.Value;
+            row["cHAN"] = artikel.CHAN ?? (object)DBNull.Value;
+            row["cISBN"] = artikel.CISBN ?? (object)DBNull.Value;
+            row["fVKNetto"] = artikel.FVKNetto;
+            row["fUVP"] = artikel.FUVP;
+            row["fEKNetto"] = artikel.FEKNetto;
+            row["nMidestbestand"] = artikel.NMidestbestand;
+            row["cLagerArtikel"] = artikel.CLagerArtikel ?? "N";
+            row["cLagerAktiv"] = artikel.CLagerAktiv ?? "Y";
+            row["cLagerKleinerNull"] = artikel.CLagerKleinerNull ?? "N";
+            row["fGewicht"] = artikel.FGewicht;
+            row["fBreite"] = artikel.FBreite;
+            row["fHoehe"] = artikel.FHoehe;
+            row["fLaenge"] = artikel.FLaenge;
+            row["fPackeinheit"] = artikel.FPackeinheit > 0 ? artikel.FPackeinheit : 1;
+            row["kSteuerklasse"] = artikel.KSteuerklasse ?? (object)DBNull.Value;
+            row["kHersteller"] = artikel.KHersteller ?? (object)DBNull.Value;
+            row["kWarengruppe"] = artikel.KWarengruppe ?? (object)DBNull.Value;
+            row["kVersandklasse"] = artikel.KVersandklasse ?? (object)DBNull.Value;
+            row["cAktiv"] = artikel.CAktiv ?? "Y";
+            row["cTopArtikel"] = artikel.CTopArtikel ?? "N";
+            row["cNeu"] = artikel.CNeu ?? "N";
+            row["cTeilbar"] = artikel.CTeilbar ?? "N";
+            row["nMHD"] = artikel.NMHD;
+            row["nCharge"] = artikel.NCharge;
+            row["nSeriennr"] = artikel.NSeriennummernVerfolgung;
+            row["cTaric"] = artikel.CTaric ?? (object)DBNull.Value;
+            row["cHerkunftsland"] = artikel.CHerkunftsland ?? (object)DBNull.Value;
+            row["cSuchbegriffe"] = artikel.CSuchbegriffe ?? (object)DBNull.Value;
+            row["nSort"] = artikel.NSort > 0 ? artikel.NSort : (object)DBNull.Value;
+            row["cName"] = artikel.Name ?? (object)DBNull.Value;
+            row["cBeschreibung"] = artikel.Beschreibung ?? (object)DBNull.Value;
+            row["cKurzBeschreibung"] = artikel.KurzBeschreibung ?? (object)DBNull.Value;
+            row["cUrlPfad"] = artikel.CSeo ?? (object)DBNull.Value;
+            table.Rows.Add(row);
 
-                // Beschreibung anlegen
-                await conn.ExecuteAsync(@"
-                    INSERT INTO tArtikelBeschreibung (kArtikel, kSprache, kPlattform, cName, cBeschreibung, cKurzBeschreibung, cUrlPfad)
-                    VALUES (@KArtikel, 1, 1, @Name, @Beschreibung, @KurzBeschreibung, @CSeo)", artikel, tx);
+            var param = new DynamicParameters();
+            param.Add("@Daten", table.AsTableValuedParameter("NOVVIA.TYPE_ArtikelUpsert"));
+            param.Add("@kBenutzer", DBNull.Value);
+            param.Add("@cBenutzerName", DBNull.Value);
 
-                tx.Commit();
+            var result = await conn.QueryFirstOrDefaultAsync<(int kArtikel, string cArtNr)>(
+                "NOVVIA.spArtikelInsert", param, commandType: CommandType.StoredProcedure);
 
-                // Log in NOVVIA.Log
-                if (_logService != null)
-                {
-                    await _logService.LogStammdatenAsync(
-                        entityTyp: "Artikel",
-                        kEntity: artikelId,
-                        entityNr: artikel.CArtNr,
-                        aktion: "Erstellt",
-                        beschreibung: $"Neuer Artikel: {artikel.Name ?? artikel.CArtNr} (VK: {artikel.FVKNetto:N2} EUR, EK: {artikel.FEKNetto:N2} EUR)");
-                }
+            artikel.KArtikel = result.kArtikel;
+            artikel.CArtNr = result.cArtNr;
 
-                return artikelId;
-            }
-            catch { tx.Rollback(); throw; }
+            return result.kArtikel;
         }
 
         #endregion

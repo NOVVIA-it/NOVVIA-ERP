@@ -11,6 +11,7 @@ namespace NovviaERP.WPF.Dialogs
     public partial class EntitySucheDialog : Window
     {
         private readonly CoreService _core;
+        private System.Threading.CancellationTokenSource? _searchCts;
         public EntityTyp Typ { get; private set; }
 
         public enum EntityTyp { Kunde, Artikel, Lieferant }
@@ -59,12 +60,19 @@ namespace NovviaERP.WPF.Dialogs
             {
                 await LoadFiltersAsync();
                 txtSuche.Focus();
+                // Initiale Suche ausfuehren
+                await SuchenAsync();
             };
 
             dgErgebnisse.SelectionChanged += (s, e) =>
             {
                 btnUebernehmen.IsEnabled = dgErgebnisse.SelectedItem != null;
             };
+
+            // Filter-Aenderungen loesen Suche aus
+            cmbKategorie.SelectionChanged += async (s, e) => await SuchenAsync();
+            cmbGruppe.SelectionChanged += async (s, e) => await SuchenAsync();
+            cmbWarengruppe.SelectionChanged += async (s, e) => await SuchenAsync();
         }
 
         private async System.Threading.Tasks.Task LoadFiltersAsync()
@@ -94,24 +102,34 @@ namespace NovviaERP.WPF.Dialogs
             catch { }
         }
 
-        private void TxtSuche_KeyDown(object sender, KeyEventArgs e)
+        private async void TxtSuche_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            // Vorherige Suche abbrechen
+            _searchCts?.Cancel();
+            _searchCts = new System.Threading.CancellationTokenSource();
+            var token = _searchCts.Token;
+
+            try
             {
-                Suchen_Click(sender, e);
+                // Kurze Verzoegerung (Debounce) - 200ms
+                await System.Threading.Tasks.Task.Delay(200, token);
+                if (token.IsCancellationRequested) return;
+
+                await SuchenAsync();
+            }
+            catch (System.Threading.Tasks.TaskCanceledException)
+            {
+                // Suche wurde abgebrochen - ignorieren
             }
         }
 
-        private async void Suchen_Click(object sender, RoutedEventArgs e)
+        private async System.Threading.Tasks.Task SuchenAsync()
         {
             var suchbegriff = txtSuche.Text.Trim();
             var ergebnisse = new List<SuchErgebnis>();
 
             try
             {
-                btnSuchen.IsEnabled = false;
-                btnSuchen.Content = "Suche...";
-
                 switch (Typ)
                 {
                     case EntityTyp.Kunde:
@@ -159,23 +177,14 @@ namespace NovviaERP.WPF.Dialogs
                 dgErgebnisse.ItemsSource = ergebnisse;
                 txtErgebnisse.Text = $"Ergebnisse: {ergebnisse.Count} gefunden";
 
-                if (ergebnisse.Count == 0 && !string.IsNullOrEmpty(suchbegriff))
-                {
-                    MessageBox.Show($"Keine {Typ} gefunden.", "Suche", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else if (ergebnisse.Count == 1)
+                if (ergebnisse.Count == 1)
                 {
                     dgErgebnisse.SelectedIndex = 0;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Fehler bei Suche:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                btnSuchen.Content = "Suchen";
-                btnSuchen.IsEnabled = true;
+                txtErgebnisse.Text = $"Fehler: {ex.Message}";
             }
         }
 

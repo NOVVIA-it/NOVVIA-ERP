@@ -2,198 +2,363 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:conv="clr-namespace:NovviaERP.WPF.Converters"
-             Background="#f5f5f5">
+             Background="#f0f0f0">
     <UserControl.Resources>
         <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <Style x:Key="TreeViewItemStyle" TargetType="TreeViewItem">
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="IsExpanded" Value="False"/>
+        </Style>
     </UserControl.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Border Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="20,15">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Artikel" FontSize="24" FontWeight="SemiBold" Foreground="#333"/>
-                    <TextBlock x:Name="txtAnzahl" Text="" FontSize="14" Foreground="#888" VerticalAlignment="Center" Margin="15,0,0,0"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="+ Neuer Artikel" Click="Neu_Click"
-                            Background="#0078D4" Foreground="White" Padding="15,8"
-                            BorderThickness="0" Cursor="Hand"/>
-                </StackPanel>
-            </Grid>
+        <!-- Toolbar -->
+        <Border Background="#f8f8f8" BorderBrush="#ccc" BorderThickness="0,0,0,1" Padding="5">
+            <StackPanel Orientation="Horizontal">
+                <ComboBox x:Name="cmbPlattform" Width="120" Height="24" Margin="5,0">
+                    <ComboBoxItem Content="JTL-Wawi" IsSelected="True"/>
+                </ComboBox>
+                <TextBlock Text="Suchen:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+                <ComboBox x:Name="cmbKategorieSuche" Width="120" Height="24" Text="Kategorie suchen..." IsEditable="True"/>
+            </StackPanel>
         </Border>
 
-        <!-- Filter & Suche -->
-        <Border Grid.Row="1" Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="20,12">
+        <!-- Hauptbereich: Links Kategorien, Rechts Artikel -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" MinWidth="200"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Linke Seite: Kategorien + Lieferanten/Preise -->
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="300"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="180" MinHeight="100"/>
+                </Grid.RowDefinitions>
 
-                <TextBox x:Name="txtSuche" Width="280" Height="32" Padding="10,5"
-                         VerticalContentAlignment="Center" KeyDown="TxtSuche_KeyDown"
-                         Text="" Tag="Suche: Art-Nr, Barcode, Name, HAN..."/>
+                <!-- Kategorie TreeView -->
+                <Border Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                <Button Grid.Column="1" Content="Suchen" Click="Suchen_Click"
-                        Margin="10,0" Padding="15,5" Background="#0078D4"
-                        Foreground="White" BorderThickness="0"/>
+                        <TreeView x:Name="tvKategorien" BorderThickness="0"
+                                  SelectedItemChanged="TvKategorien_SelectedItemChanged"
+                                  ItemContainerStyle="{StaticResource TreeViewItemStyle}">
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Name}" Padding="3,2"/>
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="20,0,0,0">
-                    <TextBlock Text="Warengruppe:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox x:Name="cmbWarengruppe" Width="150" Height="32"
-                              DisplayMemberPath="CName" SelectedValuePath="KWarengruppe"
-                              SelectionChanged="Filter_Changed">
-                        <ComboBox.Items>
-                            <ComboBoxItem Content="Alle Warengruppen" IsSelected="True"/>
-                        </ComboBox.Items>
-                    </ComboBox>
-                </StackPanel>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5">
+                            <TextBlock x:Name="txtKategorieAnzahl" Text="0 Kategorie(n)" Foreground="#666" FontSize="11"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
-                <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="15,0,0,0">
-                    <TextBlock Text="Hersteller:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox x:Name="cmbHersteller" Width="150" Height="32"
-                              DisplayMemberPath="CName" SelectedValuePath="KHersteller"
-                              SelectionChanged="Filter_Changed">
-                        <ComboBox.Items>
-                            <ComboBoxItem Content="Alle Hersteller" IsSelected="True"/>
-                        </ComboBox.Items>
-                    </ComboBox>
-                </StackPanel>
+                <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="#e0e0e0"/>
 
-                <CheckBox x:Name="chkNurAktive" Grid.Column="4" Content="Nur aktive"
-                          IsChecked="True" VerticalAlignment="Center" Margin="20,0,0,0"
-                          Checked="Filter_Changed" Unchecked="Filter_Changed"/>
-
-                <CheckBox x:Name="chkUnterMindest" Grid.Column="5" Content="Unter Mindestbestand"
-                          VerticalAlignment="Center" Margin="20,0,0,0"
-                          Checked="Filter_Changed" Unchecked="Filter_Changed"/>
-
-                <Button Grid.Column="7" Content="Aktualisieren" Click="Aktualisieren_Click"
-                        Padding="15,5" Background="#f0f0f0" BorderThickness="1" BorderBrush="#ccc"/>
+                <!-- Lieferanten/Preise/Sonderpreise Tabs (fuer ausgewaehlten Artikel) -->
+                <Border Grid.Row="2" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5,0,5,5">
+                    <TabControl x:Name="tabArtikelDetails" BorderThickness="0" Padding="0">
+                        <TabItem Header="Lieferanten">
+                            <DataGrid x:Name="dgLieferanten" AutoGenerateColumns="False" IsReadOnly="True"
+                                      BorderThickness="0" HeadersVisibility="Column" RowHeight="22" FontSize="11">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Kontakt" Binding="{Binding Kontakt}" Width="100"/>
+                                    <DataGridTextColumn Header="Firmenname" Binding="{Binding Firmenname}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                        <TabItem Header="Preise">
+                            <DataGrid x:Name="dgPreise" AutoGenerateColumns="False" IsReadOnly="True"
+                                      BorderThickness="0" HeadersVisibility="Column" RowHeight="22" FontSize="11">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Kundengruppe" Binding="{Binding Kundengruppe}" Width="*"/>
+                                    <DataGridTextColumn Header="Preis" Binding="{Binding Preis, StringFormat=N2}" Width="80"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                        <TabItem Header="Sonderpreise">
+                            <DataGrid x:Name="dgSonderpreise" AutoGenerateColumns="False" IsReadOnly="True"
+                                      BorderThickness="0" HeadersVisibility="Column" RowHeight="22" FontSize="11">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Typ" Binding="{Binding Typ}" Width="80"/>
+                                    <DataGridTextColumn Header="Preis" Binding="{Binding Preis, StringFormat=N2}" Width="80"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                    </TabControl>
+                </Border>
             </Grid>
-        </Border>
 
-        <!-- Artikelliste -->
-        <DataGrid x:Name="dgArtikel" Grid.Row="2" Margin="20,15,20,0"
-                  AutoGenerateColumns="False" IsReadOnly="True"
-                  SelectionMode="Single" SelectionUnit="FullRow"
-                  GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                  BorderThickness="1" BorderBrush="#ddd"
-                  RowBackground="White" AlternatingRowBackground="#fafafa"
-                  MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged">
-            <DataGrid.ContextMenu>
-                <ContextMenu>
-                    <MenuItem Header="Bearbeiten" Click="ContextMenu_Bearbeiten_Click"/>
-                    <MenuItem Header="Duplizieren" Click="ContextMenu_Duplizieren_Click"/>
-                    <Separator/>
-                    <MenuItem Header="Neuen Artikel erstellen" Click="ContextMenu_NeuErstellen_Click" FontWeight="SemiBold"/>
-                    <MenuItem Header="Artikel aktualisieren" Click="ContextMenu_Aktualisieren_Click"/>
-                    <Separator/>
-                    <MenuItem Header="Lagerbestand anpassen" Click="ContextMenu_Lagerbestand_Click"/>
-                    <MenuItem Header="Preise bearbeiten" Click="ContextMenu_Preise_Click"/>
-                    <Separator/>
-                    <MenuItem Header="Artikel deaktivieren" Click="ContextMenu_Deaktivieren_Click"/>
-                    <MenuItem Header="Artikel löschen" Click="ContextMenu_Loeschen_Click" Foreground="Red"/>
-                </ContextMenu>
-            </DataGrid.ContextMenu>
-            <DataGrid.ColumnHeaderStyle>
-                <Style TargetType="DataGridColumnHeader">
-                    <Setter Property="Background" Value="#f8f8f8"/>
-                    <Setter Property="Padding" Value="10,8"/>
-                    <Setter Property="BorderBrush" Value="#ddd"/>
-                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                    <Setter Property="FontWeight" Value="SemiBold"/>
-                </Style>
-            </DataGrid.ColumnHeaderStyle>
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Art-Nr." Binding="{Binding CArtNr}" Width="110"/>
-                <DataGridTextColumn Header="Barcode" Binding="{Binding CBarcode}" Width="120"/>
-                <DataGridTextColumn Header="Bezeichnung" Binding="{Binding Name}" Width="*"/>
-                <DataGridTextColumn Header="Hersteller" Binding="{Binding Hersteller}" Width="120"/>
-                <DataGridTextColumn Header="Bestand" Binding="{Binding NLagerbestand, StringFormat=N0}" Width="80">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,10,0"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding UnterMindestbestand}" Value="True">
-                                    <Setter Property="Foreground" Value="#D32F2F"/>
-                                    <Setter Property="FontWeight" Value="Bold"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="Min." Binding="{Binding NMidestbestand, StringFormat=N0}" Width="60">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,10,0"/>
-                            <Setter Property="Foreground" Value="#888"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="VK Netto" Binding="{Binding FVKNetto, StringFormat=N2}" Width="90">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,10,0"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="EK Netto" Binding="{Binding FEKNetto, StringFormat=N2}" Width="90">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,10,0"/>
-                            <Setter Property="Foreground" Value="#666"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTemplateColumn Header="Aktiv" Width="60">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Ellipse Width="12" Height="12" HorizontalAlignment="Center"
-                                     Fill="{Binding Aktiv, Converter={StaticResource BoolToColorConverter}}"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="#e0e0e0"/>
+
+            <!-- Rechte Seite: Artikelliste + Detail-Tabs -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*" MinHeight="200"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="200" MinHeight="100"/>
+                </Grid.RowDefinitions>
+
+                <!-- Suchbereich -->
+                <Border Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="0,5,5,5" Padding="8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Artikel suchen -->
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Artikel suchen" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <ComboBox Width="70" Height="24" SelectedIndex="0">
+                                <ComboBoxItem Content="Global"/>
+                                <ComboBoxItem Content="Lokal"/>
+                            </ComboBox>
+                            <ComboBox Width="70" Height="24" Margin="5,0" SelectedIndex="0">
+                                <ComboBoxItem Content="Enthaelt"/>
+                                <ComboBoxItem Content="Beginnt"/>
+                                <ComboBoxItem Content="Exakt"/>
+                            </ComboBox>
+                            <TextBox x:Name="txtSuche" Width="200" Height="24" Padding="5,2"
+                                     KeyDown="TxtSuche_KeyDown" TextChanged="TxtSuche_TextChanged"/>
+                            <Button Content="X" Width="24" Height="24" Margin="2,0,0,0" Click="ClearSearch_Click"
+                                    Background="Transparent" BorderThickness="0"/>
+                        </StackPanel>
+
+                        <!-- Erweiterte Suche -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <TextBlock Text="Erweiterte Suche" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <ComboBox Width="150" Height="24">
+                                <ComboBoxItem Content="Neuer temporaerer Filter" IsSelected="True"/>
+                            </ComboBox>
+                            <Button Content="..." Width="24" Height="24" Margin="5,0"/>
+                            <ComboBox x:Name="cmbArtikelFilter" Width="100" Height="24" Margin="10,0,0,0" SelectedIndex="0">
+                                <ComboBoxItem Content="Aktive Artikel"/>
+                                <ComboBoxItem Content="Alle Artikel"/>
+                                <ComboBoxItem Content="Inaktive"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Artikelliste -->
+                <Border Grid.Row="1" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="0,0,5,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <DataGrid x:Name="dgArtikel" AutoGenerateColumns="False" IsReadOnly="True"
+                                  SelectionMode="Extended" SelectionUnit="FullRow"
+                                  GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                                  BorderThickness="0" RowHeight="22" FontSize="12"
+                                  RowBackground="White" AlternatingRowBackground="#fafafa"
+                                  MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged"
+                                  CanUserSortColumns="True" CanUserReorderColumns="True">
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Bearbeiten" Click="ContextMenu_Bearbeiten_Click"/>
+                                    <MenuItem Header="Duplizieren" Click="ContextMenu_Duplizieren_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="Lagerbestand anpassen" Click="ContextMenu_Lagerbestand_Click"/>
+                                    <MenuItem Header="Preise bearbeiten" Click="ContextMenu_Preise_Click"/>
+                                    <Separator/>
+                                    <MenuItem Header="Artikel deaktivieren" Click="ContextMenu_Deaktivieren_Click"/>
+                                    <MenuItem Header="Artikel loeschen" Click="ContextMenu_Loeschen_Click" Foreground="Red"/>
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+                            <DataGrid.ColumnHeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Background" Value="#f0f0f0"/>
+                                    <Setter Property="Padding" Value="5,3"/>
+                                    <Setter Property="BorderBrush" Value="#ccc"/>
+                                    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                    <Setter Property="FontSize" Value="11"/>
+                                </Style>
+                            </DataGrid.ColumnHeaderStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Artikelnummer" Binding="{Binding CArtNr}" Width="120"/>
+                                <DataGridTextColumn Header="Artikelname" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="Netto-VK" Binding="{Binding FVKNetto, StringFormat=N2}" Width="70">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="Padding" Value="0,0,5,0"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="O Netto-EK" Binding="{Binding FEKNetto, StringFormat=N2}" Width="70">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="Padding" Value="0,0,5,0"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="UVP" Binding="{Binding FUVP, StringFormat=N2}" Width="60">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="Padding" Value="0,0,5,0"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Verfuegbar" Binding="{Binding Verfuegbar, StringFormat=N2}" Width="65">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="Padding" Value="0,0,5,0"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Bestand" Binding="{Binding NLagerbestand, StringFormat=N2}" Width="60">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="Padding" Value="0,0,5,0"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding UnterMindestbestand}" Value="True">
+                                                    <Setter Property="Foreground" Value="#D32F2F"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Einkauf..." Binding="{Binding AufEinkaufsliste, StringFormat=N2}" Width="60">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="Padding" Value="0,0,5,0"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="In Auftraegen" Binding="{Binding InAuftraegen, StringFormat=N2}" Width="75">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="Padding" Value="0,0,5,0"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Im Zulauf" Binding="{Binding ImZulauf, StringFormat=N2}" Width="60">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="Padding" Value="0,0,5,0"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Gewinn" Binding="{Binding Gewinn, StringFormat=N2}" Width="60">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="Padding" Value="0,0,5,0"/>
+                                            <Setter Property="Foreground" Value="Green"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Buttons unter der Liste -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5">
+                            <Button Content="Artikel" Padding="10,3" Margin="0,0,5,0"/>
+                            <Button Content="Artikel anlegen..." Padding="10,3" Margin="0,0,5,0" Click="Neu_Click"/>
+                            <Button Content="Loeschen" Padding="10,3" Margin="0,0,5,0" Click="ContextMenu_Loeschen_Click"/>
+                            <Button Content="Drucken" Padding="10,3" Margin="0,0,5,0"/>
+                            <Button Content="Auf Einkaufsliste setzen..." Padding="10,3" Margin="0,0,5,0"/>
+                        </StackPanel>
+
+                        <!-- Statuszeile -->
+                        <Border Grid.Row="2" Background="#f0f0f0" Padding="5,3">
+                            <TextBlock x:Name="txtArtikelAnzahl" Text="0 Artikel" HorizontalAlignment="Right" FontSize="11"/>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch" Background="#e0e0e0"/>
+
+                <!-- Detail-Tabs unten rechts -->
+                <Border Grid.Row="3" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="0,0,5,5">
+                    <TabControl x:Name="tabDetails" BorderThickness="0" Padding="0">
+                        <TabItem Header="eBay-Vorlagen"/>
+                        <TabItem Header="Attribute/Felder/Merkmale"/>
+                        <TabItem Header="Eigene Uebersichten" IsSelected="True">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Sub-Tabs -->
+                                <StackPanel Orientation="Horizontal" Margin="5">
+                                    <Button x:Name="btnHistory" Content="History" Padding="8,3" Click="SubTab_Click" Tag="History"
+                                            Background="#e0e0e0" Margin="0,0,2,0"/>
+                                    <Button x:Name="btnVkJeKunde" Content="vk je kunde" Padding="8,3" Click="SubTab_Click" Tag="VkJeKunde"
+                                            Background="Transparent" Margin="0,0,2,0"/>
+                                    <Button x:Name="btnVkMonat" Content="VK/Monat" Padding="8,3" Click="SubTab_Click" Tag="VkMonat"
+                                            Background="Transparent" Margin="0,0,2,0"/>
+                                    <Button x:Name="btnVkUebersicht" Content="Vk Uebersicht" Padding="8,3" Click="SubTab_Click" Tag="VkUebersicht"
+                                            Background="Transparent" Margin="0,0,2,0"/>
+                                    <Button x:Name="btnChargen" Content="Chargen" Padding="8,3" Click="SubTab_Click" Tag="Chargen"
+                                            Background="Transparent" Margin="0,0,2,0"/>
+                                </StackPanel>
+
+                                <!-- History DataGrid -->
+                                <DataGrid x:Name="dgHistory" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                                          BorderThickness="0" HeadersVisibility="Column" RowHeight="20" FontSize="11">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Datum" Binding="{Binding Datum, StringFormat=dd.MM.yyyy}" Width="80"/>
+                                        <DataGridTextColumn Header="Anzahl" Binding="{Binding Anzahl}" Width="50"/>
+                                        <DataGridTextColumn Header="Art" Binding="{Binding Art}" Width="100"/>
+                                        <DataGridTextColumn Header="Auftrag" Binding="{Binding Auftrag}" Width="80"/>
+                                        <DataGridTextColumn Header="Kommentar" Binding="{Binding Kommentar}" Width="120"/>
+                                        <DataGridTextColumn Header="MHD" Binding="{Binding MHD}" Width="50"/>
+                                        <DataGridTextColumn Header="Charge" Binding="{Binding Charge}" Width="60"/>
+                                        <DataGridTextColumn Header="Kunde" Binding="{Binding Kunde}" Width="60"/>
+                                        <DataGridTextColumn Header="Firma" Binding="{Binding Firma}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="5">
+                                    <Button Content="Bearbeiten" Padding="10,3" Margin="0,0,5,0"/>
+                                    <Button Content="Uebersicht loeschen" Padding="10,3"/>
+                                </StackPanel>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+            </Grid>
+        </Grid>
 
         <!-- Statusleiste -->
-        <Border Grid.Row="3" Background="#f0f0f0" Padding="20,10" BorderBrush="#ddd" BorderThickness="0,1,0,0">
+        <Border Grid.Row="2" Background="#e8e8e8" Padding="8,5" BorderBrush="#ccc" BorderThickness="0,1,0,0">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="txtStatus" Text="Bereit" Foreground="#666"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="Bearbeiten" Click="Bearbeiten_Click"
-                            Padding="12,5" Margin="0,0,10,0" x:Name="btnBearbeiten" IsEnabled="False"/>
-                    <Button Content="Lagerbestand" Click="Lagerbestand_Click"
-                            Padding="12,5" Margin="0,0,10,0" x:Name="btnLager" IsEnabled="False"/>
-                    <Button Content="Preise" Click="Preise_Click"
-                            Padding="12,5" x:Name="btnPreise" IsEnabled="False"/>
-                </StackPanel>
+                <TextBlock x:Name="txtStatus" Text="Bereit" Foreground="#666" FontSize="11"/>
             </Grid>
         </Border>
     </Grid>

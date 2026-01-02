@@ -11,482 +11,1432 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Border Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="20,15">
+        <!-- Header wie JTL -->
+        <Border Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="15,12">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Button Content="Zurück" Click="Zurueck_Click" Padding="10,5"/>
-                <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
-                    <TextBlock x:Name="txtTitel" Text="Artikel" FontSize="20" FontWeight="SemiBold"/>
-                    <TextBlock x:Name="txtSubtitel" Text="" FontSize="12" Foreground="#666"/>
+
+                <!-- Artikelbild Platzhalter -->
+                <Border Width="48" Height="48" Background="#f0f0f0" BorderBrush="#ddd" BorderThickness="1" CornerRadius="4">
+                    <Image x:Name="imgArtikel" Stretch="Uniform" Margin="4"/>
+                </Border>
+
+                <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="txtTitel" Text="Artikel" FontSize="18" FontWeight="SemiBold" Foreground="#0078D4"/>
+                    <TextBlock x:Name="txtSubtitel" Text="Hier koennen Sie Stammdaten, Preise und andere wichtige Daten pflegen."
+                               FontSize="11" Foreground="#666" TextWrapping="Wrap" MaxWidth="600"/>
                 </StackPanel>
-                <TextBlock x:Name="txtArtNr" Grid.Column="2" FontSize="16" Foreground="#0078D4"
-                           FontWeight="SemiBold" VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Zurueck" Click="Zurueck_Click" Padding="12,6" Margin="0,0,10,0"/>
+                    <Button x:Name="btnLabelHinzufuegen" Content="Label hinzufuegen" Padding="12,6"
+                            Background="#fff" BorderBrush="#0078D4" Foreground="#0078D4"/>
+                </StackPanel>
             </Grid>
         </Border>
 
         <!-- Textmeldungen -->
-        <controls:TextmeldungPanel x:Name="pnlTextmeldungen" Grid.Row="1" Margin="20,10,20,0"/>
+        <controls:TextmeldungPanel x:Name="pnlTextmeldungen" Grid.Row="1" Margin="15,8,15,0"/>
 
-        <!-- Inhalt -->
-        <TabControl x:Name="tabControl" Grid.Row="2" Margin="20,15,20,0" SelectionChanged="TabControl_SelectionChanged">
-            <!-- Tab: Grunddaten -->
-            <TabItem Header="Grunddaten">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                    <Grid>
+        <!-- Tab Control wie JTL -->
+        <TabControl x:Name="tabControl" Grid.Row="2" Margin="15,10,15,0" SelectionChanged="TabControl_SelectionChanged">
+
+            <!-- ==================== TAB 1: ALLGEMEIN ==================== -->
+            <TabItem Header="Allgemein">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid Margin="15">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="20"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*" MinWidth="400"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="420" MinWidth="350"/>
                         </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                        <!-- Linke Spalte -->
-                        <StackPanel>
-                            <TextBlock Text="Identifikation" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,15"/>
+                        <!-- Stammdaten -->
+                        <GroupBox Header="Stammdaten" Padding="10">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="35"/>
-                                    <RowDefinition Height="35"/>
-                                    <RowDefinition Height="35"/>
-                                    <RowDefinition Height="35"/>
-                                    <RowDefinition Height="35"/>
-                                    <RowDefinition Height="35"/>
+                                    <RowDefinition Height="30"/>
+                                    <RowDefinition Height="30"/>
+                                    <RowDefinition Height="30"/>
+                                    <RowDefinition Height="30"/>
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Text="Artikelnummer:" VerticalAlignment="Center"/>
-                                <TextBox x:Name="txtArtNrEdit" Grid.Column="1" Height="28"/>
+                                <TextBox x:Name="txtArtNrEdit" Grid.Column="1" Height="24"/>
+                                <TextBlock Text="GTIN:" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <TextBox x:Name="txtGTIN" Grid.Column="3" Height="24"/>
+                                <CheckBox x:Name="chkInaktiv" Grid.Column="4" Content="Artikel inaktiv" VerticalAlignment="Center" Margin="15,0,0,0"/>
 
-                                <TextBlock Text="Barcode/EAN:" Grid.Row="1" VerticalAlignment="Center"/>
-                                <TextBox x:Name="txtBarcode" Grid.Row="1" Grid.Column="1" Height="28"/>
+                                <TextBlock Text="Artikelname:" Grid.Row="1" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtName" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Height="24"/>
+                                <TextBlock Text="Sortiernummer:" Grid.Row="1" Grid.Column="4" VerticalAlignment="Center" Margin="15,0,0,0"/>
 
-                                <TextBlock Text="Hersteller-Nr:" Grid.Row="2" VerticalAlignment="Center"/>
-                                <TextBox x:Name="txtHAN" Grid.Row="2" Grid.Column="1" Height="28"/>
+                                <TextBlock Text="Hersteller:" Grid.Row="2" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="cmbHersteller" Grid.Row="2" Grid.Column="1" Height="24"
+                                          DisplayMemberPath="CName" SelectedValuePath="KHersteller"/>
+                                <TextBlock Text="HAN:" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <TextBox x:Name="txtHAN" Grid.Row="2" Grid.Column="3" Height="24"/>
 
-                                <TextBlock Text="Suchbegriffe:" Grid.Row="3" VerticalAlignment="Center"/>
-                                <TextBox x:Name="txtSuchbegriffe" Grid.Row="3" Grid.Column="1" Height="28"/>
-
-                                <TextBlock Text="Sortierung:" Grid.Row="4" VerticalAlignment="Center"/>
-                                <TextBox x:Name="txtSortierung" Grid.Row="4" Grid.Column="1" Height="28" Width="80" HorizontalAlignment="Left"/>
+                                <TextBlock Text="Steuerklasse:" Grid.Row="3" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="cmbSteuerklasse" Grid.Row="3" Grid.Column="1" Height="24"
+                                          DisplayMemberPath="CName" SelectedValuePath="KSteuerklasse"/>
+                                <TextBlock Text="Versandklasse:" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <ComboBox x:Name="cmbVersandklasse" Grid.Row="3" Grid.Column="3" Height="24"
+                                          DisplayMemberPath="CName" SelectedValuePath="KVersandklasse"/>
                             </Grid>
+                        </GroupBox>
 
-                            <TextBlock Text="Beschreibung" FontWeight="SemiBold" FontSize="14" Margin="0,25,0,15"/>
+                        <!-- Kategorisierung -->
+                        <GroupBox Header="Kategorisierung" Grid.Column="2" Padding="10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*" MinHeight="80"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="30"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Kategorien:" FontSize="11" Foreground="#666"/>
+                                <ListBox x:Name="lstKategorien" Grid.Row="1" Margin="0,5,0,10" MinHeight="60"/>
+                                <Button x:Name="btnKategorieZuweisen" Grid.Row="1" Content="Zuweisen" Click="BtnKategorieZuweisen_Click"
+                                        HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="10,4" Margin="0,0,0,5"/>
+                                <TextBlock Text="Warengruppe:" Grid.Row="2" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="cmbWarengruppe" Grid.Row="3" Height="24"
+                                          DisplayMemberPath="CName" SelectedValuePath="KWarengruppe"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Preise -->
+                        <GroupBox Header="Preise" Grid.Row="1" Padding="10" Margin="0,10,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="90"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="35"/>
+                                    <RowDefinition Height="28"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <TextBlock Text="Name:" VerticalAlignment="Center"/>
-                                <TextBox x:Name="txtName" Grid.Column="1" Height="28"/>
-
-                                <TextBlock Text="Beschreibung:" Grid.Row="1" VerticalAlignment="Top" Margin="0,5,0,0"/>
-                                <TextBox x:Name="txtBeschreibung" Grid.Row="1" Grid.Column="1" Height="80"
-                                         AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
-                            </Grid>
-                        </StackPanel>
-
-                        <!-- Rechte Spalte -->
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Preise" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,15"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="100"/>
-                                    <ColumnDefinition Width="100"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="35"/>
-                                    <RowDefinition Height="35"/>
-                                    <RowDefinition Height="35"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Text="VK Netto:" VerticalAlignment="Center"/>
-                                <TextBox x:Name="txtVKNetto" Grid.Column="1" Height="28"/>
-                                <TextBlock Text="EUR" Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#666"/>
-
-                                <TextBlock Text="UVP:" Grid.Row="1" VerticalAlignment="Center"/>
-                                <TextBox x:Name="txtUVP" Grid.Row="1" Grid.Column="1" Height="28"/>
-                                <TextBlock Text="EUR" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#666"/>
-
-                                <TextBlock Text="EK Netto:" Grid.Row="2" VerticalAlignment="Center"/>
-                                <TextBox x:Name="txtEKNetto" Grid.Row="2" Grid.Column="1" Height="28"/>
-                                <TextBlock Text="EUR" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#666"/>
-                            </Grid>
-
-                            <TextBlock Text="Klassifikation" FontWeight="SemiBold" FontSize="14" Margin="0,25,0,15"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="100"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="35"/>
-                                    <RowDefinition Height="35"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Text="Hersteller:" VerticalAlignment="Center"/>
-                                <ComboBox x:Name="cmbHersteller" Grid.Column="1" Height="28"
-                                          DisplayMemberPath="CName" SelectedValuePath="KHersteller"/>
-
-                                <TextBlock Text="Steuerklasse:" Grid.Row="1" VerticalAlignment="Center"/>
-                                <ComboBox x:Name="cmbSteuerklasse" Grid.Row="1" Grid.Column="1" Height="28"
-                                          DisplayMemberPath="CName" SelectedValuePath="KSteuerklasse"/>
-                            </Grid>
-
-                            <TextBlock Text="Status" FontWeight="SemiBold" FontSize="14" Margin="0,25,0,15"/>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="100"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="30"/>
-                                    <RowDefinition Height="30"/>
-                                    <RowDefinition Height="30"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Text="Aktiv:" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="chkAktiv" Grid.Column="1" IsChecked="True" VerticalAlignment="Center"/>
-
-                                <TextBlock Text="Top-Artikel:" Grid.Row="1" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="chkTopArtikel" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center"/>
-
-                                <TextBlock Text="MHD-Pflichtig:" Grid.Row="2" VerticalAlignment="Center"/>
-                                <CheckBox x:Name="chkMHD" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
-                            </Grid>
-
-                            <!-- MSV3-Bestaende -->
-                            <Border x:Name="pnlMSV3" Background="#E3F2FD" BorderBrush="#2196F3" BorderThickness="1"
-                                    CornerRadius="4" Padding="15" Margin="0,25,0,0" Visibility="Collapsed">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                        <TextBlock Text="MSV3-Verfuegbarkeit" FontWeight="SemiBold" FontSize="14" Foreground="#1565C0"/>
-                                        <Button x:Name="btnMSV3Refresh" Content="Aktualisieren" Click="MSV3Refresh_Click"
-                                                Padding="8,2" Margin="15,0,0,0" FontSize="11"/>
-                                    </StackPanel>
-                                    <ItemsControl x:Name="lstMSV3Bestaende">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Background="White" BorderBrush="#BBDEFB" BorderThickness="1"
-                                                        CornerRadius="3" Padding="10,8" Margin="0,0,0,5">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="*"/>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <StackPanel>
-                                                            <TextBlock Text="{Binding LieferantName}" FontWeight="SemiBold"/>
-                                                            <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="#666"/>
-                                                        </StackPanel>
-                                                        <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                                                            <TextBlock Text="{Binding BestandText}" FontSize="16" FontWeight="Bold"
-                                                                       Foreground="{Binding BestandFarbe}" HorizontalAlignment="Right"/>
-                                                            <TextBlock Text="{Binding PreisText}" FontSize="11" Foreground="#666"
-                                                                       HorizontalAlignment="Right"/>
-                                                        </StackPanel>
-                                                    </Grid>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <TextBlock x:Name="txtMSV3Status" Text="" FontSize="11" Foreground="#666" Margin="0,5,0,0"/>
+                                <TextBlock Text="Brutto-VK:" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="txtBruttoVK" Grid.Column="1" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Text="Netto-VK:" Grid.Column="2" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtVKNetto" Grid.Column="3" Height="24"/>
+                                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center" Margin="15,0,0,0">
+                                    <TextBlock Text="UVP (brutto):" Margin="0,0,5,0"/>
+                                    <TextBox x:Name="txtUVP" Width="80" Height="24"/>
+                                    <TextBlock Text="Ø Einkaufspreis:" Margin="15,0,5,0"/>
+                                    <TextBox x:Name="txtEKNetto" Width="80" Height="24"/>
+                                    <TextBlock Text="Letzter EK:" Margin="15,0,5,0"/>
+                                    <TextBlock x:Name="txtLetzterEK" FontWeight="SemiBold"/>
                                 </StackPanel>
-                            </Border>
-                        </StackPanel>
+
+                                <!-- Kundengruppen-Preise Tabs -->
+                                <TabControl x:Name="tabPreise" Grid.Row="1" Grid.ColumnSpan="5" Margin="0,10,0,0" Height="180">
+                                    <TabItem Header="Global">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <DataGrid x:Name="dgPreiseGlobal" AutoGenerateColumns="False" CanUserAddRows="False"
+                                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28"
+                                                      BorderThickness="0" SelectionMode="Single">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Kundengruppe" Binding="{Binding CKundengruppe}" Width="150" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="Rabatt %" Binding="{Binding FRabatt, StringFormat=N1}" Width="70" IsReadOnly="True">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="VK Netto" Binding="{Binding FNettoPreis, StringFormat=N2}" Width="90">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="VK Brutto" Binding="{Binding FBruttoPreis, StringFormat=N2}" Width="90" IsReadOnly="True">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Staffeln" Binding="{Binding AnzahlStaffeln}" Width="60" IsReadOnly="True">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,0">
+                                                <Button x:Name="btnStaffelpreise" Content="Staffelpreise..." Click="BtnStaffelpreise_Click"
+                                                        Padding="10,3" Margin="0,0,10,0"/>
+                                                <Button x:Name="btnPreisLoeschen" Content="Preis loeschen" Click="BtnPreisLoeschen_Click"
+                                                        Padding="10,3"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem Header="Kunden">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <DataGrid x:Name="dgKundenpreise" AutoGenerateColumns="False" CanUserAddRows="False"
+                                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28"
+                                                      BorderThickness="0" SelectionMode="Single">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Vor- und Nachname" Width="140" IsReadOnly="True">
+                                                        <DataGridTextColumn.Binding>
+                                                            <MultiBinding StringFormat="{}{0} {1}">
+                                                                <Binding Path="CVorname"/>
+                                                                <Binding Path="CNachname"/>
+                                                            </MultiBinding>
+                                                        </DataGridTextColumn.Binding>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Firma" Binding="{Binding CFirma}" Width="120" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="Kunden-Nr." Binding="{Binding CKundenNr}" Width="80" IsReadOnly="True"/>
+                                                    <DataGridTextColumn Header="Netto" Binding="{Binding FNettoPreis, StringFormat=N4}" Width="80" IsReadOnly="True">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Rabatt %" Binding="{Binding FProzent, StringFormat=N2}" Width="70" IsReadOnly="True">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,0">
+                                                <Button x:Name="btnKundenpreisHinzufuegen" Content="Hinzufuegen" Click="BtnKundenpreisHinzufuegen_Click"
+                                                        Padding="10,3" Margin="0,0,10,0"/>
+                                                <Button x:Name="btnKundenpreisBearbeiten" Content="Bearbeiten" Click="BtnKundenpreisBearbeiten_Click"
+                                                        Padding="10,3" Margin="0,0,10,0"/>
+                                                <Button x:Name="btnKundenpreisEntfernen" Content="Entfernen" Click="BtnKundenpreisEntfernen_Click"
+                                                        Padding="10,3"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Lager-Bereich links unten -->
+                        <GroupBox Header="Lager" Grid.Row="2" Grid.RowSpan="2" Padding="10" Margin="0,10,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*" MinHeight="120"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Lager-Tabs -->
+                                <TabControl x:Name="tabLager" Height="200">
+                                    <TabItem Header="Lager">
+                                        <Grid Margin="5">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                <CheckBox x:Name="chkBestandsfuehrung" Content="Bestandsfuehrung aktiv" Margin="0,0,20,0"/>
+                                                <TextBlock x:Name="txtVerfuegbarText" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <Grid Grid.Row="1">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="80"/>
+                                                </Grid.ColumnDefinitions>
+                                                <RadioButton x:Name="rbAufLager" Content="Auf Lager:" GroupName="Lager" IsChecked="True"/>
+                                                <TextBlock x:Name="txtAufLager" Grid.Column="1" FontWeight="SemiBold" Foreground="#28a745"/>
+                                                <RadioButton x:Name="rbInAuftraegen" Grid.Column="2" Content="In Auftraegen:" GroupName="Lager"/>
+                                                <TextBlock x:Name="txtInAuftraegen" Grid.Column="3"/>
+                                                <RadioButton x:Name="rbImZulauf" Grid.Column="4" Content="Im Zulauf:" GroupName="Lager"/>
+                                                <TextBlock x:Name="txtImZulauf" Grid.Column="5"/>
+                                            </Grid>
+                                            <!-- Lager-DataGrid -->
+                                            <DataGrid x:Name="dgLagerBestand" Grid.Row="1" Margin="0,35,0,0" AutoGenerateColumns="False"
+                                                      IsReadOnly="True" HeadersVisibility="Column" RowHeight="26">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Lagername" Binding="{Binding CLagerName}" Width="150"/>
+                                                    <DataGridTextColumn Header="Bestand" Binding="{Binding FBestand, StringFormat=N0}" Width="70">
+                                                        <DataGridTextColumn.ElementStyle>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                            </Style>
+                                                        </DataGridTextColumn.ElementStyle>
+                                                    </DataGridTextColumn>
+                                                    <DataGridTextColumn Header="Lagertyp" Binding="{Binding CLagerTyp}" Width="80"/>
+                                                    <DataGridTextColumn Header="Mindestbe..." Binding="{Binding FMindestbestand, StringFormat=N0}" Width="80"/>
+                                                    <DataGridTextColumn Header="Maximalb..." Binding="{Binding FMaximalbestand, StringFormat=N0}" Width="80"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem Header="Lageroptionen">
+                                        <Grid Margin="10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Optionen" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                                <CheckBox x:Name="chkSeriennummer" Content="Artikel mit Seriennummer"/>
+                                                <CheckBox x:Name="chkSeriennummerVerfolgen" Content="Seriennummer verfolgen" Margin="20,5,0,0"/>
+                                                <CheckBox x:Name="chkMHD" Content="Mindesthaltbarkeitsdatum" Margin="0,8,0,0"/>
+                                                <CheckBox x:Name="chkCharge" Content="Charge" Margin="0,8,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="Tage bis Versand" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                                <TextBlock Text="Beschaffungszeit, wenn ausverkauft:"/>
+                                                <RadioButton x:Name="rbBeschaffungAuto" Content="Automatisch ermitteln" Margin="0,5,0,0"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                                    <RadioButton x:Name="rbBeschaffungManuell" Content="Manuell setzen"/>
+                                                    <TextBox x:Name="txtBeschaffungszeit" Width="50" Height="22" Margin="10,0,0,0"/>
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                                    <TextBlock Text="Zusaetzliche Bearbeitungszeit:"/>
+                                                    <TextBox x:Name="txtBearbeitungszeit" Width="50" Height="22" Margin="10,0,0,0"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem Header="Lagerbestand">
+                                        <DataGrid x:Name="dgLagerbestandDetail" AutoGenerateColumns="False" IsReadOnly="True"
+                                                  HeadersVisibility="Column" RowHeight="24" Margin="5">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Lagername" Binding="{Binding CWarenLagerName}" Width="150"/>
+                                                <DataGridTextColumn Header="Bestand" Binding="{Binding FAufLager, StringFormat=N4}" Width="80"/>
+                                                <DataGridTextColumn Header="Lagertyp" Binding="{Binding CLagerTyp}" Width="80"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </TabItem>
+                                    <TabItem Header="Ueberverkaeufe">
+                                        <Grid Margin="10">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            <CheckBox x:Name="chkUeberverkaeufe" Content="Ueberverkaeufe moeglich"/>
+                                            <DataGrid x:Name="dgUeberverkaeufe" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                                                      HeadersVisibility="Column" RowHeight="24" Margin="0,10,0,0">
+                                                <DataGrid.Columns>
+                                                    <DataGridCheckBoxColumn Header="" Binding="{Binding Aktiv, Mode=OneWay}" Width="30"/>
+                                                    <DataGridTextColumn Header="Verkaufskanal" Binding="{Binding CKanal}" Width="*"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem Header="Artikelzustaende">
+                                        <DataGrid x:Name="dgArtikelzustaende" AutoGenerateColumns="False" IsReadOnly="True"
+                                                  HeadersVisibility="Column" RowHeight="24" Margin="5">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Artikelnummer" Binding="{Binding CArtNr}" Width="120"/>
+                                                <DataGridTextColumn Header="Artikelzustand" Binding="{Binding CZustand}" Width="120"/>
+                                                <DataGridTextColumn Header="Lager" Binding="{Binding CLager}" Width="100"/>
+                                                <DataGridTextColumn Header="Bestand" Binding="{Binding FBestand, StringFormat=N0}" Width="80"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </TabItem>
+                                </TabControl>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Rechte Spalte: TabControl mit allen Optionen -->
+                        <TabControl x:Name="tabRechteSeite" Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Margin="0,10,0,0">
+                            <!-- Tab: Grundpreis/Einheit -->
+                            <TabItem Header="Grundpreis/Einheit">
+                                <Grid Margin="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="30"/>
+                                        <RowDefinition Height="30"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="30"/>
+                                        <RowDefinition Height="30"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Verkaufseinheit:" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="cmbVerkaufseinheit" Grid.Column="1" Width="100" Height="24" HorizontalAlignment="Left"/>
+
+                                    <TextBlock Text="Inhalt/Menge:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                                        <TextBox x:Name="txtInhaltMenge" Width="60" Height="24"/>
+                                        <ComboBox x:Name="cmbInhaltEinheit" Width="80" Height="24" Margin="5,0,0,0"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Grundpreis" Grid.Row="2" FontWeight="SemiBold" Margin="0,10,0,5"/>
+
+                                    <CheckBox x:Name="chkGrundpreisAusweisen" Grid.Row="3" Grid.ColumnSpan="2" Content="Grundpreis ausweisen"/>
+
+                                    <TextBlock Text="Bezugsmenge:" Grid.Row="4" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal">
+                                        <TextBox x:Name="txtBezugsmenge" Width="60" Height="24"/>
+                                        <ComboBox x:Name="cmbBezugseinheit" Width="80" Height="24" Margin="5,0,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </TabItem>
+
+                            <!-- Tab: Abnahme -->
+                            <TabItem Header="Abnahme">
+                                <Grid Margin="10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="80"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="30"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Allgemein" FontWeight="SemiBold" Grid.ColumnSpan="4"/>
+                                    </Grid>
+                                    <Grid Grid.Row="1" Margin="0,10,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="120"/>
+                                            <ColumnDefinition Width="80"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="Mindestabnahme:" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtMindestabnahme" Grid.Column="1" Width="70" Height="24" HorizontalAlignment="Left"/>
+                                        <TextBlock Text="Abnahmeintervall:" Grid.Column="2" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="txtAbnahmeintervall" Grid.Column="3" Width="70" Height="24" HorizontalAlignment="Left"/>
+
+                                        <DataGrid x:Name="dgAbnahmeKundengruppen" Grid.Row="1" Grid.ColumnSpan="4"
+                                                  AutoGenerateColumns="False" HeadersVisibility="Column" RowHeight="24" Margin="0,10,0,0">
+                                            <DataGrid.Columns>
+                                                <DataGridCheckBoxColumn Header="" Binding="{Binding Aktiv}" Width="30"/>
+                                                <DataGridTextColumn Header="Kundengruppe" Binding="{Binding CKundengruppe}" Width="120" IsReadOnly="True"/>
+                                                <DataGridTextColumn Header="Abnahmeintervall" Binding="{Binding NAbnahmeintervall}" Width="100"/>
+                                                <DataGridTextColumn Header="Mindestabnahme" Binding="{Binding NMindestabnahme}" Width="100"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                    </Grid>
+                                </Grid>
+                            </TabItem>
+
+                            <!-- Tab: Verkaufskanaele -->
+                            <TabItem Header="Verkaufskanaele">
+                                <Grid Margin="10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Artikel hervorheben" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                                        <CheckBox x:Name="chkTopArtikel" Content="Top-Artikel"/>
+                                        <CheckBox x:Name="chkNeuImSortiment" Content="Neu im Sortiment seit" Margin="15,0,0,0"/>
+                                        <DatePicker x:Name="dpNeuSeit" Width="120" Margin="5,0,0,0"/>
+                                        <Button x:Name="btnAendern" Content="Aendern" Padding="10,2" Margin="10,0,0,0"/>
+                                    </StackPanel>
+                                    <DataGrid x:Name="dgVerkaufskanaele" Grid.Row="2" AutoGenerateColumns="False"
+                                              IsReadOnly="True" HeadersVisibility="Column" RowHeight="24">
+                                        <DataGrid.Columns>
+                                            <DataGridCheckBoxColumn Header="" Binding="{Binding Aktiv, Mode=OneWay}" Width="30"/>
+                                            <DataGridTextColumn Header="Verkaufskanal/Filialen" Binding="{Binding Name}" Width="180"/>
+                                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </Grid>
+                            </TabItem>
+
+                            <!-- Tab: Masse/Gewicht -->
+                            <TabItem Header="Masse/Gewicht">
+                                <Grid Margin="10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <GroupBox Header="Masse" Padding="10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="60"/>
+                                                <ColumnDefinition Width="70"/>
+                                                <ColumnDefinition Width="30"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30"/>
+                                                <RowDefinition Height="30"/>
+                                                <RowDefinition Height="30"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="Laenge:" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="txtLaenge" Grid.Column="1" Width="60" Height="24" HorizontalAlignment="Left"/>
+                                            <TextBlock Text="cm" Grid.Column="2" VerticalAlignment="Center"/>
+
+                                            <TextBlock Text="Breite:" Grid.Row="1" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="txtBreite" Grid.Row="1" Grid.Column="1" Width="60" Height="24" HorizontalAlignment="Left"/>
+                                            <TextBlock Text="cm" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/>
+
+                                            <TextBlock Text="Hoehe:" Grid.Row="2" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="txtHoehe" Grid.Row="2" Grid.Column="1" Width="60" Height="24" HorizontalAlignment="Left"/>
+                                            <TextBlock Text="cm" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </GroupBox>
+                                    <GroupBox Header="Gewicht" Grid.Column="1" Padding="10" Margin="10,0,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="100"/>
+                                                <ColumnDefinition Width="70"/>
+                                                <ColumnDefinition Width="25"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30"/>
+                                                <RowDefinition Height="30"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="Artikelgewicht:" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="txtGewicht" Grid.Column="1" Width="60" Height="24" HorizontalAlignment="Left"/>
+                                            <TextBlock Text="kg" Grid.Column="2" VerticalAlignment="Center"/>
+
+                                            <TextBlock Text="Versandgewicht:" Grid.Row="1" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="txtVersandgewicht" Grid.Row="1" Grid.Column="1" Width="60" Height="24" HorizontalAlignment="Left"/>
+                                            <TextBlock Text="kg" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </GroupBox>
+                                </Grid>
+                            </TabItem>
+
+                            <!-- Tab: Eigene Felder -->
+                            <TabItem Header="Eigene Felder">
+                                <DataGrid x:Name="dgEigeneFelderAllgemein" AutoGenerateColumns="False"
+                                          HeadersVisibility="Column" RowHeight="26" Margin="5">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Feldname" Binding="{Binding CFeldname}" Width="150" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="Wert" Binding="{Binding CWert}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </TabItem>
+                        </TabControl>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
 
-            <!-- Tab: Lager + Chargen -->
-            <TabItem Header="Lager" x:Name="tabChargen">
-                <Grid Margin="20">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+            <!-- ==================== TAB 2: BESCHREIBUNG ==================== -->
+            <TabItem Header="Beschreibung" x:Name="tabBeschreibung">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                    <!-- Lagereinstellungen -->
-                    <StackPanel MaxWidth="400" HorizontalAlignment="Left">
-                        <TextBlock Text="Lagereinstellungen" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,15"/>
+                    <!-- Ausgabewege TreeView -->
+                    <GroupBox Header="Ausgabewege" Padding="5">
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="130"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="35"/>
-                                <RowDefinition Height="35"/>
-                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-
-                            <TextBlock Text="Bestand:" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="txtBestand" Grid.Column="1" VerticalAlignment="Center"
-                                       FontSize="16" FontWeight="SemiBold"/>
-
-                            <TextBlock Text="Mindestbestand:" Grid.Row="1" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
-                                <TextBox x:Name="txtMindestbestand" Width="80" Height="28"/>
-                                <TextBlock Text="Stueck" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#666"/>
-                            </StackPanel>
-
-                            <TextBlock Text="Lagerartikel:" Grid.Row="2" VerticalAlignment="Center"/>
-                            <CheckBox x:Name="chkLagerartikel" Grid.Row="2" Grid.Column="1" IsChecked="True" VerticalAlignment="Center"/>
+                            <TextBlock Text="Kanal" FontSize="11" Foreground="#666" Margin="0,0,0,5"/>
+                            <TreeView x:Name="tvAusgabewege" Grid.Row="1">
+                                <TreeViewItem Header="JTL-Wawi" IsExpanded="True">
+                                    <TreeViewItem Header="Drucken/Mailen/Faxen"/>
+                                </TreeViewItem>
+                            </TreeView>
                         </Grid>
-                    </StackPanel>
+                    </GroupBox>
 
-                    <!-- Chargen-Ueberschrift -->
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,25,0,15">
-                        <TextBlock Text="Chargenbestaende" FontWeight="SemiBold" FontSize="14"/>
-                        <TextBlock x:Name="txtChargenAnzahl" Text="" FontSize="12" Foreground="#888" VerticalAlignment="Center" Margin="15,0,0,0"/>
-                    </StackPanel>
-
-                    <!-- Chargen DataGrid mit Summenzeile -->
-                    <Grid Grid.Row="2" MinHeight="200">
+                    <!-- Beschreibungsfelder -->
+                    <Grid Grid.Column="1" Margin="15,0,0,0">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
-                            <RowDefinition Height="40"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <DataGrid x:Name="dgChargen" AutoGenerateColumns="False" IsReadOnly="True"
-                                  SelectionMode="Single" SelectionUnit="FullRow"
-                                  GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                                  BorderThickness="1" BorderBrush="#ddd"
-                                  RowBackground="White" AlternatingRowBackground="#fafafa">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="ChargenNr" Binding="{Binding CChargenNr}" Width="120" FontWeight="SemiBold"/>
-                                <DataGridTextColumn Header="Lager" Binding="{Binding CLagerName}" Width="100"/>
-                                <DataGridTextColumn Header="Bestand" Binding="{Binding FBestand, StringFormat=N0}" Width="80">
-                                    <DataGridTextColumn.ElementStyle>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                        </Style>
-                                    </DataGridTextColumn.ElementStyle>
-                                </DataGridTextColumn>
-                                <DataGridTextColumn Header="MHD" Binding="{Binding DMHD, StringFormat=dd.MM.yyyy}" Width="90"/>
-                                <DataGridTextColumn Header="Rest Tage" Binding="{Binding NTageRestMHD}" Width="70">
-                                    <DataGridTextColumn.ElementStyle>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="HorizontalAlignment" Value="Center"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding CMHDStatus}" Value="Abgelaufen">
-                                                    <Setter Property="Foreground" Value="#dc3545"/>
-                                                    <Setter Property="FontWeight" Value="Bold"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding CMHDStatus}" Value="Bald ablaufend">
-                                                    <Setter Property="Foreground" Value="#ffc107"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </DataGridTextColumn.ElementStyle>
-                                </DataGridTextColumn>
-                                <DataGridTemplateColumn Header="Status" Width="90">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Border CornerRadius="3" Padding="6,2" HorizontalAlignment="Left">
-                                                <Border.Style>
-                                                    <Style TargetType="Border">
-                                                        <Setter Property="Background" Value="#28a745"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding NGesperrt}" Value="True">
-                                                                <Setter Property="Background" Value="#dc3545"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding NQuarantaene}" Value="True">
-                                                                <Setter Property="Background" Value="#6c757d"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Border.Style>
-                                                <TextBlock Text="{Binding Status}" Foreground="White" FontSize="11"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Sperrgrund" Binding="{Binding CSperrgrund}" Width="150"/>
-                                <DataGridTextColumn Header="Eingang" Binding="{Binding DEingang, StringFormat=dd.MM.yyyy}" Width="90"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Sprache:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="cmbSprache" Width="120" Height="24">
+                                <ComboBoxItem Content="Deutsch" IsSelected="True"/>
+                                <ComboBoxItem Content="Englisch"/>
+                            </ComboBox>
+                        </StackPanel>
 
-                        <!-- Summenzeile Chargen -->
-                        <Border Grid.Row="1" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="1,0,1,1" Padding="10,8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="txtChargenSummeAnzahl" Text="0 Chargen" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <TextBlock Text="Summe Bestand:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                    <TextBlock x:Name="txtChargenSummeBestand" Text="0" FontWeight="Bold" Width="80" TextAlignment="Right" VerticalAlignment="Center" Foreground="#0078D4"/>
-                                    <TextBlock Text="Stueck" VerticalAlignment="Center" Foreground="#666" Margin="5,0,0,0"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Artikelname:" VerticalAlignment="Center" Width="100"/>
+                            <TextBox x:Name="txtNameBeschreibung" Width="400" Height="24"/>
+                        </StackPanel>
+
+                        <!-- Sub-Tabs Beschreibung/Metadaten -->
+                        <TabControl Grid.Row="2" Grid.RowSpan="5">
+                            <TabItem Header="Beschreibung">
+                                <Grid Margin="10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="120"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock x:Name="txtKurzbeschreibungLabel" Text="Kurzbeschreibung (0):"/>
+                                    <TextBox x:Name="txtKurzbeschreibung" Grid.Row="1" AcceptsReturn="True"
+                                             TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                             TextChanged="Kurzbeschreibung_TextChanged"/>
+                                    <Button Content="HTML-Editor" Grid.Row="2" HorizontalAlignment="Left" Padding="8,4" Margin="0,5,0,10"/>
+
+                                    <TextBlock x:Name="txtBeschreibungLabel" Grid.Row="3" Text="Beschreibung (0):"/>
+                                    <TextBox x:Name="txtBeschreibung" Grid.Row="4" AcceptsReturn="True"
+                                             TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                             TextChanged="Beschreibung_TextChanged"/>
+                                    <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,5,0,0">
+                                        <Button Content="HTML-Editor" Padding="8,4"/>
+                                        <Button Content="Texte uebersetzen (KI)" Padding="8,4" Margin="10,0,0,0" IsEnabled="False"/>
+                                        <Button Content="Texte optimieren (KI)" Padding="8,4" Margin="10,0,0,0" IsEnabled="False"/>
+                                    </StackPanel>
+                                </Grid>
+                            </TabItem>
+                            <TabItem Header="Metadaten (SEO)">
+                                <Grid Margin="10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Text="Title-Tag:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtTitleTag" Grid.Column="1" Height="24" Margin="0,0,0,8"/>
+
+                                    <TextBlock Text="Meta Description:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtMetaDescription" Grid.Row="1" Grid.Column="1" Height="60"
+                                             AcceptsReturn="True" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                                    <TextBlock Text="Meta Keywords:" Grid.Row="2" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtMetaKeywords" Grid.Row="2" Grid.Column="1" Height="24" Margin="0,0,0,8"/>
+
+                                    <TextBlock Text="URL-Pfad:" Grid.Row="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtUrlPfad" Grid.Row="3" Grid.Column="1" Height="24"/>
+                                </Grid>
+                            </TabItem>
+                        </TabControl>
                     </Grid>
                 </Grid>
             </TabItem>
 
-            <!-- Tab: Chargen-Ausgaenge (Rueckrufverfolgung) -->
-            <TabItem Header="Chargen-Ausgaenge" x:Name="tabChargenAusgaenge">
-                <Grid Margin="20">
+            <!-- ==================== TAB 3: BESTAENDE ==================== -->
+            <TabItem Header="Bestaende" x:Name="tabBestaende">
+                <Grid Margin="15">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="40"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="150"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                        <TextBlock Text="Chargen-Ausgaenge (Rueckrufverfolgung)" FontWeight="SemiBold" FontSize="14"/>
-                        <TextBlock x:Name="txtAusgaengeAnzahl" Text="" FontSize="12" Foreground="#888" VerticalAlignment="Center" Margin="15,0,0,0"/>
-                    </StackPanel>
+                    <!-- Bestandsuebersicht -->
+                    <Border Background="#e8f4fc" Padding="10" CornerRadius="4" Margin="0,0,0,15">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Content="Auf Lager:" GroupName="BestandFilter" IsChecked="True" Margin="0,0,15,0"/>
+                            <TextBlock x:Name="txtBestandAufLager" Text="0" FontWeight="Bold" Margin="0,0,20,0"/>
+                            <RadioButton Content="Reserviert:" GroupName="BestandFilter" Margin="0,0,15,0"/>
+                            <TextBlock x:Name="txtBestandReserviert" Text="0" Margin="0,0,20,0"/>
+                            <RadioButton Content="Im Zulauf:" GroupName="BestandFilter" Margin="0,0,15,0"/>
+                            <TextBlock x:Name="txtBestandImZulauf" Text="0" Margin="0,0,20,0"/>
+                            <TextBlock Text="Verfuegbar:" Margin="0,0,5,0"/>
+                            <TextBlock x:Name="txtBestandVerfuegbar" Text="0" FontWeight="Bold" Foreground="#28a745" Margin="0,0,20,0"/>
+                            <TextBlock Text="Auf Einkaufsliste:" Margin="0,0,5,0"/>
+                            <TextBlock x:Name="txtBestandEinkaufsliste" Text="0" Margin="0,0,20,0"/>
+                            <TextBlock Text="Gesperrt:" Margin="0,0,5,0"/>
+                            <TextBlock x:Name="txtBestandGesperrt" Text="0" Foreground="#dc3545"/>
+                            <Button x:Name="btnFBAHistorie" Content="FBA-Historie" HorizontalAlignment="Right" Padding="10,4" Margin="30,0,0,0"/>
+                        </StackPanel>
+                    </Border>
 
-                    <DataGrid x:Name="dgChargenAusgaenge" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
-                              SelectionMode="Single" SelectionUnit="FullRow"
-                              GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                              BorderThickness="1" BorderBrush="#ddd"
-                              RowBackground="White" AlternatingRowBackground="#fafafa">
+                    <!-- Bestaende DataGrid -->
+                    <DataGrid x:Name="dgBestaende" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Datum" Binding="{Binding DAusgang, StringFormat=dd.MM.yyyy}" Width="90"/>
-                            <DataGridTextColumn Header="ChargenNr" Binding="{Binding CChargenNr}" Width="120" FontWeight="SemiBold"/>
-                            <DataGridTextColumn Header="MHD" Binding="{Binding DMHD, StringFormat=dd.MM.yyyy}" Width="90"/>
-                            <DataGridTextColumn Header="Menge" Binding="{Binding FMenge, StringFormat=N0}" Width="70">
+                            <DataGridTextColumn Header="Lager" Binding="{Binding CLagerName}" Width="150"/>
+                            <DataGridTextColumn Header="Auf Lager" Binding="{Binding FAufLager, StringFormat=N4}" Width="100">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
-                                        <Setter Property="FontWeight" Value="SemiBold"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Lieferschein" Binding="{Binding CLieferscheinNr}" Width="120"/>
-                            <DataGridTextColumn Header="Auftrag" Binding="{Binding CBestellNr}" Width="100"/>
-                            <DataGridTextColumn Header="Kd-Nr" Binding="{Binding CKundenNr}" Width="80"/>
-                            <DataGridTextColumn Header="Kunde" Binding="{Binding KundeName}" Width="*"/>
-                            <DataGridTextColumn Header="Ort" Binding="{Binding KundeOrt}" Width="120"/>
+                            <DataGridTextColumn Header="Kommentar 1" Binding="{Binding CKommentar1}" Width="120"/>
+                            <DataGridTextColumn Header="Kommentar 2" Binding="{Binding CKommentar2}" Width="120"/>
+                            <DataGridTextColumn Header="Lagerplatz" Binding="{Binding CLagerplatz}" Width="120"/>
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <!-- Summenzeile -->
-                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="1,0,1,1" Padding="10,8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="txtAusgaengeSummeAnzahl" Text="0 Ausgaenge" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <TextBlock Text="Summe Menge:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                <TextBlock x:Name="txtAusgaengeSummeMenge" Text="0" FontWeight="Bold" Width="80" TextAlignment="Right" VerticalAlignment="Center" Foreground="#0078D4"/>
-                                <TextBlock Text="Stueck" VerticalAlignment="Center" Foreground="#666" Margin="5,0,0,0"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
+                    <!-- Chargen/Seriennummern und Lieferantenbestaende -->
+                    <Grid Grid.Row="3" Margin="0,15,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Chargen/MHD Section (fuer Chargenartikel) -->
+                        <GroupBox x:Name="grpChargen" Header="Chargen/Mindesthaltbarkeitsdatum (MHD)" Padding="5">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="txtChargeSuche" Height="24" Margin="0,0,5,5"/>
+                                <TextBox x:Name="txtMHDSuche" Grid.Column="1" Height="24" Margin="5,0,0,5"/>
+                                <DataGrid x:Name="dgChargen" Grid.Row="1" Grid.ColumnSpan="2" AutoGenerateColumns="False" IsReadOnly="True"
+                                          HeadersVisibility="Column" RowHeight="24" BorderThickness="0">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Charge" Binding="{Binding CChargenNr}" Width="120"/>
+                                        <DataGridTextColumn Header="MHD" Binding="{Binding DMHD, StringFormat=d}" Width="100"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Seriennummern Section (fuer Seriennummernartikel) -->
+                        <GroupBox x:Name="grpSeriennummern" Header="Seriennummern" Padding="5" Visibility="Collapsed">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBox x:Name="txtSeriennummerSuche" Height="24" Margin="0,0,0,5"/>
+                                <DataGrid x:Name="dgSeriennummern" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                                          HeadersVisibility="Column" RowHeight="24" BorderThickness="0">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Seriennummer" Binding="{Binding CSeriennummer}" Width="100"/>
+                                        <DataGridTextColumn Header="Warenlager" Binding="{Binding CLagerName}" Width="100"/>
+                                        <DataGridTextColumn Header="Lieferant" Binding="{Binding CLieferant}" Width="100"/>
+                                        <DataGridTextColumn Header="Beschreibung1" Binding="{Binding CBeschreibung1}" Width="100"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <Button Content="Seriennummer ausbuchen" Grid.Row="2" HorizontalAlignment="Left" Padding="8,4" Margin="0,5,0,0"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Lieferantenbestaende" Grid.Column="2" Padding="5">
+                            <DataGrid x:Name="dgLieferantenBestaende" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" RowHeight="24">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Lieferant" Binding="{Binding CLieferant}" Width="*"/>
+                                    <DataGridTextColumn Header="Lieferantenbestand" Binding="{Binding FBestand, StringFormat=N0}" Width="120">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+                    </Grid>
                 </Grid>
             </TabItem>
 
-            <!-- Tab: Kundengruppen-Preise -->
-            <TabItem Header="Kundenpreise" x:Name="tabKundenpreise">
-                <Grid Margin="20">
+            <!-- ==================== TAB 4: LIEFERANTEN ==================== -->
+            <TabItem Header="Lieferanten" x:Name="tabLieferanten">
+                <Grid Margin="15">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="150"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="Preise nach Kundengruppen" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,15"/>
+                    <TextBlock Text="Dieser Artikel kann von folgenden Lieferanten bezogen werden" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
-                    <DataGrid x:Name="dgKundenPreise" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="False"
-                              SelectionMode="Single" SelectionUnit="FullRow" CanUserAddRows="False" CanUserDeleteRows="False"
-                              GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                              BorderThickness="1" BorderBrush="#ddd"
-                              RowBackground="White" AlternatingRowBackground="#f8f9fa"
-                              RowHeight="36" MaxWidth="600" HorizontalAlignment="Left">
-                        <DataGrid.ColumnHeaderStyle>
-                            <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#f5f5f5"/>
-                                <Setter Property="Padding" Value="12,8"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                                <Setter Property="BorderBrush" Value="#ddd"/>
-                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                            </Style>
-                        </DataGrid.ColumnHeaderStyle>
+                    <!-- Lieferanten DataGrid -->
+                    <DataGrid x:Name="dgArtikelLieferanten" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" SelectionChanged="ArtikelLieferanten_SelectionChanged"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Kundengruppe" Binding="{Binding CKundengruppe}" Width="200" IsReadOnly="True">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="Padding" Value="8,0"/>
-                                        <Setter Property="VerticalAlignment" Value="Center"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
-                            <DataGridTemplateColumn Header="VK Netto (EUR)" Width="130">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding FNettoPreis, StringFormat=N2}"
-                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                   FontWeight="SemiBold" Foreground="#0078D4" Padding="8,0"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                                <DataGridTemplateColumn.CellEditingTemplate>
-                                    <DataTemplate>
-                                        <TextBox Text="{Binding FNettoPreis, StringFormat=N2, UpdateSourceTrigger=PropertyChanged}"
-                                                 HorizontalContentAlignment="Right" VerticalContentAlignment="Center"
-                                                 BorderThickness="1" Padding="5,3"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellEditingTemplate>
-                            </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="Rabatt %" Width="100">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Padding="8,0">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="{Binding FProzent, StringFormat=N1}"/>
-                                                    <Setter Property="Foreground" Value="#666"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding FProzent}" Value="0">
-                                                            <Setter Property="Foreground" Value="#ccc"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                                <DataGridTemplateColumn.CellEditingTemplate>
-                                    <DataTemplate>
-                                        <TextBox Text="{Binding FProzent, StringFormat=N1, UpdateSourceTrigger=PropertyChanged}"
-                                                 HorizontalContentAlignment="Right" VerticalContentAlignment="Center"
-                                                 BorderThickness="1" Padding="5,3"/>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellEditingTemplate>
-                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CLieferantName}" Width="180"/>
+                            <DataGridTextColumn Header="Artikelnummer" Binding="{Binding CLiefArtNr}" Width="120"/>
+                            <DataGridTextColumn Header="Artikelname" Binding="{Binding CName}" Width="180"/>
+                            <DataGridTextColumn Header="Bestand" Binding="{Binding FLagerbestand, StringFormat=N0}" Width="70"/>
+                            <DataGridTextColumn Header="Netto-EK" Binding="{Binding FEKNetto, StringFormat=N4}" Width="90"/>
+                            <DataGridTextColumn Header="Waehrung" Binding="{Binding CWaehrung}" Width="70"/>
+                            <DataGridTextColumn Header="Lieferzeit in Ta..." Binding="{Binding NLieferzeit}" Width="100"/>
+                            <DataGridCheckBoxColumn Header="Dropshipping" Binding="{Binding NDropShipping}" Width="90"/>
+                            <DataGridTextColumn Header="Mindestabnahme" Binding="{Binding NMindestAbnahme}" Width="110"/>
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,15,0,0">
-                        <Button Content="Kundenpreise speichern" Click="KundenpreiseSpeichern_Click" Padding="15,8"
-                                Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    <!-- Buttons und Lieferanten-Auswahl -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,10">
+                        <TextBlock Text="Lieferanten:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <ComboBox x:Name="cmbLieferantenAuswahl" Width="200" Height="26" DisplayMemberPath="CFirma"/>
+                        <Button Content="Als Lieferant hinzufuegen" Padding="10,4" Margin="10,0,0,0" Click="LieferantHinzufuegen_Click"/>
+                        <Button Content="Als Standardlieferant setzen" Padding="10,4" Margin="10,0,0,0" Click="StandardLieferantSetzen_Click"/>
+                        <Button Content="Als Standard-Dropshipper setzen" Padding="10,4" Margin="10,0,0,0"/>
+                        <Button Content="Entfernen" Padding="10,4" Margin="10,0,0,0" Click="LieferantEntfernen_Click"/>
+                    </StackPanel>
+
+                    <!-- Lieferanten-Details -->
+                    <GroupBox x:Name="grpLieferantDetails" Grid.Row="3" Padding="10">
+                        <GroupBox.Header>
+                            <TextBlock x:Name="txtLieferantDetailsHeader" Text="Lieferant - Details"/>
+                        </GroupBox.Header>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="300"/>
+                                <ColumnDefinition Width="250"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Lieferanten-Artikeldaten -->
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="30"/>
+                                        <RowDefinition Height="30"/>
+                                        <RowDefinition Height="30"/>
+                                        <RowDefinition Height="30"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Text="Artikelname:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtLiefArtikelname" Grid.Column="1" Height="24"/>
+
+                                    <TextBlock Text="Artikelnummer:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtLiefArtikelnummer" Grid.Row="1" Grid.Column="1" Height="24"/>
+
+                                    <TextBlock Text="Netto-EK:" Grid.Row="2" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal">
+                                        <TextBox x:Name="txtLiefNettoEK" Width="80" Height="24"/>
+                                        <TextBlock Text="USt. in %:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+                                        <TextBox x:Name="txtLiefUSt" Width="50" Height="24" IsReadOnly="True"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Kommentar:" Grid.Row="3" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtLiefKommentar" Grid.Row="3" Grid.Column="1" Height="24"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Staffelpreise -->
+                            <GroupBox Header="Staffelpreise" Grid.Column="1" Margin="15,0,0,0" Padding="5">
+                                <DataGrid x:Name="dgStaffelpreise" AutoGenerateColumns="False" CanUserAddRows="True"
+                                          HeadersVisibility="Column" RowHeight="24">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Verpacku..." Binding="{Binding CVerpackung}" Width="70"/>
+                                        <DataGridTextColumn Header="Startmenge" Binding="{Binding NStartmenge}" Width="75"/>
+                                        <DataGridTextColumn Header="Staffelpreis" Binding="{Binding FStaffelpreis, StringFormat=N4}" Width="80"/>
+                                        <DataGridTextColumn Header="%" Binding="{Binding FProzent}" Width="40"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </GroupBox>
+
+                            <!-- VPE -->
+                            <GroupBox Header="Verpackungseinheit (VPE)" Grid.Column="2" Margin="15,0,0,0" Padding="10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                        <RowDefinition Height="28"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Text="Verpackungseinheit:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtVPEEinheit" Grid.Column="1" Height="24"/>
+
+                                    <TextBlock Text="Menge pro VPE:" Grid.Row="1" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtVPEMenge" Grid.Row="1" Grid.Column="1" Width="80" Height="24" HorizontalAlignment="Left"/>
+
+                                    <TextBlock Text="Netto-EK pro VPE:" Grid.Row="2" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtVPENettoEK" Grid.Row="2" Grid.Column="1" Width="80" Height="24" HorizontalAlignment="Left"/>
+
+                                    <TextBlock Text="Mindestabnahme:" Grid.Row="3" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
+                                        <TextBox x:Name="txtLiefMindestabnahme" Width="60" Height="24"/>
+                                        <TextBlock x:Name="txtMindestabnahmeEinheit" Text="x VPE" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                    </StackPanel>
+
+                                    <TextBlock Text="Lieferzeit in Tagen:" Grid.Row="4" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtLiefLieferzeit" Grid.Row="4" Grid.Column="1" Width="60" Height="24" HorizontalAlignment="Left"/>
+
+                                    <TextBlock Text="Lieferantenbestand:" Grid.Row="5" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal">
+                                        <TextBox x:Name="txtLiefBestand" Width="60" Height="24"/>
+                                        <TextBlock x:Name="txtLiefBestandDatum" Text="" VerticalAlignment="Center" Margin="5,0,0,0" Foreground="#666"/>
+                                    </StackPanel>
+                                </Grid>
+                            </GroupBox>
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <!-- ==================== TAB 5: BILDER ==================== -->
+            <TabItem Header="Bilder" x:Name="tabBilder">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="200"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Plattform-Liste -->
+                    <GroupBox Header="Plattform" Padding="5">
+                        <ListBox x:Name="lstBildPlattformen">
+                            <ListBoxItem Content="Alle" IsSelected="True"/>
+                            <ListBoxItem Content="Amazon"/>
+                            <ListBoxItem Content="JTL-Shop"/>
+                            <ListBoxItem Content="eBay"/>
+                        </ListBox>
+                    </GroupBox>
+
+                    <!-- Dateien-Grid -->
+                    <GroupBox Header="Dateien" Grid.Column="1" Margin="10,0" Padding="5">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <DataGrid x:Name="dgBilder" AutoGenerateColumns="False" IsReadOnly="True"
+                                      SelectionChanged="Bilder_SelectionChanged"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Dateiname" Binding="{Binding CDateiname}" Width="200"/>
+                                    <DataGridTextColumn Header="Sortier-Nr." Binding="{Binding NSort}" Width="70"/>
+                                    <DataGridTextColumn Header="Importdatum" Binding="{Binding DImport, StringFormat=dd.MM.yyyy}" Width="90"/>
+                                    <DataGridTextColumn Header="Aenderungsdatum" Binding="{Binding DAenderung, StringFormat=dd.MM.yyyy}" Width="110"/>
+                                    <DataGridTextColumn Header="Aufloesung" Binding="{Binding CAufloesung}" Width="90"/>
+                                    <DataGridTextColumn Header="Groesse in KB" Binding="{Binding NGroesseKB}" Width="90"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="^" Width="30" Padding="4"/>
+                                <Button Content="v" Width="30" Padding="4" Margin="5,0,0,0"/>
+                                <Button Content="Sortierung uebernehmen" Padding="8,4" Margin="10,0,0,0"/>
+                                <Button Content="Hinzufuegen" Padding="8,4" Margin="10,0,0,0" Click="BildHinzufuegen_Click"/>
+                                <Button Content="Ersetzen" Padding="8,4" Margin="5,0,0,0"/>
+                                <Button Content="Exportieren" Padding="8,4" Margin="5,0,0,0"/>
+                                <Button Content="Loeschen" Padding="8,4" Margin="5,0,0,0" Click="BildLoeschen_Click"/>
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
+
+                    <!-- Vorschau und Plattform-Aktivierung -->
+                    <StackPanel Grid.Column="2">
+                        <GroupBox Header="Bildvorschau" Padding="5" Height="180">
+                            <Border Background="#f5f5f5" BorderBrush="#ddd" BorderThickness="1">
+                                <Image x:Name="imgVorschau" Stretch="Uniform" Margin="5"/>
+                            </Border>
+                        </GroupBox>
+
+                        <GroupBox Header="Aktivierung fuer Plattform" Margin="0,10,0,0" Padding="5">
+                            <DataGrid x:Name="dgBildPlattformen" AutoGenerateColumns="False" CanUserAddRows="False"
+                                      HeadersVisibility="Column" RowHeight="24">
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding Aktiv}" Width="50"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CPlattformName}" Width="*" IsReadOnly="True"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
                     </StackPanel>
                 </Grid>
             </TabItem>
 
-            <!-- Tab: Validierung (Eigene Felder) -->
-            <TabItem Header="Validierung">
+            <!-- ==================== TAB 6: ATTRIBUTE/MERKMALE ==================== -->
+            <TabItem Header="Attribute/Merkmale" x:Name="tabAttribute">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Attribute -->
+                    <GroupBox Header="Attribute" Padding="10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Plattform:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <ComboBox x:Name="cmbAttributPlattform" Width="150" Height="24">
+                                    <ComboBoxItem Content="JTL-Wawi" IsSelected="True"/>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <DataGrid x:Name="dgAttribute" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Attributgruppe" Binding="{Binding CAttributgruppe}" Width="150"/>
+                                    <DataGridTextColumn Header="Attribut" Binding="{Binding CAttribut}" Width="120"/>
+                                    <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="150"/>
+                                    <DataGridTextColumn Header="Wert (Deutsch)" Binding="{Binding CWertDE}" Width="150"/>
+                                    <DataGridTextColumn Header="Wert (Englisch)" Binding="{Binding CWertEN}" Width="150"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Attribut zuweisen" Padding="10,4" Click="AttributZuweisen_Click"/>
+                                <Button Content="Attributwert aendern" Padding="10,4" Margin="10,0,0,0"/>
+                                <Button Content="Loeschen" Padding="10,4" Margin="10,0,0,0"/>
+                                <Button Content="Attribute verwalten" Padding="10,4" HorizontalAlignment="Right" Margin="50,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
+
+                    <!-- Merkmale -->
+                    <GroupBox Header="Merkmale" Grid.Row="2" Padding="10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <DataGrid x:Name="dgMerkmale" AutoGenerateColumns="False" IsReadOnly="True"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Merkmal" Binding="{Binding CMerkmal}" Width="180"/>
+                                    <DataGridTextColumn Header="Wert (Deutsch)" Binding="{Binding CWertDE}" Width="200"/>
+                                    <DataGridTextColumn Header="Wert (Englisch)" Binding="{Binding CWertEN}" Width="200"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="Merkmal zuweisen" Padding="10,4" Click="MerkmalZuweisen_Click"/>
+                                <Button Content="Loeschen" Padding="10,4" Margin="10,0,0,0"/>
+                                <Button Content="Merkmale verwalten" Padding="10,4" HorizontalAlignment="Right" Margin="50,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <!-- ==================== TAB 7: SONSTIGES ==================== -->
+            <TabItem Header="Sonstiges" x:Name="tabSonstiges">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="15"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Erweiterte Optionen -->
+                        <GroupBox Header="Erweiterte Optionen und Informationen" Padding="10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="30"/>
+                                    <RowDefinition Height="30"/>
+                                    <RowDefinition Height="30"/>
+                                    <RowDefinition Height="30"/>
+                                    <RowDefinition Height="30"/>
+                                    <RowDefinition Height="30"/>
+                                    <RowDefinition Height="30"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="ISBN:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtISBN" Grid.Column="1" Height="24"/>
+                                <TextBlock Text="Amazon-FNSKU:" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <TextBox x:Name="txtFNSKU" Grid.Column="3" Height="24"/>
+
+                                <TextBlock Text="UPC:" Grid.Row="1" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtUPC" Grid.Row="1" Grid.Column="1" Height="24"/>
+                                <TextBlock Text="Gefahrnummer:" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <TextBox x:Name="txtGefahrnummer" Grid.Row="1" Grid.Column="3" Height="24"/>
+
+                                <TextBlock Text="UN-Nummer:" Grid.Row="2" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtUNNummer" Grid.Row="2" Grid.Column="1" Height="24"/>
+                                <TextBlock Text="Herkunftsland:" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <TextBox x:Name="txtHerkunftsland" Grid.Row="2" Grid.Column="3" Height="24"/>
+
+                                <TextBlock Text="TARIC-Code:" Grid.Row="3" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtTARIC" Grid.Row="3" Grid.Column="1" Height="24"/>
+                                <TextBlock Text="Artikeltyp:" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <ComboBox x:Name="cmbArtikeltyp" Grid.Row="3" Grid.Column="3" Height="24">
+                                    <ComboBoxItem Content="Standard" IsSelected="True"/>
+                                    <ComboBoxItem Content="Stueckliste"/>
+                                    <ComboBoxItem Content="Variationsartikel"/>
+                                </ComboBox>
+
+                                <TextBlock Text="Eigene ID:" Grid.Row="4" VerticalAlignment="Center"/>
+                                <TextBox x:Name="txtEigeneID" Grid.Row="4" Grid.Column="1" Height="24"/>
+                                <TextBlock Text="Verfuegbarkeit:" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                <ComboBox x:Name="cmbVerfuegbarkeit" Grid.Row="4" Grid.Column="3" Height="24">
+                                    <ComboBoxItem Content="Keine Angabe" IsSelected="True"/>
+                                    <ComboBoxItem Content="Sofort lieferbar"/>
+                                    <ComboBoxItem Content="2-3 Werktage"/>
+                                </ComboBox>
+
+                                <TextBlock Text="Verantw. Person:" Grid.Row="5" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="cmbVerantwortlich" Grid.Row="5" Grid.Column="1" Height="24"/>
+
+                                <CheckBox x:Name="chkInPreisliste" Grid.Row="6" Content="In Preisliste aufnehmen"/>
+                                <CheckBox x:Name="chkBestellvorschlaege" Grid.Row="6" Grid.Column="1" Content="Bestellvorschlaege ignorieren"/>
+                                <CheckBox x:Name="chkRabatteIgnorieren" Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="2" Content="Rabatte ignorieren"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Anmerkung -->
+                        <GroupBox Header="Anmerkung" Grid.Column="2" Padding="10">
+                            <TextBox x:Name="txtAnmerkung" AcceptsReturn="True" TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto" Height="150"/>
+                        </GroupBox>
+
+                        <!-- Cross-Selling -->
+                        <GroupBox Header="Cross-Selling" Grid.Row="1" Padding="10" Margin="0,10,0,0">
+                            <TabControl Height="180">
+                                <TabItem Header="Cross-Selling">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <GroupBox Header="Gruppen" Padding="5">
+                                            <DataGrid x:Name="dgCrossSellingGruppen" AutoGenerateColumns="False" IsReadOnly="True" RowHeight="24">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="*"/>
+                                                    <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="*"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </GroupBox>
+                                        <GroupBox Header="Artikel" Grid.Column="1" Padding="5" Margin="10,0,0,0">
+                                            <DataGrid x:Name="dgCrossSellingArtikel" AutoGenerateColumns="False" IsReadOnly="True" RowHeight="24">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Artikelnummer" Binding="{Binding CArtNr}" Width="*"/>
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                        </GroupBox>
+                                    </Grid>
+                                </TabItem>
+                                <TabItem Header="Gutscheine">
+                                    <TextBlock Text="Gutscheine-Verwaltung..." Margin="10" Foreground="#666"/>
+                                </TabItem>
+                            </TabControl>
+                        </GroupBox>
+
+                        <!-- Suchbegriffe -->
+                        <GroupBox Header="Suchbegriffe fuer Onlineshop" Grid.Row="1" Grid.Column="2" Padding="10" Margin="0,10,0,0">
+                            <TextBox x:Name="txtSuchbegriffe" AcceptsReturn="True" TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto" Height="130"/>
+                        </GroupBox>
+
+                        <!-- Gebinde -->
+                        <GroupBox Header="Gebinde" Grid.Row="2" Padding="10" Margin="0,10,0,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <DataGrid x:Name="dgGebinde" AutoGenerateColumns="False" IsReadOnly="True"
+                                          HeadersVisibility="Column" RowHeight="26">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="GTIN" Binding="{Binding CGTIN}" Width="150"/>
+                                        <DataGridTextColumn Header="Menge" Binding="{Binding FMenge}" Width="80"/>
+                                        <DataGridTextColumn Header="Einheit" Binding="{Binding CEinheit}" Width="80"/>
+                                        <DataGridTextColumn Header="UPC" Binding="{Binding CUPC}" Width="120"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                                    <Button Content="Hinzufuegen" Padding="8,4"/>
+                                    <Button Content="Loeschen" Padding="8,4" Margin="10,0,0,0"/>
+                                    <Button Content="Einheiten verwalten" Padding="8,4" Margin="10,0,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </GroupBox>
+
+                        <!-- Identifikationsnummern -->
+                        <GroupBox Header="Identifikationsnummern" Grid.Row="2" Grid.Column="2" Padding="10" Margin="0,10,0,0">
+                            <TabControl>
+                                <TabItem Header="ePID">
+                                    <DataGrid x:Name="dgEPID" AutoGenerateColumns="False" RowHeight="24">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Marktplatz" Binding="{Binding CMarktplatz}" Width="150"/>
+                                            <DataGridTextColumn Header="ePID" Binding="{Binding CEPID}" Width="*"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </TabItem>
+                                <TabItem Header="ASIN">
+                                    <DataGrid x:Name="dgASIN" AutoGenerateColumns="False" RowHeight="24">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Marktplatz" Binding="{Binding CMarktplatz}" Width="150"/>
+                                            <DataGridTextColumn Header="ASIN" Binding="{Binding CASIN}" Width="*"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </TabItem>
+                            </TabControl>
+                        </GroupBox>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ==================== TAB 8: VARIATIONEN ==================== -->
+            <TabItem Header="Variationen" x:Name="tabVariationen">
+                <Grid Margin="15">
+                    <TextBlock Text="Variationen werden hier verwaltet..." Foreground="#666"/>
+                </Grid>
+            </TabItem>
+
+            <!-- ==================== TAB 9: VERKAUFSANAELE ==================== -->
+            <TabItem Header="Verkaufskanaele" x:Name="tabVerkaufskanaele">
+                <Grid Margin="15">
+                    <DataGrid x:Name="dgVerkaufskanaeleDetails" AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding NAktiv, Mode=OneWay}" Width="50"/>
+                            <DataGridTextColumn Header="Verkaufskanal" Binding="{Binding CKanalName}" Width="200"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding CStatus}" Width="100"/>
+                            <DataGridTextColumn Header="Letzte Aktualisierung" Binding="{Binding DLetzteAktualisierung, StringFormat=dd.MM.yyyy HH:mm}" Width="150"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <!-- ==================== TAB 10: STUECKLISTE/KONFIGURATOR ==================== -->
+            <TabItem Header="Stueckliste/Konfigurator" x:Name="tabStueckliste">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="200"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Stueckliste" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,10"/>
+
+                    <!-- Stueckliste DataGrid -->
+                    <DataGrid x:Name="dgStueckliste" Grid.Row="1" AutoGenerateColumns="False"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Puffer" Binding="{Binding NPuffer}" Width="60"/>
+                            <DataGridTextColumn Header="Artikelnummer" Binding="{Binding CArtNr}" Width="120"/>
+                            <DataGridTextColumn Header="Artikelname" Binding="{Binding CArtikelname}" Width="250"/>
+                            <DataGridTextColumn Header="Gewicht" Binding="{Binding FGewicht, StringFormat=N4}" Width="80"/>
+                            <DataGridTextColumn Header="Netto-VK" Binding="{Binding FNettoVK, StringFormat=N2}" Width="90"/>
+                            <DataGridTextColumn Header="Brutto-VK" Binding="{Binding FBruttoVK, StringFormat=N2}" Width="90"/>
+                            <DataGridCheckBoxColumn Header="Bestandsf..." Binding="{Binding NBestandsfuehrung}" Width="90"/>
+                            <DataGridTextColumn Header="Verfuegbar..." Binding="{Binding FVerfuegbar, StringFormat=N2}" Width="90"/>
+                            <DataGridCheckBoxColumn Header="Ueberverkaeufe" Binding="{Binding NUeberverkaeufe}" Width="100"/>
+                            <DataGridTextColumn Header="Menge" Binding="{Binding FMenge, StringFormat=N8}" Width="100">
+                                <DataGridTextColumn.CellStyle>
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Background" Value="#FFEBEE"/>
+                                    </Style>
+                                </DataGridTextColumn.CellStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Kommentar" Binding="{Binding CKommentar}" Width="150"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Buttons und Info -->
+                    <Grid Grid.Row="2" Margin="0,10,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Hinzufuegen" Padding="10,5" Click="StuecklisteHinzufuegen_Click"/>
+                            <Button Content="Entfernen" Padding="10,5" Margin="10,0,0,0" Click="StuecklisteEntfernen_Click"/>
+                            <Button Content="VK der Komponenten uebernehmen" Padding="10,5" Margin="10,0,0,0"/>
+                            <Button Content="^" Width="30" Padding="4" Margin="10,0,0,0"/>
+                            <Button Content="v" Width="30" Padding="4" Margin="5,0,0,0"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBlock x:Name="txtStuecklisteReservierungen" Text="Anzahl Reservierungen: 0" Margin="0,0,30,0"/>
+                            <TextBlock x:Name="txtStuecklisteNetto" Text="Netto-VK (alle Komponenten): 0,00"/>
+                            <TextBlock x:Name="txtStuecklisteBrutto" Text="(Brutto-VK: 0,00)" Margin="10,0,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Konfigurator -->
+                    <TextBlock Grid.Row="3" Text="Konfigurator" FontWeight="SemiBold" FontSize="14" Margin="0,20,0,10"/>
+
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="60"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <GroupBox Header="Ausgewaehlte Konfigurationsgruppen" Padding="5">
+                            <DataGrid x:Name="dgKonfigGruppenAusgewaehlt" AutoGenerateColumns="False" IsReadOnly="True" RowHeight="24">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="*"/>
+                                    <DataGridTextColumn Header="Kommentar" Binding="{Binding CKommentar}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+
+                        <!-- Transfer-Buttons -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <Button Content="&lt;" Width="40" Height="30" Margin="0,0,0,5"/>
+                            <Button Content="&gt;" Width="40" Height="30"/>
+                        </StackPanel>
+
+                        <GroupBox Header="Verfuegbare Konfigurationsgruppen" Grid.Column="2" Padding="5">
+                            <DataGrid x:Name="dgKonfigGruppenVerfuegbar" AutoGenerateColumns="False" IsReadOnly="True" RowHeight="24">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="*"/>
+                                    <DataGridTextColumn Header="Kommentar" Binding="{Binding CKommentar}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </GroupBox>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ==================== TAB 11: SONDERPREISE ==================== -->
+            <TabItem Header="Sonderpreise" x:Name="tabSonderpreise">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Sonderpreis-Einstellungen -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <CheckBox x:Name="chkSonderpreiseAktiv" Content="Sonderpreise aktivieren"/>
+                        <CheckBox x:Name="chkSonderpreiseDatum" Content="Sonderpreise aktivieren ab" Margin="30,0,0,0"/>
+                        <DatePicker x:Name="dpSonderpreisVon" Width="110" Margin="8,0,0,0"/>
+                        <CheckBox x:Name="chkSonderpreiseBis" Content="Bis einschliesslich" Margin="15,0,0,0"/>
+                        <DatePicker x:Name="dpSonderpreisBis" Width="110" Margin="8,0,0,0"/>
+                        <CheckBox x:Name="chkSonderpreiseMenge" Content="Bis Menge im Lager kleiner als" Margin="15,0,0,0"/>
+                        <TextBox x:Name="txtSonderpreisMenge" Width="60" Height="24" Margin="8,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Sonderpreise pro Plattform -->
+                    <TabControl x:Name="tabSonderpreisePlattform" Grid.Row="1">
+                        <TabItem Header="JTL-Wawi">
+                            <DataGrid x:Name="dgSonderpreise" AutoGenerateColumns="False" CanUserAddRows="False"
+                                      HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28">
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Header="" Binding="{Binding NAktiv}" Width="30"/>
+                                    <DataGridTextColumn Header="Kundengruppe" Binding="{Binding CKundengruppe}" Width="180" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="Sonderpreis netto" Binding="{Binding FSonderpreisNetto, StringFormat=N4}" Width="130">
+                                        <DataGridTextColumn.CellStyle>
+                                            <Style TargetType="DataGridCell">
+                                                <Setter Property="Background" Value="#FFEBEE"/>
+                                            </Style>
+                                        </DataGridTextColumn.CellStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Sonderpreis brutto" Binding="{Binding FSonderpreisBrutto, StringFormat=N4}" Width="130">
+                                        <DataGridTextColumn.CellStyle>
+                                            <Style TargetType="DataGridCell">
+                                                <Setter Property="Background" Value="#FFEBEE"/>
+                                            </Style>
+                                        </DataGridTextColumn.CellStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Steuersatz" Binding="{Binding FSteuersatz, StringFormat={}{0:N4} %}" Width="100" IsReadOnly="True"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+            </TabItem>
+
+            <!-- ==================== TAB 12: DATEIEN ==================== -->
+            <TabItem Header="Dateien" x:Name="tabDateien">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <DataGrid x:Name="dgDateien" AutoGenerateColumns="False" IsReadOnly="True"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="28">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Dateiname" Binding="{Binding CDateiname}" Width="250"/>
+                            <DataGridTextColumn Header="Typ" Binding="{Binding CTyp}" Width="80"/>
+                            <DataGridTextColumn Header="Groesse" Binding="{Binding NGroesse, StringFormat={}{0:N0} KB}" Width="100"/>
+                            <DataGridTextColumn Header="Hochgeladen am" Binding="{Binding DHochgeladen, StringFormat=dd.MM.yyyy}" Width="120"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Datei hinzufuegen" Padding="10,5"/>
+                        <Button Content="Herunterladen" Padding="10,5" Margin="10,0,0,0"/>
+                        <Button Content="Loeschen" Padding="10,5" Margin="10,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- ==================== TAB 13: EIGENE FELDER ==================== -->
+            <TabItem Header="Eigene Felder" x:Name="tabEigeneFelder">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
-                    <StackPanel MaxWidth="400" HorizontalAlignment="Left">
+                    <StackPanel MaxWidth="500" HorizontalAlignment="Left">
                         <!-- Validierung GroupBox -->
                         <GroupBox Header="Validierung" Margin="0,0,0,20">
                             <StackPanel Margin="10">
@@ -495,6 +1445,17 @@
                                 <CheckBox x:Name="chkValMedcan" Content="Medcan" Margin="0,0,0,10"/>
                                 <CheckBox x:Name="chkValTierarznei" Content="Tierarznei" Margin="0,0,0,10"/>
                                 <CheckBox x:Name="chkValSecurPharm" Content="SecurPharm" Margin="0,0,0,5"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- MHD-Pflicht -->
+                        <GroupBox Header="MHD-Verwaltung" Margin="0,0,0,20">
+                            <StackPanel Margin="10">
+                                <CheckBox x:Name="chkMHDPflichtig" Content="MHD-pflichtig"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <TextBlock Text="MHD-Warnung (Tage vor Ablauf):" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtMHDWarnung" Width="60" Height="24" Margin="10,0,0,0"/>
+                                </StackPanel>
                             </StackPanel>
                         </GroupBox>
 
@@ -507,18 +1468,30 @@
             </TabItem>
         </TabControl>
 
-        <!-- Footer -->
-        <Border Grid.Row="3" Background="White" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="20,15">
+        <!-- Footer mit Buttons -->
+        <Border Grid.Row="3" Background="White" BorderBrush="#ddd" BorderThickness="0,1,0,0" Padding="15,12">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="txtStatus" Text="" Foreground="#666" VerticalAlignment="Center"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="Abbrechen" Click="Zurueck_Click" Padding="20,8" Margin="0,0,10,0"/>
-                    <Button Content="Speichern" Click="Speichern_Click" Padding="20,8"
+
+                <!-- Statistik/Historie Buttons links -->
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="btnArtikelstatistik" Content="Artikelstatistik" Padding="10,6" Margin="0,0,10,0"/>
+                    <Button x:Name="btnArtikelhistorie" Content="Artikelhistorie" Padding="10,6"/>
+                </StackPanel>
+
+                <!-- Status -->
+                <TextBlock x:Name="txtStatus" Grid.Column="1" Text="" Foreground="#666"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                <!-- Speichern/Abbrechen -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="Speichern" Click="Speichern_Click" Padding="20,8" Margin="0,0,10,0"
                             Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    <Button Content="Abbrechen" Click="Zurueck_Click" Padding="15,8"/>
                 </StackPanel>
             </Grid>
         </Border>
