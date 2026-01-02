@@ -35,9 +35,9 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="*" MinHeight="200"/>
+            <RowDefinition Height="2*" MinHeight="200"/>
             <RowDefinition Height="5"/>
-            <RowDefinition Height="350" MinHeight="150"/>
+            <RowDefinition Height="*" MinHeight="150"/>
         </Grid.RowDefinitions>
 
         <!-- OBERER BEREICH: Kundenliste -->
@@ -164,9 +164,9 @@
             <!-- LINKE SEITE: Kundendetails + Tabs -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*" MinHeight="100"/>
+                    <RowDefinition Height="2*" MinHeight="100"/>
                     <RowDefinition Height="5"/>
-                    <RowDefinition Height="200" MinHeight="100"/>
+                    <RowDefinition Height="*" MinHeight="100"/>
                 </Grid.RowDefinitions>
 
                 <!-- 360-Grad Sicht -->

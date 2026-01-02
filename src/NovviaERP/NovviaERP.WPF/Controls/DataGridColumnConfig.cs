@@ -275,7 +275,18 @@ namespace NovviaERP.WPF.Controls
 
         private static Style CreateHeaderStyle(DataGrid grid, string viewName)
         {
-            var style = new Style(typeof(DataGridColumnHeader));
+            // WICHTIG: BasedOn verwenden um Standard-Sortierungs-Template zu erben!
+            // TryFindResource statt FindResource um Exception zu vermeiden
+            Style? baseStyle = null;
+            try
+            {
+                baseStyle = Application.Current.TryFindResource(typeof(DataGridColumnHeader)) as Style;
+            }
+            catch { /* Theme nicht verfuegbar */ }
+
+            var style = baseStyle != null
+                ? new Style(typeof(DataGridColumnHeader), baseStyle)
+                : new Style(typeof(DataGridColumnHeader));
 
             // Hole Einstellungen von GridStyleHelper
             var settings = GridStyleHelper.Instance.Settings;

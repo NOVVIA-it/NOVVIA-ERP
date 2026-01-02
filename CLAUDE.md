@@ -576,6 +576,44 @@ sqlcmd -S "localhost\S03NOVVIA" -d "Mandant_1" -E -i "Scripts\Setup-NOVVIA-Benut
 - `KundenView.xaml/cs` - Klickbare Auftrag/Rechnungsnummern
 - `MainWindow.xaml` - Menü bereinigt
 
+### WICHTIG: Grid-Modul (GridStyleHelper)
+
+**NIEMALS eigene DataGrid-Styles im XAML definieren!**
+
+Jedes DataGrid MUSS mit `GridStyleHelper.InitializeGrid()` initialisiert werden.
+
+**Verwendung in Views:**
+```csharp
+// Im Loaded-Event oder InitAsync:
+await GridStyleHelper.Instance.LoadSettingsAsync(_core, App.BenutzerId);
+GridStyleHelper.InitializeGrid(dgMeinGrid, "MeinView");
+
+// Oder kurz:
+await GridStyleHelper.InitializeGridAsync(dgMeinGrid, "MeinView", _core, App.BenutzerId);
+```
+
+**Was GridStyleHelper macht:**
+1. `ApplyStyle()` - Zeilenhöhe, Schriftart, Farben aus Design-Einstellungen
+2. `EnableColumnChooser()` - Spalten-Konfiguration (Rechtsklick auf Header)
+3. Sortierung, Spaltenbreiten, Reihenfolge werden pro Benutzer gespeichert
+
+**VERBOTEN im XAML (wird von GridStyleHelper überschrieben):**
+- `RowHeight`
+- `FontSize`
+- `RowBackground` / `AlternatingRowBackground`
+- `GridLinesVisibility`
+- `ColumnHeaderStyle`
+
+**Erlaubt im XAML:**
+- `AutoGenerateColumns`
+- `IsReadOnly`
+- `SelectionMode` / `SelectionUnit`
+- `HeadersVisibility="Column"`
+- `BorderThickness="0"`
+- Spalten-Definitionen
+
+**Dokumentation:** `NovviaERP.WPF/Controls/Base/GRID_REGELN.md`
+
 ### Nach PC-Neustart
 
 1. Build ausführen:
