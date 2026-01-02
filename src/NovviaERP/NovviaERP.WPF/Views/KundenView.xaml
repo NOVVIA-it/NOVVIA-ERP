@@ -8,323 +8,561 @@
         <Style x:Key="StatLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#666"/>
             <Setter Property="FontSize" Value="11"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="StatValue" TargetType="TextBlock">
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Margin" Value="0,2,0,8"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+        </Style>
+        <Style x:Key="FilterTextBox" TargetType="TextBox">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#ccc"/>
+        </Style>
+        <Style x:Key="FilterComboBox" TargetType="ComboBox">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Margin" Value="0,0,5,0"/>
+            <Setter Property="Background" Value="#f0f0f0"/>
+            <Setter Property="BorderBrush" Value="#ccc"/>
         </Style>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="*" MinHeight="200"/>
+            <RowDefinition Height="*" MinHeight="250"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="220"/>
+            <RowDefinition Height="350"/>
         </Grid.RowDefinitions>
 
-        <!-- OBERER BEREICH: Liste + Details nebeneinander -->
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="400"/>
-                <ColumnDefinition Width="350"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- LINKE SEITE: Filter + Kundenliste -->
-            <Grid Grid.Column="0">
+        <!-- OBERER BEREICH: Kundenliste -->
+        <Border Grid.Row="0" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Header -->
-                <Border Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="15,12">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="Kunden" FontSize="22" FontWeight="SemiBold" Foreground="#333"/>
-                            <TextBlock x:Name="txtAnzahl" Text="" FontSize="13" Foreground="#888" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Button Content="Nachricht" Padding="12,6" Margin="0,0,8,0" IsEnabled="False" x:Name="btnNachricht"/>
-                            <Button Content="+ Neuer Kunde" Click="Neu_Click"
-                                    Background="#0078D4" Foreground="White" Padding="12,6" BorderThickness="0"/>
-                        </StackPanel>
-                    </Grid>
+                <!-- Header: Kunden suchen -->
+                <Border Background="#e8e8e8" Padding="8,6" BorderBrush="#ccc" BorderThickness="0,0,0,1">
+                    <TextBlock Text="Kunden suchen" FontWeight="SemiBold" FontSize="12"/>
                 </Border>
 
-                <!-- Filter/Suche -->
-                <Border Grid.Row="1" Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="15,10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="txtSuche" Height="30" Padding="8,5" VerticalContentAlignment="Center"
-                                 KeyDown="TxtSuche_KeyDown" ToolTip="Name, Kundennr, E-Mail, PLZ..."/>
-                        <ComboBox x:Name="cboKundengruppe" Grid.Column="1" Width="140" Height="30" Margin="10,0,0,0"
-                                  DisplayMemberPath="CName" SelectionChanged="Filter_Changed">
-                            <ComboBox.Items>
-                                <ComboBoxItem Content="Alle Gruppen" IsSelected="True"/>
-                            </ComboBox.Items>
-                        </ComboBox>
-                        <Button Grid.Column="2" Content="Suchen" Click="Suchen_Click" Margin="10,0,0,0"
-                                Padding="12,5" Background="#0078D4" Foreground="White" BorderThickness="0"/>
-                        <Button Grid.Column="3" Content="X" Click="FilterReset_Click" Margin="5,0,0,0"
-                                Padding="8,5" ToolTip="Filter zuruecksetzen"/>
-                    </Grid>
-                </Border>
+                <!-- Filterleiste -->
+                <Grid Grid.Row="1" Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="txtSuche" Style="{StaticResource FilterTextBox}"
+                             KeyDown="TxtSuche_KeyDown" ToolTip="Eingeben oder Filter waehlen..."/>
+                    <Button Grid.Column="1" Content="T" Width="24" Height="24" Margin="2,0" ToolTip="Filter"/>
+                    <TextBox Grid.Column="2" x:Name="txtPLZ" Style="{StaticResource FilterTextBox}" Margin="5,0,0,0" ToolTip="PLZ"/>
+                    <TextBlock Grid.Column="3" Text="PLZ" VerticalAlignment="Center" Margin="3,0,8,0" Foreground="#888" FontSize="10"/>
+                    <TextBox Grid.Column="4" x:Name="txtAuftragRechnung" Style="{StaticResource FilterTextBox}" ToolTip="Auftrags-/Rechnungsnummer..."/>
+                    <ComboBox Grid.Column="5" x:Name="cboKategorie" Style="{StaticResource FilterComboBox}" Width="100" Margin="8,0">
+                        <ComboBoxItem Content="Kategorie..." IsSelected="True"/>
+                    </ComboBox>
+                    <ComboBox Grid.Column="6" x:Name="cboKundengruppe" Style="{StaticResource FilterComboBox}"
+                              DisplayMemberPath="CName" SelectionChanged="Filter_Changed">
+                        <ComboBox.Items>
+                            <ComboBoxItem Content="Alle Gruppen" IsSelected="True"/>
+                        </ComboBox.Items>
+                    </ComboBox>
+                    <TextBox Grid.Column="7" x:Name="txtLabel" Style="{StaticResource FilterTextBox}" Width="100" Margin="8,0" ToolTip="Label suchen..."/>
+                    <StackPanel Grid.Column="8" Orientation="Horizontal">
+                        <Button Content="🔄" Width="28" Height="24" Click="FilterReset_Click" ToolTip="Filter zurücksetzen" FontSize="12"/>
+                        <Button Content="🔍 Suchen" Margin="5,0,0,0" Padding="10,3" Click="Suchen_Click"
+                                Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    </StackPanel>
+                </Grid>
 
-                <!-- Kundenliste -->
-                <DataGrid x:Name="dgKunden" Grid.Row="2" Margin="10,10,10,0"
+                <!-- Kundenliste DataGrid -->
+                <DataGrid x:Name="dgKunden" Grid.Row="2" Margin="0"
                           AutoGenerateColumns="False" IsReadOnly="True"
                           SelectionMode="Single" SelectionUnit="FullRow"
-                          GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                          BorderThickness="1" BorderBrush="#ddd"
-                          RowBackground="White" AlternatingRowBackground="#fafafa"
-                          MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged">
+                          GridLinesVisibility="All" HeadersVisibility="Column"
+                          BorderThickness="0" HorizontalGridLinesBrush="#e0e0e0" VerticalGridLinesBrush="#e0e0e0"
+                          RowBackground="White" AlternatingRowBackground="#f9f9f9"
+                          MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged"
+                          CanUserResizeColumns="True" CanUserReorderColumns="True"
+                          FontSize="12">
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#f5f5f5"/>
+                            <Setter Property="Padding" Value="8,5"/>
+                            <Setter Property="BorderBrush" Value="#ddd"/>
+                            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                            <Setter Property="FontWeight" Value="Normal"/>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Kd-Nr" Binding="{Binding CKundenNr}" Width="80"/>
-                        <DataGridTextColumn Header="Firma" Binding="{Binding CFirma}" Width="180"/>
-                        <DataGridTextColumn Header="Vorname" Binding="{Binding CVorname}" Width="90" Visibility="Collapsed"/>
-                        <DataGridTextColumn Header="Nachname" Binding="{Binding CName}" Width="100" Visibility="Collapsed"/>
-                        <DataGridTextColumn Header="Firma/Name" Binding="{Binding Anzeigename}" Width="*"/>
-                        <DataGridTextColumn Header="PLZ" Binding="{Binding CPLZ}" Width="60"/>
-                        <DataGridTextColumn Header="Ort" Binding="{Binding COrt}" Width="100"/>
-                        <DataGridTextColumn Header="Land" Binding="{Binding CISO}" Width="45"/>
-                        <DataGridTextColumn Header="E-Mail" Binding="{Binding CMail}" Width="180" Visibility="Collapsed"/>
-                        <DataGridTextColumn Header="Telefon" Binding="{Binding CTel}" Width="120" Visibility="Collapsed"/>
-                        <DataGridTextColumn Header="Gruppe" Binding="{Binding Kundengruppe}" Width="90"/>
-                        <DataGridTextColumn Header="Strasse" Binding="{Binding CStrasse}" Width="150" Visibility="Collapsed"/>
-                        <DataGridTemplateColumn Header="" Width="30">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding CSperre}" Foreground="Red" FontWeight="Bold"
-                                               Visibility="{Binding IstGesperrt, Converter={StaticResource BoolToColorConverter}}"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Kundennummer" Binding="{Binding CKundenNr}" Width="60"/>
+                        <DataGridTextColumn Header="Firma" Binding="{Binding CFirma}" Width="133"/>
+                        <DataGridTextColumn Header="Nachname" Binding="{Binding CName}" Width="99"/>
+                        <DataGridTextColumn Header="Vorname" Binding="{Binding CVorname}" Width="89"/>
+                        <DataGridTextColumn Header="Telefon" Binding="{Binding CTel}" Width="142"/>
+                        <DataGridTextColumn Header="Mobil" Binding="{Binding CMobil}" Width="106"/>
+                        <DataGridTextColumn Header="E-Mail" Binding="{Binding CMail}" Width="196"/>
+                        <DataGridTextColumn Header="PLZ" Binding="{Binding CPLZ}" Width="52"/>
+                        <DataGridTextColumn Header="Ort" Binding="{Binding COrt}" Width="127"/>
+                        <DataGridTextColumn Header="Strasse" Binding="{Binding CStrasse}" Width="169"/>
+                        <DataGridTextColumn Header="Land" Binding="{Binding CLand}" Width="78"/>
+                        <DataGridTextColumn Header="Kundengruppe" Binding="{Binding Kundengruppe}" Width="94"/>
+                        <DataGridTextColumn Header="Webseite" Binding="{Binding CWww}" Width="192"/>
+                        <DataGridTextColumn Header="Label" Binding="{Binding CLabel}" Width="120"/>
+                        <DataGridTextColumn Header="Ust-IdNr." Binding="{Binding CUstId}" Width="100"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
-                <!-- Statusleiste -->
-                <Border Grid.Row="3" Background="#f8f8f8" Padding="15,8" BorderBrush="#ddd" BorderThickness="0,1,0,0">
+                <!-- Statuszeile -->
+                <Border Grid.Row="3" Background="#f5f5f5" Padding="8,4" BorderBrush="#ddd" BorderThickness="0,1,0,0">
                     <Grid>
-                        <TextBlock x:Name="txtStatus" Text="Bereit" Foreground="#666" FontSize="12"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="Bearbeiten" Click="Bearbeiten_Click" Padding="10,4" IsEnabled="False" x:Name="btnBearbeiten"/>
+                            <TextBlock x:Name="txtAnzahl" Text="0 Kunde(n)" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <Button Content="Weitere laden" Padding="8,2" FontSize="11" Click="WeitereKundenLaden_Click"/>
                         </StackPanel>
                     </Grid>
                 </Border>
+
+                <!-- Aktionsleiste -->
+                <Border Grid.Row="4" Background="#f0f0f0" Padding="8,6" BorderBrush="#ccc" BorderThickness="0,1,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="➕ Kunde anlegen" Style="{StaticResource ActionButton}" Click="Neu_Click"/>
+                        <Button Content="👤 Kunde" Style="{StaticResource ActionButton}" x:Name="btnKunde" IsEnabled="False">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="✏️ Bearbeiten" Click="Bearbeiten_Click"/>
+                                    <MenuItem Header="🗑️ Löschen" Click="Loeschen_Click"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                        <Button Content="🖨️ Ausgabe" Style="{StaticResource ActionButton}" x:Name="btnAusgabe" IsEnabled="False"/>
+                        <Button Content="✉️ Nachricht senden" Style="{StaticResource ActionButton}" x:Name="btnNachricht" IsEnabled="False"/>
+                        <Button Content="⚡ Workflow" Style="{StaticResource ActionButton}" x:Name="btnWorkflow" IsEnabled="False"/>
+                    </StackPanel>
+                </Border>
             </Grid>
+        </Border>
 
-            <!-- RECHTE SEITE: Kundendetails kompakt -->
-            <Border Grid.Column="1" Background="White" BorderBrush="#ddd" BorderThickness="1,0,0,0">
-                <Grid>
-                    <Grid x:Name="pnlDetails" Visibility="Collapsed">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+        <!-- TRENNLINIE -->
+        <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="#e0e0e0"/>
 
-                        <!-- Kunde Header -->
-                        <Border Background="#0078D4" Padding="15">
-                            <StackPanel>
-                                <TextBlock x:Name="txtKundeName" Text="Kundenname" FontSize="18" FontWeight="SemiBold" Foreground="White"/>
-                                <TextBlock x:Name="txtKundeNr" Text="Kd-Nr: 12345" FontSize="12" Foreground="#cce5ff" Margin="0,3,0,0"/>
-                            </StackPanel>
-                        </Border>
+        <!-- UNTERER BEREICH: Details + Historie -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="350"/>
+            </Grid.ColumnDefinitions>
 
-                        <!-- Kontaktdaten -->
-                        <Border Grid.Row="1" Padding="15" BorderBrush="#eee" BorderThickness="0,0,0,1">
+            <!-- LINKE SEITE: Kundendetails + Tabs -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="180"/>
+                </Grid.RowDefinitions>
+
+                <!-- 360-Grad Sicht -->
+                <Border Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5,0,2,5">
+                    <Grid>
+                        <!-- Placeholder wenn kein Kunde ausgewaehlt -->
+                        <StackPanel x:Name="pnlNoSelection" VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="Kunde auswaehlen" FontSize="14" Foreground="#999" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Waehlen Sie einen Kunden aus der Liste" FontSize="11" Foreground="#bbb" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <Grid x:Name="pnlDetails" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="220"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Linke Spalte: Kontaktdaten -->
+                        <Border BorderBrush="#ddd" BorderThickness="0,0,1,0">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="E-Mail" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock x:Name="txtKundeMail" Text="-" FontSize="12" Margin="0,2,0,8"/>
-                                    <TextBlock Text="Telefon" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock x:Name="txtKundeTel" Text="-" FontSize="12"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Adresse" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock x:Name="txtKundeAdresse" Text="-" FontSize="12" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- Statistiken -->
-                        <Border Grid.Row="2" Padding="15">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
 
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Umsatz gesamt" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock x:Name="txtStatUmsatz" Text="0,00 EUR" Style="{StaticResource StatValue}" Foreground="#28a745"/>
+                                <!-- Header: 360-Sicht -->
+                                <Border Background="#4a90d9" Padding="10,6">
+                                    <TextBlock Text="360-Sicht (Strg+I)" Foreground="White" FontSize="11"/>
+                                </Border>
+
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel Margin="10">
+                                        <TextBlock x:Name="txtKundeAnrede" Text="Herr" FontSize="11" Foreground="#666"/>
+                                        <TextBlock x:Name="txtKundeName" Text="Max Mustermann" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                        <TextBlock x:Name="txtKundeFirma" Text="Musterfirma GmbH" FontSize="12" Foreground="#666" Margin="0,2,0,0"/>
+                                        <TextBlock x:Name="txtKundeNr" Text="2605190" FontSize="11" Foreground="#888" Margin="0,5,0,10"/>
+
+                                        <TextBlock x:Name="txtKundeAdresse1" Text="Musterstrasse 123" FontSize="11"/>
+                                        <TextBlock x:Name="txtKundeAdresse2" Text="12345 Musterstadt" FontSize="11"/>
+                                        <TextBlock x:Name="txtKundeLand" Text="Deutschland" FontSize="11" Margin="0,0,0,10"/>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                            <TextBlock Text="📞" Width="20" FontSize="11"/>
+                                            <TextBlock x:Name="txtKundeTel" Text="-" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                            <TextBlock Text="📱" Width="20" FontSize="11"/>
+                                            <TextBlock x:Name="txtKundeMobil" Text="-" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                            <TextBlock Text="📠" Width="20" FontSize="11"/>
+                                            <TextBlock x:Name="txtKundeFax" Text="-" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,10">
+                                            <TextBlock Text="📧" Width="20" FontSize="11"/>
+                                            <TextBlock x:Name="txtKundeMail" Text="email@beispiel.de" FontSize="11" Foreground="#0066CC"
+                                                       Cursor="Hand" TextDecorations="Underline"/>
+                                        </StackPanel>
+
+                                        <!-- Status Icons -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                            <Border x:Name="iconRechnung" Background="#e3f2fd" Padding="6,2" Margin="0,0,5,0" CornerRadius="3">
+                                                <TextBlock Text="🧾 Rechnung" FontSize="10" Foreground="#1976d2"/>
+                                            </Border>
+                                            <Border x:Name="iconGesperrt" Background="#ffebee" Padding="6,2" Margin="0,0,5,0" CornerRadius="3" Visibility="Collapsed">
+                                                <TextBlock Text="🚫 Gesperrt" FontSize="10" Foreground="#c62828"/>
+                                            </Border>
+                                            <Border x:Name="iconMahnstopp" Background="#fff3e0" Padding="6,2" CornerRadius="3" Visibility="Collapsed">
+                                                <TextBlock Text="⚠️ Mahnstopp" FontSize="10" Foreground="#ef6c00"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <!-- Rechte Spalte: Statistiken -->
+                        <Grid Grid.Column="1" Margin="8,5">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Zeile 1: Letzter Auftrag, Offene Auftraege -->
+                            <Grid Grid.Row="0" Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="📦 Letzter Auftrag:" Style="{StaticResource StatLabel}"/>
+                                    <TextBlock x:Name="txtStatLetzterAuftrag" Grid.Column="1" Text="-" Style="{StaticResource StatValue}"/>
+                                </Grid>
+                                <Grid Grid.Column="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="⏳ Offene Aufträge:" Style="{StaticResource StatLabel}"/>
+                                    <TextBlock x:Name="txtStatOffeneAuftraege" Grid.Column="1" Text="0 / 0,00 EUR" Style="{StaticResource StatValue}"/>
+                                </Grid>
+                            </Grid>
+
+                            <!-- Zeile 2: Kunde seit, Offene Rechnungen -->
+                            <Grid Grid.Row="1" Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="📅 Kunde seit:" Style="{StaticResource StatLabel}"/>
+                                    <TextBlock x:Name="txtStatKundeSeit" Grid.Column="1" Text="-" Style="{StaticResource StatValue}"/>
+                                </Grid>
+                                <Grid Grid.Column="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="🧾 Offene Rechng.:" Style="{StaticResource StatLabel}"/>
+                                    <TextBlock x:Name="txtStatOffeneRechnungen" Grid.Column="1" Text="0 / 0,00 EUR" Style="{StaticResource StatValue}"/>
+                                </Grid>
+                            </Grid>
+
+                            <Rectangle Grid.Row="2" Height="1" Fill="#e0e0e0" Margin="0,3,0,5"/>
+
+                            <!-- Weitere Statistiken -->
+                            <Grid Grid.Row="3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="💰 Umsatz:" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock x:Name="txtStatUmsatz" Grid.Column="1" Text="0,00 EUR" Style="{StaticResource StatValue}" Foreground="#28a745"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="📈 Gewinn:" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock x:Name="txtStatGewinn" Grid.Column="1" Text="0,00 EUR" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="🛒 Warenkorb:" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock x:Name="txtStatWarenkorb" Grid.Column="1" Text="0,00 EUR" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="📊 Aufträge:" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock x:Name="txtStatAuftraege" Grid.Column="1" Text="0" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="↩️ Retouren:" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock x:Name="txtStatRetouren" Grid.Column="1" Text="0 / 0" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="❌ Stornos:" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock x:Name="txtStatStornos" Grid.Column="1" Text="0 / 0" Style="{StaticResource StatValue}"/>
+                                    </Grid>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock Text="Auftraege" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock x:Name="txtStatAuftraege" Text="0" Style="{StaticResource StatValue}"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="O Warenkorb" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock x:Name="txtStatDurchschnitt" Text="0,00 EUR" Style="{StaticResource StatValue}"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Row="1" Grid.Column="0">
-                                    <TextBlock Text="Offene Posten" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock x:Name="txtStatOffen" Text="0,00 EUR" Style="{StaticResource StatValue}" Foreground="#dc3545"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Row="1" Grid.Column="1">
-                                    <TextBlock Text="Retouren" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock x:Name="txtStatRetouren" Text="0" Style="{StaticResource StatValue}"/>
-                                </StackPanel>
-
-                                <StackPanel Grid.Row="1" Grid.Column="2">
-                                    <TextBlock Text="Kunde seit" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock x:Name="txtStatSeit" Text="-" Style="{StaticResource StatValue}"/>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="🎟️ Coupon:" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock x:Name="txtStatCoupon" Grid.Column="1" Text="0 / 0" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="💳 Guthaben:" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock x:Name="txtStatGuthaben" Grid.Column="1" Text="0,00 EUR" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="🏷️ Rabatt:" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock x:Name="txtStatRabatt" Grid.Column="1" Text="0 %" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="📝 Anmerkung:" Style="{StaticResource StatLabel}"/>
+                                        <TextBox x:Name="txtAnmerkung" Grid.Column="1" Height="18" FontSize="10" IsReadOnly="True"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="📬 Newsletter:" Style="{StaticResource StatLabel}"/>
+                                        <CheckBox x:Name="chkNewsletter" Grid.Column="1" IsEnabled="False"/>
+                                    </Grid>
                                 </StackPanel>
                             </Grid>
-                        </Border>
+                        </Grid>
+                        </Grid>
                     </Grid>
+                </Border>
 
-                    <!-- Placeholder wenn kein Kunde ausgewaehlt -->
-                    <StackPanel x:Name="pnlNoSelection" VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <TextBlock Text="Kunde auswaehlen" FontSize="16" Foreground="#999" HorizontalAlignment="Center"/>
-                        <TextBlock Text="Waehlen Sie einen Kunden aus der Liste" FontSize="12" Foreground="#bbb" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-                    </StackPanel>
+                <!-- Tabs unten links: Auftraege, Rechnungen etc -->
+                <Border Grid.Row="1" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5,0,2,5">
+                    <TabControl x:Name="pnlTabs" Margin="0" BorderThickness="0" Padding="0" Visibility="Collapsed">
+                        <TabControl.Resources>
+                            <Style TargetType="TabItem">
+                                <Setter Property="Padding" Value="12,5"/>
+                                <Setter Property="FontSize" Value="11"/>
+                            </Style>
+                        </TabControl.Resources>
+
+                        <TabItem Header="📦 Aufträge">
+                            <DataGrid x:Name="dgKundeAuftraege" AutoGenerateColumns="False" IsReadOnly="True"
+                                      GridLinesVisibility="All" HeadersVisibility="Column" BorderThickness="0"
+                                      RowBackground="White" AlternatingRowBackground="#f9f9f9" FontSize="11">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="Auftragsnummer" Width="110">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding CBestellNr}" Foreground="#0066CC" Cursor="Hand"
+                                                           MouseLeftButtonUp="AuftragNr_Click"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Erstellt am" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="85"/>
+                                    <DataGridCheckBoxColumn Header="Ist bezahlt" Binding="{Binding IstBezahlt}" Width="70"/>
+                                    <DataGridTextColumn Header="Versendet am" Binding="{Binding DVersendet, StringFormat=dd.MM.yyyy}" Width="90"/>
+                                    <DataGridTextColumn Header="Lieferstatus" Binding="{Binding CLieferstatus}" Width="80"/>
+                                    <DataGridTextColumn Header="Plattform" Binding="{Binding CPlattform}" Width="80"/>
+                                    <DataGridTextColumn Header="Zahlungsart" Binding="{Binding CZahlungsart}" Width="90"/>
+                                    <DataGridTextColumn Header="Versandart" Binding="{Binding CVersandart}" Width="90"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+
+                        <TabItem Header="🧾 Rechnungen">
+                            <DataGrid x:Name="dgKundeRechnungen" AutoGenerateColumns="False" IsReadOnly="True"
+                                      GridLinesVisibility="All" HeadersVisibility="Column" BorderThickness="0"
+                                      RowBackground="White" AlternatingRowBackground="#f9f9f9" FontSize="11">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="Rechnungsnummer" Width="120">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding CRechnungsNr}" Foreground="#0066CC" Cursor="Hand"
+                                                           MouseLeftButtonUp="RechnungNr_Click"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Datum" Binding="{Binding DRechnungsdatum, StringFormat=dd.MM.yyyy}" Width="85"/>
+                                    <DataGridTextColumn Header="Betrag" Binding="{Binding FBetragBrutto, StringFormat=N2}" Width="90"/>
+                                    <DataGridTextColumn Header="Bezahlt" Binding="{Binding FBezahlt, StringFormat=N2}" Width="90"/>
+                                    <DataGridTextColumn Header="Offen" Binding="{Binding FRestbetrag, StringFormat=N2}" Width="90"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+
+                        <TabItem Header="📍 Adressen">
+                            <DataGrid x:Name="dgKundeAdressen" AutoGenerateColumns="False" IsReadOnly="True"
+                                      GridLinesVisibility="All" HeadersVisibility="Column" BorderThickness="0"
+                                      RowBackground="White" AlternatingRowBackground="#f9f9f9" FontSize="11">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="⭐" Binding="{Binding StandardIcon}" Width="30"/>
+                                    <DataGridTextColumn Header="Typ" Binding="{Binding AdressTypText}" Width="120"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="120"/>
+                                    <DataGridTextColumn Header="Strasse" Binding="{Binding CStrasse}" Width="150"/>
+                                    <DataGridTextColumn Header="PLZ" Binding="{Binding CPLZ}" Width="60"/>
+                                    <DataGridTextColumn Header="Ort" Binding="{Binding COrt}" Width="120"/>
+                                    <DataGridTextColumn Header="Land" Binding="{Binding CLand}" Width="100"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+
+                        <TabItem Header="👤 Ansprechpartner">
+                            <DataGrid x:Name="dgAnsprechpartner" AutoGenerateColumns="False" IsReadOnly="True"
+                                      GridLinesVisibility="All" HeadersVisibility="Column" BorderThickness="0"
+                                      RowBackground="White" AlternatingRowBackground="#f9f9f9" FontSize="11">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="150"/>
+                                    <DataGridTextColumn Header="Position" Binding="{Binding CPosition}" Width="120"/>
+                                    <DataGridTextColumn Header="Telefon" Binding="{Binding CTel}" Width="120"/>
+                                    <DataGridTextColumn Header="E-Mail" Binding="{Binding CMail}" Width="180"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+
+                        <TabItem Header="🎫 Tickets">
+                            <DataGrid x:Name="dgTickets" AutoGenerateColumns="False" IsReadOnly="True"
+                                      GridLinesVisibility="All" HeadersVisibility="Column" BorderThickness="0"
+                                      RowBackground="White" AlternatingRowBackground="#f9f9f9" FontSize="11">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Nr" Binding="{Binding KTicket}" Width="60"/>
+                                    <DataGridTextColumn Header="Betreff" Binding="{Binding CBetreff}" Width="*"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding CStatus}" Width="100"/>
+                                    <DataGridTextColumn Header="Erstellt" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="85"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                    </TabControl>
+                </Border>
+            </Grid>
+
+            <!-- RECHTE SEITE: Kundenhistorie -->
+            <Border Grid.Column="1" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="2,0,5,5">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Header: Kundenhistorie -->
+                    <Border Background="#f5a623" Padding="10,6">
+                        <TextBlock Text="Kundenhistorie" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                    </Border>
+
+                    <!-- Historie Liste -->
+                    <ListBox x:Name="lstHistorie" Grid.Row="1" BorderThickness="0" FontSize="11"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="5,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="30"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Icon -->
+                                    <Border Width="24" Height="24" CornerRadius="12" Background="{Binding IconBg}" VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding Icon}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontSize="12" Foreground="White"/>
+                                    </Border>
+
+                                    <!-- Inhalt -->
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock Text="{Binding Beschreibung}" TextWrapping="Wrap" FontSize="11"/>
+                                        <TextBlock Text="{Binding DatumFormatiert}" FontSize="10" Foreground="#888" Margin="0,3,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Placeholder wenn keine Historie -->
+                    <TextBlock x:Name="txtKeineHistorie" Grid.Row="1" Text="Keine Historie vorhanden"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="#999" FontSize="11" Visibility="Collapsed"/>
                 </Grid>
             </Border>
         </Grid>
-
-        <!-- TRENNLINIE -->
-        <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="#ddd"/>
-
-        <!-- UNTERER BEREICH: Tabs -->
-        <Border Grid.Row="2" Background="White" BorderBrush="#ddd" BorderThickness="0,1,0,0">
-            <Grid x:Name="pnlTabs" Visibility="Collapsed">
-                <TabControl Margin="0" BorderThickness="0" Padding="0">
-                    <TabControl.Resources>
-                        <Style TargetType="TabItem">
-                            <Setter Property="Padding" Value="15,8"/>
-                            <Setter Property="FontSize" Value="12"/>
-                        </Style>
-                    </TabControl.Resources>
-
-                    <!-- Tab: Auftraege -->
-                    <TabItem Header="Auftraege">
-                        <DataGrid x:Name="dgKundeAuftraege" AutoGenerateColumns="False" IsReadOnly="True"
-                                  GridLinesVisibility="Horizontal" HeadersVisibility="Column" BorderThickness="0"
-                                  RowBackground="White" AlternatingRowBackground="#fafafa" FontSize="12">
-                            <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="Nr" Width="100">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding CBestellNr}" Foreground="#0066CC" Cursor="Hand"
-                                                       TextDecorations="Underline" MouseLeftButtonUp="AuftragNr_Click"/>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="100"/>
-                                <DataGridTextColumn Header="Status" Binding="{Binding CStatus}" Width="120"/>
-                                <DataGridTextColumn Header="Betrag" Binding="{Binding GesamtBrutto, StringFormat=N2}" Width="100">
-                                    <DataGridTextColumn.ElementStyle>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                        </Style>
-                                    </DataGridTextColumn.ElementStyle>
-                                </DataGridTextColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </TabItem>
-
-                    <!-- Tab: Rechnungen -->
-                    <TabItem Header="Rechnungen">
-                        <DataGrid x:Name="dgKundeRechnungen" AutoGenerateColumns="False" IsReadOnly="True"
-                                  GridLinesVisibility="Horizontal" HeadersVisibility="Column" BorderThickness="0"
-                                  RowBackground="White" AlternatingRowBackground="#fafafa" FontSize="12">
-                            <DataGrid.Columns>
-                                <DataGridTemplateColumn Header="Nr" Width="120">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding CRechnungsNr}" Foreground="#0066CC" Cursor="Hand"
-                                                       TextDecorations="Underline" MouseLeftButtonUp="RechnungNr_Click"/>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="Datum" Binding="{Binding DRechnungsdatum, StringFormat=dd.MM.yyyy}" Width="100"/>
-                                <DataGridTextColumn Header="Betrag" Binding="{Binding FBetragBrutto, StringFormat=N2}" Width="100">
-                                    <DataGridTextColumn.ElementStyle>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                        </Style>
-                                    </DataGridTextColumn.ElementStyle>
-                                </DataGridTextColumn>
-                                <DataGridTextColumn Header="Bezahlt" Binding="{Binding FBezahlt, StringFormat=N2}" Width="100">
-                                    <DataGridTextColumn.ElementStyle>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                                        </Style>
-                                    </DataGridTextColumn.ElementStyle>
-                                </DataGridTextColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </TabItem>
-
-                    <!-- Tab: Adressen -->
-                    <TabItem Header="Adressen">
-                        <DataGrid x:Name="dgKundeAdressen" AutoGenerateColumns="False" IsReadOnly="True"
-                                  GridLinesVisibility="Horizontal" HeadersVisibility="Column" BorderThickness="0"
-                                  RowBackground="White" AlternatingRowBackground="#fafafa" FontSize="12">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Typ" Binding="{Binding AdressTypText}" Width="120"/>
-                                <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="150"/>
-                                <DataGridTextColumn Header="Strasse" Binding="{Binding CStrasse}" Width="*"/>
-                                <DataGridTextColumn Header="PLZ" Binding="{Binding CPLZ}" Width="70"/>
-                                <DataGridTextColumn Header="Ort" Binding="{Binding COrt}" Width="150"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </TabItem>
-
-                    <!-- Tab: Historie -->
-                    <TabItem Header="Historie">
-                        <ListBox x:Name="lstHistorie" BorderThickness="0" FontSize="12">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" Margin="0,4">
-                                        <TextBlock Text="{Binding Datum, StringFormat=dd.MM.yyyy}" Width="80" Foreground="#888"/>
-                                        <TextBlock Text="{Binding Typ}" Width="100" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding Beschreibung}" TextWrapping="NoWrap"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </TabItem>
-                </TabControl>
-            </Grid>
-        </Border>
     </Grid>
 </UserControl>

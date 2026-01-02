@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
@@ -23,6 +24,10 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
+                // Spalten-Konfiguration
+                DataGridColumnConfig.EnableColumnChooser(dgLagerbestand, "LagerView");
+                DataGridColumnConfig.EnableColumnChooser(dgBewegungen, "LagerView.Bewegungen");
+
                 txtStatus.Text = "Lade Lager...";
 
                 // Warenlager laden

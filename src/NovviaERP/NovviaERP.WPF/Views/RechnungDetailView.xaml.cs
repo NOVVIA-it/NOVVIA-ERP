@@ -7,6 +7,7 @@ using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Entities;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
@@ -28,6 +29,10 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
+                // Spalten-Konfiguration
+                DataGridColumnConfig.EnableColumnChooser(dgPositionen, "RechnungDetailView.Positionen");
+                DataGridColumnConfig.EnableColumnChooser(dgZahlungen, "RechnungDetailView.Zahlungen");
+
                 _rechnung = await _core.GetRechnungMitPositionenAsync(_rechnungId);
                 if (_rechnung == null)
                 {

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
 using NovviaERP.WPF.Controls;
@@ -12,6 +13,8 @@ namespace NovviaERP.WPF.Views
         private readonly CoreService _core;
         private List<CoreService.KundeUebersicht> _kunden = new();
         private CoreService.KundeUebersicht? _selectedKunde;
+        private int _currentPage = 0;
+        private const int PageSize = 100;
 
         public KundenView()
         {
@@ -26,6 +29,11 @@ namespace NovviaERP.WPF.Views
             {
                 // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
                 DataGridColumnConfig.EnableColumnChooser(dgKunden, "KundenView");
+                DataGridColumnConfig.EnableColumnChooser(dgKundeAuftraege, "KundenView.Auftraege");
+                DataGridColumnConfig.EnableColumnChooser(dgKundeRechnungen, "KundenView.Rechnungen");
+                DataGridColumnConfig.EnableColumnChooser(dgKundeAdressen, "KundenView.Adressen");
+                DataGridColumnConfig.EnableColumnChooser(dgAnsprechpartner, "KundenView.Ansprechpartner");
+                DataGridColumnConfig.EnableColumnChooser(dgTickets, "KundenView.Tickets");
 
                 // Kundengruppen laden
                 var gruppen = (await _core.GetKundengruppenAsync()).ToList();
@@ -39,7 +47,7 @@ namespace NovviaERP.WPF.Views
             }
             catch (Exception ex)
             {
-                txtStatus.Text = $"Fehler: {ex.Message}";
+                MessageBox.Show($"Fehler beim Laden: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -53,21 +61,19 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
-                txtStatus.Text = "Lade Kunden...";
-
                 var suche = string.IsNullOrWhiteSpace(txtSuche.Text) ? null : txtSuche.Text.Trim();
+                var plz = string.IsNullOrWhiteSpace(txtPLZ.Text) ? null : txtPLZ.Text.Trim();
                 int? gruppeId = null;
                 if (cboKundengruppe.SelectedItem is ComboBoxItem item && item.Tag is int id)
                     gruppeId = id;
 
-                _kunden = (await _core.GetKundenAsync(suche: suche, kundengruppeId: gruppeId)).ToList();
+                _kunden = (await _core.GetKundenAsync(suche: suche, plz: plz, kundengruppeId: gruppeId, limit: PageSize)).ToList();
                 dgKunden.ItemsSource = _kunden;
-                txtAnzahl.Text = $"({_kunden.Count} Kunden)";
-                txtStatus.Text = $"{_kunden.Count} Kunden geladen";
+                txtAnzahl.Text = $"{_kunden.Count} Kunde(n)";
+                _currentPage = 0;
             }
             catch (Exception ex)
             {
-                txtStatus.Text = $"Fehler: {ex.Message}";
                 MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -83,8 +89,41 @@ namespace NovviaERP.WPF.Views
         private async void FilterReset_Click(object sender, RoutedEventArgs e)
         {
             txtSuche.Text = "";
+            txtPLZ.Text = "";
+            txtAuftragRechnung.Text = "";
+            txtLabel.Text = "";
             cboKundengruppe.SelectedIndex = 0;
+            cboKategorie.SelectedIndex = 0;
             await LadeKundenAsync();
+        }
+
+        private async void WeitereKundenLaden_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                _currentPage++;
+                var suche = string.IsNullOrWhiteSpace(txtSuche.Text) ? null : txtSuche.Text.Trim();
+                int? gruppeId = null;
+                if (cboKundengruppe.SelectedItem is ComboBoxItem item && item.Tag is int id)
+                    gruppeId = id;
+
+                var weitereKunden = (await _core.GetKundenAsync(suche: suche, kundengruppeId: gruppeId, limit: PageSize, offset: _currentPage * PageSize)).ToList();
+                if (weitereKunden.Any())
+                {
+                    _kunden.AddRange(weitereKunden);
+                    dgKunden.ItemsSource = null;
+                    dgKunden.ItemsSource = _kunden;
+                    txtAnzahl.Text = $"{_kunden.Count} Kunde(n)";
+                }
+                else
+                {
+                    MessageBox.Show("Keine weiteren Kunden vorhanden.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void Neu_Click(object sender, RoutedEventArgs e) => NavigateTo(new KundeDetailView(null));
@@ -93,6 +132,30 @@ namespace NovviaERP.WPF.Views
         {
             if (_selectedKunde != null)
                 NavigateTo(new KundeDetailView(_selectedKunde.KKunde));
+        }
+
+        private async void Loeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedKunde == null) return;
+
+            var result = MessageBox.Show(
+                $"Kunde '{_selectedKunde.Anzeigename}' wirklich loeschen?",
+                "Kunde loeschen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    // TODO: Implement delete in CoreService
+                    MessageBox.Show("Loeschen ist noch nicht implementiert.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Loeschen: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
 
         private void DG_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -104,8 +167,12 @@ namespace NovviaERP.WPF.Views
         private async void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             _selectedKunde = dgKunden.SelectedItem as CoreService.KundeUebersicht;
-            btnBearbeiten.IsEnabled = _selectedKunde != null;
-            btnNachricht.IsEnabled = _selectedKunde != null;
+            var hasSelection = _selectedKunde != null;
+
+            btnKunde.IsEnabled = hasSelection;
+            btnAusgabe.IsEnabled = hasSelection;
+            btnNachricht.IsEnabled = hasSelection;
+            btnWorkflow.IsEnabled = hasSelection;
 
             if (_selectedKunde != null)
             {
@@ -127,23 +194,47 @@ namespace NovviaERP.WPF.Views
                 pnlNoSelection.Visibility = Visibility.Collapsed;
                 pnlDetails.Visibility = Visibility.Visible;
 
-                // Header
-                txtKundeName.Text = kunde.Anzeigename;
-                txtKundeNr.Text = $"Kd-Nr: {kunde.CKundenNr}";
+                // Kontaktdaten
+                txtKundeAnrede.Text = kunde.CAnrede ?? "";
+                txtKundeName.Text = $"{kunde.CVorname} {kunde.CName}".Trim();
+                if (string.IsNullOrWhiteSpace(txtKundeName.Text))
+                    txtKundeName.Text = kunde.CFirma ?? "-";
+                txtKundeFirma.Text = kunde.CFirma ?? "";
+                txtKundeNr.Text = kunde.CKundenNr ?? "";
 
-                // Kontakt
-                txtKundeMail.Text = kunde.CMail ?? "-";
+                txtKundeAdresse1.Text = kunde.CStrasse ?? "";
+                txtKundeAdresse2.Text = $"{kunde.CPLZ} {kunde.COrt}".Trim();
+                txtKundeLand.Text = kunde.CLand ?? kunde.CISO ?? "Deutschland";
+
                 txtKundeTel.Text = kunde.CTel ?? "-";
-                txtKundeAdresse.Text = kunde.COrt ?? "-";
+                txtKundeMobil.Text = kunde.CMobil ?? "-";
+                txtKundeFax.Text = kunde.CFax ?? "-";
+                txtKundeMail.Text = kunde.CMail ?? "-";
+
+                // Status Icons
+                iconGesperrt.Visibility = !string.IsNullOrEmpty(kunde.CSperre) ? Visibility.Visible : Visibility.Collapsed;
 
                 // Statistiken laden
                 var stats = await _core.GetKundeStatistikAsync(kunde.KKunde);
+
+                txtStatLetzterAuftrag.Text = stats.LetzteBestellung?.ToString("dd.MM.yyyy") ?? "-";
+                txtStatKundeSeit.Text = stats.ErstBestellung?.ToString("dd.MM.yyyy") ?? "-";
+                txtStatOffeneAuftraege.Text = $"{stats.OffeneAuftraege} / {stats.OffeneAuftraegeWert:N2} EUR";
+                txtStatOffeneRechnungen.Text = $"{stats.OffeneRechnungen} / {stats.OffenePosten:N2} EUR";
+
                 txtStatUmsatz.Text = $"{stats.UmsatzGesamt:N2} EUR";
+                txtStatGewinn.Text = $"{stats.GewinnGesamt:N2} EUR";
+                txtStatWarenkorb.Text = $"{stats.DurchschnittWarenkorb:N2} EUR";
                 txtStatAuftraege.Text = stats.AnzahlAuftraege.ToString();
-                txtStatDurchschnitt.Text = $"{stats.DurchschnittWarenkorb:N2} EUR";
-                txtStatOffen.Text = $"{stats.OffenePosten:N2} EUR";
-                txtStatRetouren.Text = stats.AnzahlRetouren.ToString();
-                txtStatSeit.Text = stats.ErstBestellung?.ToString("dd.MM.yyyy") ?? "-";
+                txtStatRetouren.Text = $"{stats.AnzahlRetouren} / {stats.AnzahlAuftraege}";
+                txtStatStornos.Text = $"{stats.AnzahlStornos} / {stats.AnzahlAuftraege}";
+
+                txtStatCoupon.Text = $"{stats.CouponKaeufe} / {stats.AnzahlAuftraege}";
+                txtStatGuthaben.Text = $"{stats.Guthaben:N2} EUR";
+                txtStatRabatt.Text = $"{stats.Rabatt:N0} %";
+
+                txtAnmerkung.Text = stats.Anmerkung ?? "";
+                chkNewsletter.IsChecked = stats.Newsletter;
 
                 // Tabs laden (parallel)
                 var auftraegeTask = _core.GetKundeAuftraegeAsync(kunde.KKunde);
@@ -156,13 +247,46 @@ namespace NovviaERP.WPF.Views
                 dgKundeAuftraege.ItemsSource = auftraegeTask.Result.ToList();
                 dgKundeRechnungen.ItemsSource = rechnungenTask.Result.ToList();
                 dgKundeAdressen.ItemsSource = adressenTask.Result.ToList();
-                lstHistorie.ItemsSource = historieTask.Result.ToList();
+
+                // Historie mit Icons formatieren
+                var historie = historieTask.Result.Select(h => new HistorieEintrag
+                {
+                    Beschreibung = h.Beschreibung,
+                    DatumFormatiert = h.Datum.ToString("dd.MM.yyyy - HH:mm"),
+                    Icon = GetHistorieIcon(h.Typ),
+                    IconBg = GetHistorieIconBg(h.Typ)
+                }).ToList();
+
+                lstHistorie.ItemsSource = historie;
+                txtKeineHistorie.Visibility = historie.Any() ? Visibility.Collapsed : Visibility.Visible;
             }
             catch (Exception ex)
             {
-                txtStatus.Text = $"Fehler 360°: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"Fehler 360°: {ex.Message}");
             }
         }
+
+        private string GetHistorieIcon(string typ) => typ?.ToLower() switch
+        {
+            "auftrag" => "A",
+            "rechnung" => "R",
+            "lieferschein" => "L",
+            "zahlung" => "Z",
+            "email" => "E",
+            "retoure" => "X",
+            _ => "?"
+        };
+
+        private Brush GetHistorieIconBg(string typ) => typ?.ToLower() switch
+        {
+            "auftrag" => new SolidColorBrush(Color.FromRgb(76, 175, 80)),      // Gruen
+            "rechnung" => new SolidColorBrush(Color.FromRgb(33, 150, 243)),    // Blau
+            "lieferschein" => new SolidColorBrush(Color.FromRgb(156, 39, 176)), // Lila
+            "zahlung" => new SolidColorBrush(Color.FromRgb(0, 150, 136)),       // Tuerkis
+            "email" => new SolidColorBrush(Color.FromRgb(255, 152, 0)),         // Orange
+            "retoure" => new SolidColorBrush(Color.FromRgb(244, 67, 54)),       // Rot
+            _ => new SolidColorBrush(Color.FromRgb(158, 158, 158))              // Grau
+        };
 
         private void AuftragNr_Click(object sender, MouseButtonEventArgs e)
         {
@@ -182,5 +306,13 @@ namespace NovviaERP.WPF.Views
                 NavigateTo(view);
             }
         }
+    }
+
+    public class HistorieEintrag
+    {
+        public string Beschreibung { get; set; } = "";
+        public string DatumFormatiert { get; set; } = "";
+        public string Icon { get; set; } = "?";
+        public Brush IconBg { get; set; } = Brushes.Gray;
     }
 }

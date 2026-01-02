@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Data;
 using NovviaERP.Core.Entities;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
@@ -39,6 +40,24 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
+                // Spalten-Konfiguration für alle DataGrids
+                DataGridColumnConfig.EnableColumnChooser(dgFirmaEinstellungen, "EinstellungenView.Firma");
+                DataGridColumnConfig.EnableColumnChooser(dgKundengruppen, "EinstellungenView.Kundengruppen");
+                DataGridColumnConfig.EnableColumnChooser(dgKundenkategorien, "EinstellungenView.Kategorien");
+                DataGridColumnConfig.EnableColumnChooser(dgZahlungsarten, "EinstellungenView.Zahlungsarten");
+                DataGridColumnConfig.EnableColumnChooser(dgVersandarten, "EinstellungenView.Versandarten");
+                DataGridColumnConfig.EnableColumnChooser(dgWooShops, "EinstellungenView.WooShops");
+                DataGridColumnConfig.EnableColumnChooser(dgSteuern, "EinstellungenView.Steuern");
+                DataGridColumnConfig.EnableColumnChooser(dgKonten, "EinstellungenView.Konten");
+                DataGridColumnConfig.EnableColumnChooser(dgLieferantAttribute, "EinstellungenView.LieferantAttr");
+                DataGridColumnConfig.EnableColumnChooser(dgKundeAttribute, "EinstellungenView.KundeAttr");
+                DataGridColumnConfig.EnableColumnChooser(dgArtikelAttribute, "EinstellungenView.ArtikelAttr");
+                DataGridColumnConfig.EnableColumnChooser(dgAuftragAttribute, "EinstellungenView.AuftragAttr");
+                DataGridColumnConfig.EnableColumnChooser(dgFirmaAttribute, "EinstellungenView.FirmaAttr");
+                DataGridColumnConfig.EnableColumnChooser(dgFirmaEigeneFelder, "EinstellungenView.FirmaFelder");
+                DataGridColumnConfig.EnableColumnChooser(dgLogs, "EinstellungenView.Logs");
+                DataGridColumnConfig.EnableColumnChooser(dgJtlBilder, "EinstellungenView.JtlBilder");
+
                 await LadeFirmendatenAsync();
                 await LadeFirmaEinstellungenAsync();
                 await LadeKundengruppenAsync();

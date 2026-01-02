@@ -7,6 +7,7 @@ using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Data;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 using Dapper;
 
 namespace NovviaERP.WPF.Views
@@ -29,6 +30,16 @@ namespace NovviaERP.WPF.Views
             {
                 try
                 {
+                    // Spalten-Konfiguration für alle DataGrids
+                    DataGridColumnConfig.EnableColumnChooser(dgAdressen, "KundeDetailView.Adressen");
+                    DataGridColumnConfig.EnableColumnChooser(dgAnsprechpartner, "KundeDetailView.Ansprechpartner");
+                    DataGridColumnConfig.EnableColumnChooser(dgBankverbindungen, "KundeDetailView.Bankverbindungen");
+                    DataGridColumnConfig.EnableColumnChooser(dgOnlineshop, "KundeDetailView.Onlineshop");
+                    DataGridColumnConfig.EnableColumnChooser(dgEigeneFelder, "KundeDetailView.EigeneFelder");
+                    DataGridColumnConfig.EnableColumnChooser(dgAuftraege, "KundeDetailView.Auftraege");
+                    DataGridColumnConfig.EnableColumnChooser(dgRechnungen, "KundeDetailView.Rechnungen");
+                    DataGridColumnConfig.EnableColumnChooser(dgGutschriften, "KundeDetailView.Gutschriften");
+
                     await LadeReferenzdatenAsync();
                     await LadeKundeAsync();
                     await LadeValidierungAsync();

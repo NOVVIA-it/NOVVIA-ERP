@@ -48,17 +48,24 @@ namespace NovviaERP.Core.Services
             public int KKunde { get; set; }
             public string? CKundenNr { get; set; }
             public string? CFirma { get; set; }
+            public string? CAnrede { get; set; }
             public string? CVorname { get; set; }
             public string? CName { get; set; }  // Nachname
             public string? CStrasse { get; set; }
             public string? CPLZ { get; set; }
             public string? COrt { get; set; }
             public string? CISO { get; set; }  // Land ISO
+            public string? CLand { get; set; }
             public string? CMail { get; set; }
             public string? CTel { get; set; }
+            public string? CMobil { get; set; }
+            public string? CFax { get; set; }
             public string? CSperre { get; set; }
             public int? KKundenGruppe { get; set; }
             public string? Kundengruppe { get; set; }
+            public string? CWww { get; set; }
+            public string? CLabel { get; set; }
+            public string? CUstId { get; set; }
             public DateTime? DErstellt { get; set; }
             public decimal Umsatz { get; set; }
 
@@ -73,11 +80,21 @@ namespace NovviaERP.Core.Services
             public int KKunde { get; set; }
             public decimal UmsatzGesamt { get; set; }
             public decimal UmsatzJahr { get; set; }
+            public decimal GewinnGesamt { get; set; }
             public int AnzahlAuftraege { get; set; }
             public decimal DurchschnittWarenkorb { get; set; }
             public decimal OffenePosten { get; set; }
+            public int OffeneAuftraege { get; set; }
+            public decimal OffeneAuftraegeWert { get; set; }
+            public int OffeneRechnungen { get; set; }
             public int AnzahlRetouren { get; set; }
+            public int AnzahlStornos { get; set; }
             public int AnzahlMahnungen { get; set; }
+            public int CouponKaeufe { get; set; }
+            public decimal Guthaben { get; set; }
+            public decimal Rabatt { get; set; }
+            public string? Anmerkung { get; set; }
+            public bool Newsletter { get; set; }
             public DateTime? ErstBestellung { get; set; }
             public DateTime? LetzteBestellung { get; set; }
         }
@@ -112,7 +129,9 @@ namespace NovviaERP.Core.Services
             public string? CLand { get; set; }
             public string? CISO { get; set; }
             public bool NStandard { get; set; }
-            public string AdressTypText => NTyp switch { 1 => "Rechnung", 2 => "Lieferung", _ => "Sonstige" };
+            public string AdressTypText => NTyp switch { 1 => "🧾 Rechnung", 2 => "📦 Lieferung", _ => "📍 Sonstige" };
+            public bool IstStandard => NStandard;
+            public string StandardIcon => NStandard ? "⭐" : "";
         }
 
         public class KundeHistorieEintrag
@@ -204,7 +223,7 @@ namespace NovviaERP.Core.Services
             public byte NTyp { get; set; }  // 1=Rechnung, 2=Lieferung
 
             public bool IstStandard => NStandard == 1;
-            public string AdressTypText => NTyp == 1 ? "Rechnungsadresse" : NTyp == 2 ? "Lieferadresse" : "Adresse";
+            public string AdressTypText => NTyp == 1 ? "🧾 Rechnungsadresse" : NTyp == 2 ? "📦 Lieferadresse" : "📍 Adresse";
         }
 
         public class AnsprechpartnerDetail
@@ -609,14 +628,16 @@ namespace NovviaERP.Core.Services
 
         #region Kunden
 
-        public async Task<IEnumerable<KundeUebersicht>> GetKundenAsync(string? suche = null, int? kundengruppeId = null, bool nurAktive = false, int limit = 200)
+        public async Task<IEnumerable<KundeUebersicht>> GetKundenAsync(string? suche = null, string? plz = null, int? kundengruppeId = null, bool nurAktive = false, int limit = 200, int offset = 0)
         {
             var conn = await GetConnectionAsync();
             var sql = @"
-                SELECT TOP (@Limit)
-                    k.kKunde, k.cKundenNr, k.cSperre, k.kKundenGruppe, k.dErstellt,
-                    a.cFirma, a.cVorname, a.cName, a.cStrasse, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel,
+                SELECT
+                    k.kKunde, k.cKundenNr, k.cSperre, k.kKundenGruppe, k.dErstellt, k.cWWW AS CWww,
+                    a.cFirma, a.cVorname, a.cName, a.cAnrede, a.cStrasse, a.cPLZ, a.cOrt, a.cISO, a.cMail, a.cTel, a.cMobil, a.cFax, a.cUSTID AS CUstId,
+                    l.cName AS CLand,
                     kg.cName AS Kundengruppe,
+                    ISNULL((SELECT TOP 1 lb.cName FROM tKundeLabel kl JOIN tLabel lb ON kl.kLabel = lb.kLabel WHERE kl.kKunde = k.kKunde), '') AS CLabel,
                     ISNULL((SELECT SUM(ae.fWertNetto)
                             FROM Verkauf.tAuftrag au
                             JOIN Verkauf.tAuftragEckdaten ae ON au.kAuftrag = ae.kAuftrag
@@ -624,10 +645,12 @@ namespace NovviaERP.Core.Services
                 FROM dbo.tKunde k
                 LEFT JOIN tAdresse a ON a.kKunde = k.kKunde AND a.nStandard = 1
                 LEFT JOIN tKundenGruppe kg ON kg.kKundenGruppe = k.kKundenGruppe
+                LEFT JOIN tLand l ON l.cISO = a.cISO
                 WHERE 1=1";
 
             if (nurAktive) sql += " AND k.cSperre != 'Y'";
             if (kundengruppeId.HasValue) sql += " AND k.kKundenGruppe = @KundengruppeId";
+            if (!string.IsNullOrEmpty(plz)) sql += " AND a.cPLZ LIKE @PLZ";
             if (!string.IsNullOrEmpty(suche))
             {
                 sql += @" AND (k.cKundenNr LIKE @Suche
@@ -638,8 +661,9 @@ namespace NovviaERP.Core.Services
                          OR a.cOrt LIKE @Suche)";
             }
             sql += " ORDER BY ISNULL(a.cFirma, a.cName), a.cVorname";
+            sql += " OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY";
 
-            return await conn.QueryAsync<KundeUebersicht>(sql, new { Limit = limit, Suche = $"%{suche}%", KundengruppeId = kundengruppeId });
+            return await conn.QueryAsync<KundeUebersicht>(sql, new { Limit = limit, Offset = offset, Suche = $"%{suche}%", PLZ = $"{plz}%", KundengruppeId = kundengruppeId });
         }
 
         /// <summary>Kundensuche fuer Dialoge - gibt Liste zurueck</summary>

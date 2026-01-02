@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using NovviaERP.Core.Entities;
 using NovviaERP.Core.Services;
+using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
@@ -44,6 +45,14 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
+                // Spalten-Konfiguration für alle DataGrids
+                DataGridColumnConfig.EnableColumnChooser(dgLieferanten, "LieferantenView");
+                DataGridColumnConfig.EnableColumnChooser(dgBestellungen, "LieferantenView.Bestellungen");
+                DataGridColumnConfig.EnableColumnChooser(dgBestellPositionen, "LieferantenView.Positionen");
+                DataGridColumnConfig.EnableColumnChooser(dgABdataArtikel, "LieferantenView.ABdata");
+                DataGridColumnConfig.EnableColumnChooser(dgMSV3Log, "LieferantenView.MSV3Log");
+                DataGridColumnConfig.EnableColumnChooser(dgLieferantEigeneFelder, "LieferantenView.EigeneFelder");
+
                 await LadeLieferantenAsync();
                 await LadeBestellungenAsync();
             }
