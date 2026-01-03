@@ -53,7 +53,7 @@ namespace NovviaERP.WPF.Views
                 if (string.IsNullOrEmpty(tag)) return;
 
                 // Alle anderen ListBoxen deselektieren
-                var allListBoxes = new[] { navFirma, navStammdaten, navArtikel, navFinanzen, navVersand, navSchnittstellen, navEigeneFelder, navDokumente, navBenutzerRollen, navSystem };
+                var allListBoxes = new[] { navFirma, navStammdaten, navArtikel, navFinanzen, navVersand, navSchnittstellen, navEigeneFelder, navDokumente, navBenutzerRollen, navAutomatisierung, navSystem };
                 foreach (var lb in allListBoxes)
                 {
                     if (lb != listBox) lb.SelectedItem = null;
@@ -116,6 +116,8 @@ namespace NovviaERP.WPF.Views
                 await LadeMahnstufeAsync();
                 await LadeTextmeldungenAsync();
                 await LadeSpracheAsync();
+                await LadeWorkflowsAsync();
+                await LadeHilfeAsync();
             }
             catch (Exception ex)
             {
@@ -3888,6 +3890,402 @@ namespace NovviaERP.WPF.Views
             {
                 MessageBox.Show($"Fehler beim Löschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        #endregion
+
+        #region Workflows
+
+        private List<WorkflowItem>? _alleWorkflows;
+        private WorkflowItem? _selectedWorkflow;
+
+        public class WorkflowItem
+        {
+            public int KWorkflow { get; set; }
+            public string CName { get; set; } = "";
+            public string? CBeschreibung { get; set; }
+            public string CEntityTyp { get; set; } = "";
+            public string CEreignis { get; set; } = "";
+            public bool NAktiv { get; set; } = true;
+            public int NReihenfolge { get; set; } = 100;
+        }
+
+        public class WorkflowAktionItem
+        {
+            public int KWorkflowAktion { get; set; }
+            public int KWorkflow { get; set; }
+            public string CAktionsTyp { get; set; } = "";
+            public string? CZielfeld { get; set; }
+            public string? CFormel { get; set; }
+            public string? CWert { get; set; }
+            public int NReihenfolge { get; set; }
+        }
+
+        private async System.Threading.Tasks.Task LadeWorkflowsAsync()
+        {
+            try
+            {
+                using var conn = new SqlConnection(_core.ConnectionString);
+                _alleWorkflows = (await conn.QueryAsync<WorkflowItem>(@"
+                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'NOVVIA' AND TABLE_NAME = 'Workflow')
+                        SELECT kWorkflow AS KWorkflow, cName AS CName, cBeschreibung AS CBeschreibung,
+                               cEntityTyp AS CEntityTyp, cEreignis AS CEreignis, nAktiv AS NAktiv, nReihenfolge AS NReihenfolge
+                        FROM NOVVIA.Workflow ORDER BY nReihenfolge, cName
+                    ELSE
+                        SELECT 0 AS KWorkflow, '' AS CName, '' AS CBeschreibung, '' AS CEntityTyp, '' AS CEreignis, 0 AS NAktiv, 0 AS NReihenfolge WHERE 1=0
+                ")).ToList();
+
+                FilterWorkflows();
+
+                // Zielfeld-ComboBox befüllen basierend auf Entity
+                LadeZielfeldOptionen();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Laden der Workflows:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void FilterWorkflows()
+        {
+            if (_alleWorkflows == null) return;
+
+            var entity = (cmbWorkflowEntity.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
+
+            var filtered = _alleWorkflows.AsEnumerable();
+
+            if (!string.IsNullOrEmpty(entity))
+                filtered = filtered.Where(x => x.CEntityTyp == entity);
+
+            dgWorkflows.ItemsSource = filtered.ToList();
+        }
+
+        private void LadeZielfeldOptionen()
+        {
+            cmbWorkflowZielfeld.Items.Clear();
+            var entity = (cmbWorkflowEntityEdit.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Kunde";
+
+            // Felder je nach Entity
+            var felder = entity switch
+            {
+                "Kunde" => new[] { "cKundenNr", "cDebitorenNr", "cKommentar", "kKundengruppe", "nKreditlimit" },
+                "Artikel" => new[] { "cArtNr", "cName", "fVKNetto", "fEKNetto", "nLagerbestand" },
+                "Auftrag" => new[] { "cAuftragNr", "cStatus", "cKommentar", "fGesamtNetto" },
+                "Lieferant" => new[] { "cLieferantNr", "cKreditorenNr", "cKommentar" },
+                "Rechnung" => new[] { "cRechnungNr", "cStatus", "cZahlungsziel" },
+                _ => new[] { "cKommentar" }
+            };
+
+            foreach (var feld in felder)
+                cmbWorkflowZielfeld.Items.Add(new ComboBoxItem { Content = feld });
+
+            if (cmbWorkflowZielfeld.Items.Count > 0)
+                cmbWorkflowZielfeld.SelectedIndex = 0;
+        }
+
+        private void WorkflowEntity_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            FilterWorkflows();
+        }
+
+        private void WorkflowEntityEdit_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            LadeZielfeldOptionen();
+        }
+
+        private async void WorkflowAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeWorkflowsAsync();
+        }
+
+        private void WorkflowNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedWorkflow = null;
+            txtWorkflowName.Text = "";
+            txtWorkflowBeschreibung.Text = "";
+            cmbWorkflowEntityEdit.SelectedIndex = 0;
+            cmbWorkflowEreignis.SelectedIndex = 0;
+            cmbWorkflowAktionsTyp.SelectedIndex = 0;
+            cmbWorkflowZielfeld.SelectedIndex = 0;
+            txtWorkflowFormel.Text = "";
+            chkWorkflowAktiv.IsChecked = true;
+            dgWorkflows.SelectedItem = null;
+        }
+
+        private async void DgWorkflow_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (dgWorkflows.SelectedItem is WorkflowItem item)
+            {
+                _selectedWorkflow = item;
+                txtWorkflowName.Text = item.CName;
+                txtWorkflowBeschreibung.Text = item.CBeschreibung ?? "";
+                chkWorkflowAktiv.IsChecked = item.NAktiv;
+
+                // Entity ComboBox setzen
+                for (int i = 0; i < cmbWorkflowEntityEdit.Items.Count; i++)
+                {
+                    if ((cmbWorkflowEntityEdit.Items[i] as ComboBoxItem)?.Content?.ToString() == item.CEntityTyp)
+                    {
+                        cmbWorkflowEntityEdit.SelectedIndex = i;
+                        break;
+                    }
+                }
+
+                // Ereignis ComboBox setzen
+                for (int i = 0; i < cmbWorkflowEreignis.Items.Count; i++)
+                {
+                    if ((cmbWorkflowEreignis.Items[i] as ComboBoxItem)?.Content?.ToString() == item.CEreignis)
+                    {
+                        cmbWorkflowEreignis.SelectedIndex = i;
+                        break;
+                    }
+                }
+
+                // Erste Aktion laden
+                try
+                {
+                    using var conn = new SqlConnection(_core.ConnectionString);
+                    var aktion = await conn.QueryFirstOrDefaultAsync<WorkflowAktionItem>(@"
+                        SELECT TOP 1 kWorkflowAktion AS KWorkflowAktion, kWorkflow AS KWorkflow,
+                               cAktionsTyp AS CAktionsTyp, cZielfeld AS CZielfeld, cFormel AS CFormel, cWert AS CWert
+                        FROM NOVVIA.WorkflowAktion WHERE kWorkflow = @KWorkflow ORDER BY nReihenfolge",
+                        new { item.KWorkflow });
+
+                    if (aktion != null)
+                    {
+                        // AktionsTyp setzen
+                        for (int i = 0; i < cmbWorkflowAktionsTyp.Items.Count; i++)
+                        {
+                            if ((cmbWorkflowAktionsTyp.Items[i] as ComboBoxItem)?.Content?.ToString() == aktion.CAktionsTyp)
+                            {
+                                cmbWorkflowAktionsTyp.SelectedIndex = i;
+                                break;
+                            }
+                        }
+
+                        // Zielfeld setzen
+                        LadeZielfeldOptionen();
+                        for (int i = 0; i < cmbWorkflowZielfeld.Items.Count; i++)
+                        {
+                            if ((cmbWorkflowZielfeld.Items[i] as ComboBoxItem)?.Content?.ToString() == aktion.CZielfeld)
+                            {
+                                cmbWorkflowZielfeld.SelectedIndex = i;
+                                break;
+                            }
+                        }
+
+                        txtWorkflowFormel.Text = aktion.CFormel ?? aktion.CWert ?? "";
+                    }
+                }
+                catch { /* Aktionen optional */ }
+            }
+        }
+
+        private async void WorkflowSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtWorkflowName.Text))
+            {
+                MessageBox.Show("Bitte einen Namen für den Workflow eingeben.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                using var conn = new SqlConnection(_core.ConnectionString);
+
+                var entity = (cmbWorkflowEntityEdit.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Kunde";
+                var ereignis = (cmbWorkflowEreignis.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Angelegt";
+                var aktionsTyp = (cmbWorkflowAktionsTyp.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "FeldSetzen";
+                var zielfeld = (cmbWorkflowZielfeld.SelectedItem as ComboBoxItem)?.Content?.ToString();
+                var formel = txtWorkflowFormel.Text.Trim();
+
+                int workflowId;
+
+                if (_selectedWorkflow != null && _selectedWorkflow.KWorkflow > 0)
+                {
+                    // Update
+                    await conn.ExecuteAsync(@"
+                        UPDATE NOVVIA.Workflow SET
+                            cName = @Name, cBeschreibung = @Beschreibung, cEntityTyp = @Entity,
+                            cEreignis = @Ereignis, nAktiv = @Aktiv
+                        WHERE kWorkflow = @Id",
+                        new
+                        {
+                            Id = _selectedWorkflow.KWorkflow,
+                            Name = txtWorkflowName.Text.Trim(),
+                            Beschreibung = string.IsNullOrWhiteSpace(txtWorkflowBeschreibung.Text) ? (string?)null : txtWorkflowBeschreibung.Text.Trim(),
+                            Entity = entity,
+                            Ereignis = ereignis,
+                            Aktiv = chkWorkflowAktiv.IsChecked == true
+                        });
+                    workflowId = _selectedWorkflow.KWorkflow;
+
+                    // Bestehende Aktionen löschen
+                    await conn.ExecuteAsync("DELETE FROM NOVVIA.WorkflowAktion WHERE kWorkflow = @Id", new { Id = workflowId });
+                }
+                else
+                {
+                    // Insert
+                    workflowId = await conn.QuerySingleAsync<int>(@"
+                        INSERT INTO NOVVIA.Workflow (cName, cBeschreibung, cEntityTyp, cEreignis, nAktiv)
+                        OUTPUT INSERTED.kWorkflow
+                        VALUES (@Name, @Beschreibung, @Entity, @Ereignis, @Aktiv)",
+                        new
+                        {
+                            Name = txtWorkflowName.Text.Trim(),
+                            Beschreibung = string.IsNullOrWhiteSpace(txtWorkflowBeschreibung.Text) ? (string?)null : txtWorkflowBeschreibung.Text.Trim(),
+                            Entity = entity,
+                            Ereignis = ereignis,
+                            Aktiv = chkWorkflowAktiv.IsChecked == true
+                        });
+                }
+
+                // Aktion speichern
+                if (!string.IsNullOrEmpty(zielfeld) || !string.IsNullOrEmpty(formel))
+                {
+                    await conn.ExecuteAsync(@"
+                        INSERT INTO NOVVIA.WorkflowAktion (kWorkflow, cAktionsTyp, cZielfeld, cFormel, nReihenfolge)
+                        VALUES (@WorkflowId, @AktionsTyp, @Zielfeld, @Formel, 1)",
+                        new { WorkflowId = workflowId, AktionsTyp = aktionsTyp, Zielfeld = zielfeld, Formel = formel });
+                }
+
+                await LadeWorkflowsAsync();
+                MessageBox.Show("Workflow gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void WorkflowLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedWorkflow == null || _selectedWorkflow.KWorkflow == 0)
+            {
+                MessageBox.Show("Bitte erst einen Workflow auswählen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show($"Workflow '{_selectedWorkflow.CName}' wirklich löschen?",
+                "Bestätigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                using var conn = new SqlConnection(_core.ConnectionString);
+
+                // Erst Aktionen löschen, dann Workflow
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.WorkflowAktion WHERE kWorkflow = @Id", new { Id = _selectedWorkflow.KWorkflow });
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.Workflow WHERE kWorkflow = @Id", new { Id = _selectedWorkflow.KWorkflow });
+
+                await LadeWorkflowsAsync();
+                WorkflowNeu_Click(sender, e);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Löschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void WorkflowHilfe_Click(object sender, RoutedEventArgs e)
+        {
+            // Zum Hilfe-Tab wechseln und nach Funktionen filtern
+            foreach (TabItem tabItem in mainTabs.Items)
+            {
+                if (tabItem.Header?.ToString() == "Hilfe")
+                {
+                    mainTabs.SelectedItem = tabItem;
+                    break;
+                }
+            }
+        }
+
+        #endregion
+
+        #region Hilfe
+
+        private List<HilfeItem>? _alleHilfeItems;
+
+        public class HilfeItem
+        {
+            public int KHilfe { get; set; }
+            public string CKategorie { get; set; } = "";
+            public string? CEntityTyp { get; set; }
+            public string CName { get; set; } = "";
+            public string CAnzeigename { get; set; } = "";
+            public string CBeschreibung { get; set; } = "";
+            public string? CDatentyp { get; set; }
+            public string? CBeispiel { get; set; }
+        }
+
+        private async System.Threading.Tasks.Task LadeHilfeAsync()
+        {
+            try
+            {
+                using var conn = new SqlConnection(_core.ConnectionString);
+                _alleHilfeItems = (await conn.QueryAsync<HilfeItem>(@"
+                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'NOVVIA' AND TABLE_NAME = 'Hilfe')
+                        SELECT kHilfe AS KHilfe, cKategorie AS CKategorie, cEntityTyp AS CEntityTyp,
+                               cName AS CName, cAnzeigename AS CAnzeigename, cBeschreibung AS CBeschreibung,
+                               cDatentyp AS CDatentyp, cBeispiel AS CBeispiel
+                        FROM NOVVIA.Hilfe ORDER BY cKategorie, cEntityTyp, cName
+                    ELSE
+                        SELECT 0 AS KHilfe, '' AS CKategorie, '' AS CEntityTyp, '' AS CName, '' AS CAnzeigename, '' AS CBeschreibung, '' AS CDatentyp, '' AS CBeispiel WHERE 1=0
+                ")).ToList();
+
+                FilterHilfe();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Laden der Hilfe:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void FilterHilfe()
+        {
+            if (_alleHilfeItems == null) return;
+
+            var kategorie = (cmbHilfeKategorie.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
+            var entity = (cmbHilfeEntity.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
+            var suche = txtHilfeSuche.Text?.Trim().ToLower() ?? "";
+
+            var filtered = _alleHilfeItems.AsEnumerable();
+
+            if (!string.IsNullOrEmpty(kategorie))
+                filtered = filtered.Where(x => x.CKategorie == kategorie);
+
+            if (!string.IsNullOrEmpty(entity))
+                filtered = filtered.Where(x => x.CEntityTyp == entity);
+
+            if (!string.IsNullOrEmpty(suche))
+                filtered = filtered.Where(x =>
+                    x.CName.ToLower().Contains(suche) ||
+                    x.CAnzeigename.ToLower().Contains(suche) ||
+                    x.CBeschreibung.ToLower().Contains(suche) ||
+                    (x.CBeispiel ?? "").ToLower().Contains(suche));
+
+            dgHilfe.ItemsSource = filtered.ToList();
+        }
+
+        private void HilfeKategorie_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            FilterHilfe();
+        }
+
+        private void HilfeEntity_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            FilterHilfe();
+        }
+
+        private void HilfeSuche_Changed(object sender, TextChangedEventArgs e)
+        {
+            FilterHilfe();
+        }
+
+        private async void HilfeAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeHilfeAsync();
         }
 
         #endregion

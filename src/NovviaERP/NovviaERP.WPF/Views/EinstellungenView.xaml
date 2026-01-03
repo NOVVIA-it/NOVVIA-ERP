@@ -207,6 +207,12 @@
                             <ListBoxItem Tag="Benutzer &amp; Rollen" Padding="15,8" Cursor="Hand">Benutzer &amp; Rollen</ListBoxItem>
                         </ListBox>
 
+                        <!-- AUTOMATISIERUNG -->
+                        <TextBlock Text="AUTOMATISIERUNG" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navAutomatisierung" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Workflows" Padding="15,8" Cursor="Hand">Workflows</ListBoxItem>
+                        </ListBox>
+
                         <!-- SYSTEM -->
                         <TextBlock Text="SYSTEM" Style="{StaticResource KategorieHeader}"/>
                         <ListBox x:Name="navSystem" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
@@ -214,6 +220,7 @@
                             <ListBoxItem Tag="Protokoll" Padding="15,8" Cursor="Hand">Protokoll</ListBoxItem>
                             <ListBoxItem Tag="Textmeldungen" Padding="15,8" Cursor="Hand">Textmeldungen</ListBoxItem>
                             <ListBoxItem Tag="Sprache" Padding="15,8" Cursor="Hand">Sprache</ListBoxItem>
+                            <ListBoxItem Tag="Hilfe" Padding="15,8" Cursor="Hand">Hilfe (Felder)</ListBoxItem>
                         </ListBox>
 
                         <Border Height="20"/>
@@ -2822,6 +2829,190 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Workflows Tab -->
+            <TabItem Header="Workflows">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="Workflows &amp; Automatisierung" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock Text=" - Ereignisbasierte Aktionen" Foreground="Gray" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Filter -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Entity:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="cmbWorkflowEntity" Width="150" Height="28" SelectionChanged="WorkflowEntity_Changed">
+                            <ComboBoxItem Content="Alle" Tag="" IsSelected="True"/>
+                            <ComboBoxItem Content="Kunde" Tag="Kunde"/>
+                            <ComboBoxItem Content="Artikel" Tag="Artikel"/>
+                            <ComboBoxItem Content="Auftrag" Tag="Auftrag"/>
+                            <ComboBoxItem Content="Lieferant" Tag="Lieferant"/>
+                            <ComboBoxItem Content="Rechnung" Tag="Rechnung"/>
+                        </ComboBox>
+                        <Button Content="Neu" Margin="20,0,0,0" Padding="15,4" Click="WorkflowNeu_Click"/>
+                        <Button Content="Aktualisieren" Margin="10,0,0,0" Padding="15,4" Click="WorkflowAktualisieren_Click"/>
+                    </StackPanel>
+
+                    <!-- DataGrid -->
+                    <DataGrid x:Name="dgWorkflows" Grid.Row="2" AutoGenerateColumns="False"
+                              IsReadOnly="True" SelectionMode="Single" CanUserAddRows="False"
+                              SelectionChanged="DgWorkflow_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding NAktiv}" Width="50"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                            <DataGridTextColumn Header="Entity" Binding="{Binding CEntityTyp}" Width="100"/>
+                            <DataGridTextColumn Header="Ereignis" Binding="{Binding CEreignis}" Width="120"/>
+                            <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="*"/>
+                            <DataGridTextColumn Header="Reihenfolge" Binding="{Binding NReihenfolge}" Width="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Bearbeiten-Panel -->
+                    <Border Grid.Row="3" Background="#f5f5f5" Padding="15" Margin="0,10,0,0" CornerRadius="5">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Name:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtWorkflowName" Grid.Column="1"/>
+
+                            <TextBlock Text="Entity:" Grid.Column="2" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                            <ComboBox x:Name="cmbWorkflowEntityEdit" Grid.Column="3" Height="26" SelectionChanged="WorkflowEntityEdit_Changed">
+                                <ComboBoxItem Content="Kunde" IsSelected="True"/>
+                                <ComboBoxItem Content="Artikel"/>
+                                <ComboBoxItem Content="Auftrag"/>
+                                <ComboBoxItem Content="Lieferant"/>
+                                <ComboBoxItem Content="Rechnung"/>
+                            </ComboBox>
+
+                            <TextBlock Text="Ereignis:" Grid.Column="4" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                            <ComboBox x:Name="cmbWorkflowEreignis" Grid.Column="5" Height="26">
+                                <ComboBoxItem Content="Angelegt" IsSelected="True"/>
+                                <ComboBoxItem Content="Geaendert"/>
+                                <ComboBoxItem Content="Geloescht"/>
+                                <ComboBoxItem Content="StatusGeaendert"/>
+                            </ComboBox>
+
+                            <CheckBox x:Name="chkWorkflowAktiv" Grid.Column="6" Content="Aktiv" IsChecked="True"
+                                      VerticalAlignment="Center" Margin="15,0,0,0"/>
+
+                            <TextBlock Text="Beschreibung:" Grid.Row="1" VerticalAlignment="Center" Margin="0,10,0,0"/>
+                            <TextBox x:Name="txtWorkflowBeschreibung" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5" Margin="0,10,0,0"/>
+
+                            <!-- Aktionen -->
+                            <TextBlock Text="Aktion:" Grid.Row="2" VerticalAlignment="Center" Margin="0,10,0,0"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="5" Orientation="Horizontal" Margin="0,10,0,0">
+                                <ComboBox x:Name="cmbWorkflowAktionsTyp" Width="120" Height="26">
+                                    <ComboBoxItem Content="FeldSetzen" IsSelected="True"/>
+                                    <ComboBoxItem Content="Log"/>
+                                    <ComboBoxItem Content="StatusAendern"/>
+                                </ComboBox>
+                                <TextBlock Text="Zielfeld:" VerticalAlignment="Center" Margin="15,0,10,0"/>
+                                <ComboBox x:Name="cmbWorkflowZielfeld" Width="150" Height="26"/>
+                                <TextBlock Text="=" VerticalAlignment="Center" Margin="10,0,10,0" FontWeight="Bold"/>
+                                <TextBox x:Name="txtWorkflowFormel" Width="250" ToolTip="Formel: {Feldname}, HEUTE(), {Preis}*1.19"/>
+                                <Button Content="?" Width="26" Height="26" Margin="5,0,0,0" Click="WorkflowHilfe_Click"
+                                        ToolTip="Hilfe zu Feldern und Funktionen"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="3" Grid.Column="5" Grid.ColumnSpan="2" Orientation="Horizontal"
+                                        HorizontalAlignment="Right" Margin="0,15,0,0">
+                                <Button Content="Speichern" Padding="20,6" Click="WorkflowSpeichern_Click"
+                                        Background="{DynamicResource PrimaryBrush}" Foreground="White"/>
+                                <Button Content="Loeschen" Padding="15,6" Margin="10,0,0,0" Click="WorkflowLoeschen_Click"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Hilfe Tab -->
+            <TabItem Header="Hilfe">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="Feld- und Funktionshilfe" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock Text=" - Alle verfuegbaren Felder, Funktionen und Operatoren" Foreground="Gray" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Filter -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Kategorie:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="cmbHilfeKategorie" Width="120" Height="28" SelectionChanged="HilfeKategorie_Changed">
+                            <ComboBoxItem Content="Alle" Tag="" IsSelected="True"/>
+                            <ComboBoxItem Content="Felder" Tag="Feld"/>
+                            <ComboBoxItem Content="Funktionen" Tag="Funktion"/>
+                            <ComboBoxItem Content="Ereignisse" Tag="Ereignis"/>
+                            <ComboBoxItem Content="Operatoren" Tag="Operator"/>
+                        </ComboBox>
+                        <TextBlock Text="Entity:" VerticalAlignment="Center" Margin="20,0,10,0"/>
+                        <ComboBox x:Name="cmbHilfeEntity" Width="120" Height="28" SelectionChanged="HilfeEntity_Changed">
+                            <ComboBoxItem Content="Alle" Tag="" IsSelected="True"/>
+                            <ComboBoxItem Content="Kunde" Tag="Kunde"/>
+                            <ComboBoxItem Content="Artikel" Tag="Artikel"/>
+                            <ComboBoxItem Content="Auftrag" Tag="Auftrag"/>
+                            <ComboBoxItem Content="Lieferant" Tag="Lieferant"/>
+                            <ComboBoxItem Content="Rechnung" Tag="Rechnung"/>
+                        </ComboBox>
+                        <TextBlock Text="Suchen:" VerticalAlignment="Center" Margin="20,0,10,0"/>
+                        <TextBox x:Name="txtHilfeSuche" Width="200" Height="26" TextChanged="HilfeSuche_Changed"/>
+                        <Button Content="Aktualisieren" Margin="20,0,0,0" Padding="15,4" Click="HilfeAktualisieren_Click"/>
+                    </StackPanel>
+
+                    <!-- DataGrid -->
+                    <DataGrid x:Name="dgHilfe" Grid.Row="2" AutoGenerateColumns="False"
+                              IsReadOnly="True" SelectionMode="Single" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Kategorie" Binding="{Binding CKategorie}" Width="80"/>
+                            <DataGridTextColumn Header="Entity" Binding="{Binding CEntityTyp}" Width="80"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="180">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontFamily" Value="Consolas"/>
+                                        <Setter Property="Foreground" Value="#0066cc"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Anzeigename" Binding="{Binding CAnzeigename}" Width="150"/>
+                            <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="*"/>
+                            <DataGridTextColumn Header="Datentyp" Binding="{Binding CDatentyp}" Width="80"/>
+                            <DataGridTextColumn Header="Beispiel" Binding="{Binding CBeispiel}" Width="180">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontFamily" Value="Consolas"/>
+                                        <Setter Property="Foreground" Value="#666"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </Grid>
             </TabItem>
 
