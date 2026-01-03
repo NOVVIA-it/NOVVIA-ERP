@@ -29,11 +29,16 @@ namespace NovviaERP.WPF.Views
                 _isLoading = false;
             };
 
-            // Sidebar-Breite bei Änderung speichern (wenn Fenster geschlossen wird)
-            Closing += async (s, e) =>
+            // Sidebar-Breite beim Schliessen synchron speichern
+            Closing += (s, e) =>
             {
-                await SpeichereSidebarBreiteAsync();
+                SpeichereSidebarBreiteAsync().GetAwaiter().GetResult();
             };
+        }
+
+        private async void SidebarSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+        {
+            await SpeichereSidebarBreiteAsync();
         }
 
         private void AlleStatusMenusEinklappen()

@@ -324,10 +324,11 @@
         </Border>
 
         <!-- Vertikaler Splitter fuer Sidebar -->
-        <GridSplitter Grid.Row="1" Grid.Column="1" Width="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+        <GridSplitter x:Name="sidebarSplitter" Grid.Row="1" Grid.Column="1" Width="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                       Background="#1E1E1E" Cursor="SizeWE"
                       ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
-                      ShowsPreview="True" Focusable="False" Panel.ZIndex="100"/>
+                      ShowsPreview="True" Focusable="False" Panel.ZIndex="100"
+                      DragCompleted="SidebarSplitter_DragCompleted"/>
 
         <!-- Main Content -->
         <ContentControl Grid.Row="1" Grid.Column="2" x:Name="contentMain"/>
