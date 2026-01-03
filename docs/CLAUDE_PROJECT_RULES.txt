@@ -14,4 +14,4 @@ alle design einstellung sollen aus einstellungen DESIGN kommen - kein hardcodes 
 alles was in JTL tabellen liegt bitte verwenden - keine eigenen NOVVIA tabellen erstellen wenn es eine JTL tab gibt
 nochmals: bitte alles super detailiert dokumentieren
 niemals was entwickeln was nicht in docs dokumentiert ist 
-
+es gibt eine sprachdatei - da gehören alle texte rein

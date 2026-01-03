@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
+using Dapper;
+using Microsoft.Data.SqlClient;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Microsoft.Extensions.DependencyInjection;
@@ -81,6 +83,7 @@ namespace NovviaERP.WPF.Views
                 await LadeBriefpapierAsync();
                 await LadeMahnstufeAsync();
                 await LadeTextmeldungenAsync();
+                await LadeSpracheAsync();
             }
             catch (Exception ex)
             {
@@ -3689,6 +3692,169 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Sprache
+
+        private List<SpracheItem>? _alleSpracheItems;
+        private SpracheItem? _selectedSpracheItem;
+
+        public class SpracheItem
+        {
+            public int KSprache { get; set; }
+            public string CSchluessel { get; set; } = "";
+            public string CSprache { get; set; } = "de";
+            public string CWert { get; set; } = "";
+            public string? CBeschreibung { get; set; }
+            public DateTime? DGeaendert { get; set; }
+        }
+
+        private async System.Threading.Tasks.Task LadeSpracheAsync()
+        {
+            try
+            {
+                using var conn = new SqlConnection(_core.ConnectionString);
+                _alleSpracheItems = (await conn.QueryAsync<SpracheItem>(@"
+                    IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'NOVVIA' AND TABLE_NAME = 'Sprache')
+                        SELECT kSprache AS KSprache, cSchluessel AS CSchluessel, cSprache AS CSprache,
+                               cWert AS CWert, cBeschreibung AS CBeschreibung, dGeaendert AS DGeaendert
+                        FROM NOVVIA.Sprache WHERE cSprache = 'de' ORDER BY cSchluessel
+                    ELSE
+                        SELECT 0 AS KSprache, '' AS CSchluessel, '' AS CSprache, '' AS CWert, '' AS CBeschreibung, NULL AS DGeaendert WHERE 1=0
+                ")).ToList();
+
+                FilterSprache();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Laden der Sprachtexte:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void FilterSprache()
+        {
+            if (_alleSpracheItems == null) return;
+
+            var kategorie = (cmbSpracheKategorie.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
+            var suche = txtSpracheSuche.Text?.Trim().ToLower() ?? "";
+
+            var filtered = _alleSpracheItems.AsEnumerable();
+
+            if (!string.IsNullOrEmpty(kategorie))
+                filtered = filtered.Where(x => x.CSchluessel.StartsWith(kategorie + "."));
+
+            if (!string.IsNullOrEmpty(suche))
+                filtered = filtered.Where(x =>
+                    x.CSchluessel.ToLower().Contains(suche) ||
+                    x.CWert.ToLower().Contains(suche) ||
+                    (x.CBeschreibung ?? "").ToLower().Contains(suche));
+
+            dgSprache.ItemsSource = filtered.ToList();
+        }
+
+        private void SpracheKategorie_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            FilterSprache();
+        }
+
+        private void SpracheSuche_Changed(object sender, TextChangedEventArgs e)
+        {
+            FilterSprache();
+        }
+
+        private async void SpracheAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeSpracheAsync();
+        }
+
+        private void DgSprache_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (dgSprache.SelectedItem is SpracheItem item)
+            {
+                _selectedSpracheItem = item;
+                txtSpracheSchluessel.Text = item.CSchluessel;
+                txtSpracheWert.Text = item.CWert;
+                txtSpracheBeschreibung.Text = item.CBeschreibung ?? "";
+            }
+        }
+
+        private void SpracheNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedSpracheItem = null;
+            txtSpracheSchluessel.Text = "";
+            txtSpracheWert.Text = "";
+            txtSpracheBeschreibung.Text = "";
+            dgSprache.SelectedItem = null;
+        }
+
+        private async void SpracheSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtSpracheSchluessel.Text))
+            {
+                MessageBox.Show("Bitte einen Schlüssel eingeben (z.B. 'Buttons.MeinButton').", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                using var conn = new SqlConnection(_core.ConnectionString);
+
+                await conn.ExecuteAsync(@"
+                    MERGE INTO NOVVIA.Sprache AS target
+                    USING (SELECT @Schluessel AS cSchluessel, 'de' AS cSprache) AS source
+                    ON target.cSchluessel = source.cSchluessel AND target.cSprache = source.cSprache
+                    WHEN MATCHED THEN
+                        UPDATE SET cWert = @Wert, cBeschreibung = @Beschreibung, dGeaendert = GETDATE()
+                    WHEN NOT MATCHED THEN
+                        INSERT (cSchluessel, cSprache, cWert, cBeschreibung)
+                        VALUES (@Schluessel, 'de', @Wert, @Beschreibung);
+                ", new
+                {
+                    Schluessel = txtSpracheSchluessel.Text.Trim(),
+                    Wert = txtSpracheWert.Text.Trim(),
+                    Beschreibung = string.IsNullOrWhiteSpace(txtSpracheBeschreibung.Text) ? (string?)null : txtSpracheBeschreibung.Text.Trim()
+                });
+
+                // Lang-Cache aktualisieren
+                await Lang.LoadFromDbAsync();
+
+                await LadeSpracheAsync();
+                MessageBox.Show("Sprachtext gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void SpracheLöschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedSpracheItem == null || _selectedSpracheItem.KSprache == 0)
+            {
+                MessageBox.Show("Bitte erst einen Sprachtext auswählen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show($"Sprachtext '{_selectedSpracheItem.CSchluessel}' wirklich löschen?",
+                "Bestätigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                using var conn = new SqlConnection(_core.ConnectionString);
+                await conn.ExecuteAsync("DELETE FROM NOVVIA.Sprache WHERE kSprache = @Id", new { Id = _selectedSpracheItem.KSprache });
+
+                await Lang.LoadFromDbAsync();
+                await LadeSpracheAsync();
+                SpracheNeu_Click(sender, e);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Löschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

@@ -7,19 +7,22 @@
     "Speichern": "Speichern",
     "Abbrechen": "Abbrechen",
     "Bearbeiten": "Bearbeiten",
-    "Loeschen": "Loeschen",
+    "Löschen": "Löschen",
     "Neu": "Neu",
     "Suchen": "Suchen",
     "Aktualisieren": "Aktualisieren",
-    "Schliessen": "Schliessen",
+    "Schließen": "Schließen",
     "Ja": "Ja",
     "Nein": "Nein",
     "OK": "OK",
-    "Zurueck": "Zurueck",
+    "Zurück": "Zurück",
     "Weiter": "Weiter",
     "Exportieren": "Exportieren",
     "Importieren": "Importieren",
-    "Drucken": "Drucken"
+    "Drucken": "Drucken",
+    "Übernehmen": "Übernehmen",
+    "Hinzufügen": "Hinzufügen",
+    "Entfernen": "Entfernen"
   },
   "Labels": {
     "Datum": "Datum",
@@ -35,18 +38,24 @@
     "Gesamt": "Gesamt",
     "Netto": "Netto",
     "Brutto": "Brutto",
-    "MwSt": "MwSt"
+    "MwSt": "MwSt",
+    "Währung": "Währung",
+    "Größe": "Größe",
+    "Länge": "Länge",
+    "Höhe": "Höhe",
+    "Gewicht": "Gewicht"
   },
   "Navigation": {
     "Dashboard": "Dashboard",
-    "Auftraege": "Auftraege",
+    "Aufträge": "Aufträge",
     "Kunden": "Kunden",
     "Artikel": "Artikel",
     "Lieferanten": "Lieferanten",
     "Einkauf": "Einkauf",
     "Rechnungen": "Rechnungen",
     "Lager": "Lager",
-    "Einstellungen": "Einstellungen"
+    "Einstellungen": "Einstellungen",
+    "Übersicht": "Übersicht"
   },
   "Lieferanten": {
     "Titel": "Lieferanten",
@@ -55,13 +64,14 @@
     "EigeneFelder": "Eigene Felder",
     "PharmaValidierung": "Pharma-Validierung",
     "MSV3": "MSV3",
-    "ABdata": "ABdata"
+    "ABdata": "ABdata",
+    "Lieferantennummer": "Lieferantennummer"
   },
   "Pharma": {
     "Titel": "Lieferanten-Qualifizierung (GDP)",
     "Produktkategorien": "Produktkategorien",
-    "Ambient": "Ambient (15-25 Grad)",
-    "Cool": "Cool (2-8 Grad)",
+    "Ambient": "Ambient (15-25°C)",
+    "Cool": "Kühlkette (2-8°C)",
     "Medcan": "Medizin. Cannabis",
     "Tierarznei": "Tierarzneimittel",
     "Zertifizierungen": "Zertifizierungen",
@@ -71,7 +81,7 @@
     "QualifiziertAm": "Qualifiziert am",
     "QualifiziertVon": "Qualifiziert von",
     "Dokumente": "Dokumente",
-    "NurRPBerechtigt": "Nur RP-Berechtigte koennen aendern",
+    "NurRPBerechtigt": "Nur RP-Berechtigte können ändern",
     "PharmaDatenSpeichern": "Pharma-Daten speichern"
   },
   "Kunden": {
@@ -79,12 +89,15 @@
     "Kundennummer": "Kundennummer",
     "Firma": "Firma",
     "Ansprechpartner": "Ansprechpartner",
-    "Strasse": "Strasse",
+    "Straße": "Straße",
     "PLZ": "PLZ",
     "Ort": "Ort",
     "Land": "Land",
     "Telefon": "Telefon",
-    "EMail": "E-Mail"
+    "EMail": "E-Mail",
+    "Anrede": "Anrede",
+    "Vorname": "Vorname",
+    "Nachname": "Nachname"
   },
   "Artikel": {
     "Titel": "Artikel",
@@ -95,47 +108,58 @@
     "Lagerbestand": "Lagerbestand",
     "Mindestbestand": "Mindestbestand",
     "EKPreis": "EK-Preis",
-    "VKPreis": "VK-Preis"
+    "VKPreis": "VK-Preis",
+    "Verfügbar": "Verfügbar",
+    "Einheit": "Einheit"
   },
-  "Auftraege": {
-    "Titel": "Auftraege",
+  "Aufträge": {
+    "Titel": "Aufträge",
     "Auftragsnummer": "Auftragsnummer",
     "Bestelldatum": "Bestelldatum",
     "Lieferdatum": "Lieferdatum",
-    "Positionen": "Positionen"
+    "Positionen": "Positionen",
+    "Versandart": "Versandart",
+    "Zahlungsart": "Zahlungsart"
   },
   "Rechnungen": {
     "Titel": "Rechnungen",
     "Rechnungsnummer": "Rechnungsnummer",
     "Rechnungsdatum": "Rechnungsdatum",
-    "Faellig": "Faellig",
+    "Fällig": "Fällig",
     "Bezahlt": "Bezahlt",
     "Offen": "Offen",
-    "Storniert": "Storniert"
+    "Storniert": "Storniert",
+    "Überfällig": "Überfällig",
+    "Mahnung": "Mahnung"
   },
   "Meldungen": {
     "Erfolg": {
       "Gespeichert": "Erfolgreich gespeichert!",
-      "Geloescht": "Erfolgreich geloescht!",
-      "Aktualisiert": "Erfolgreich aktualisiert!"
+      "Gelöscht": "Erfolgreich gelöscht!",
+      "Aktualisiert": "Erfolgreich aktualisiert!",
+      "Gesendet": "Erfolgreich gesendet!",
+      "Importiert": "Erfolgreich importiert!"
     },
     "Fehler": {
       "Allgemein": "Ein Fehler ist aufgetreten",
       "Laden": "Fehler beim Laden",
       "Speichern": "Fehler beim Speichern",
-      "Loeschen": "Fehler beim Loeschen",
+      "Löschen": "Fehler beim Löschen",
       "Verbindung": "Verbindungsfehler",
-      "Berechtigung": "Keine Berechtigung"
+      "Berechtigung": "Keine Berechtigung",
+      "Validierung": "Validierungsfehler"
     },
     "Warnung": {
-      "NichtGespeichert": "Aenderungen wurden nicht gespeichert",
-      "WirklichLoeschen": "Wirklich loeschen?",
-      "NichtRueckgaengig": "Diese Aktion kann nicht rueckgaengig gemacht werden"
+      "NichtGespeichert": "Änderungen wurden nicht gespeichert",
+      "WirklichLöschen": "Wirklich löschen?",
+      "NichtRückgängig": "Diese Aktion kann nicht rückgängig gemacht werden",
+      "UngespeicherteÄnderungen": "Es gibt ungespeicherte Änderungen"
     },
     "Info": {
-      "BittaAuswaehlen": "Bitte zuerst einen Eintrag auswaehlen",
+      "BitteAuswählen": "Bitte zuerst einen Eintrag auswählen",
       "KeineErgebnisse": "Keine Ergebnisse gefunden",
-      "LadeVorgang": "Lade..."
+      "Ladevorgang": "Lade...",
+      "BitteWarten": "Bitte warten..."
     }
   },
   "Status": {
@@ -144,7 +168,11 @@
     "Abgeschlossen": "Abgeschlossen",
     "Storniert": "Storniert",
     "Aktiv": "Aktiv",
-    "Inaktiv": "Inaktiv"
+    "Inaktiv": "Inaktiv",
+    "Gültig": "Gültig",
+    "Ungültig": "Ungültig",
+    "Geprüft": "Geprüft",
+    "Ausstehend": "Ausstehend"
   },
   "Zeit": {
     "Heute": "Heute",
@@ -152,6 +180,16 @@
     "DieseWoche": "Diese Woche",
     "DieserMonat": "Dieser Monat",
     "DiesesJahr": "Dieses Jahr",
-    "Alle": "Alle"
+    "Alle": "Alle",
+    "Jetzt": "Jetzt"
+  },
+  "Einstellungen": {
+    "Titel": "Einstellungen",
+    "Allgemein": "Allgemein",
+    "Benutzer": "Benutzer",
+    "Design": "Design",
+    "Sprache": "Sprache",
+    "Drucker": "Drucker",
+    "Schnittstellen": "Schnittstellen"
   }
 }

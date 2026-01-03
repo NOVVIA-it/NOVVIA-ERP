@@ -141,6 +141,30 @@
 | **[NOVVIA]** `spMSV3RequestLog_Insert` | MSV3Service.cs:1497 | Request Log |
 | **[NOVVIA]** `spMSV3Cache_Cleanup` | MSV3Service.cs:1518 | Cache aufraumen |
 
+### Sprache / Lokalisierung (NEU 2026-01-03)
+| SP Name | Tabellen | Beschreibung |
+|---------|----------|--------------|
+| **[NOVVIA]** `spSpracheImportieren` | NOVVIA.Sprache | Text importieren (MERGE) |
+
+**Tabelle NOVVIA.Sprache:**
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| kSprache | INT | Primary Key |
+| cSchluessel | NVARCHAR(200) | Key (z.B. "Buttons.Speichern") |
+| cSprache | NVARCHAR(10) | Sprachcode ("de", "en") |
+| cWert | NVARCHAR(500) | Angezeigter Text |
+| cBeschreibung | NVARCHAR(500) | Verwendungshinweis |
+| dErstellt | DATETIME | Erstellungsdatum |
+| dGeaendert | DATETIME | Aenderungsdatum |
+
+**C# Service:** `NovviaERP.Core.Services.Lang`
+- `Lang.InitAsync(connectionString, "de")` - Initialisieren
+- `Lang.Get("Buttons.Speichern")` - Text abrufen
+- `Lang.SetAsync("key", "wert")` - Text speichern
+- `Lang.LoadFromDbAsync()` - Aus DB neu laden
+
+**UI:** Einstellungen → Sprache Tab
+
 ---
 
 ## WICHTIG: Regel fuer JTL SPs

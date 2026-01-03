@@ -5,7 +5,8 @@
 -- Ermoeglicht Anpassung ohne Code-Aenderung
 -- =====================================================
 
-USE [eazybusiness]
+-- Datenbank wird beim Aufruf angegeben: sqlcmd -d "Mandant_2"
+-- USE [Mandant_2]
 GO
 
 -- Schema sicherstellen

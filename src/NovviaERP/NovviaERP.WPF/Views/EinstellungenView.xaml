@@ -2530,6 +2530,91 @@
                 </Grid>
             </TabItem>
 
+            <!-- Sprache Tab -->
+            <TabItem Header="Sprache">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="Sprachverwaltung" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock Text=" - Alle UI-Texte bearbeiten" Foreground="Gray" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Filter -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Kategorie:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="cmbSpracheKategorie" Width="150" Height="28" SelectionChanged="SpracheKategorie_Changed">
+                            <ComboBoxItem Content="Alle" Tag="" IsSelected="True"/>
+                            <ComboBoxItem Content="Buttons" Tag="Buttons"/>
+                            <ComboBoxItem Content="Labels" Tag="Labels"/>
+                            <ComboBoxItem Content="Navigation" Tag="Navigation"/>
+                            <ComboBoxItem Content="Meldungen" Tag="Meldungen"/>
+                            <ComboBoxItem Content="Status" Tag="Status"/>
+                            <ComboBoxItem Content="Pharma" Tag="Pharma"/>
+                            <ComboBoxItem Content="Kunden" Tag="Kunden"/>
+                            <ComboBoxItem Content="Artikel" Tag="Artikel"/>
+                            <ComboBoxItem Content="Aufträge" Tag="Auftraege"/>
+                            <ComboBoxItem Content="Rechnungen" Tag="Rechnungen"/>
+                            <ComboBoxItem Content="Lieferanten" Tag="Lieferanten"/>
+                            <ComboBoxItem Content="Einstellungen" Tag="Einstellungen"/>
+                        </ComboBox>
+                        <TextBlock Text="Suchen:" VerticalAlignment="Center" Margin="20,0,10,0"/>
+                        <TextBox x:Name="txtSpracheSuche" Width="200" Height="26" TextChanged="SpracheSuche_Changed"/>
+                        <Button Content="Neu" Margin="20,0,0,0" Padding="15,4" Click="SpracheNeu_Click"/>
+                        <Button Content="Aktualisieren" Margin="10,0,0,0" Padding="15,4" Click="SpracheAktualisieren_Click"/>
+                    </StackPanel>
+
+                    <!-- DataGrid -->
+                    <DataGrid x:Name="dgSprache" Grid.Row="2" AutoGenerateColumns="False"
+                              IsReadOnly="False" SelectionMode="Single" CanUserAddRows="False"
+                              SelectionChanged="DgSprache_SelectionChanged">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Schlüssel" Binding="{Binding CSchluessel}" Width="250" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Text" Binding="{Binding CWert}" Width="*"/>
+                            <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="200"/>
+                            <DataGridTextColumn Header="Geändert" Binding="{Binding DGeaendert, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" Width="130" IsReadOnly="True"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Bearbeiten-Panel -->
+                    <Border Grid.Row="3" Background="#f5f5f5" Padding="15" Margin="0,10,0,0" CornerRadius="5">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="250"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Schlüssel:" VerticalAlignment="Center"/>
+                            <TextBox x:Name="txtSpracheSchluessel" Grid.Column="1"/>
+
+                            <TextBlock Text="Text:" Grid.Column="2" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                            <TextBox x:Name="txtSpracheWert" Grid.Column="3"/>
+
+                            <TextBlock Text="Beschreibung:" VerticalAlignment="Center" Grid.Row="1" Margin="0,10,0,0"/>
+                            <TextBox x:Name="txtSpracheBeschreibung" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,10,0,0"/>
+
+                            <StackPanel Grid.Row="2" Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                                <Button Content="Speichern" Padding="20,6" Click="SpracheSpeichern_Click"
+                                        Background="{DynamicResource PrimaryBrush}" Foreground="White"/>
+                                <Button Content="Löschen" Padding="15,6" Margin="10,0,0,0" Click="SpracheLöschen_Click"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
             <!-- Merkmale Tab -->
             <TabItem Header="Merkmale">
                 <Grid Margin="15">
