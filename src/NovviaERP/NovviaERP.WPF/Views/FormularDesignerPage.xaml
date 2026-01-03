@@ -97,7 +97,8 @@
             <!-- Verfügbare Elemente -->
             <TextBlock Grid.Row="2" Text="Elemente" FontWeight="Bold" Margin="10,5,10,5"/>
             <ListBox Grid.Row="3" x:Name="ElementeListe" Margin="5,0,5,5"
-                     PreviewMouseLeftButtonDown="ElementeListe_PreviewMouseLeftButtonDown">
+                     PreviewMouseLeftButtonDown="ElementeListe_PreviewMouseLeftButtonDown"
+                     PreviewMouseMove="ElementeListe_PreviewMouseMove">
                 <ListBoxItem Tag="TextBlock">📝 Text</ListBoxItem>
                 <ListBoxItem Tag="TextBox">✏️ Eingabefeld</ListBoxItem>
                 <ListBoxItem Tag="Image">🖼️ Bild / Logo</ListBoxItem>
@@ -293,7 +294,8 @@
             <TextBlock Grid.Row="2" Text="Verfügbare Datenfelder" FontWeight="Bold" Margin="10"/>
             <ListBox Grid.Row="3" x:Name="DatenfelderListe" Margin="10,0,10,10"
                      ItemsSource="{Binding VerfuegbareFelder}"
-                     PreviewMouseLeftButtonDown="DatenfelderListe_PreviewMouseLeftButtonDown">
+                     PreviewMouseLeftButtonDown="DatenfelderListe_PreviewMouseLeftButtonDown"
+                     PreviewMouseMove="DatenfelderListe_PreviewMouseMove">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding}" FontSize="11"/>

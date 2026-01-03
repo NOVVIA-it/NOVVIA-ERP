@@ -1,0 +1,70 @@
+<UserControl x:Class="NovviaERP.WPF.Views.RetourenView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:NovviaERP.WPF.Controls"
+             Background="#f0f2f5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Text="Retouren" FontSize="28" FontWeight="Bold"/>
+
+        <!-- Filter-Bereich -->
+        <Border Grid.Row="1" Background="White" BorderBrush="#e0e0e0" BorderThickness="1" CornerRadius="4" Margin="0,15,0,0" Padding="15,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Status-Filter -->
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Status:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <ComboBox x:Name="cmbStatus" Width="150" SelectionChanged="CmbStatus_SelectionChanged">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding CName}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Suche -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="30,0,0,0">
+                    <TextBlock Text="Suche:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBox x:Name="txtSuche" Width="200" KeyDown="TxtSuche_KeyDown"/>
+                    <Button Content="Suchen" Padding="10,5" Margin="5,0,0,0" Click="BtnSuchen_Click"/>
+                </StackPanel>
+
+                <!-- Aktualisieren -->
+                <Button Grid.Column="3" Content="Aktualisieren" Padding="15,5" Click="BtnAktualisieren_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- DataGrid mit NovviaGrid -->
+        <Border Grid.Row="2" Background="White" BorderBrush="#e0e0e0" BorderThickness="1" CornerRadius="4" Margin="0,15,0,0" Padding="0">
+            <controls:NovviaGrid x:Name="gridRetouren" ViewName="RetourenView"
+                                 ShowDateFilter="True" DateFilterMode="MonthNavigator"
+                                 AnzahlText="Retouren" DatePropertyName="DErstellt"
+                                 ItemDoubleClick="GridRetouren_ItemDoubleClick">
+                <DataGridTextColumn Header="Retoure-Nr" Binding="{Binding CRetoureNr}" Width="100"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding CStatus}" Width="100"/>
+                <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="90"/>
+                <DataGridTextColumn Header="Kunden-Nr" Binding="{Binding CKundenNr}" Width="90"/>
+                <DataGridTextColumn Header="Kunde" Binding="{Binding CKundeName}" Width="200"/>
+                <DataGridTextColumn Header="Auftrag" Binding="{Binding CAuftragNr}" Width="100"/>
+                <DataGridTextColumn Header="Gutschrift" Binding="{Binding CGutschriftNr}" Width="100"/>
+                <DataGridTextColumn Header="Pos." Binding="{Binding PositionenAnzahl}" Width="50"/>
+                <DataGridTextColumn Header="Korrektur" Binding="{Binding FKorrekturBetrag, StringFormat=N2}" Width="80"/>
+                <DataGridCheckBoxColumn Header="VK" Binding="{Binding NVersandkostenErstatten}" Width="40" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Kommentar" Binding="{Binding CKommentarExtern}" Width="*"/>
+            </controls:NovviaGrid>
+        </Border>
+    </Grid>
+</UserControl>

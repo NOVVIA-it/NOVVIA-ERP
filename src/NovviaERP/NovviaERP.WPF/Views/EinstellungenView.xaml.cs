@@ -2454,7 +2454,7 @@ namespace NovviaERP.WPF.Views
                 chkGridZebraStreifen.IsChecked = true;
 
                 // Selektion Standardwerte
-                txtGridSelectionBg.Text = "#0078D4";
+                txtGridSelectionBg.Text = "#E86B5C";
                 txtGridSelectionFg.Text = "#ffffff";
 
                 // Datum Standardwerte
@@ -2714,18 +2714,14 @@ namespace NovviaERP.WPF.Views
         {
             var neueFarbe = new CoreService.Vorgangsfarbe
             {
-                CBedeutung = "Neue Farbe",
-                NRotwert = 128,
-                NGruenwert = 128,
-                NBlauwert = 128,
-                NAlphawert = 255,
-                NAktiv = true
+                CName = "Neue Farbe",
+                NFarbcode = -8421505 // Grau (RGB 128,128,128)
             };
 
             try
             {
                 var id = await _core.SaveVorgangsfarbeAsync(neueFarbe);
-                neueFarbe.KVorgangsfarbe = id;
+                neueFarbe.KFarbe = id;
                 _vorgangsfarben.Add(neueFarbe);
                 dgVorgangsfarben.ItemsSource = null;
                 dgVorgangsfarben.ItemsSource = _vorgangsfarben;
@@ -2741,14 +2737,14 @@ namespace NovviaERP.WPF.Views
         {
             if (dgVorgangsfarben.SelectedItem is not CoreService.Vorgangsfarbe farbe) return;
 
-            var result = MessageBox.Show($"Vorgangsfarbe '{farbe.CBedeutung}' wirklich loeschen?",
+            var result = MessageBox.Show($"Farbe '{farbe.CName}' wirklich loeschen?",
                 "Loeschen bestaetigen", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result != MessageBoxResult.Yes) return;
 
             try
             {
-                await _core.DeleteVorgangsfarbeAsync(farbe.KVorgangsfarbe);
+                await _core.DeleteVorgangsfarbeAsync(farbe.KFarbe);
                 _vorgangsfarben.Remove(farbe);
                 dgVorgangsfarben.ItemsSource = null;
                 dgVorgangsfarben.ItemsSource = _vorgangsfarben;
@@ -2992,6 +2988,372 @@ namespace NovviaERP.WPF.Views
                 var db = new NovviaERP.Core.Data.JtlDbContext(App.ConnectionString!);
                 frame.Navigate(new FormularDesignerPage(db));
                 main.contentMain.Content = frame;
+            }
+        }
+
+        #endregion
+
+        #region Stammdaten: Hersteller, Rueckgabegruende, Masseinheiten, Artikelzustaende
+
+        private async void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.Source != mainTabs) return;
+            if (mainTabs.SelectedItem is TabItem tab)
+            {
+                var header = tab.Header?.ToString();
+                switch (header)
+                {
+                    case "Hersteller":
+                        if (_hersteller == null) await LadeHerstellerAsync();
+                        break;
+                    case "Rueckgabegruende":
+                        if (_rueckgabegruende == null) await LadeRueckgabegruendeAsync();
+                        break;
+                    case "Masseinheiten":
+                        if (_masseinheiten == null) await LadeMasseinheitenAsync();
+                        break;
+                    case "Artikelzustaende":
+                        if (_artikelzustaende == null) await LadeArtikelzustaendeAsync();
+                        break;
+                    case "Attribute":
+                        if (_attributGruppen == null) await LadeAttributeAsync();
+                        break;
+                    case "Merkmale":
+                        if (_merkmale == null) await LadeMerkmaleAsync();
+                        break;
+                }
+            }
+        }
+
+        private List<CoreService.HerstellerItem>? _hersteller;
+        private List<CoreService.RueckgabegrundItem>? _rueckgabegruende;
+        private List<CoreService.MasseinheitItem>? _masseinheiten;
+        private List<CoreService.ArtikelzustandItem>? _artikelzustaende;
+
+        private async Task LadeHerstellerAsync()
+        {
+            _hersteller = await _core.GetHerstellerListeAsync();
+            dgHersteller.ItemsSource = _hersteller;
+        }
+
+        private async void HerstellerNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _hersteller ??= new List<CoreService.HerstellerItem>();
+            var neu = new CoreService.HerstellerItem { CName = "Neuer Hersteller", NSort = _hersteller.Count };
+            neu.KHersteller = await _core.CreateHerstellerAsync(neu);
+            _hersteller.Add(neu);
+            dgHersteller.ItemsSource = null;
+            dgHersteller.ItemsSource = _hersteller;
+            dgHersteller.SelectedItem = neu;
+        }
+
+        private async void HerstellerSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgHersteller.SelectedItem is CoreService.HerstellerItem h)
+            {
+                await _core.UpdateHerstellerAsync(h);
+                MessageBox.Show("Gespeichert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private async void HerstellerLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgHersteller.SelectedItem is CoreService.HerstellerItem h)
+            {
+                if (MessageBox.Show($"Hersteller '{h.CName}' loeschen?", "Loeschen", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    await _core.DeleteHerstellerAsync(h.KHersteller);
+                    _hersteller?.Remove(h);
+                    dgHersteller.ItemsSource = null;
+                    dgHersteller.ItemsSource = _hersteller;
+                }
+            }
+        }
+
+        private async Task LadeRueckgabegruendeAsync()
+        {
+            _rueckgabegruende = await _core.GetRueckgabegruendeAsync();
+            dgRueckgabegruende.ItemsSource = _rueckgabegruende;
+        }
+
+        private async void RueckgabegrundNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _rueckgabegruende ??= new List<CoreService.RueckgabegrundItem>();
+            var neu = new CoreService.RueckgabegrundItem { CName = "Neuer Grund", NAktiv = true, NSort = _rueckgabegruende.Count };
+            neu.KRMGrund = await _core.CreateRueckgabegrundAsync(neu);
+            _rueckgabegruende.Add(neu);
+            dgRueckgabegruende.ItemsSource = null;
+            dgRueckgabegruende.ItemsSource = _rueckgabegruende;
+            dgRueckgabegruende.SelectedItem = neu;
+        }
+
+        private async void RueckgabegrundSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgRueckgabegruende.SelectedItem is CoreService.RueckgabegrundItem r)
+            {
+                await _core.UpdateRueckgabegrundAsync(r);
+                MessageBox.Show("Gespeichert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private async void RueckgabegrundLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgRueckgabegruende.SelectedItem is CoreService.RueckgabegrundItem r)
+            {
+                if (MessageBox.Show($"Rueckgabegrund '{r.CName}' loeschen?", "Loeschen", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    await _core.DeleteRueckgabegrundAsync(r.KRMGrund);
+                    _rueckgabegruende?.Remove(r);
+                    dgRueckgabegruende.ItemsSource = null;
+                    dgRueckgabegruende.ItemsSource = _rueckgabegruende;
+                }
+            }
+        }
+
+        private async Task LadeMasseinheitenAsync()
+        {
+            _masseinheiten = await _core.GetMasseinheitenAsync();
+            dgMasseinheiten.ItemsSource = _masseinheiten;
+        }
+
+        private async void MasseinheitNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _masseinheiten ??= new List<CoreService.MasseinheitItem>();
+            var neu = new CoreService.MasseinheitItem { CCode = "NEU", CName = "Neue Einheit" };
+            neu.KMassEinheit = await _core.CreateMasseinheitAsync(neu);
+            _masseinheiten.Add(neu);
+            dgMasseinheiten.ItemsSource = null;
+            dgMasseinheiten.ItemsSource = _masseinheiten;
+            dgMasseinheiten.SelectedItem = neu;
+        }
+
+        private async void MasseinheitSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgMasseinheiten.SelectedItem is CoreService.MasseinheitItem m)
+            {
+                await _core.UpdateMasseinheitAsync(m);
+                MessageBox.Show("Gespeichert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private async void MasseinheitLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgMasseinheiten.SelectedItem is CoreService.MasseinheitItem m)
+            {
+                if (MessageBox.Show($"Masseinheit '{m.CCode}' loeschen?", "Loeschen", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    await _core.DeleteMasseinheitAsync(m.KMassEinheit);
+                    _masseinheiten?.Remove(m);
+                    dgMasseinheiten.ItemsSource = null;
+                    dgMasseinheiten.ItemsSource = _masseinheiten;
+                }
+            }
+        }
+
+        private async Task LadeArtikelzustaendeAsync()
+        {
+            _artikelzustaende = await _core.GetArtikelzustaendeAsync();
+            dgArtikelzustaende.ItemsSource = _artikelzustaende;
+        }
+
+        private async void ArtikelzustandNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _artikelzustaende ??= new List<CoreService.ArtikelzustandItem>();
+            var neu = new CoreService.ArtikelzustandItem { CName = "Neuer Zustand", NAktiv = true, NSort = _artikelzustaende.Count };
+            neu.KZustand = await _core.CreateArtikelzustandAsync(neu);
+            _artikelzustaende.Add(neu);
+            dgArtikelzustaende.ItemsSource = null;
+            dgArtikelzustaende.ItemsSource = _artikelzustaende;
+            dgArtikelzustaende.SelectedItem = neu;
+        }
+
+        private async void ArtikelzustandSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgArtikelzustaende.SelectedItem is CoreService.ArtikelzustandItem z)
+            {
+                await _core.UpdateArtikelzustandAsync(z);
+                MessageBox.Show("Gespeichert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private async void ArtikelzustandLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgArtikelzustaende.SelectedItem is CoreService.ArtikelzustandItem z)
+            {
+                if (MessageBox.Show($"Artikelzustand '{z.CName}' loeschen?", "Loeschen", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    await _core.DeleteArtikelzustandAsync(z.KZustand);
+                    _artikelzustaende?.Remove(z);
+                    dgArtikelzustaende.ItemsSource = null;
+                    dgArtikelzustaende.ItemsSource = _artikelzustaende;
+                }
+            }
+        }
+
+        #endregion
+
+        #region Attribute
+
+        private List<CoreService.AttributGruppe>? _attributGruppen;
+        private List<CoreService.AttributItem>? _attribute;
+
+        private async Task LadeAttributeAsync()
+        {
+            _attributGruppen = await _core.GetAttributGruppenAsync();
+            lstAttributGruppen.ItemsSource = _attributGruppen;
+            if (_attributGruppen.Count > 0)
+                lstAttributGruppen.SelectedIndex = 0;
+        }
+
+        private async void LstAttributGruppen_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (lstAttributGruppen.SelectedItem is CoreService.AttributGruppe gruppe)
+            {
+                _attribute = await _core.GetAttributeByGruppeAsync(gruppe.CGruppeName);
+                dgAttribute.ItemsSource = _attribute;
+            }
+        }
+
+        private async void AttributNeu_Click(object sender, RoutedEventArgs e)
+        {
+            var gruppe = lstAttributGruppen.SelectedItem as CoreService.AttributGruppe;
+            var gruppeName = gruppe?.CGruppeName ?? "Eigene";
+            _attribute ??= new List<CoreService.AttributItem>();
+            var neu = new CoreService.AttributItem { CName = "Neues Attribut", CGruppeName = gruppeName, NSort = _attribute.Count };
+            neu.KAttribut = await _core.CreateAttributAsync(neu);
+            _attribute.Add(neu);
+            dgAttribute.ItemsSource = null;
+            dgAttribute.ItemsSource = _attribute;
+            dgAttribute.SelectedItem = neu;
+        }
+
+        private async void AttributSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgAttribute.SelectedItem is CoreService.AttributItem a)
+            {
+                await _core.UpdateAttributAsync(a);
+                MessageBox.Show("Gespeichert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private async void AttributLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgAttribute.SelectedItem is CoreService.AttributItem a)
+            {
+                if (a.NIstStandard)
+                {
+                    MessageBox.Show("Standard-Attribute koennen nicht geloescht werden.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                if (MessageBox.Show($"Attribut '{a.CName}' loeschen?", "Loeschen", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    try
+                    {
+                        await _core.DeleteAttributAsync(a.KAttribut);
+                        _attribute?.Remove(a);
+                        dgAttribute.ItemsSource = null;
+                        dgAttribute.ItemsSource = _attribute;
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message, "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+        }
+
+        #endregion
+
+        #region Merkmale
+
+        private List<CoreService.MerkmalItem>? _merkmale;
+        private List<CoreService.MerkmalWertItem>? _merkmalWerte;
+
+        private async Task LadeMerkmaleAsync()
+        {
+            _merkmale = await _core.GetMerkmaleAsync();
+            dgMerkmale.ItemsSource = _merkmale;
+        }
+
+        private async void DgMerkmale_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (dgMerkmale.SelectedItem is CoreService.MerkmalItem m)
+            {
+                _merkmalWerte = await _core.GetMerkmalWerteAsync(m.KMerkmal);
+                dgMerkmalWerte.ItemsSource = _merkmalWerte;
+            }
+            else
+            {
+                dgMerkmalWerte.ItemsSource = null;
+            }
+        }
+
+        private async void MerkmalNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _merkmale ??= new List<CoreService.MerkmalItem>();
+            var neu = new CoreService.MerkmalItem { CName = "Neues Merkmal", CTyp = "TEXT", NSort = _merkmale.Count };
+            neu.KMerkmal = await _core.CreateMerkmalAsync(neu);
+            _merkmale.Add(neu);
+            dgMerkmale.ItemsSource = null;
+            dgMerkmale.ItemsSource = _merkmale;
+            dgMerkmale.SelectedItem = neu;
+        }
+
+        private async void MerkmalSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            // Merkmal speichern
+            if (dgMerkmale.SelectedItem is CoreService.MerkmalItem m)
+            {
+                await _core.UpdateMerkmalAsync(m);
+            }
+            // Merkmal-Werte speichern
+            if (_merkmalWerte != null)
+            {
+                foreach (var w in _merkmalWerte)
+                {
+                    await _core.UpdateMerkmalWertAsync(w);
+                }
+            }
+            MessageBox.Show("Gespeichert", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private async void MerkmalLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgMerkmale.SelectedItem is CoreService.MerkmalItem m)
+            {
+                if (MessageBox.Show($"Merkmal '{m.CName}' und alle Werte loeschen?", "Loeschen", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    await _core.DeleteMerkmalAsync(m.KMerkmal);
+                    _merkmale?.Remove(m);
+                    dgMerkmale.ItemsSource = null;
+                    dgMerkmale.ItemsSource = _merkmale;
+                    dgMerkmalWerte.ItemsSource = null;
+                }
+            }
+        }
+
+        private async void MerkmalWertNeu_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgMerkmale.SelectedItem is CoreService.MerkmalItem m)
+            {
+                _merkmalWerte ??= new List<CoreService.MerkmalWertItem>();
+                var neu = new CoreService.MerkmalWertItem { KMerkmal = m.KMerkmal, CWert = "Neuer Wert", NSort = _merkmalWerte.Count };
+                neu.KMerkmalWert = await _core.CreateMerkmalWertAsync(neu);
+                _merkmalWerte.Add(neu);
+                dgMerkmalWerte.ItemsSource = null;
+                dgMerkmalWerte.ItemsSource = _merkmalWerte;
+                dgMerkmalWerte.SelectedItem = neu;
+            }
+        }
+
+        private async void MerkmalWertLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgMerkmalWerte.SelectedItem is CoreService.MerkmalWertItem w)
+            {
+                await _core.DeleteMerkmalWertAsync(w.KMerkmalWert);
+                _merkmalWerte?.Remove(w);
+                dgMerkmalWerte.ItemsSource = null;
+                dgMerkmalWerte.ItemsSource = _merkmalWerte;
             }
         }
 

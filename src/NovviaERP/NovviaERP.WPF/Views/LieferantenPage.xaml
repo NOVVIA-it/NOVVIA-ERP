@@ -1,4 +1,4 @@
-<Page x:Class="NovviaERP.WPF.Views.LieferantenPage"
+﻿<Page x:Class="NovviaERP.WPF.Views.LieferantenPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       Title="Einkauf" Background="#f0f2f5">
@@ -29,7 +29,7 @@
                         <TextBox x:Name="txtLieferantSuche" Width="250" VerticalContentAlignment="Center" Tag="Suche..."/>
                         <Button Content="🔍 Suchen" Margin="10,0,0,0" Click="LieferantSuchen_Click"/>
                         <CheckBox x:Name="chkNurMSV3" Content="Nur MSV3" VerticalAlignment="Center" Margin="20,0,0,0"/>
-                        <Button Content="➕ Neuer Lieferant" Margin="20,0,0,0" Background="#0078D4" Foreground="White" Click="NeuerLieferant_Click"/>
+                        <Button Content="➕ Neuer Lieferant" Margin="20,0,0,0" Background="{DynamicResource PrimaryBrush}" Foreground="White" Click="NeuerLieferant_Click"/>
                     </StackPanel>
 
                     <!-- Lieferanten-Grid -->
@@ -113,7 +113,7 @@
 
                                         <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,10,0,0">
                                             <Button Content="🔗 Testen" Click="LieferantMSV3Test_Click" Width="70"/>
-                                            <Button Content="💾 Speichern" Margin="10,0,0,0" Background="#0078D4" Foreground="White"
+                                            <Button Content="💾 Speichern" Margin="10,0,0,0" Background="{DynamicResource PrimaryBrush}" Foreground="White"
                                                     Click="LieferantMSV3Speichern_Click" Width="90"/>
                                         </StackPanel>
                                     </Grid>
@@ -156,7 +156,7 @@
                             <ComboBoxItem Content="Abgeschlossen" Tag="500"/>
                         </ComboBox>
                         <Button Content="🔄 Aktualisieren" Margin="10,0,0,0" Click="BestellungenLaden_Click"/>
-                        <Button Content="➕ Neue Bestellung" Margin="20,0,0,0" Background="#0078D4" Foreground="White" Click="NeueBestellung_Click"/>
+                        <Button Content="➕ Neue Bestellung" Margin="20,0,0,0" Background="{DynamicResource PrimaryBrush}" Foreground="White" Click="NeueBestellung_Click"/>
                         <Button x:Name="btnMSV3Bestand" Content="📊 MSV3 Bestand abfragen" Margin="10,0,0,0" Background="#5C2D91" Foreground="White"
                                 IsEnabled="False" Click="MSV3BestandAbfragen_Click"/>
                         <Button x:Name="btnMSV3Senden" Content="📡 MSV3 Bestellen" Margin="10,0,0,0" Background="#107C10" Foreground="White"
@@ -283,7 +283,7 @@
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
                         <Button Content="✓ Alle auswählen" Click="AlleAuswaehlen_Click"/>
                         <Button Content="📡 MSV3 Verfügbarkeit" Margin="10,0,0,0" Click="MSV3Verfuegbarkeit_Click"/>
-                        <Button Content="📋 Bestellung erstellen" Margin="10,0,0,0" Background="#0078D4" Foreground="White" Click="AusListeBestellen_Click"/>
+                        <Button Content="📋 Bestellung erstellen" Margin="10,0,0,0" Background="{DynamicResource PrimaryBrush}" Foreground="White" Click="AusListeBestellen_Click"/>
                     </StackPanel>
                 </Grid>
             </TabItem>

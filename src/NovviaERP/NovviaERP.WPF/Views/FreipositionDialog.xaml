@@ -1,4 +1,4 @@
-<Window x:Class="NovviaERP.WPF.Views.FreipositionDialog"
+﻿<Window x:Class="NovviaERP.WPF.Views.FreipositionDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Freiposition hinzufügen" Height="320" Width="400"
@@ -45,7 +45,7 @@
 
         <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Hinzufügen" Padding="20,8" Margin="0,0,10,0" Click="Hinzufuegen_Click"
-                    Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
             <Button Content="Abbrechen" Padding="15,8" Click="Abbrechen_Click" IsCancel="True"/>
         </StackPanel>
     </Grid>

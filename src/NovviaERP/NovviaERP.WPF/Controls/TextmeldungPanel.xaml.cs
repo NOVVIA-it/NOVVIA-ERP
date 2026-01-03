@@ -1,13 +1,52 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
 
 namespace NovviaERP.WPF.Controls
 {
+    /// <summary>
+    /// Konvertiert NTyp zu Hintergrund-/Rahmenfarbe
+    /// </summary>
+    public class TextmeldungTypToColorConverter : IValueConverter
+    {
+        public bool IsBackground { get; set; } = true;
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var typ = value as int? ?? 0;
+            if (IsBackground)
+            {
+                return typ switch
+                {
+                    2 => new SolidColorBrush(Color.FromRgb(0xFF, 0xEB, 0xEE)), // Wichtig - hellrot
+                    1 => new SolidColorBrush(Color.FromRgb(0xFF, 0xF8, 0xE1)), // Warnung - hellgelb
+                    _ => new SolidColorBrush(Color.FromRgb(0xE3, 0xF2, 0xFD))  // Info - hellblau
+                };
+            }
+            else
+            {
+                return typ switch
+                {
+                    2 => new SolidColorBrush(Color.FromRgb(0xEF, 0x9A, 0x9A)), // Wichtig - rot
+                    1 => new SolidColorBrush(Color.FromRgb(0xFF, 0xE0, 0x82)), // Warnung - gelb
+                    _ => new SolidColorBrush(Color.FromRgb(0x90, 0xCA, 0xF9))  // Info - blau
+                };
+            }
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     /// <summary>
     /// Wiederverwendbares Panel zur Anzeige von Textmeldungen fuer Entities
     /// </summary>

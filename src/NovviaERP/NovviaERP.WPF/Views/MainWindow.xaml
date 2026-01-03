@@ -1,4 +1,4 @@
-<Window x:Class="NovviaERP.WPF.Views.MainWindow"
+﻿<Window x:Class="NovviaERP.WPF.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="NOVVIA ERP" Height="800" Width="1400"
@@ -71,20 +71,21 @@
         </Grid.ColumnDefinitions>
 
         <!-- Top Bar -->
-        <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#0078D4" Padding="15,10">
+        <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#2D2D30" Padding="15,10">
             <Grid>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="NOVVIA ERP" FontSize="20" FontWeight="Light" Foreground="White"/>
-                    <TextBlock Text=" | " Foreground="#80FFFFFF" FontSize="20" Margin="10,0"/>
-                    <TextBlock x:Name="txtMandant" Text="Mandant" FontSize="16" Foreground="White"
+                    <Image Source="/Assets/logo.png" Height="32" Margin="0,0,15,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="ERP" FontSize="18" FontWeight="Light" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text=" | " Foreground="#666" FontSize="18" Margin="10,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="txtMandant" Text="Mandant" FontSize="14" Foreground="#CCC"
                                VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <TextBlock x:Name="txtBenutzer" Text="Benutzer" Foreground="White"
+                    <TextBlock x:Name="txtBenutzer" Text="Benutzer" Foreground="#CCC"
                                VerticalAlignment="Center" Margin="0,0,15,0"/>
-                    <Button Content="Abmelden" Background="Transparent" Foreground="White"
-                            BorderThickness="0" Padding="10,5" Cursor="Hand"
+                    <Button Content="Abmelden" Background="{DynamicResource PrimaryBrush}" Foreground="White"
+                            BorderThickness="0" Padding="12,5" Cursor="Hand"
                             Click="BtnAbmelden_Click"/>
                 </StackPanel>
             </Grid>
@@ -100,6 +101,7 @@
                     <TextBlock Text="STAMMDATEN" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Kunden" Click="NavKunden_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Artikel" Click="NavArtikel_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="Kategorien" Click="NavKategorien_Click"/>
 
                     <TextBlock Text="VERKAUF" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
 
@@ -210,6 +212,35 @@
                             <StackPanel Orientation="Horizontal">
                                 <Border Width="8" Height="8" CornerRadius="4" Background="#dc3545" Margin="0,0,6,0"/>
                                 <TextBlock Text="Storniert"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Retouren mit aufklappbarem Status-Menü -->
+                    <Button Style="{StaticResource NavButton}" Content="▶ Retouren" x:Name="btnRetouren" Click="NavRetouren_Click"/>
+                    <StackPanel x:Name="pnlRetourenStatus" Visibility="Collapsed">
+                        <Button Style="{StaticResource StatusSubButton}" Tag="" Click="NavRetoureStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#6c757d" Margin="0,0,6,0"/>
+                                <TextBlock Text="Alle"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="1" Click="NavRetoureStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#ffc107" Margin="0,0,6,0"/>
+                                <TextBlock Text="Angemeldet"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="2" Click="NavRetoureStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#17a2b8" Margin="0,0,6,0"/>
+                                <TextBlock Text="Eingetroffen"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="3" Click="NavRetoureStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#28a745" Margin="0,0,6,0"/>
+                                <TextBlock Text="Abgeschlossen"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>

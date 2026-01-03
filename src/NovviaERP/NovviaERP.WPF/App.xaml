@@ -4,10 +4,57 @@
              xmlns:conv="clr-namespace:NovviaERP.WPF.Converters"
              ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
+        <!-- Converters -->
         <conv:BoolToYesNoConverter x:Key="BoolToYesNoConverter"/>
         <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
         <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <conv:BestellStatusConverter x:Key="BestellStatusConverter"/>
         <conv:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
+
+        <!-- Theme-Farben (Default-Werte, werden durch ThemeService ueberschrieben) -->
+        <Color x:Key="PrimaryColor">#E86B5C</Color>
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#E86B5C"/>
+
+        <Color x:Key="SecondaryColor">#6C757D</Color>
+        <SolidColorBrush x:Key="SecondaryBrush" Color="#6C757D"/>
+
+        <Color x:Key="BackgroundColor">#FFFFFF</Color>
+        <SolidColorBrush x:Key="BackgroundBrush" Color="#FFFFFF"/>
+
+        <Color x:Key="HeaderBackgroundColor">#F8F9FA</Color>
+        <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#F8F9FA"/>
+
+        <Color x:Key="FilterBackgroundColor">#F5F5F5</Color>
+        <SolidColorBrush x:Key="FilterBackgroundBrush" Color="#F5F5F5"/>
+
+        <Color x:Key="TextColor">#212529</Color>
+        <SolidColorBrush x:Key="TextBrush" Color="#212529"/>
+
+        <Color x:Key="HeaderTextColor">#1A1A1A</Color>
+        <SolidColorBrush x:Key="HeaderTextBrush" Color="#1A1A1A"/>
+
+        <Color x:Key="MutedTextColor">#6C757D</Color>
+        <SolidColorBrush x:Key="MutedTextBrush" Color="#6C757D"/>
+
+        <Color x:Key="BorderColor">#DDDDDD</Color>
+        <SolidColorBrush x:Key="BorderBrush" Color="#DDDDDD"/>
+
+        <Color x:Key="SuccessColor">#28A745</Color>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#28A745"/>
+
+        <Color x:Key="WarningColor">#FFC107</Color>
+        <SolidColorBrush x:Key="WarningBrush" Color="#FFC107"/>
+
+        <Color x:Key="DangerColor">#DC3545</Color>
+        <SolidColorBrush x:Key="DangerBrush" Color="#DC3545"/>
+
+        <Color x:Key="InfoColor">#17A2B8</Color>
+        <SolidColorBrush x:Key="InfoBrush" Color="#17A2B8"/>
+
+        <Color x:Key="AlternateRowColor">#FAFAFA</Color>
+        <SolidColorBrush x:Key="AlternateRowBrush" Color="#FAFAFA"/>
+
+        <Color x:Key="SelectedRowColor">#E3F2FD</Color>
+        <SolidColorBrush x:Key="SelectedRowBrush" Color="#E3F2FD"/>
     </Application.Resources>
 </Application>

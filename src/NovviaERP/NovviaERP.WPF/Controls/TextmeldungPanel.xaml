@@ -1,6 +1,11 @@
 <UserControl x:Class="NovviaERP.WPF.Controls.TextmeldungPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:NovviaERP.WPF.Controls">
+    <UserControl.Resources>
+        <local:TextmeldungTypToColorConverter x:Key="TypToBackgroundConverter" IsBackground="True"/>
+        <local:TextmeldungTypToColorConverter x:Key="TypToBorderConverter" IsBackground="False"/>
+    </UserControl.Resources>
     <Border x:Name="pnlMeldungen" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1"
             CornerRadius="4" Padding="10" Margin="0,0,0,10" Visibility="Collapsed">
         <Grid>
@@ -22,7 +27,10 @@
             <ItemsControl x:Name="lstMeldungen" Grid.Row="1">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Margin="0,3" Padding="8,5" CornerRadius="3" Background="White">
+                        <Border Margin="0,3" Padding="8,5" CornerRadius="3"
+                                Background="{Binding NTyp, Converter={StaticResource TypToBackgroundConverter}}"
+                                BorderBrush="{Binding NTyp, Converter={StaticResource TypToBorderConverter}}"
+                                BorderThickness="1">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>

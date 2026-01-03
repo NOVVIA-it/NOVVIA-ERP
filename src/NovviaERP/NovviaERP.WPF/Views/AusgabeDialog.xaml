@@ -1,4 +1,4 @@
-<Window x:Class="NovviaERP.WPF.Views.AusgabeDialog"
+﻿<Window x:Class="NovviaERP.WPF.Views.AusgabeDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Ausgabe" Height="700" Width="950"
@@ -194,7 +194,7 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <Button Content="Abbrechen" Width="100" Height="32" IsCancel="True" Margin="0,0,10,0"/>
-                        <Button x:Name="btnAusfuehren" Content="Ausfuehren" Width="120" Height="32" Click="BtnAusfuehren_Click" IsDefault="True" Background="#0078D4" Foreground="White"/>
+                        <Button x:Name="btnAusfuehren" Content="Ausfuehren" Width="120" Height="32" Click="BtnAusfuehren_Click" IsDefault="True" Background="{DynamicResource PrimaryBrush}" Foreground="White"/>
                     </StackPanel>
                 </Grid>
             </Border>

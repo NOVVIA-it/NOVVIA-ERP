@@ -1,4 +1,4 @@
-<UserControl x:Class="NovviaERP.WPF.Views.LagerChargenView"
+﻿<UserControl x:Class="NovviaERP.WPF.Views.LagerChargenView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="#f5f5f5">
@@ -23,7 +23,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="Aktualisieren" Click="Aktualisieren_Click"
-                            Background="#0078D4" Foreground="White" Padding="15,8" BorderThickness="0"/>
+                            Background="{DynamicResource PrimaryBrush}" Foreground="White" Padding="15,8" BorderThickness="0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -43,7 +43,7 @@
                              VerticalContentAlignment="Center" KeyDown="TxtSuche_KeyDown"
                              ToolTip="Chargennummer, ArtNr oder Artikelname"/>
                     <Button Content="Suchen" Click="Suchen_Click" Margin="10,0" Padding="15,5"
-                            Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                            Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
@@ -139,7 +139,7 @@
                 </DataGrid>
 
                 <!-- Summenzeile Chargen -->
-                <Border Grid.Row="1" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
+                <Border Grid.Row="1" Background="#e8f4fc" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -173,7 +173,7 @@
                         <TextBox x:Name="txtAusgaengeChargenNr" Width="150" Height="32" Padding="10,5"
                                  VerticalContentAlignment="Center" KeyDown="TxtAusgaengeChargenNr_KeyDown"/>
                         <Button Content="Suchen" Click="LadeAusgaenge_Click" Margin="15,0,0,0" Padding="15,5"
-                                Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                                Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
                         <TextBlock Text="(Fuer Chargenrueckruf - zeigt alle Kunden die diese Charge erhalten haben)"
                                    VerticalAlignment="Center" Margin="20,0,0,0" Foreground="#666" FontStyle="Italic"/>
                     </StackPanel>
@@ -202,7 +202,7 @@
                     </DataGrid>
 
                     <!-- Summenzeile Ausgaenge -->
-                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
+                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -231,7 +231,7 @@
                         <TextBox x:Name="txtVerfolgungChargenNr" Width="150" Height="32" Padding="10,5"
                                  VerticalContentAlignment="Center" KeyDown="TxtVerfolgungChargenNr_KeyDown"/>
                         <Button Content="Suchen" Click="LadeVerfolgung_Click" Margin="15,0,0,0" Padding="15,5"
-                                Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                                Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
                     </StackPanel>
 
                     <DataGrid x:Name="dgVerfolgung" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"

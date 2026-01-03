@@ -1,4 +1,4 @@
-<UserControl x:Class="NovviaERP.WPF.Views.ZahlungsabgleichView"
+﻿<UserControl x:Class="NovviaERP.WPF.Views.ZahlungsabgleichView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:NovviaERP.WPF.Views"
@@ -24,7 +24,7 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="Abgleich starten" Click="AbgleichStarten_Click"
-                            Background="#0078D4" Foreground="White" Padding="15,8" BorderThickness="0" Margin="0,0,8,0"
+                            Background="{DynamicResource PrimaryBrush}" Foreground="White" Padding="15,8" BorderThickness="0" Margin="0,0,8,0"
                             FontWeight="SemiBold"/>
                 </StackPanel>
             </Grid>
@@ -91,7 +91,7 @@
                         <ComboBoxItem Content="Dieses Jahr" Tag="Y"/>
                     </ComboBox>
                     <Button Content="Suchen" Click="Suchen_Click" Margin="8,0,0,0" Padding="12,4"
-                            Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                            Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -284,7 +284,7 @@
                             <Button Content="Alle auswaehlen" Click="SepaAlleAuswaehlen_Click"
                                     Padding="10,4" Margin="20,0,0,0"/>
                             <Button Content="SEPA-XML exportieren" Click="SepaExport_Click"
-                                    Background="#0078D4" Foreground="White" Padding="12,4" Margin="10,0,0,0" BorderThickness="0"/>
+                                    Background="{DynamicResource PrimaryBrush}" Foreground="White" Padding="12,4" Margin="10,0,0,0" BorderThickness="0"/>
                         </StackPanel>
                     </Border>
 
@@ -312,7 +312,7 @@
                     </DataGrid>
 
                     <!-- SEPA Summenzeile -->
-                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
+                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -444,7 +444,7 @@
                     </DataGrid>
 
                     <!-- Aktionen -->
-                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
+                    <Border Grid.Row="2" Background="#e8f4fc" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="0,1,0,0" Padding="10,8" Margin="0,5,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>

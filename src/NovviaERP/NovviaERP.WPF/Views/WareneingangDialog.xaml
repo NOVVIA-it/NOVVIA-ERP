@@ -1,4 +1,4 @@
-<Window x:Class="NovviaERP.WPF.Views.WareneingangDialog"
+﻿<Window x:Class="NovviaERP.WPF.Views.WareneingangDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Wareneingang buchen" Height="600" Width="900"
@@ -15,7 +15,7 @@
         <!-- Header -->
         <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,15">
             <TextBlock Text="Wareneingang" FontSize="24" FontWeight="Bold"/>
-            <TextBlock x:Name="txtBestellNr" FontSize="24" Margin="10,0,0,0" Foreground="#0078D4"/>
+            <TextBlock x:Name="txtBestellNr" FontSize="24" Margin="10,0,0,0" Foreground="{DynamicResource PrimaryBrush}"/>
         </StackPanel>
 
         <!-- Lieferant + Datum -->

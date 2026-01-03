@@ -1,4 +1,4 @@
-<UserControl x:Class="NovviaERP.WPF.Views.RechnungenView"
+﻿<UserControl x:Class="NovviaERP.WPF.Views.RechnungenView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:NovviaERP.WPF.Controls"
@@ -24,7 +24,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <TextBox x:Name="txtSuche" Width="250" Height="32" Padding="10,5" Margin="0,0,10,0"
                              VerticalContentAlignment="Center" KeyDown="TxtSuche_KeyDown"/>
-                    <Button Content="Suchen" Click="Suchen_Click" Padding="15,5" Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    <Button Content="Suchen" Click="Suchen_Click" Padding="15,5" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -131,7 +131,7 @@
                 </controls:NovviaGrid>
 
                 <!-- Summenzeile -->
-                <Border Grid.Row="1" Background="#e8f4fc" BorderBrush="#0078D4" BorderThickness="1,0,1,1" Padding="10,8">
+                <Border Grid.Row="1" Background="#e8f4fc" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="1,0,1,1" Padding="10,8">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -142,7 +142,7 @@
                             <TextBlock Text="Netto:" VerticalAlignment="Center" Margin="0,0,5,0"/>
                             <TextBlock x:Name="txtSummeNetto" Text="0,00" FontWeight="SemiBold" Width="90" TextAlignment="Right" VerticalAlignment="Center"/>
                             <TextBlock Text="Brutto:" VerticalAlignment="Center" Margin="20,0,5,0"/>
-                            <TextBlock x:Name="txtSummeBrutto" Text="0,00" FontWeight="Bold" VerticalAlignment="Center" Foreground="#0078D4"/>
+                            <TextBlock x:Name="txtSummeBrutto" Text="0,00" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryBrush}"/>
                             <TextBlock Text="Offen:" VerticalAlignment="Center" Margin="20,0,5,0" Foreground="#dc3545"/>
                             <TextBlock x:Name="txtSummeOffen" Text="0,00" FontWeight="Bold" Foreground="#dc3545" VerticalAlignment="Center"/>
                         </StackPanel>

@@ -1,4 +1,4 @@
-<Window x:Class="NovviaERP.WPF.Views.LieferantenBestellungDetailView"
+﻿<Window x:Class="NovviaERP.WPF.Views.LieferantenBestellungDetailView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:NovviaERP.WPF.Controls"
@@ -418,7 +418,7 @@
                         Margin="10,0" Click="Wareneingang_Click" FontWeight="Bold"
                         Background="#28a745" Foreground="White"/>
                 <Button Grid.Column="4" x:Name="btnEingangsrechnung" Width="140" Height="30"
-                        Margin="5,0" Background="#0078D4" Foreground="White" FontWeight="Bold">
+                        Margin="5,0" Background="{DynamicResource PrimaryBrush}" Foreground="White" FontWeight="Bold">
                     <Button.Content>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Eingangsrechnung" VerticalAlignment="Center"/>

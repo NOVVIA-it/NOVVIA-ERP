@@ -22,6 +22,9 @@ namespace NovviaERP.WPF.Views
         private Point _dragStart;
         private UIElement? _draggedElement;
         private bool _isDragging;
+        private bool _isToolboxDragging;
+        private ListBoxItem? _dragSourceItem;
+        private string? _dragElementTyp;
 
         public FormularDesignerPage(JtlDbContext db)
         {
@@ -293,7 +296,10 @@ namespace NovviaERP.WPF.Views
         #region Drag & Drop
         private void ElementeListe_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Finde das geklickte ListBoxItem (nicht SelectedItem - das ist noch nicht gesetzt)
+            // Startposition merken fuer Drag-Erkennung
+            _dragStart = e.GetPosition(null);
+
+            // Finde das geklickte ListBoxItem
             var source = e.OriginalSource as DependencyObject;
             while (source != null && source is not ListBoxItem)
             {
@@ -302,29 +308,70 @@ namespace NovviaERP.WPF.Views
 
             if (source is ListBoxItem item)
             {
-                var elementTyp = item.Tag?.ToString();
-                if (!string.IsNullOrEmpty(elementTyp))
+                _dragSourceItem = item;
+                _dragElementTyp = item.Tag?.ToString();
+                _isToolboxDragging = false;
+            }
+        }
+
+        private void ElementeListe_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || _dragSourceItem == null || string.IsNullOrEmpty(_dragElementTyp))
+                return;
+
+            var currentPos = e.GetPosition(null);
+            var diff = _dragStart - currentPos;
+
+            // Erst nach 5 Pixel Bewegung Drag starten
+            if (Math.Abs(diff.X) > 5 || Math.Abs(diff.Y) > 5)
+            {
+                if (!_isToolboxDragging)
                 {
-                    DragDrop.DoDragDrop(item, elementTyp, DragDropEffects.Copy);
-                    e.Handled = true;
+                    _isToolboxDragging = true;
+                    DragDrop.DoDragDrop(_dragSourceItem, _dragElementTyp, DragDropEffects.Copy);
+                    _isToolboxDragging = false;
+                    _dragSourceItem = null;
+                    _dragElementTyp = null;
                 }
             }
         }
 
         private void DatenfelderListe_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Finde das geklickte Item
+            _dragStart = e.GetPosition(null);
+
             var source = e.OriginalSource as DependencyObject;
             while (source != null && source is not ListBoxItem)
             {
                 source = VisualTreeHelper.GetParent(source);
             }
 
-            // Bei ItemsSource-gebundener ListBox ist der DataContext das eigentliche Item
             if (source is ListBoxItem item && item.DataContext is string feld)
             {
-                DragDrop.DoDragDrop(item, $"DataField:{feld}", DragDropEffects.Copy);
-                e.Handled = true;
+                _dragSourceItem = item;
+                _dragElementTyp = $"DataField:{feld}";
+                _isToolboxDragging = false;
+            }
+        }
+
+        private void DatenfelderListe_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || _dragSourceItem == null || string.IsNullOrEmpty(_dragElementTyp))
+                return;
+
+            var currentPos = e.GetPosition(null);
+            var diff = _dragStart - currentPos;
+
+            if (Math.Abs(diff.X) > 5 || Math.Abs(diff.Y) > 5)
+            {
+                if (!_isToolboxDragging)
+                {
+                    _isToolboxDragging = true;
+                    DragDrop.DoDragDrop(_dragSourceItem, _dragElementTyp, DragDropEffects.Copy);
+                    _isToolboxDragging = false;
+                    _dragSourceItem = null;
+                    _dragElementTyp = null;
+                }
             }
         }
 

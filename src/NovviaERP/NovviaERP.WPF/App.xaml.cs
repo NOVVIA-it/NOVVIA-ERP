@@ -188,6 +188,8 @@ namespace NovviaERP.WPF
             // UserControl Views (new - no Frame blocking issues)
             services.AddTransient<ArtikelView>();
             services.AddTransient<ArtikelDetailView>();
+            services.AddTransient<KategorieView>();
+            services.AddTransient<KategorieDetailView>();
             services.AddTransient<KundenView>();
             services.AddTransient<KundeDetailView>();
             services.AddTransient<BestellungenView>();
@@ -205,6 +207,8 @@ namespace NovviaERP.WPF
             services.AddTransient<AmeiseView>();
             services.AddTransient<EdifactPage>();
             services.AddTransient<WorkflowPage>();
+            services.AddTransient<RetourenView>();
+            services.AddTransient<RetoureDetailView>();
         }
     }
 }

@@ -1,4 +1,4 @@
-<UserControl x:Class="NovviaERP.WPF.Views.EinstellungenView"
+﻿<UserControl x:Class="NovviaERP.WPF.Views.EinstellungenView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:base="clr-namespace:NovviaERP.WPF.Controls.Base"
@@ -11,7 +11,7 @@
 
         <TextBlock Text="Einstellungen" FontSize="28" FontWeight="Bold"/>
 
-        <TabControl Grid.Row="1" Margin="0,15,0,0">
+        <TabControl x:Name="mainTabs" Grid.Row="1" Margin="0,15,0,0" SelectionChanged="MainTabs_SelectionChanged">
             <!-- Firmendaten Tab -->
             <TabItem Header="Firmendaten">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -335,7 +335,7 @@
                             <!-- Toolbar -->
                             <StackPanel Orientation="Horizontal" Margin="10,10,10,5">
                                 <Button Content="Anlegen" Click="LagerNeu_Click" Padding="12,6" Margin="0,0,8,0"
-                                        Background="#0078D4" Foreground="White"/>
+                                        Background="{DynamicResource PrimaryBrush}" Foreground="White"/>
                                 <Button x:Name="btnLagerLoeschen" Content="Loeschen" Click="LagerLoeschen_Click" Padding="12,6"
                                         IsEnabled="False"/>
                             </StackPanel>
@@ -346,7 +346,7 @@
                                      SelectionChanged="LstLager_SelectionChanged">
                                 <ListBox.Resources>
                                     <!-- Markierung bleibt sichtbar auch wenn ListBox nicht fokussiert -->
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0078D4"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="{DynamicResource PrimaryColor}"/>
                                     <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
                                 </ListBox.Resources>
                                 <ListBox.ItemContainerStyle>
@@ -354,7 +354,7 @@
                                         <Setter Property="Padding" Value="10,6"/>
                                         <Style.Triggers>
                                             <Trigger Property="IsSelected" Value="True">
-                                                <Setter Property="Background" Value="#0078D4"/>
+                                                <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
                                                 <Setter Property="Foreground" Value="White"/>
                                             </Trigger>
                                         </Style.Triggers>
@@ -455,7 +455,7 @@
                             <!-- Speichern -->
                             <StackPanel Orientation="Horizontal" Margin="0,25,0,0">
                                 <Button Content="Speichern" Click="LagerSpeichern_Click" Padding="20,8"
-                                        Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                                        Background="{DynamicResource PrimaryBrush}" Foreground="White" FontWeight="SemiBold"/>
                                 <Button Content="Lagerplaetze verwalten" Click="LagerplaetzeVerwalten_Click" Padding="15,8" Margin="15,0,0,0"/>
                             </StackPanel>
 
@@ -575,7 +575,7 @@
 
                         <StackPanel Orientation="Horizontal" Margin="0,25,0,0">
                             <Button Content="Zahlungsanbieter speichern" Width="200" Click="ZahlungsanbieterSpeichern_Click"
-                                    Background="#0078D4" Foreground="White" Padding="10,8"/>
+                                    Background="{DynamicResource PrimaryBrush}" Foreground="White" Padding="10,8"/>
                             <Button Content="Verbindung testen" Width="150" Click="ZahlungsanbieterTesten_Click" Margin="15,0,0,0" Padding="10,8"/>
                         </StackPanel>
 
@@ -1103,7 +1103,7 @@
                         <!-- Speichern Button -->
                         <StackPanel Orientation="Horizontal">
                             <Button Content="NOVVIA Einstellungen speichern" Padding="20,10" Click="NovviaEinstellungenSpeichern_Click"
-                                    Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                                    Background="{DynamicResource PrimaryBrush}" Foreground="White" FontWeight="SemiBold"/>
                         </StackPanel>
 
                         <TextBlock x:Name="txtNovviaStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
@@ -1300,7 +1300,7 @@
                                         </Grid.ColumnDefinitions>
 
                                         <TextBlock Text="Hintergrund:" VerticalAlignment="Center"/>
-                                        <TextBox x:Name="txtGridSelectionBg" Grid.Column="1" Text="#0078D4"/>
+                                        <TextBox x:Name="txtGridSelectionBg" Grid.Column="1" Text="#E86B5C"/>
 
                                         <TextBlock Text="Textfarbe:" VerticalAlignment="Center" Grid.Column="3"/>
                                         <TextBox x:Name="txtGridSelectionFg" Grid.Column="4" Text="#ffffff"/>
@@ -1437,7 +1437,7 @@
                         <!-- Speichern-Buttons -->
                         <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
                             <Button Content="Grid-Einstellungen speichern" Click="GridEinstellungenSpeichern_Click" Padding="20,10"
-                                    Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                                    Background="{DynamicResource PrimaryBrush}" Foreground="White" FontWeight="SemiBold"/>
                             <Button Content="Vorschau aktualisieren" Click="GridVorschauAktualisieren_Click" Padding="15,10" Margin="15,0,0,0"/>
                             <Button Content="Auf Standard zuruecksetzen" Click="GridEinstellungenReset_Click" Padding="15,10" Margin="15,0,0,0"/>
                         </StackPanel>
@@ -1492,7 +1492,7 @@
                 </Grid>
             </TabItem>
 
-            <!-- Vorgangsfarben Tab -->
+            <!-- Vorgangsfarben Tab (JTL dbo.tFarbe) -->
             <TabItem Header="Vorgangsfarben">
                 <Grid Margin="15">
                     <Grid.RowDefinitions>
@@ -1502,8 +1502,8 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
-                        <TextBlock Text="Vorgangsfarben definieren" FontSize="18" FontWeight="SemiBold"/>
-                        <TextBlock Text="(Farben fuer Auftraege, Rechnungen, etc.)" Foreground="Gray" FontSize="12" VerticalAlignment="Bottom" Margin="10,0,0,2"/>
+                        <TextBlock Text="Auftragsfarben definieren" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock Text="(JTL tFarbe - Farben fuer Auftraege und Rechnungen)" Foreground="Gray" FontSize="12" VerticalAlignment="Bottom" Margin="10,0,0,2"/>
                     </StackPanel>
 
                     <DataGrid x:Name="dgVorgangsfarben" Grid.Row="1" AutoGenerateColumns="False"
@@ -1512,27 +1512,23 @@
                               BorderThickness="1" BorderBrush="#ddd"
                               SelectionChanged="DgVorgangsfarben_SelectionChanged">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding KVorgangsfarbe}" Width="50" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="Bezeichnung" Binding="{Binding CBedeutung}" Width="200"/>
-                            <DataGridTextColumn Header="Farbe (Hex)" Binding="{Binding FarbeHex}" Width="100"/>
+                            <DataGridTextColumn Header="ID" Binding="{Binding KFarbe}" Width="50" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Bezeichnung" Binding="{Binding CName}" Width="250"/>
+                            <DataGridTextColumn Header="Farbe (Hex)" Binding="{Binding FarbeHex}" Width="100" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Farbcode" Binding="{Binding NFarbcode}" Width="100"/>
                             <DataGridTextColumn Header="Rot" Binding="{Binding NRotwert}" Width="60"/>
                             <DataGridTextColumn Header="Gruen" Binding="{Binding NGruenwert}" Width="60"/>
                             <DataGridTextColumn Header="Blau" Binding="{Binding NBlauwert}" Width="60"/>
-                            <DataGridCheckBoxColumn Header="Auftrag" Binding="{Binding NAuftrag}" Width="70"/>
-                            <DataGridCheckBoxColumn Header="Rechnung" Binding="{Binding NRechnung}" Width="80"/>
-                            <DataGridCheckBoxColumn Header="Korrektur" Binding="{Binding NRechnungskorrektur}" Width="80"/>
-                            <DataGridCheckBoxColumn Header="Angebot" Binding="{Binding NAngebot}" Width="70"/>
-                            <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding NAktiv}" Width="60"/>
                         </DataGrid.Columns>
                     </DataGrid>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,15,0,0">
-                        <Button Content="Neue Farbe" Padding="15,8" Margin="0,0,10,0" Click="BtnVorgangsfarbeNeu_Click"/>
+                        <Button Content="Neue Farbe" Padding="15,8" Margin="0,0,10,0" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Click="BtnVorgangsfarbeNeu_Click"/>
                         <Button x:Name="btnVorgangsfarbeLoeschen" Content="Loeschen" Padding="15,8" Margin="0,0,10,0"
-                                Background="#dc3545" Foreground="White" BorderThickness="0" Click="BtnVorgangsfarbeLoeschen_Click" IsEnabled="False"/>
+                                Foreground="#D32F2F" Click="BtnVorgangsfarbeLoeschen_Click" IsEnabled="False"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,0,0,0">
                             <Button Content="Aktualisieren" Padding="15,8" Margin="0,0,10,0" Click="BtnVorgangsfarbenAktualisieren_Click"/>
-                            <Button Content="Aenderungen speichern" Padding="15,8" Background="#28a745" Foreground="White" BorderThickness="0" Click="BtnVorgangsfarbenSpeichern_Click"/>
+                            <Button Content="Aenderungen speichern" Padding="15,8" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Click="BtnVorgangsfarbenSpeichern_Click"/>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -1618,7 +1614,7 @@
                                     <Button Content="Alle Bilder anzeigen" Click="BtnAlleBilderAnzeigen_Click" Padding="10,5" Margin="0,0,10,0"/>
                                     <Button Content="Nur Briefpapier anzeigen" Click="BtnNurBriefpapierAnzeigen_Click" Padding="10,5" Margin="0,0,10,0"/>
                                     <Button Content="Vorschau" Click="BtnBriefpapierVorschau_Click" Padding="10,5" Margin="0,0,10,0"/>
-                                    <Button Content="Neues Bild hochladen..." Click="BtnBriefpapierUpload_Click" Padding="10,5" Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                                    <Button Content="Neues Bild hochladen..." Click="BtnBriefpapierUpload_Click" Padding="10,5" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
                                 </StackPanel>
                             </Grid>
                         </GroupBox>
@@ -1711,7 +1707,7 @@
                                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
                                     <Button Content="Ausgewaehltes Bild exportieren" Click="VorlagenBildExport_Click" Padding="15,8" Margin="0,0,10,0"/>
                                     <Button Content="Alle Bilder exportieren" Click="VorlagenAlleBilderExport_Click" Padding="15,8" Margin="0,0,10,0"/>
-                                    <Button Content="Bild in NOVVIA importieren" Click="VorlagenBildImport_Click" Padding="15,8" Background="#0078D4" Foreground="White"/>
+                                    <Button Content="Bild in NOVVIA importieren" Click="VorlagenBildImport_Click" Padding="15,8" Background="{DynamicResource PrimaryBrush}" Foreground="White"/>
                                 </StackPanel>
                             </Grid>
                         </GroupBox>
@@ -1779,7 +1775,7 @@
                                 <TextBlock Text="Der Formular-Designer ermoeglicht die visuelle Bearbeitung von Belegen mit Drag &amp; Drop."
                                            Foreground="#666" TextWrapping="Wrap" Margin="0,0,0,15"/>
                                 <Button Content="Formular-Designer oeffnen" Padding="20,10"
-                                        Background="#0078D4" Foreground="White" BorderThickness="0"
+                                        Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"
                                         FontSize="14" HorizontalAlignment="Left"
                                         Click="BtnFormularDesigner_Click"/>
                             </StackPanel>
@@ -1819,7 +1815,7 @@
 
                                     <StackPanel Orientation="Horizontal" Margin="10,10,10,5">
                                         <Button Content="Neu" Click="BenutzerNeu_Click" Padding="12,6" Margin="0,0,8,0"
-                                                Background="#0078D4" Foreground="White"/>
+                                                Background="{DynamicResource PrimaryBrush}" Foreground="White"/>
                                         <Button x:Name="btnBenutzerLoeschen" Content="Loeschen" Click="BenutzerLoeschen_Click"
                                                 Padding="12,6" IsEnabled="False"/>
                                     </StackPanel>
@@ -1827,7 +1823,7 @@
                                     <ListBox x:Name="lstBenutzer" Grid.Row="1" Margin="10,5,10,10"
                                              SelectionChanged="LstBenutzer_SelectionChanged">
                                         <ListBox.Resources>
-                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0078D4"/>
+                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="{DynamicResource PrimaryColor}"/>
                                             <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
                                         </ListBox.Resources>
                                         <ListBox.ItemTemplate>
@@ -1843,7 +1839,7 @@
                                                 <Setter Property="Padding" Value="10,6"/>
                                                 <Style.Triggers>
                                                     <Trigger Property="IsSelected" Value="True">
-                                                        <Setter Property="Background" Value="#0078D4"/>
+                                                        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
                                                         <Setter Property="Foreground" Value="White"/>
                                                     </Trigger>
                                                 </Style.Triggers>
@@ -1913,7 +1909,7 @@
                                     <!-- Speichern -->
                                     <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
                                         <Button Content="Speichern" Click="BenutzerSpeichern_Click" Padding="20,8"
-                                                Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                                                Background="{DynamicResource PrimaryBrush}" Foreground="White" FontWeight="SemiBold"/>
                                         <Button Content="Passwort zuruecksetzen" Click="BenutzerPasswortReset_Click"
                                                 Padding="15,8" Margin="15,0,0,0"/>
                                     </StackPanel>
@@ -1942,7 +1938,7 @@
 
                                     <StackPanel Orientation="Horizontal" Margin="10,10,10,5">
                                         <Button Content="Neu" Click="RolleNeu_Click" Padding="12,6" Margin="0,0,8,0"
-                                                Background="#0078D4" Foreground="White"/>
+                                                Background="{DynamicResource PrimaryBrush}" Foreground="White"/>
                                         <Button x:Name="btnRolleLoeschen" Content="Loeschen" Click="RolleLoeschen_Click"
                                                 Padding="12,6" IsEnabled="False"/>
                                     </StackPanel>
@@ -1951,7 +1947,7 @@
                                              DisplayMemberPath="CBezeichnung"
                                              SelectionChanged="LstRollen_SelectionChanged">
                                         <ListBox.Resources>
-                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#0078D4"/>
+                                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="{DynamicResource PrimaryColor}"/>
                                             <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
                                         </ListBox.Resources>
                                         <ListBox.ItemContainerStyle>
@@ -1959,7 +1955,7 @@
                                                 <Setter Property="Padding" Value="10,6"/>
                                                 <Style.Triggers>
                                                     <Trigger Property="IsSelected" Value="True">
-                                                        <Setter Property="Background" Value="#0078D4"/>
+                                                        <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
                                                         <Setter Property="Foreground" Value="White"/>
                                                     </Trigger>
                                                 </Style.Triggers>
@@ -2022,7 +2018,7 @@
                                     <!-- Speichern -->
                                     <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
                                         <Button Content="Speichern" Click="RolleSpeichern_Click" Padding="20,8"
-                                                Background="#0078D4" Foreground="White" FontWeight="SemiBold"/>
+                                                Background="{DynamicResource PrimaryBrush}" Foreground="White" FontWeight="SemiBold"/>
                                     </StackPanel>
 
                                     <TextBlock x:Name="txtRolleStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
@@ -2031,6 +2027,246 @@
                         </Grid>
                     </TabItem>
                 </TabControl>
+            </TabItem>
+
+            <!-- Hersteller Tab -->
+            <TabItem Header="Hersteller">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Hersteller verwalten" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <DataGrid x:Name="dgHersteller" Grid.Row="1" AutoGenerateColumns="False"
+                              BorderThickness="1" BorderBrush="#ddd" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                            <DataGridTextColumn Header="Homepage" Binding="{Binding CHomepage}" Width="200"/>
+                            <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="*"/>
+                            <DataGridTextColumn Header="Sort." Binding="{Binding NSort}" Width="60"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Neu" Click="HerstellerNeu_Click" Padding="15,8" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Margin="0,0,10,0"/>
+                        <Button Content="Speichern" Click="HerstellerSpeichern_Click" Padding="15,8" Margin="0,0,10,0"/>
+                        <Button Content="Loeschen" Click="HerstellerLoeschen_Click" Padding="15,8" Foreground="#D32F2F"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Rueckgabegruende Tab -->
+            <TabItem Header="Rueckgabegruende">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Rueckgabegruende fuer Retouren" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <DataGrid x:Name="dgRueckgabegruende" Grid.Row="1" AutoGenerateColumns="False"
+                              BorderThickness="1" BorderBrush="#ddd" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                            <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="*"/>
+                            <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding NAktiv}" Width="60"/>
+                            <DataGridTextColumn Header="Farbe" Binding="{Binding CColor}" Width="80"/>
+                            <DataGridTextColumn Header="Sort." Binding="{Binding NSort}" Width="60"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Neu" Click="RueckgabegrundNeu_Click" Padding="15,8" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Margin="0,0,10,0"/>
+                        <Button Content="Speichern" Click="RueckgabegrundSpeichern_Click" Padding="15,8" Margin="0,0,10,0"/>
+                        <Button Content="Loeschen" Click="RueckgabegrundLoeschen_Click" Padding="15,8" Foreground="#D32F2F"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Masseinheiten Tab -->
+            <TabItem Header="Masseinheiten">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Masseinheiten fuer Artikel" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <DataGrid x:Name="dgMasseinheiten" Grid.Row="1" AutoGenerateColumns="False"
+                              BorderThickness="1" BorderBrush="#ddd" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Code" Binding="{Binding CCode}" Width="80"/>
+                            <DataGridTextColumn Header="Anzeige" Binding="{Binding CDisplayCode}" Width="80"/>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Neu" Click="MasseinheitNeu_Click" Padding="15,8" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Margin="0,0,10,0"/>
+                        <Button Content="Speichern" Click="MasseinheitSpeichern_Click" Padding="15,8" Margin="0,0,10,0"/>
+                        <Button Content="Loeschen" Click="MasseinheitLoeschen_Click" Padding="15,8" Foreground="#D32F2F"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Artikelzustaende Tab -->
+            <TabItem Header="Artikelzustaende">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Artikelzustaende (Neu, Gebraucht, etc.)" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <DataGrid x:Name="dgArtikelzustaende" Grid.Row="1" AutoGenerateColumns="False"
+                              BorderThickness="1" BorderBrush="#ddd" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="150"/>
+                            <DataGridTextColumn Header="Suffix" Binding="{Binding CSuffix}" Width="80"/>
+                            <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="*"/>
+                            <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding NAktiv}" Width="60"/>
+                            <DataGridTextColumn Header="Farbe" Binding="{Binding CColor}" Width="80"/>
+                            <DataGridTextColumn Header="Sort." Binding="{Binding NSort}" Width="60"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Neu" Click="ArtikelzustandNeu_Click" Padding="15,8" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Margin="0,0,10,0"/>
+                        <Button Content="Speichern" Click="ArtikelzustandSpeichern_Click" Padding="15,8" Margin="0,0,10,0"/>
+                        <Button Content="Loeschen" Click="ArtikelzustandLoeschen_Click" Padding="15,8" Foreground="#D32F2F"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Attribute Tab -->
+            <TabItem Header="Attribute">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Attribute (JTL Shop/Marktplaetze)" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" Grid.ColumnSpan="2"/>
+
+                    <!-- Gruppen-Liste -->
+                    <Border Grid.Row="1" Background="White" BorderBrush="#e0e0e0" BorderThickness="1" CornerRadius="4" Margin="0,0,10,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Gruppen" FontWeight="SemiBold" Margin="10,8"/>
+                            <ListBox x:Name="lstAttributGruppen" Grid.Row="1" BorderThickness="0"
+                                     SelectionChanged="LstAttributGruppen_SelectionChanged">
+                                <ListBox.Resources>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="{DynamicResource PrimaryColor}"/>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White"/>
+                                </ListBox.Resources>
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Padding" Value="10,6"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource PrimaryBrush}"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding CGruppeName}" Width="140"/>
+                                            <TextBlock Text="{Binding Anzahl}" Foreground="#666" Width="30" TextAlignment="Right"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Attribute-Grid -->
+                    <DataGrid x:Name="dgAttribute" Grid.Row="1" Grid.Column="1" AutoGenerateColumns="False"
+                              BorderThickness="1" BorderBrush="#ddd" CanUserAddRows="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                            <DataGridTextColumn Header="Gruppe" Binding="{Binding CGruppeName}" Width="150"/>
+                            <DataGridTextColumn Header="Beschreibung" Binding="{Binding CBeschreibung}" Width="*"/>
+                            <DataGridCheckBoxColumn Header="Mehrsprachig" Binding="{Binding NIstMehrsprachig}" Width="80"/>
+                            <DataGridCheckBoxColumn Header="Freifeld" Binding="{Binding NIstFreifeld}" Width="60"/>
+                            <DataGridCheckBoxColumn Header="Standard" Binding="{Binding NIstStandard}" Width="60" IsReadOnly="True"/>
+                            <DataGridTextColumn Header="Sort." Binding="{Binding NSort}" Width="50"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Neu" Click="AttributNeu_Click" Padding="15,8" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Margin="0,0,10,0"/>
+                        <Button Content="Speichern" Click="AttributSpeichern_Click" Padding="15,8" Margin="0,0,10,0"/>
+                        <Button Content="Loeschen" Click="AttributLoeschen_Click" Padding="15,8" Foreground="#D32F2F"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Merkmale Tab -->
+            <TabItem Header="Merkmale">
+                <Grid Margin="15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="300"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Merkmale (Artikeleigenschaften)" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" Grid.ColumnSpan="2"/>
+
+                    <!-- Merkmale-Grid -->
+                    <DataGrid x:Name="dgMerkmale" Grid.Row="1" AutoGenerateColumns="False"
+                              BorderThickness="1" BorderBrush="#ddd" CanUserAddRows="False"
+                              SelectionChanged="DgMerkmale_SelectionChanged" Margin="0,0,10,0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                            <DataGridTextColumn Header="Typ" Binding="{Binding CTyp}" Width="100"/>
+                            <DataGridCheckBoxColumn Header="Global" Binding="{Binding NGlobal}" Width="60"/>
+                            <DataGridCheckBoxColumn Header="Mehrfach" Binding="{Binding NMehrfachauswahl}" Width="70"/>
+                            <DataGridTextColumn Header="Werte" Binding="{Binding WerteAnzahl}" Width="60"/>
+                            <DataGridTextColumn Header="Sort." Binding="{Binding NSort}" Width="50"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Merkmal-Werte -->
+                    <Border Grid.Row="1" Grid.Column="1" Background="White" BorderBrush="#e0e0e0" BorderThickness="1" CornerRadius="4">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Merkmal-Werte" FontWeight="SemiBold" Margin="10,8"/>
+                            <DataGrid x:Name="dgMerkmalWerte" Grid.Row="1" AutoGenerateColumns="False"
+                                      BorderThickness="0" CanUserAddRows="False" Margin="5,0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Wert" Binding="{Binding CWert}" Width="*"/>
+                                    <DataGridTextColumn Header="Sort." Binding="{Binding NSort}" Width="50"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="10,5">
+                                <Button Content="+" Click="MerkmalWertNeu_Click" Padding="8,4" Width="30" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Margin="0,0,5,0"/>
+                                <Button Content="-" Click="MerkmalWertLoeschen_Click" Padding="8,4" Width="30" Foreground="#D32F2F"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Neu" Click="MerkmalNeu_Click" Padding="15,8" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Margin="0,0,10,0"/>
+                        <Button Content="Speichern" Click="MerkmalSpeichern_Click" Padding="15,8" Margin="0,0,10,0"/>
+                        <Button Content="Loeschen" Click="MerkmalLoeschen_Click" Padding="15,8" Foreground="#D32F2F"/>
+                    </StackPanel>
+                </Grid>
             </TabItem>
 
         </TabControl>

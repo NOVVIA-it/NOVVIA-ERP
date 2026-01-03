@@ -1,4 +1,4 @@
-<UserControl x:Class="NovviaERP.WPF.Views.KundeDetailView"
+﻿<UserControl x:Class="NovviaERP.WPF.Views.KundeDetailView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:NovviaERP.WPF.Controls"
@@ -14,7 +14,7 @@
                 <TextBlock x:Name="txtStatus" Foreground="#666" VerticalAlignment="Center"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="💾 Speichern" Click="Speichern_Click" Padding="15,8" Margin="0,0,8,0"
-                            Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                            Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
                     <Button Content="❌ Abbrechen" Click="Zurueck_Click" Padding="12,8"/>
                 </StackPanel>
             </Grid>
@@ -29,7 +29,7 @@
             </Grid.RowDefinitions>
 
         <!-- Header -->
-        <Border Background="#0078D4" Padding="15,10">
+        <Border Background="{DynamicResource PrimaryBrush}" Padding="15,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -535,9 +535,74 @@
 
                         <Button Content="Validierung speichern" Click="ValidierungSpeichern_Click"
                                 Padding="15,8" HorizontalAlignment="Left" Margin="0,20,0,0"
-                                Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                                Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
                     </StackPanel>
                 </ScrollViewer>
+            </TabItem>
+
+            <!-- Tab: Textmeldungen -->
+            <TabItem Header="💬 Textmeldungen">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="Textmeldungen fuer diesen Kunden" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+                    <DataGrid x:Name="dgTextmeldungen" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              BorderThickness="1" BorderBrush="#ddd">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding NTyp}" Value="0">
+                                        <Setter Property="Background" Value="#E3F2FD"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NTyp}" Value="1">
+                                        <Setter Property="Background" Value="#FFF8E1"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding NTyp}" Value="2">
+                                        <Setter Property="Background" Value="#FFEBEE"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Typ" Binding="{Binding NTyp}" Width="50">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NTyp}" Value="0">
+                                                <Setter Property="Text" Value="Info"/>
+                                                <Setter Property="Foreground" Value="#1976D2"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding NTyp}" Value="1">
+                                                <Setter Property="Text" Value="Warn"/>
+                                                <Setter Property="Foreground" Value="#F57C00"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding NTyp}" Value="2">
+                                                <Setter Property="Text" Value="Wichtig"/>
+                                                <Setter Property="Foreground" Value="#D32F2F"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Titel" Binding="{Binding CTitel}" Width="150"/>
+                            <DataGridTextColumn Header="Text" Binding="{Binding CText}" Width="*"/>
+                            <DataGridCheckBoxColumn Header="Popup" Binding="{Binding NPopupAnzeigen}" Width="60"/>
+                            <DataGridTextColumn Header="Erstellt" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Neue Textmeldung" Click="BtnNeueTextmeldung_Click" Padding="15,8"
+                                Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0" Margin="0,0,10,0"/>
+                        <Button Content="Bearbeiten" Click="BtnTextmeldungBearbeiten_Click" Padding="15,8" Margin="0,0,10,0"/>
+                        <Button Content="Loeschen" Click="BtnTextmeldungLoeschen_Click" Padding="15,8" Foreground="#D32F2F"/>
+                    </StackPanel>
+                </Grid>
             </TabItem>
         </TabControl>
         </Grid>

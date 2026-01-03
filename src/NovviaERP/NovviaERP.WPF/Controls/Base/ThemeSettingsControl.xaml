@@ -1,4 +1,4 @@
-<UserControl x:Class="NovviaERP.WPF.Controls.Base.ThemeSettingsControl"
+﻿<UserControl x:Class="NovviaERP.WPF.Controls.Base.ThemeSettingsControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel>
@@ -150,7 +150,7 @@
         <!-- Buttons -->
         <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
             <Button Content="Anwenden" Padding="20,8" Click="Anwenden_Click"
-                    Background="#0078D4" Foreground="White" FontWeight="SemiBold" BorderThickness="0"/>
+                    Background="{DynamicResource PrimaryBrush}" Foreground="White" FontWeight="SemiBold" BorderThickness="0"/>
             <Button Content="Speichern" Padding="20,8" Margin="10,0,0,0" Click="Speichern_Click"/>
             <Button Content="Zuruecksetzen" Padding="20,8" Margin="10,0,0,0" Click="Zuruecksetzen_Click"/>
         </StackPanel>

@@ -1,4 +1,4 @@
-<Window x:Class="NovviaERP.WPF.Views.AuftragsstapelimportView"
+﻿<Window x:Class="NovviaERP.WPF.Views.AuftragsstapelimportView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Auftragsimport" Height="800" Width="900"
@@ -42,7 +42,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Button x:Name="btnKundeAuswaehlen" Content="Kunde suchen..." Click="KundeAuswaehlen_Click"
-                        Padding="15,8" Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                        Padding="15,8" Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
                 <Border Grid.Column="1" BorderBrush="#ccc" BorderThickness="1" Margin="10,0" Padding="10,5" Background="White">
                     <StackPanel>
                         <TextBlock x:Name="txtSelectedKundeName" Text="(kein Kunde ausgewaehlt)" FontWeight="SemiBold"/>

@@ -267,6 +267,9 @@ namespace NovviaERP.WPF.Views
                 var gutschriftenListe = gutschriften.ToList();
                 dgGutschriften.ItemsSource = gutschriftenListe;
                 txtGutschriftenAnzahl.Text = $"{gutschriftenListe.Count} Gutschriften";
+
+                // Textmeldungen laden
+                await LadeTextmeldungenAsync();
             }
             catch (Exception ex)
             {
@@ -938,5 +941,145 @@ namespace NovviaERP.WPF.Views
                 }
             }
         }
+
+        #region Textmeldungen
+
+        private async Task LadeTextmeldungenAsync()
+        {
+            if (!_kundeId.HasValue) return;
+            try
+            {
+                var meldungen = await _coreService.GetEntityTextmeldungenAsync("Kunde", _kundeId.Value);
+                dgTextmeldungen.ItemsSource = meldungen;
+            }
+            catch { }
+        }
+
+        private async void BtnNeueTextmeldung_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_kundeId.HasValue) return;
+
+            // Neue Textmeldung erstellen
+            var dialog = new TextmeldungDialog(null);
+            dialog.Owner = Window.GetWindow(this);
+
+            // Kunde bereits als Entity hinzufuegen
+            var kundeEntity = new CoreService.EntityTextmeldung
+            {
+                CEntityTyp = "Kunde",
+                KEntity = _kundeId.Value
+            };
+            dialog.SetEntities(new List<CoreService.EntityTextmeldung> { kundeEntity });
+
+            if (dialog.ShowDialog() == true && dialog.Meldung != null)
+            {
+                try
+                {
+                    // Textmeldung speichern
+                    var kTextmeldung = await _coreService.CreateTextmeldungAsync(dialog.Meldung, App.BenutzerId);
+
+                    // Alle Entities verknuepfen
+                    foreach (var entity in dialog.Entities)
+                    {
+                        await _coreService.AddEntityTextmeldungAsync(kTextmeldung, entity.CEntityTyp, entity.KEntity, App.BenutzerId);
+                    }
+
+                    await LadeTextmeldungenAsync();
+                    MessageBox.Show("Textmeldung wurde erstellt.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private async void BtnTextmeldungBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgTextmeldungen.SelectedItem is not CoreService.EntityTextmeldung etm) return;
+
+            try
+            {
+                // Vollstaendige Textmeldung laden
+                var alle = await _coreService.GetTextmeldungenAsync();
+                var tm = alle.FirstOrDefault(t => t.KTextmeldung == etm.KTextmeldung);
+                if (tm == null)
+                {
+                    MessageBox.Show("Textmeldung nicht gefunden.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Entities laden
+                var entities = await _coreService.GetTextmeldungEntitiesAsync(tm.KTextmeldung);
+
+                var dialog = new TextmeldungDialog(tm);
+                dialog.Owner = Window.GetWindow(this);
+                dialog.SetEntities(entities);
+
+                if (dialog.ShowDialog() == true && dialog.Meldung != null)
+                {
+                    await _coreService.UpdateTextmeldungAsync(dialog.Meldung, App.BenutzerId);
+
+                    // Entity-Verknuepfungen aktualisieren - alte entfernen
+                    foreach (var alt in entities)
+                    {
+                        if (!dialog.Entities.Any(x => x.CEntityTyp == alt.CEntityTyp && x.KEntity == alt.KEntity))
+                        {
+                            await _coreService.RemoveEntityTextmeldungAsync(alt.KEntityTextmeldung);
+                        }
+                    }
+
+                    // Neue hinzufuegen
+                    foreach (var neu in dialog.Entities)
+                    {
+                        if (!entities.Any(x => x.CEntityTyp == neu.CEntityTyp && x.KEntity == neu.KEntity))
+                        {
+                            await _coreService.AddEntityTextmeldungAsync(tm.KTextmeldung, neu.CEntityTyp, neu.KEntity, App.BenutzerId);
+                        }
+                    }
+
+                    await LadeTextmeldungenAsync();
+                    MessageBox.Show("Textmeldung wurde aktualisiert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnTextmeldungLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgTextmeldungen.SelectedItem is not CoreService.EntityTextmeldung etm) return;
+
+            var result = MessageBox.Show(
+                "Moechten Sie:\n\n" +
+                "[Ja] - Nur die Verknuepfung zu diesem Kunden entfernen\n" +
+                "[Nein] - Die gesamte Textmeldung loeschen",
+                "Loeschen bestaetigen", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Cancel) return;
+
+            try
+            {
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Nur Verknuepfung entfernen
+                    await _coreService.RemoveEntityTextmeldungAsync(etm.KEntityTextmeldung);
+                }
+                else
+                {
+                    // Gesamte Textmeldung loeschen
+                    await _coreService.DeleteTextmeldungAsync(etm.KTextmeldung);
+                }
+                await LadeTextmeldungenAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
     }
 }

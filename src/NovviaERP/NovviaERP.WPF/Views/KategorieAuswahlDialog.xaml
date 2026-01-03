@@ -1,4 +1,4 @@
-<Window x:Class="NovviaERP.WPF.Views.KategorieAuswahlDialog"
+﻿<Window x:Class="NovviaERP.WPF.Views.KategorieAuswahlDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Kategorien zuweisen" Height="450" Width="500"
@@ -14,7 +14,7 @@
 
         <!-- Header -->
         <TextBlock Text="Kategorien zuweisen" FontSize="16" FontWeight="SemiBold"
-                   Foreground="#0078D4" Margin="0,0,0,15"/>
+                   Foreground="{DynamicResource PrimaryBrush}" Margin="0,0,0,15"/>
 
         <!-- Suche -->
         <TextBox x:Name="txtSuche" Grid.Row="1" Height="28" Margin="0,0,0,10"
@@ -38,7 +38,7 @@
         <!-- Buttons -->
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
             <Button Content="OK" Click="BtnOK_Click" Padding="25,8" Margin="0,0,10,0"
-                    Background="#0078D4" Foreground="White" BorderThickness="0"/>
+                    Background="{DynamicResource PrimaryBrush}" Foreground="White" BorderThickness="0"/>
             <Button Content="Abbrechen" Click="BtnAbbrechen_Click" Padding="15,8" IsCancel="True"/>
         </StackPanel>
     </Grid>

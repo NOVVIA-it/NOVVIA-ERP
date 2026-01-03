@@ -50,9 +50,11 @@ namespace NovviaERP.WPF.Views
             pnlAuftraegeStatus.Visibility = Visibility.Collapsed;
             pnlRechnungenStatus.Visibility = Visibility.Collapsed;
             pnlRechnungskorrekturenStatus.Visibility = Visibility.Collapsed;
+            pnlRetourenStatus.Visibility = Visibility.Collapsed;
             btnAuftraege.Content = "▶ Auftraege";
             btnRechnungen.Content = "▶ Rechnungen";
             btnRechnungskorrekturen.Content = "▶ Rechnungskorrekturen";
+            btnRetouren.Content = "▶ Retouren";
 
             // Einkauf
             pnlLieferantenBestellungenStatus.Visibility = Visibility.Collapsed;
@@ -80,6 +82,10 @@ namespace NovviaERP.WPF.Views
                 case "Rechnungskorrekturen":
                     pnlRechnungskorrekturenStatus.Visibility = Visibility.Visible;
                     btnRechnungskorrekturen.Content = "▼ Rechnungskorrekturen";
+                    break;
+                case "Retouren":
+                    pnlRetourenStatus.Visibility = Visibility.Visible;
+                    btnRetouren.Content = "▼ Retouren";
                     break;
 
                 // Einkauf
@@ -147,6 +153,12 @@ namespace NovviaERP.WPF.Views
             ShowView<ArtikelView>();
         }
 
+        private void NavKategorien_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<KategorieView>();
+        }
+
         // Aufträge - Hauptbutton klappt Menü auf und zeigt "Alle"
         private void NavBestellungen_Click(object sender, RoutedEventArgs e)
         {
@@ -202,6 +214,26 @@ namespace NovviaERP.WPF.Views
             if (sender is Button btn && btn.Tag is string status)
             {
                 var view = App.Services.GetRequiredService<RechnungskorrekturenView>();
+                view.SetStatusFilter(status);
+                contentMain.Content = view;
+            }
+        }
+
+        // Retouren - Hauptbutton klappt Menü auf und zeigt "Alle"
+        private void NavRetouren_Click(object sender, RoutedEventArgs e)
+        {
+            StatusMenuAufklappen("Retouren");
+            var view = App.Services.GetRequiredService<RetourenView>();
+            view.SetStatusFilter("");
+            contentMain.Content = view;
+        }
+
+        // Retouren - Status-Untermenü
+        private void NavRetoureStatus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string status)
+            {
+                var view = App.Services.GetRequiredService<RetourenView>();
                 view.SetStatusFilter(status);
                 contentMain.Content = view;
             }

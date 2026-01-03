@@ -31,7 +31,7 @@ namespace NovviaERP.WPF.Services
                 {
                     _settings = new ThemeSettings
                     {
-                        PrimaryColor = werte.GetValueOrDefault("PrimaryColor", "#0078D4"),
+                        PrimaryColor = werte.GetValueOrDefault("PrimaryColor", "#E86B5C"),
                         SecondaryColor = werte.GetValueOrDefault("SecondaryColor", "#6C757D"),
                         BackgroundColor = werte.GetValueOrDefault("BackgroundColor", "#FFFFFF"),
                         HeaderBackgroundColor = werte.GetValueOrDefault("HeaderBackgroundColor", "#F8F9FA"),
@@ -179,7 +179,7 @@ namespace NovviaERP.WPF.Services
     public class ThemeSettings
     {
         // Primaer- und Sekundaerfarben
-        public string PrimaryColor { get; set; } = "#0078D4";      // Microsoft Blue
+        public string PrimaryColor { get; set; } = "#E86B5C";      // Microsoft Blue
         public string SecondaryColor { get; set; } = "#6C757D";    // Gray
 
         // Hintergruende

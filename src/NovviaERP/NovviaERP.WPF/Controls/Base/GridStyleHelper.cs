@@ -391,7 +391,7 @@ namespace NovviaERP.WPF.Controls.Base
         public bool ZebraStreifen { get; set; } = true;
 
         // Selektion
-        public string SelektionHintergrund { get; set; } = "#0078D4";
+        public string SelektionHintergrund { get; set; } = "#E86B5C";
         public string SelektionTextfarbe { get; set; } = "#ffffff";
 
         // Status-Farben (fuer farbige Status-Badges, Ampeln, etc.)

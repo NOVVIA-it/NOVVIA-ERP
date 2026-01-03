@@ -669,6 +669,214 @@ namespace NovviaERP.Core.Services
             public string? CName { get; set; }
         }
 
+        // ========== Stammdaten DTOs ==========
+        public class HerstellerItem
+        {
+            public int KHersteller { get; set; }
+            public string CName { get; set; } = "";
+            public string? CHomepage { get; set; }
+            public string? CBeschreibung { get; set; }
+            public int NSort { get; set; }
+        }
+
+        public class RueckgabegrundItem
+        {
+            public int KRMGrund { get; set; }
+            public string CName { get; set; } = "";
+            public string? CBeschreibung { get; set; }
+            public bool NAktiv { get; set; }
+            public string? CColor { get; set; }
+            public int NSort { get; set; }
+        }
+
+        public class MasseinheitItem
+        {
+            public int KMassEinheit { get; set; }
+            public string CCode { get; set; } = "";
+            public string? CDisplayCode { get; set; }
+            public string? CName { get; set; }
+            public int? KBezugsMassEinheit { get; set; }
+            public decimal? FBezugsFaktor { get; set; }
+        }
+
+        public class ArtikelzustandItem
+        {
+            public int KZustand { get; set; }
+            public string CName { get; set; } = "";
+            public string? CBeschreibung { get; set; }
+            public string? CSuffix { get; set; }
+            public bool NAktiv { get; set; }
+            public string? CColor { get; set; }
+            public int NSort { get; set; }
+        }
+
+        // ========== Attribute DTOs ==========
+        public class AttributGruppe
+        {
+            public string CGruppeName { get; set; } = "";
+            public int Anzahl { get; set; }
+        }
+
+        public class AttributItem
+        {
+            public int KAttribut { get; set; }
+            public string CName { get; set; } = "";
+            public string? CBeschreibung { get; set; }
+            public string CGruppeName { get; set; } = "";
+            public int NSort { get; set; }
+            public bool NIstMehrsprachig { get; set; }
+            public bool NIstFreifeld { get; set; }
+            public bool NIstStandard { get; set; }
+            public bool NIstPflichtfeld { get; set; }
+            public string? CAttributId { get; set; }
+        }
+
+        // ========== Merkmale DTOs ==========
+        public class MerkmalItem
+        {
+            public int KMerkmal { get; set; }
+            public string CName { get; set; } = "";
+            public string CTyp { get; set; } = "";
+            public int NSort { get; set; }
+            public bool NGlobal { get; set; }
+            public bool NMehrfachauswahl { get; set; }
+            public int WerteAnzahl { get; set; }
+        }
+
+        public class MerkmalWertItem
+        {
+            public int KMerkmalWert { get; set; }
+            public int KMerkmal { get; set; }
+            public string CWert { get; set; } = "";
+            public int NSort { get; set; }
+        }
+
+        // ========== Kategorien DTOs ==========
+        public class KategorieUebersicht
+        {
+            public int KKategorie { get; set; }
+            public int? KOberKategorie { get; set; }
+            public string? CName { get; set; }
+            public string? CBeschreibung { get; set; }
+            public bool CAktiv { get; set; }
+            public int NSort { get; set; }
+            public int ArtikelAnzahl { get; set; }
+            public int SubkategorienAnzahl { get; set; }
+            public string? Pfad { get; set; }
+            public int Ebene { get; set; }
+        }
+
+        public class KategorieDetail
+        {
+            public int KKategorie { get; set; }
+            public int? KOberKategorie { get; set; }
+            public string? CName { get; set; }
+            public string? CBeschreibung { get; set; }
+            public string? CUrlPfad { get; set; }
+            public string? CMetaDescription { get; set; }
+            public string? CTitleTag { get; set; }
+            public string? CMetaKeywords { get; set; }
+            public bool CAktiv { get; set; }
+            public bool CInet { get; set; }
+            public int NSort { get; set; }
+            public string? OberKategorieName { get; set; }
+            public List<KategorieArtikelItem> Artikel { get; set; } = new();
+            public List<KategorieUebersicht> Unterkategorien { get; set; } = new();
+        }
+
+        public class KategorieArtikelItem
+        {
+            public int KArtikel { get; set; }
+            public string? CArtNr { get; set; }
+            public string? CName { get; set; }
+            public decimal FVKNetto { get; set; }
+            public int FLagerbestand { get; set; }
+        }
+
+        public class KategorieTreeNode
+        {
+            public int KKategorie { get; set; }
+            public string CName { get; set; } = "";
+            public int? KOberKategorie { get; set; }
+            public bool CAktiv { get; set; }
+            public int NSort { get; set; }
+            public int ArtikelAnzahl { get; set; }
+            public List<KategorieTreeNode> Kinder { get; set; } = new();
+        }
+
+        // ========== Retouren DTOs ==========
+        public class RetoureUebersicht
+        {
+            public int KRMRetoure { get; set; }
+            public string CRetoureNr { get; set; } = "";
+            public int KKunde { get; set; }
+            public string? CKundenNr { get; set; }
+            public string? CKundeName { get; set; }
+            public int KRMStatus { get; set; }
+            public string? CStatus { get; set; }
+            public DateTime DErstellt { get; set; }
+            public int? KBestellung { get; set; }
+            public string? CAuftragNr { get; set; }
+            public int? KGutschrift { get; set; }
+            public string? CGutschriftNr { get; set; }
+            public decimal FKorrekturBetrag { get; set; }
+            public bool NVersandkostenErstatten { get; set; }
+            public int PositionenAnzahl { get; set; }
+            public string? CKommentarExtern { get; set; }
+            public string? CKommentarIntern { get; set; }
+        }
+
+        public class RetoureDetail
+        {
+            public int KRMRetoure { get; set; }
+            public string CRetoureNr { get; set; } = "";
+            public int KKunde { get; set; }
+            public string? CKundenNr { get; set; }
+            public string? CKundeName { get; set; }
+            public int KRMStatus { get; set; }
+            public string? CStatus { get; set; }
+            public DateTime DErstellt { get; set; }
+            public int? KBestellung { get; set; }
+            public string? CAuftragNr { get; set; }
+            public int? KGutschrift { get; set; }
+            public string? CGutschriftNr { get; set; }
+            public decimal FKorrekturBetrag { get; set; }
+            public bool NVersandkostenErstatten { get; set; }
+            public string? CKommentarExtern { get; set; }
+            public string? CKommentarIntern { get; set; }
+            public string? CKorrekturBetragKommentar { get; set; }
+            public int? KWarenlager { get; set; }
+            public string? CWarenlager { get; set; }
+            public string? CAnsprechpartner { get; set; }
+            public int KBenutzer { get; set; }
+            public string? CBenutzer { get; set; }
+            public List<RetourePosition> Positionen { get; set; } = new();
+        }
+
+        public class RetourePosition
+        {
+            public int KRMRetourePos { get; set; }
+            public int KRMRetoure { get; set; }
+            public int KArtikel { get; set; }
+            public string? CArtNr { get; set; }
+            public string? CName { get; set; }
+            public decimal FAnzahl { get; set; }
+            public int KRMGrund { get; set; }
+            public string? CGrund { get; set; }
+            public string? CGrundKommentar { get; set; }
+            public int? KZustand { get; set; }
+            public string? CZustand { get; set; }
+            public string? CZustandKommentar { get; set; }
+            public bool NGutschreiben { get; set; }
+            public int KLieferscheinPos { get; set; }
+        }
+
+        public class RMStatusItem
+        {
+            public int KRMStatus { get; set; }
+            public string CName { get; set; } = "";
+        }
+
         #endregion
 
         #region Kunden
@@ -7675,6 +7883,809 @@ namespace NovviaERP.Core.Services
 
         #endregion
 
+        #region Stammdaten-Verwaltung (Hersteller, Rueckgabegruende, Masseinheiten, Zustaende)
+
+        public async Task<List<HerstellerItem>> GetHerstellerListeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<HerstellerItem>(@"
+                SELECT kHersteller, cName, cHomepage, cBeschreibung, nSort
+                FROM dbo.tHersteller
+                ORDER BY nSort, cName")).ToList();
+        }
+
+        public async Task<int> CreateHerstellerAsync(HerstellerItem h)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleAsync<int>(@"
+                INSERT INTO dbo.tHersteller (cName, cHomepage, cBeschreibung, nSort, kContact)
+                VALUES (@CName, @CHomepage, @CBeschreibung, @NSort, 0);
+                SELECT SCOPE_IDENTITY();", h);
+        }
+
+        public async Task UpdateHerstellerAsync(HerstellerItem h)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tHersteller
+                SET cName = @CName, cHomepage = @CHomepage, cBeschreibung = @CBeschreibung, nSort = @NSort
+                WHERE kHersteller = @KHersteller", h);
+        }
+
+        public async Task DeleteHerstellerAsync(int kHersteller)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tHersteller WHERE kHersteller = @kHersteller", new { kHersteller });
+        }
+
+        public async Task<List<RueckgabegrundItem>> GetRueckgabegruendeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<RueckgabegrundItem>(@"
+                SELECT r.kRMGrund, rs.cName, rs.cBeschreibung, r.nAktiv, r.cColor, r.nSort
+                FROM dbo.tRMGrund r
+                LEFT JOIN dbo.tRMGrundSprache rs ON r.kRMGrund = rs.kRMGrund AND rs.kSprache = 1
+                ORDER BY r.nSort, rs.cName")).ToList();
+        }
+
+        public async Task<int> CreateRueckgabegrundAsync(RueckgabegrundItem r)
+        {
+            var conn = await GetConnectionAsync();
+            var id = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO dbo.tRMGrund (nAktiv, cColor, nSort) VALUES (@NAktiv, @CColor, @NSort);
+                SELECT SCOPE_IDENTITY();", new { NAktiv = r.NAktiv ? 1 : 0, r.CColor, r.NSort });
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tRMGrundSprache (kRMGrund, kSprache, cName, cBeschreibung)
+                VALUES (@id, 1, @CName, @CBeschreibung)", new { id, r.CName, r.CBeschreibung });
+            return id;
+        }
+
+        public async Task UpdateRueckgabegrundAsync(RueckgabegrundItem r)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tRMGrund SET nAktiv = @NAktiv, cColor = @CColor, nSort = @NSort WHERE kRMGrund = @KRMGrund",
+                new { NAktiv = r.NAktiv ? 1 : 0, r.CColor, r.NSort, r.KRMGrund });
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tRMGrundSprache SET cName = @CName, cBeschreibung = @CBeschreibung
+                WHERE kRMGrund = @KRMGrund AND kSprache = 1", r);
+        }
+
+        public async Task DeleteRueckgabegrundAsync(int kRMGrund)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tRMGrundSprache WHERE kRMGrund = @kRMGrund", new { kRMGrund });
+            await conn.ExecuteAsync("DELETE FROM dbo.tRMGrund WHERE kRMGrund = @kRMGrund", new { kRMGrund });
+        }
+
+        public async Task<List<MasseinheitItem>> GetMasseinheitenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<MasseinheitItem>(@"
+                SELECT m.kMassEinheit, m.cCode, m.cDisplayCode, ms.cName, m.kBezugsMassEinheit, m.fBezugsMassEinheitFaktor AS FBezugsFaktor
+                FROM dbo.tMassEinheit m
+                LEFT JOIN dbo.tMassEinheitSprache ms ON m.kMassEinheit = ms.kMassEinheit AND ms.kSprache = 1
+                ORDER BY m.cCode")).ToList();
+        }
+
+        public async Task<int> CreateMasseinheitAsync(MasseinheitItem m)
+        {
+            var conn = await GetConnectionAsync();
+            var id = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO dbo.tMassEinheit (cCode, cDisplayCode, kBezugsMassEinheit, fBezugsMassEinheitFaktor)
+                VALUES (@CCode, @CDisplayCode, @KBezugsMassEinheit, ISNULL(@FBezugsFaktor, 1.0));
+                SELECT SCOPE_IDENTITY();", m);
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tMassEinheitSprache (kMassEinheit, kSprache, cName)
+                VALUES (@id, 1, @CName)", new { id, m.CName });
+            return id;
+        }
+
+        public async Task UpdateMasseinheitAsync(MasseinheitItem m)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tMassEinheit
+                SET cCode = @CCode, cDisplayCode = @CDisplayCode, kBezugsMassEinheit = @KBezugsMassEinheit, fBezugsMassEinheitFaktor = @FBezugsFaktor
+                WHERE kMassEinheit = @KMassEinheit", m);
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tMassEinheitSprache SET cName = @CName WHERE kMassEinheit = @KMassEinheit AND kSprache = 1", m);
+        }
+
+        public async Task DeleteMasseinheitAsync(int kMassEinheit)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tMassEinheitSprache WHERE kMassEinheit = @kMassEinheit", new { kMassEinheit });
+            await conn.ExecuteAsync("DELETE FROM dbo.tMassEinheit WHERE kMassEinheit = @kMassEinheit", new { kMassEinheit });
+        }
+
+        public async Task<List<ArtikelzustandItem>> GetArtikelzustaendeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<ArtikelzustandItem>(@"
+                SELECT z.kZustand, zs.cName, z.cSuffix, z.nAktiv, z.cColor, z.nSort
+                FROM dbo.tZustand z
+                LEFT JOIN dbo.tZustandSprache zs ON z.kZustand = zs.kZustand AND zs.kSprache = 1
+                ORDER BY z.nSort, zs.cName")).ToList();
+        }
+
+        public async Task<int> CreateArtikelzustandAsync(ArtikelzustandItem z)
+        {
+            var conn = await GetConnectionAsync();
+            var id = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO dbo.tZustand (cSuffix, nAktiv, cColor, nSort, nTyp, nCode) VALUES (ISNULL(@CSuffix, ''), @NAktiv, @CColor, @NSort, 0, 0);
+                SELECT SCOPE_IDENTITY();", new { z.CSuffix, NAktiv = z.NAktiv ? 1 : 0, z.CColor, z.NSort });
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tZustandSprache (kZustand, kSprache, cName)
+                VALUES (@id, 1, @CName)", new { id, z.CName });
+            return id;
+        }
+
+        public async Task UpdateArtikelzustandAsync(ArtikelzustandItem z)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tZustand SET cSuffix = ISNULL(@CSuffix, ''), nAktiv = @NAktiv, cColor = @CColor, nSort = @NSort WHERE kZustand = @KZustand",
+                new { z.CSuffix, NAktiv = z.NAktiv ? 1 : 0, z.CColor, z.NSort, z.KZustand });
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tZustandSprache SET cName = @CName WHERE kZustand = @KZustand AND kSprache = 1", new { z.CName, z.KZustand });
+        }
+
+        public async Task DeleteArtikelzustandAsync(int kZustand)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tZustandSprache WHERE kZustand = @kZustand", new { kZustand });
+            await conn.ExecuteAsync("DELETE FROM dbo.tZustand WHERE kZustand = @kZustand", new { kZustand });
+        }
+
+        #endregion
+
+        #region Attribute (JTL tAttribut)
+
+        /// <summary>
+        /// Alle Attribut-Gruppen laden
+        /// </summary>
+        public async Task<List<AttributGruppe>> GetAttributGruppenAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<AttributGruppe>(@"
+                SELECT cGruppeName AS CGruppeName, COUNT(*) AS Anzahl
+                FROM dbo.tAttribut
+                GROUP BY cGruppeName
+                ORDER BY cGruppeName")).ToList();
+        }
+
+        /// <summary>
+        /// Attribute einer Gruppe laden
+        /// </summary>
+        public async Task<List<AttributItem>> GetAttributeByGruppeAsync(string gruppeName)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<AttributItem>(@"
+                SELECT a.kAttribut AS KAttribut, s.cName AS CName, a.cBeschreibung AS CBeschreibung,
+                       a.cGruppeName AS CGruppeName, a.nSortierung AS NSort,
+                       CAST(a.nIstMehrsprachig AS BIT) AS NIstMehrsprachig,
+                       CAST(a.nIstFreifeld AS BIT) AS NIstFreifeld,
+                       CAST(a.nIstStandard AS BIT) AS NIstStandard,
+                       CAST(ISNULL(a.nIstPflichtfeld, 0) AS BIT) AS NIstPflichtfeld,
+                       a.cAttributId AS CAttributId
+                FROM dbo.tAttribut a
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                WHERE a.cGruppeName = @gruppeName
+                ORDER BY a.nSortierung, s.cName", new { gruppeName })).ToList();
+        }
+
+        /// <summary>
+        /// Alle Attribute laden
+        /// </summary>
+        public async Task<List<AttributItem>> GetAlleAttributeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<AttributItem>(@"
+                SELECT a.kAttribut AS KAttribut, s.cName AS CName, a.cBeschreibung AS CBeschreibung,
+                       a.cGruppeName AS CGruppeName, a.nSortierung AS NSort,
+                       CAST(a.nIstMehrsprachig AS BIT) AS NIstMehrsprachig,
+                       CAST(a.nIstFreifeld AS BIT) AS NIstFreifeld,
+                       CAST(a.nIstStandard AS BIT) AS NIstStandard,
+                       CAST(ISNULL(a.nIstPflichtfeld, 0) AS BIT) AS NIstPflichtfeld,
+                       a.cAttributId AS CAttributId
+                FROM dbo.tAttribut a
+                LEFT JOIN dbo.tAttributSprache s ON a.kAttribut = s.kAttribut AND s.kSprache = 1
+                ORDER BY a.cGruppeName, a.nSortierung, s.cName")).ToList();
+        }
+
+        /// <summary>
+        /// Neues Attribut erstellen
+        /// </summary>
+        public async Task<int> CreateAttributAsync(AttributItem a)
+        {
+            var conn = await GetConnectionAsync();
+            var attributId = Guid.NewGuid().ToString("N").Substring(0, 20);
+            var id = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO dbo.tAttribut (cGruppeName, cBeschreibung, nSortierung, nIstMehrsprachig, nIstFreifeld, nIstStandard,
+                    nAktivFuerArtikelOhneWarengruppe, nBezugstyp, nAusgabeweg, kFeldTyp, nReadOnly, cAttributId, nIstUnsichtbar)
+                VALUES (@CGruppeName, @CBeschreibung, @NSort, @NIstMehrsprachig, @NIstFreifeld, 0,
+                    1, 1, 0, 1, 0, @CAttributId, 0);
+                SELECT SCOPE_IDENTITY()", new {
+                    a.CGruppeName, a.CBeschreibung, a.NSort,
+                    NIstMehrsprachig = a.NIstMehrsprachig ? 1 : 0,
+                    NIstFreifeld = a.NIstFreifeld ? 1 : 0,
+                    CAttributId = a.CAttributId ?? attributId
+                });
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tAttributSprache (kAttribut, kSprache, cName)
+                VALUES (@id, 1, @CName)", new { id, a.CName });
+            return id;
+        }
+
+        /// <summary>
+        /// Attribut aktualisieren
+        /// </summary>
+        public async Task UpdateAttributAsync(AttributItem a)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tAttribut SET cGruppeName = @CGruppeName, cBeschreibung = @CBeschreibung, nSortierung = @NSort,
+                       nIstMehrsprachig = @NIstMehrsprachig, nIstFreifeld = @NIstFreifeld
+                WHERE kAttribut = @KAttribut",
+                new { a.CGruppeName, a.CBeschreibung, a.NSort, NIstMehrsprachig = a.NIstMehrsprachig ? 1 : 0, NIstFreifeld = a.NIstFreifeld ? 1 : 0, a.KAttribut });
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tAttributSprache SET cName = @CName WHERE kAttribut = @KAttribut AND kSprache = 1", new { a.CName, a.KAttribut });
+        }
+
+        /// <summary>
+        /// Attribut loeschen (nur nicht-Standard-Attribute)
+        /// </summary>
+        public async Task DeleteAttributAsync(int kAttribut)
+        {
+            var conn = await GetConnectionAsync();
+            // Pruefen ob Standard
+            var istStandard = await conn.QuerySingleOrDefaultAsync<int?>("SELECT nIstStandard FROM dbo.tAttribut WHERE kAttribut = @kAttribut", new { kAttribut });
+            if (istStandard == 1)
+                throw new InvalidOperationException("Standard-Attribute koennen nicht geloescht werden.");
+            await conn.ExecuteAsync("DELETE FROM dbo.tAttributSprache WHERE kAttribut = @kAttribut", new { kAttribut });
+            await conn.ExecuteAsync("DELETE FROM dbo.tAttribut WHERE kAttribut = @kAttribut", new { kAttribut });
+        }
+
+        #endregion
+
+        #region Merkmale (JTL tMerkmal)
+
+        /// <summary>
+        /// Alle Merkmale laden
+        /// </summary>
+        public async Task<List<MerkmalItem>> GetMerkmaleAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<MerkmalItem>(@"
+                SELECT m.kMerkmal AS KMerkmal, s.cName AS CName, m.cTyp AS CTyp, m.nSort AS NSort,
+                       CAST(m.nGlobal AS BIT) AS NGlobal, CAST(m.nMehrfachauswahl AS BIT) AS NMehrfachauswahl,
+                       (SELECT COUNT(*) FROM dbo.tMerkmalWert WHERE kMerkmal = m.kMerkmal) AS WerteAnzahl
+                FROM dbo.tMerkmal m
+                LEFT JOIN dbo.tMerkmalSprache s ON m.kMerkmal = s.kMerkmal AND s.kSprache = 1
+                ORDER BY m.nSort, s.cName")).ToList();
+        }
+
+        /// <summary>
+        /// Merkmal-Werte laden
+        /// </summary>
+        public async Task<List<MerkmalWertItem>> GetMerkmalWerteAsync(int kMerkmal)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<MerkmalWertItem>(@"
+                SELECT w.kMerkmalWert AS KMerkmalWert, w.kMerkmal AS KMerkmal, s.cWert AS CWert, w.nSort AS NSort
+                FROM dbo.tMerkmalWert w
+                LEFT JOIN dbo.tMerkmalWertSprache s ON w.kMerkmalWert = s.kMerkmalWert AND s.kSprache = 1
+                WHERE w.kMerkmal = @kMerkmal
+                ORDER BY w.nSort, s.cWert", new { kMerkmal })).ToList();
+        }
+
+        /// <summary>
+        /// Neues Merkmal erstellen
+        /// </summary>
+        public async Task<int> CreateMerkmalAsync(MerkmalItem m)
+        {
+            var conn = await GetConnectionAsync();
+            var id = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO dbo.tMerkmal (cTyp, nSort, nGlobal, nMehrfachauswahl)
+                VALUES (@CTyp, @NSort, @NGlobal, @NMehrfachauswahl);
+                SELECT SCOPE_IDENTITY()", new { m.CTyp, m.NSort, NGlobal = m.NGlobal ? 1 : 0, NMehrfachauswahl = m.NMehrfachauswahl ? 1 : 0 });
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tMerkmalSprache (kMerkmal, kSprache, cName)
+                VALUES (@id, 1, @CName)", new { id, m.CName });
+            return id;
+        }
+
+        /// <summary>
+        /// Merkmal aktualisieren
+        /// </summary>
+        public async Task UpdateMerkmalAsync(MerkmalItem m)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tMerkmal SET cTyp = @CTyp, nSort = @NSort, nGlobal = @NGlobal, nMehrfachauswahl = @NMehrfachauswahl
+                WHERE kMerkmal = @KMerkmal",
+                new { m.CTyp, m.NSort, NGlobal = m.NGlobal ? 1 : 0, NMehrfachauswahl = m.NMehrfachauswahl ? 1 : 0, m.KMerkmal });
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tMerkmalSprache SET cName = @CName WHERE kMerkmal = @KMerkmal AND kSprache = 1", new { m.CName, m.KMerkmal });
+        }
+
+        /// <summary>
+        /// Merkmal loeschen
+        /// </summary>
+        public async Task DeleteMerkmalAsync(int kMerkmal)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tMerkmalWertSprache WHERE kMerkmalWert IN (SELECT kMerkmalWert FROM dbo.tMerkmalWert WHERE kMerkmal = @kMerkmal)", new { kMerkmal });
+            await conn.ExecuteAsync("DELETE FROM dbo.tMerkmalWert WHERE kMerkmal = @kMerkmal", new { kMerkmal });
+            await conn.ExecuteAsync("DELETE FROM dbo.tMerkmalSprache WHERE kMerkmal = @kMerkmal", new { kMerkmal });
+            await conn.ExecuteAsync("DELETE FROM dbo.tMerkmal WHERE kMerkmal = @kMerkmal", new { kMerkmal });
+        }
+
+        /// <summary>
+        /// Neuen Merkmal-Wert erstellen
+        /// </summary>
+        public async Task<int> CreateMerkmalWertAsync(MerkmalWertItem w)
+        {
+            var conn = await GetConnectionAsync();
+            var id = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO dbo.tMerkmalWert (kMerkmal, nSort)
+                VALUES (@KMerkmal, @NSort);
+                SELECT SCOPE_IDENTITY()", new { w.KMerkmal, w.NSort });
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tMerkmalWertSprache (kMerkmalWert, kSprache, cWert)
+                VALUES (@id, 1, @CWert)", new { id, w.CWert });
+            return id;
+        }
+
+        /// <summary>
+        /// Merkmal-Wert aktualisieren
+        /// </summary>
+        public async Task UpdateMerkmalWertAsync(MerkmalWertItem w)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("UPDATE dbo.tMerkmalWert SET nSort = @NSort WHERE kMerkmalWert = @KMerkmalWert", new { w.NSort, w.KMerkmalWert });
+            await conn.ExecuteAsync("UPDATE dbo.tMerkmalWertSprache SET cWert = @CWert WHERE kMerkmalWert = @KMerkmalWert AND kSprache = 1", new { w.CWert, w.KMerkmalWert });
+        }
+
+        /// <summary>
+        /// Merkmal-Wert loeschen
+        /// </summary>
+        public async Task DeleteMerkmalWertAsync(int kMerkmalWert)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.tMerkmalWertSprache WHERE kMerkmalWert = @kMerkmalWert", new { kMerkmalWert });
+            await conn.ExecuteAsync("DELETE FROM dbo.tMerkmalWert WHERE kMerkmalWert = @kMerkmalWert", new { kMerkmalWert });
+        }
+
+        #endregion
+
+        #region Kategorien
+
+        /// <summary>
+        /// Alle Kategorien mit Details laden (fuer KategorieView)
+        /// </summary>
+        public async Task<List<KategorieUebersicht>> GetKategorienMitDetailsAsync()
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                WITH KategoriePfad AS (
+                    SELECT k.kKategorie, k.kOberKategorie, ks.cName, k.cAktiv, k.nSort, 0 AS Ebene,
+                           CAST(ks.cName AS NVARCHAR(1000)) AS Pfad
+                    FROM dbo.tkategorie k
+                    LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1
+                    WHERE k.kOberKategorie = 0
+
+                    UNION ALL
+
+                    SELECT k.kKategorie, k.kOberKategorie, ks.cName, k.cAktiv, k.nSort, kp.Ebene + 1,
+                           CAST(kp.Pfad + ' > ' + ks.cName AS NVARCHAR(1000))
+                    FROM dbo.tkategorie k
+                    INNER JOIN KategoriePfad kp ON k.kOberKategorie = kp.kKategorie
+                    LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1
+                )
+                SELECT kp.kKategorie, kp.kOberKategorie, kp.cName, kp.cAktiv, kp.nSort, kp.Ebene, kp.Pfad,
+                       ks.cBeschreibung,
+                       (SELECT COUNT(*) FROM dbo.tkategorieartikel ka WHERE ka.kKategorie = kp.kKategorie) AS ArtikelAnzahl,
+                       (SELECT COUNT(*) FROM dbo.tkategorie sub WHERE sub.kOberKategorie = kp.kKategorie) AS SubkategorienAnzahl
+                FROM KategoriePfad kp
+                LEFT JOIN dbo.tKategorieSprache ks ON kp.kKategorie = ks.kKategorie AND ks.kSprache = 1
+                ORDER BY kp.Pfad
+            ";
+
+            var result = await conn.QueryAsync<KategorieUebersichtDb>(sql);
+            return result.Select(r => new KategorieUebersicht
+            {
+                KKategorie = r.KKategorie,
+                KOberKategorie = r.KOberKategorie == 0 ? null : r.KOberKategorie,
+                CName = r.CName,
+                CBeschreibung = r.CBeschreibung,
+                CAktiv = r.CAktiv == "Y",
+                NSort = r.NSort,
+                ArtikelAnzahl = r.ArtikelAnzahl,
+                SubkategorienAnzahl = r.SubkategorienAnzahl,
+                Pfad = r.Pfad,
+                Ebene = r.Ebene
+            }).ToList();
+        }
+
+        private class KategorieUebersichtDb
+        {
+            public int KKategorie { get; set; }
+            public int KOberKategorie { get; set; }
+            public string? CName { get; set; }
+            public string? CBeschreibung { get; set; }
+            public string? CAktiv { get; set; }
+            public int NSort { get; set; }
+            public int ArtikelAnzahl { get; set; }
+            public int SubkategorienAnzahl { get; set; }
+            public string? Pfad { get; set; }
+            public int Ebene { get; set; }
+        }
+
+        /// <summary>
+        /// Kategorie-Baum laden (fuer TreeView)
+        /// </summary>
+        public async Task<List<KategorieTreeNode>> GetKategorieBaumAsync()
+        {
+            var alle = await GetKategorienMitDetailsAsync();
+            return BaueKategorieBaum(alle, null);
+        }
+
+        private List<KategorieTreeNode> BaueKategorieBaum(List<KategorieUebersicht> alle, int? parentId)
+        {
+            return alle
+                .Where(k => k.KOberKategorie == parentId)
+                .OrderBy(k => k.NSort)
+                .ThenBy(k => k.CName)
+                .Select(k => new KategorieTreeNode
+                {
+                    KKategorie = k.KKategorie,
+                    CName = k.CName ?? "",
+                    KOberKategorie = k.KOberKategorie,
+                    CAktiv = k.CAktiv,
+                    NSort = k.NSort,
+                    ArtikelAnzahl = k.ArtikelAnzahl,
+                    Kinder = BaueKategorieBaum(alle, k.KKategorie)
+                })
+                .ToList();
+        }
+
+        /// <summary>
+        /// Einzelne Kategorie laden
+        /// </summary>
+        public async Task<KategorieDetail?> GetKategorieByIdAsync(int kKategorie)
+        {
+            var conn = await GetConnectionAsync();
+
+            var sql = @"
+                SELECT k.kKategorie, k.kOberKategorie, k.cAktiv, k.cInet, k.nSort,
+                       ks.cName, ks.cBeschreibung, ks.cUrlPfad, ks.cMetaDescription, ks.cTitleTag, ks.cMetaKeywords,
+                       obs.cName AS OberKategorieName
+                FROM dbo.tkategorie k
+                LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1
+                LEFT JOIN dbo.tkategorie ok ON k.kOberKategorie = ok.kKategorie
+                LEFT JOIN dbo.tKategorieSprache obs ON ok.kKategorie = obs.kKategorie AND obs.kSprache = 1
+                WHERE k.kKategorie = @kKategorie
+            ";
+
+            var row = await conn.QueryFirstOrDefaultAsync<dynamic>(sql, new { kKategorie });
+            if (row == null) return null;
+
+            var kategorie = new KategorieDetail
+            {
+                KKategorie = row.kKategorie,
+                KOberKategorie = row.kOberKategorie == 0 ? null : (int?)row.kOberKategorie,
+                CName = row.cName,
+                CBeschreibung = row.cBeschreibung,
+                CUrlPfad = row.cUrlPfad,
+                CMetaDescription = row.cMetaDescription,
+                CTitleTag = row.cTitleTag,
+                CMetaKeywords = row.cMetaKeywords,
+                CAktiv = row.cAktiv == "Y",
+                CInet = row.cInet == "Y",
+                NSort = row.nSort ?? 0,
+                OberKategorieName = row.OberKategorieName
+            };
+
+            // Artikel laden
+            var artikelSql = @"
+                SELECT ka.kArtikel, a.cArtNr, ab.cName,
+                       ISNULL(p.fVKNetto, 0) AS FVKNetto,
+                       ISNULL((SELECT SUM(fBestand) FROM dbo.tArtikelLagerbestand lb WHERE lb.kArtikel = a.kArtikel), 0) AS FLagerbestand
+                FROM dbo.tkategorieartikel ka
+                INNER JOIN dbo.tartikel a ON ka.kArtikel = a.kArtikel
+                LEFT JOIN dbo.tArtikelBeschreibung ab ON a.kArtikel = ab.kArtikel AND ab.kSprache = 1 AND ab.kPlattform = 1
+                LEFT JOIN dbo.tPreis p ON a.kArtikel = p.kArtikel AND p.kKundenGruppe = 1
+                WHERE ka.kKategorie = @kKategorie
+                ORDER BY ab.cName
+            ";
+            kategorie.Artikel = (await conn.QueryAsync<KategorieArtikelItem>(artikelSql, new { kKategorie })).ToList();
+
+            // Unterkategorien laden
+            var subSql = @"
+                SELECT k.kKategorie, k.kOberKategorie, ks.cName, k.cAktiv, k.nSort,
+                       (SELECT COUNT(*) FROM dbo.tkategorieartikel ka WHERE ka.kKategorie = k.kKategorie) AS ArtikelAnzahl,
+                       (SELECT COUNT(*) FROM dbo.tkategorie sub WHERE sub.kOberKategorie = k.kKategorie) AS SubkategorienAnzahl
+                FROM dbo.tkategorie k
+                LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1
+                WHERE k.kOberKategorie = @kKategorie
+                ORDER BY k.nSort, ks.cName
+            ";
+            var subRows = await conn.QueryAsync<KategorieUebersichtDb>(subSql, new { kKategorie });
+            kategorie.Unterkategorien = subRows.Select(r => new KategorieUebersicht
+            {
+                KKategorie = r.KKategorie,
+                KOberKategorie = r.KOberKategorie == 0 ? null : r.KOberKategorie,
+                CName = r.CName,
+                CAktiv = r.CAktiv == "Y",
+                NSort = r.NSort,
+                ArtikelAnzahl = r.ArtikelAnzahl,
+                SubkategorienAnzahl = r.SubkategorienAnzahl
+            }).ToList();
+
+            return kategorie;
+        }
+
+        /// <summary>
+        /// Kategorie speichern (Update)
+        /// </summary>
+        public async Task UpdateKategorieAsync(KategorieDetail kategorie)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Kategorie-Tabelle
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tkategorie
+                SET kOberKategorie = @KOberKategorie, cAktiv = @CAktiv, cInet = @CInet, nSort = @NSort
+                WHERE kKategorie = @KKategorie
+            ", new
+            {
+                kategorie.KKategorie,
+                KOberKategorie = kategorie.KOberKategorie ?? 0,
+                CAktiv = kategorie.CAktiv ? "Y" : "N",
+                CInet = kategorie.CInet ? "Y" : "N",
+                kategorie.NSort
+            });
+
+            // Sprache-Tabelle
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tKategorieSprache
+                SET cName = @CName, cBeschreibung = @CBeschreibung, cUrlPfad = @CUrlPfad,
+                    cMetaDescription = @CMetaDescription, cTitleTag = @CTitleTag, cMetaKeywords = @CMetaKeywords
+                WHERE kKategorie = @KKategorie AND kSprache = 1
+            ", new
+            {
+                kategorie.KKategorie,
+                kategorie.CName,
+                kategorie.CBeschreibung,
+                kategorie.CUrlPfad,
+                kategorie.CMetaDescription,
+                kategorie.CTitleTag,
+                kategorie.CMetaKeywords
+            });
+        }
+
+        /// <summary>
+        /// Neue Kategorie erstellen
+        /// </summary>
+        public async Task<int> CreateKategorieAsync(KategorieDetail kategorie)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Kategorie erstellen
+            var kKategorie = await conn.QuerySingleAsync<int>(@"
+                INSERT INTO dbo.tkategorie (kOberKategorie, cAktiv, cInet, nSort)
+                VALUES (@KOberKategorie, @CAktiv, @CInet, @NSort);
+                SELECT SCOPE_IDENTITY();
+            ", new
+            {
+                KOberKategorie = kategorie.KOberKategorie ?? 0,
+                CAktiv = kategorie.CAktiv ? "Y" : "N",
+                CInet = kategorie.CInet ? "Y" : "N",
+                kategorie.NSort
+            });
+
+            // Sprach-Eintrag erstellen
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tKategorieSprache (kKategorie, kSprache, kPlattform, kShop, cName, cBeschreibung, cUrlPfad, cMetaDescription, cTitleTag, cMetaKeywords)
+                VALUES (@KKategorie, 1, 1, 0, @CName, @CBeschreibung, @CUrlPfad, @CMetaDescription, @CTitleTag, @CMetaKeywords)
+            ", new
+            {
+                KKategorie = kKategorie,
+                kategorie.CName,
+                kategorie.CBeschreibung,
+                kategorie.CUrlPfad,
+                kategorie.CMetaDescription,
+                kategorie.CTitleTag,
+                kategorie.CMetaKeywords
+            });
+
+            return kKategorie;
+        }
+
+        /// <summary>
+        /// Kategorie loeschen
+        /// </summary>
+        public async Task DeleteKategorieAsync(int kKategorie)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Pruefe ob Unterkategorien existieren
+            var hasChildren = await conn.QuerySingleAsync<int>(
+                "SELECT COUNT(*) FROM dbo.tkategorie WHERE kOberKategorie = @kKategorie",
+                new { kKategorie });
+            if (hasChildren > 0)
+                throw new InvalidOperationException("Kategorie hat Unterkategorien und kann nicht geloescht werden.");
+
+            // Artikel-Zuordnungen loeschen
+            await conn.ExecuteAsync("DELETE FROM dbo.tkategorieartikel WHERE kKategorie = @kKategorie", new { kKategorie });
+
+            // Sprach-Eintraege loeschen
+            await conn.ExecuteAsync("DELETE FROM dbo.tKategorieSprache WHERE kKategorie = @kKategorie", new { kKategorie });
+
+            // Kategorie loeschen
+            await conn.ExecuteAsync("DELETE FROM dbo.tkategorie WHERE kKategorie = @kKategorie", new { kKategorie });
+        }
+
+        /// <summary>
+        /// Artikel zu Kategorie hinzufuegen
+        /// </summary>
+        public async Task AddArtikelToKategorieAsync(int kKategorie, int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM dbo.tkategorieartikel WHERE kKategorie = @kKategorie AND kArtikel = @kArtikel)
+                    INSERT INTO dbo.tkategorieartikel (kKategorie, kArtikel) VALUES (@kKategorie, @kArtikel)
+            ", new { kKategorie, kArtikel });
+        }
+
+        /// <summary>
+        /// Artikel aus Kategorie entfernen
+        /// </summary>
+        public async Task RemoveArtikelFromKategorieAsync(int kKategorie, int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(
+                "DELETE FROM dbo.tkategorieartikel WHERE kKategorie = @kKategorie AND kArtikel = @kArtikel",
+                new { kKategorie, kArtikel });
+        }
+
+        #endregion
+
+        #region Retouren
+
+        /// <summary>
+        /// Alle Retouren laden (fuer RetourenView)
+        /// </summary>
+        public async Task<List<RetoureUebersicht>> GetRetourenAsync(int? kRMStatus = null, string? suche = null, DateTime? vonDatum = null, DateTime? bisDatum = null, int limit = 500)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT TOP (@Limit)
+                    r.kRMRetoure, r.cRetoureNr, r.kKunde, r.kRMStatus, r.dErstellt, r.kBestellung, r.kGutschrift,
+                    r.fKorrekturBetrag, r.nVersandkostenErstatten, r.cKommentarExtern, r.cKommentarIntern,
+                    k.cKundenNr,
+                    ISNULL(a.cFirma, a.cVorname + ' ' + a.cName) AS CKundeName,
+                    s.cName AS CStatus,
+                    au.cAuftragsNr AS CAuftragNr,
+                    gs.cGutschriftNr AS CGutschriftNr,
+                    (SELECT COUNT(*) FROM dbo.tRMRetourePos p WHERE p.kRMRetoure = r.kRMRetoure) AS PositionenAnzahl
+                FROM dbo.tRMRetoure r
+                LEFT JOIN dbo.tKunde k ON r.kKunde = k.kKunde
+                LEFT JOIN dbo.tKundeAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                LEFT JOIN dbo.tRMStatusSprache s ON r.kRMStatus = s.kRMStatus AND s.kSprache = 1
+                LEFT JOIN Verkauf.tAuftrag au ON r.kBestellung = au.kAuftrag
+                LEFT JOIN dbo.tGutschrift gs ON r.kGutschrift = gs.kGutschrift
+                WHERE 1=1
+            ";
+
+            if (kRMStatus.HasValue)
+                sql += " AND r.kRMStatus = @kRMStatus";
+            if (!string.IsNullOrWhiteSpace(suche))
+                sql += " AND (r.cRetoureNr LIKE '%' + @suche + '%' OR k.cKundenNr LIKE '%' + @suche + '%' OR a.cFirma LIKE '%' + @suche + '%' OR a.cName LIKE '%' + @suche + '%')";
+            if (vonDatum.HasValue)
+                sql += " AND r.dErstellt >= @vonDatum";
+            if (bisDatum.HasValue)
+                sql += " AND r.dErstellt < DATEADD(DAY, 1, @bisDatum)";
+
+            sql += " ORDER BY r.dErstellt DESC";
+
+            var result = await conn.QueryAsync<RetoureUebersicht>(sql, new { Limit = limit, kRMStatus, suche, vonDatum, bisDatum });
+            return result.ToList();
+        }
+
+        /// <summary>
+        /// Retoure-Status Liste laden
+        /// </summary>
+        public async Task<List<RMStatusItem>> GetRMStatusListeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"
+                SELECT s.kRMStatus, sp.cName
+                FROM dbo.tRMStatus s
+                LEFT JOIN dbo.tRMStatusSprache sp ON s.kRMStatus = sp.kRMStatus AND sp.kSprache = 1
+                ORDER BY s.kRMStatus
+            ";
+            var result = await conn.QueryAsync<RMStatusItem>(sql);
+            return result.ToList();
+        }
+
+        /// <summary>
+        /// Einzelne Retoure laden (mit Positionen)
+        /// </summary>
+        public async Task<RetoureDetail?> GetRetoureByIdAsync(int kRMRetoure)
+        {
+            var conn = await GetConnectionAsync();
+
+            var sql = @"
+                SELECT
+                    r.kRMRetoure, r.cRetoureNr, r.kKunde, r.kRMStatus, r.dErstellt, r.kBestellung, r.kGutschrift,
+                    r.fKorrekturBetrag, r.nVersandkostenErstatten, r.cKommentarExtern, r.cKommentarIntern,
+                    r.cKorrekturBetragKommentar, r.kWarenlager, r.cAnsprechpartner, r.kBenutzer,
+                    k.cKundenNr,
+                    ISNULL(a.cFirma, a.cVorname + ' ' + a.cName) AS CKundeName,
+                    s.cName AS CStatus,
+                    au.cAuftragsNr AS CAuftragNr,
+                    gs.cGutschriftNr AS CGutschriftNr,
+                    wl.cName AS CWarenlager,
+                    b.cName AS CBenutzer
+                FROM dbo.tRMRetoure r
+                LEFT JOIN dbo.tKunde k ON r.kKunde = k.kKunde
+                LEFT JOIN dbo.tKundeAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                LEFT JOIN dbo.tRMStatusSprache s ON r.kRMStatus = s.kRMStatus AND s.kSprache = 1
+                LEFT JOIN Verkauf.tAuftrag au ON r.kBestellung = au.kAuftrag
+                LEFT JOIN dbo.tGutschrift gs ON r.kGutschrift = gs.kGutschrift
+                LEFT JOIN dbo.tWarenlager wl ON r.kWarenlager = wl.kWarenlager
+                LEFT JOIN dbo.tBenutzer b ON r.kBenutzer = b.kBenutzer
+                WHERE r.kRMRetoure = @kRMRetoure
+            ";
+
+            var retoure = await conn.QuerySingleOrDefaultAsync<RetoureDetail>(sql, new { kRMRetoure });
+            if (retoure == null) return null;
+
+            // Positionen laden
+            var posSql = @"
+                SELECT
+                    p.kRMRetourePos, p.kRMRetoure, p.kArtikel, p.fAnzahl, p.kRMGrund, p.kZustand,
+                    p.cArtNr, p.cName, p.cGrundKommentar, p.cZustandKommentar, p.nGutschreiben, p.kLieferscheinPos,
+                    g.cName AS CGrund,
+                    zs.cName AS CZustand
+                FROM dbo.tRMRetourePos p
+                LEFT JOIN dbo.tRMGrundSprache g ON p.kRMGrund = g.kRMGrund AND g.kSprache = 1
+                LEFT JOIN dbo.tZustandSprache zs ON p.kZustand = zs.kZustand AND zs.kSprache = 1
+                WHERE p.kRMRetoure = @kRMRetoure
+                ORDER BY p.kRMRetourePos
+            ";
+            retoure.Positionen = (await conn.QueryAsync<RetourePosition>(posSql, new { kRMRetoure })).ToList();
+
+            return retoure;
+        }
+
+        /// <summary>
+        /// Retoure-Status aendern
+        /// </summary>
+        public async Task UpdateRetoureStatusAsync(int kRMRetoure, int kRMStatus)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("UPDATE dbo.tRMRetoure SET kRMStatus = @kRMStatus WHERE kRMRetoure = @kRMRetoure", new { kRMRetoure, kRMStatus });
+        }
+
+        /// <summary>
+        /// Retoure-Kommentare speichern
+        /// </summary>
+        public async Task UpdateRetoureKommentareAsync(int kRMRetoure, string? cKommentarExtern, string? cKommentarIntern)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tRMRetoure
+                SET cKommentarExtern = @cKommentarExtern, cKommentarIntern = @cKommentarIntern
+                WHERE kRMRetoure = @kRMRetoure
+            ", new { kRMRetoure, cKommentarExtern, cKommentarIntern });
+        }
+
+        #endregion
+
         #region Rechnungen Übersicht
 
         /// <summary>
@@ -9801,70 +10812,35 @@ namespace NovviaERP.Core.Services
 
         #endregion
 
-        #region Vorgangsfarben
+        #region Vorgangsfarben (JTL dbo.tFarbe)
 
         /// <summary>
-        /// Laedt alle Vorgangsfarben aus NOVVIA.Vorgangsfarbe
+        /// Laedt alle Farben aus dbo.tFarbe (JTL-Tabelle fuer Auftrags-/Rechnungsfarben)
         /// </summary>
         public async Task<IEnumerable<Vorgangsfarbe>> GetVorgangsfarbenAsync()
         {
             var conn = await GetConnectionAsync();
 
-            // Tabelle erstellen falls nicht vorhanden
-            await conn.ExecuteAsync(@"
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Vorgangsfarbe' AND schema_id = SCHEMA_ID('NOVVIA'))
-                BEGIN
-                    CREATE TABLE NOVVIA.Vorgangsfarbe (
-                        kVorgangsfarbe INT IDENTITY(1,1) PRIMARY KEY,
-                        cBedeutung NVARCHAR(100) NOT NULL,
-                        nRotwert TINYINT NOT NULL DEFAULT 128,
-                        nGruenwert TINYINT NOT NULL DEFAULT 128,
-                        nBlauwert TINYINT NOT NULL DEFAULT 128,
-                        nAlphawert TINYINT NOT NULL DEFAULT 255,
-                        nAngebot BIT NOT NULL DEFAULT 0,
-                        nAuftrag BIT NOT NULL DEFAULT 0,
-                        nRechnung BIT NOT NULL DEFAULT 0,
-                        nRechnungskorrektur BIT NOT NULL DEFAULT 0,
-                        nAktiv BIT NOT NULL DEFAULT 1
-                    );
-
-                    -- Standard-Farben einfuegen
-                    INSERT INTO NOVVIA.Vorgangsfarbe (cBedeutung, nRotwert, nGruenwert, nBlauwert, nAuftrag, nRechnung, nAngebot, nRechnungskorrektur, nAktiv)
-                    VALUES
-                        ('Offen', 255, 193, 7, 1, 1, 1, 0, 1),           -- Gelb
-                        ('In Bearbeitung', 0, 123, 255, 1, 0, 0, 0, 1), -- Blau
-                        ('Versendet', 23, 162, 184, 1, 0, 0, 0, 1),     -- Cyan
-                        ('Abgeschlossen', 40, 167, 69, 1, 1, 1, 1, 1),  -- Gruen
-                        ('Storniert', 108, 117, 125, 1, 1, 1, 1, 1),    -- Grau
-                        ('Ueberfaellig', 220, 53, 69, 0, 1, 0, 0, 1),   -- Rot
-                        ('Teilbezahlt', 111, 66, 193, 0, 1, 0, 0, 1),   -- Lila
-                        ('Mahnung', 253, 126, 20, 0, 1, 0, 0, 1);       -- Orange
-                END
-            ");
-
             return await conn.QueryAsync<Vorgangsfarbe>(@"
-                SELECT kVorgangsfarbe AS KVorgangsfarbe, cBedeutung AS CBedeutung,
-                       nRotwert AS NRotwert, nGruenwert AS NGruenwert, nBlauwert AS NBlauwert, nAlphawert AS NAlphawert,
-                       nAngebot AS NAngebot, nAuftrag AS NAuftrag, nRechnung AS NRechnung, nRechnungskorrektur AS NRechnungskorrektur,
-                       nAktiv AS NAktiv
-                FROM NOVVIA.Vorgangsfarbe
-                ORDER BY cBedeutung
+                SELECT kFarbe AS KFarbe, cName AS CName, nFarbcode AS NFarbcode
+                FROM dbo.tFarbe
+                ORDER BY cName
             ");
         }
 
         /// <summary>
-        /// Speichert eine Vorgangsfarbe (Insert oder Update)
+        /// Speichert eine Farbe (Insert oder Update) in dbo.tFarbe
         /// </summary>
         public async Task<int> SaveVorgangsfarbeAsync(Vorgangsfarbe farbe)
         {
             var conn = await GetConnectionAsync();
 
-            if (farbe.KVorgangsfarbe == 0)
+            if (farbe.KFarbe == 0)
             {
                 // Insert
                 return await conn.QueryFirstAsync<int>(@"
-                    INSERT INTO NOVVIA.Vorgangsfarbe (cBedeutung, nRotwert, nGruenwert, nBlauwert, nAlphawert, nAngebot, nAuftrag, nRechnung, nRechnungskorrektur, nAktiv)
-                    VALUES (@CBedeutung, @NRotwert, @NGruenwert, @NBlauwert, @NAlphawert, @NAngebot, @NAuftrag, @NRechnung, @NRechnungskorrektur, @NAktiv);
+                    INSERT INTO dbo.tFarbe (cName, nFarbcode)
+                    VALUES (@CName, @NFarbcode);
                     SELECT SCOPE_IDENTITY();
                 ", farbe);
             }
@@ -9872,101 +10848,75 @@ namespace NovviaERP.Core.Services
             {
                 // Update
                 await conn.ExecuteAsync(@"
-                    UPDATE NOVVIA.Vorgangsfarbe
-                    SET cBedeutung = @CBedeutung, nRotwert = @NRotwert, nGruenwert = @NGruenwert, nBlauwert = @NBlauwert,
-                        nAlphawert = @NAlphawert, nAngebot = @NAngebot, nAuftrag = @NAuftrag, nRechnung = @NRechnung,
-                        nRechnungskorrektur = @NRechnungskorrektur, nAktiv = @NAktiv
-                    WHERE kVorgangsfarbe = @KVorgangsfarbe
+                    UPDATE dbo.tFarbe
+                    SET cName = @CName, nFarbcode = @NFarbcode
+                    WHERE kFarbe = @KFarbe
                 ", farbe);
-                return farbe.KVorgangsfarbe;
+                return farbe.KFarbe;
             }
         }
 
         /// <summary>
-        /// Loescht eine Vorgangsfarbe
+        /// Loescht eine Farbe aus dbo.tFarbe
         /// </summary>
-        public async Task DeleteVorgangsfarbeAsync(int kVorgangsfarbe)
+        public async Task DeleteVorgangsfarbeAsync(int kFarbe)
         {
             var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync("DELETE FROM NOVVIA.Vorgangsfarbe WHERE kVorgangsfarbe = @kVorgangsfarbe", new { kVorgangsfarbe });
+            // Pruefen ob Farbe verwendet wird
+            var usedInAuftrag = await conn.QuerySingleOrDefaultAsync<int?>("SELECT TOP 1 kAuftrag FROM Verkauf.tAuftrag WHERE kFarbe = @kFarbe", new { kFarbe });
+            var usedInRechnung = await conn.QuerySingleOrDefaultAsync<int?>("SELECT TOP 1 kRechnung FROM dbo.tRechnung WHERE kFarbe = @kFarbe", new { kFarbe });
+            if (usedInAuftrag.HasValue || usedInRechnung.HasValue)
+                throw new InvalidOperationException("Farbe wird noch in Auftraegen oder Rechnungen verwendet und kann nicht geloescht werden.");
+            await conn.ExecuteAsync("DELETE FROM dbo.tFarbe WHERE kFarbe = @kFarbe", new { kFarbe });
         }
 
+        /// <summary>
+        /// Farbe fuer Auftrag/Rechnung (JTL dbo.tFarbe)
+        /// nFarbcode ist ARGB als signed int32 (z.B. -256 = Gelb, -65536 = Rot)
+        /// </summary>
         public class Vorgangsfarbe : System.ComponentModel.INotifyPropertyChanged
         {
-            public int KVorgangsfarbe { get; set; }
+            public int KFarbe { get; set; }
 
-            private string _cBedeutung = "";
-            public string CBedeutung
+            private string _cName = "";
+            public string CName
             {
-                get => _cBedeutung;
-                set { _cBedeutung = value; OnPropertyChanged(); }
+                get => _cName;
+                set { _cName = value; OnPropertyChanged(); }
             }
 
-            private byte _nRotwert = 128;
+            private int _nFarbcode = -1; // Weiss
+            public int NFarbcode
+            {
+                get => _nFarbcode;
+                set { _nFarbcode = value; OnPropertyChanged(); OnPropertyChanged(nameof(FarbeHex)); OnPropertyChanged(nameof(NRotwert)); OnPropertyChanged(nameof(NGruenwert)); OnPropertyChanged(nameof(NBlauwert)); }
+            }
+
+            // Konvertierung NFarbcode <-> RGB
             public byte NRotwert
             {
-                get => _nRotwert;
-                set { _nRotwert = value; OnPropertyChanged(); OnPropertyChanged(nameof(FarbeHex)); }
+                get => (byte)((NFarbcode >> 16) & 0xFF);
+                set { NFarbcode = (int)(0xFF000000 | ((uint)value << 16) | ((uint)NGruenwert << 8) | NBlauwert); }
             }
 
-            private byte _nGruenwert = 128;
             public byte NGruenwert
             {
-                get => _nGruenwert;
-                set { _nGruenwert = value; OnPropertyChanged(); OnPropertyChanged(nameof(FarbeHex)); }
+                get => (byte)((NFarbcode >> 8) & 0xFF);
+                set { NFarbcode = (int)(0xFF000000 | ((uint)NRotwert << 16) | ((uint)value << 8) | NBlauwert); }
             }
 
-            private byte _nBlauwert = 128;
             public byte NBlauwert
             {
-                get => _nBlauwert;
-                set { _nBlauwert = value; OnPropertyChanged(); OnPropertyChanged(nameof(FarbeHex)); }
+                get => (byte)(NFarbcode & 0xFF);
+                set { NFarbcode = (int)(0xFF000000 | ((uint)NRotwert << 16) | ((uint)NGruenwert << 8) | value); }
             }
 
-            private byte _nAlphawert = 255;
-            public byte NAlphawert
-            {
-                get => _nAlphawert;
-                set { _nAlphawert = value; OnPropertyChanged(); OnPropertyChanged(nameof(FarbeHex)); }
-            }
+            // Farbe als Hex-String fuer Anzeige (ohne Alpha)
+            public string FarbeHex => $"#{NRotwert:X2}{NGruenwert:X2}{NBlauwert:X2}";
 
-            private bool _nAngebot;
-            public bool NAngebot
-            {
-                get => _nAngebot;
-                set { _nAngebot = value; OnPropertyChanged(); }
-            }
-
-            private bool _nAuftrag;
-            public bool NAuftrag
-            {
-                get => _nAuftrag;
-                set { _nAuftrag = value; OnPropertyChanged(); }
-            }
-
-            private bool _nRechnung;
-            public bool NRechnung
-            {
-                get => _nRechnung;
-                set { _nRechnung = value; OnPropertyChanged(); }
-            }
-
-            private bool _nRechnungskorrektur;
-            public bool NRechnungskorrektur
-            {
-                get => _nRechnungskorrektur;
-                set { _nRechnungskorrektur = value; OnPropertyChanged(); }
-            }
-
-            private bool _nAktiv = true;
-            public bool NAktiv
-            {
-                get => _nAktiv;
-                set { _nAktiv = value; OnPropertyChanged(); }
-            }
-
-            // Farbe als Hex-String fuer Anzeige
-            public string FarbeHex => $"#{NAlphawert:X2}{NRotwert:X2}{NGruenwert:X2}{NBlauwert:X2}";
+            // Fuer Abwaertskompatibilitaet mit altem Code
+            public int KVorgangsfarbe { get => KFarbe; set => KFarbe = value; }
+            public string CBedeutung { get => CName; set => CName = value; }
 
             public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
             protected void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string? name = null)
@@ -10173,45 +11123,47 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
-        /// Holt alle offenen Posten zum Stichtag
+        /// Holt alle offenen Posten zum Stichtag (nutzt JTL Views)
         /// </summary>
         public async Task<IEnumerable<OffenerPosten>> GetOffenePostenAsync(DateTime stichtag)
         {
             var conn = await GetConnectionAsync();
 
-            // Debitoren (offene Rechnungen)
+            // Debitoren (offene Rechnungen) - nutze vOffenerPostenRechnung View
             var debitoren = await conn.QueryAsync<OffenerPosten>(@"
                 SELECT
                     'D' AS Art,
-                    ISNULL(k.cFirma, k.cVorname + ' ' + k.cName) AS PartnerName,
-                    k.cKundenNr AS PartnerNr,
-                    r.cRechnungsnr AS BelegNr,
-                    r.dErstellt AS BelegDatum,
-                    r.dFaellig AS FaelligAm,
-                    r.fBrutto AS Betrag,
-                    r.fBrutto - r.fOffen AS Bezahlt
-                FROM tRechnung r
-                INNER JOIN tKunde k ON r.kKunde = k.kKunde
-                WHERE r.dErstellt <= @stichtag
-                  AND r.fOffen > 0
-                  AND r.nStorno = 0",
+                    ISNULL(op.cRechnungsadresseFirma, op.cRechnungsadresseVorname + ' ' + op.cRechnungsadresseName) AS PartnerName,
+                    op.cKundenNr AS PartnerNr,
+                    op.cRechnungsnr AS BelegNr,
+                    op.dErstellt AS BelegDatum,
+                    DATEADD(day, ISNULL(r.nZahlungszielTage, 14), op.dErstellt) AS FaelligAm,
+                    op.fWert AS Betrag,
+                    op.fZahlung AS Bezahlt
+                FROM dbo.vOffenerPostenRechnung op
+                LEFT JOIN dbo.tRechnung r ON op.kRechnung = r.kRechnung
+                WHERE op.dErstellt <= @stichtag
+                  AND op.fWertOffen > 0
+                  AND op.nStorno = 0",
                 new { stichtag });
 
-            // Kreditoren (offene Eingangsrechnungen)
+            // Kreditoren (offene Eingangsrechnungen) - nutze vOffenerPostenEingangsrechnung View
             var kreditoren = await conn.QueryAsync<OffenerPosten>(@"
                 SELECT
                     'K' AS Art,
                     ISNULL(l.cFirma, l.cName) AS PartnerName,
                     l.cLiefNr AS PartnerNr,
-                    e.cRechnungsnr AS BelegNr,
-                    e.dRechnungsdatum AS BelegDatum,
-                    e.dFaellig AS FaelligAm,
-                    e.fBrutto AS Betrag,
-                    e.fBezahlt AS Bezahlt
-                FROM tEingangsrechnung e
-                INNER JOIN tLieferant l ON e.kLieferant = l.kLieferant
-                WHERE e.dRechnungsdatum <= @stichtag
-                  AND (e.fBrutto - ISNULL(e.fBezahlt, 0)) > 0",
+                    op.cFremdbelegnummer AS BelegNr,
+                    op.dBelegdatum AS BelegDatum,
+                    DATEADD(day, 14, op.dBelegdatum) AS FaelligAm,
+                    op.fWert AS Betrag,
+                    op.fZahlung AS Bezahlt
+                FROM dbo.vOffenerPostenEingangsrechnung op
+                LEFT JOIN dbo.tEingangsrechnung e ON op.kEingangsrechnung = e.kEingangsrechnung
+                LEFT JOIN dbo.tLieferant l ON e.kLieferant = l.kLieferant
+                WHERE op.dBelegdatum <= @stichtag
+                  AND op.fWertOffen > 0
+                  AND op.nDeleted = 0",
                 new { stichtag });
 
             return debitoren.Concat(kreditoren).OrderBy(p => p.FaelligAm);

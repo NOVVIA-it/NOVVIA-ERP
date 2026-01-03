@@ -118,6 +118,10 @@ namespace NovviaERP.WPF.Views
             btnLieferantenbestellung.IsEnabled = false;
             btnSpeichern.Content = "Auftrag anlegen";
 
+            // Kundensuche-Button sichtbar machen
+            btnKundeSuchen.Visibility = Visibility.Visible;
+            txtKundenNr.Text = "Klicken zum Auswählen...";
+
             txtStatus.Text = "Neuer Auftrag - Bitte Kunde auswählen";
         }
 
@@ -153,6 +157,11 @@ namespace NovviaERP.WPF.Views
             }
         }
 
+        private void BtnKundeSuchen_Click(object sender, RoutedEventArgs e)
+        {
+            KundenNrAuswaehlen_Click();
+        }
+
         private async void KundenNrAuswaehlen_Click()
         {
             if (!_isNeuerAuftrag) return;
@@ -169,6 +178,10 @@ namespace NovviaERP.WPF.Views
                 txtFirma.Text = _selectedKunde.CFirma ?? _selectedKunde.Anzeigename ?? "";
                 txtKundenNr.Text = _selectedKunde.CKundenNr ?? _selectedKunde.KKunde.ToString();
                 txtKundengruppe.Text = _selectedKunde.Kundengruppe ?? "";
+
+                // Textmeldungen fuer Kunde sofort anzeigen
+                await pnlTextmeldungen.LoadAsync("Kunde", _kundeId, "Verkauf");
+                await pnlTextmeldungen.ShowPopupAsync("Kunde", _kundeId, "Verkauf", _selectedKunde.Anzeigename ?? "");
 
                 // Adressen laden
                 _kundenAdressen = (await _core.GetKundeAdressenKurzAsync(_kundeId)).ToList();
@@ -589,7 +602,7 @@ namespace NovviaERP.WPF.Views
 
         private void TabDetails_Click(object sender, MouseButtonEventArgs e)
         {
-            SetTabActive(tabDetails, true, "#0078D4");
+            SetTabActive(tabDetails, true, "#E86B5C");
             SetTabActive(tabTexte, false);
             SetTabActive(tabEigeneFelder, false);
             pnlDetails.Visibility = Visibility.Visible;
@@ -600,7 +613,7 @@ namespace NovviaERP.WPF.Views
         private void TabTexte_Click(object sender, MouseButtonEventArgs e)
         {
             SetTabActive(tabDetails, false);
-            SetTabActive(tabTexte, true, "#0078D4");
+            SetTabActive(tabTexte, true, "#E86B5C");
             SetTabActive(tabEigeneFelder, false);
             pnlDetails.Visibility = Visibility.Collapsed;
             pnlTexte.Visibility = Visibility.Visible;
@@ -611,7 +624,7 @@ namespace NovviaERP.WPF.Views
         {
             SetTabActive(tabDetails, false);
             SetTabActive(tabTexte, false);
-            SetTabActive(tabEigeneFelder, true, "#0078D4");
+            SetTabActive(tabEigeneFelder, true, "#E86B5C");
             pnlDetails.Visibility = Visibility.Collapsed;
             pnlTexte.Visibility = Visibility.Collapsed;
             pnlEigeneFelder.Visibility = Visibility.Visible;
@@ -653,7 +666,7 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void SetTabActive(Border tab, bool active, string activeColor = "#0078D4")
+        private void SetTabActive(Border tab, bool active, string activeColor = "#E86B5C")
         {
             tab.Background = active
                 ? new SolidColorBrush((Color)ColorConverter.ConvertFromString(activeColor))
