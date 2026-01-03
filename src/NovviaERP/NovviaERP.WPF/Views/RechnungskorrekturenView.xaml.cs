@@ -179,8 +179,62 @@ namespace NovviaERP.WPF.Views
 
         private void NavigateToKorrektur(int kGutschrift)
         {
-            // TODO: RechnungskorrekturDetailView implementieren
-            MessageBox.Show($"Rechnungskorrektur-Detail-View für ID {kGutschrift} wird noch implementiert.", "Info");
+            try
+            {
+                var detailView = new RechnungskorrekturDetailView(kGutschrift);
+                if (Window.GetWindow(this) is MainWindow main)
+                    main.ShowContent(detailView);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Oeffnen der Rechnungskorrektur:\n\n{ex.Message}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void Kunde_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgKorrekturen.Grid.SelectedItem is CoreService.RechnungskorrekturUebersicht korrektur)
+            {
+                // Kunde-ID aus Korrektur holen - wir brauchen eine Abfrage
+                MessageBox.Show("Zur Kunden-Ansicht wechseln wird noch implementiert.", "Info");
+            }
+        }
+
+        private void Drucken_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgKorrekturen.Grid.SelectedItem is CoreService.RechnungskorrekturUebersicht korrektur)
+            {
+                MessageBox.Show($"Drucken von {korrektur.CRechnungskorrekturnummer} wird noch implementiert.", "Info");
+            }
+        }
+
+        private async void Storno_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgKorrekturen.Grid.SelectedItem is not CoreService.RechnungskorrekturUebersicht korrektur) return;
+            if (korrektur.NStorno) return;
+
+            var result = MessageBox.Show(
+                $"Soll die Rechnungskorrektur {korrektur.CRechnungskorrekturnummer} wirklich storniert werden?\n\n" +
+                $"Betrag: {korrektur.FPreisBrutto:N2} EUR",
+                "Stornieren bestaetigen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _core.StorniereRechnungskorrekturAsync(korrektur.KGutschrift, App.BenutzerId);
+                MessageBox.Show($"Rechnungskorrektur {korrektur.CRechnungskorrekturnummer} wurde storniert.",
+                    "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                await LadeKorrekturenAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Stornieren:\n\n{ex.Message}",
+                    "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

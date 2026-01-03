@@ -7921,6 +7921,126 @@ namespace NovviaERP.Core.Services
             public string Status => NStorno ? "Storniert" : "Offen";
         }
 
+        /// <summary>
+        /// Laedt eine Rechnungskorrektur mit allen Positionen via NOVVIA.spRechnungskorrekturLesen
+        /// </summary>
+        public async Task<RechnungskorrekturDetail?> GetRechnungskorrekturMitPositionenAsync(int kGutschrift)
+        {
+            using var conn = new SqlConnection(_connectionString);
+
+            using var multi = await conn.QueryMultipleAsync(
+                "NOVVIA.spRechnungskorrekturLesen",
+                new { kGutschrift },
+                commandType: CommandType.StoredProcedure);
+
+            var kopf = await multi.ReadFirstOrDefaultAsync<RechnungskorrekturDetail>();
+            if (kopf == null) return null;
+
+            var positionen = (await multi.ReadAsync<RechnungskorrekturPosition>()).ToList();
+            kopf.Positionen = positionen;
+
+            return kopf;
+        }
+
+        /// <summary>
+        /// DTO fuer Rechnungskorrektur-Detail (Kopf)
+        /// </summary>
+        public class RechnungskorrekturDetail
+        {
+            public int KGutschrift { get; set; }
+            public int KRechnung { get; set; }
+            public int KKunde { get; set; }
+            public string CGutschriftNr { get; set; } = "";
+            public string CKurzText { get; set; } = "";
+            public string CText { get; set; } = "";
+            public decimal FPreisNetto { get; set; }
+            public decimal FPreisBrutto { get; set; }
+            public decimal FMwSt { get; set; }
+            public DateTime DErstellt { get; set; }
+            public string CWaehrung { get; set; } = "EUR";
+            public decimal FFaktor { get; set; } = 1;
+            public int KFirma { get; set; }
+            public int KSprache { get; set; }
+            public int KBenutzer { get; set; }
+            public string CStatus { get; set; } = "";
+            public int KRechnungsAdresse { get; set; }
+            public int KPlattform { get; set; }
+            public DateTime? DDruckdatum { get; set; }
+            public DateTime? DMaildatum { get; set; }
+            public bool NStorno { get; set; }
+            public int NStornoTyp { get; set; }
+            public bool NIstExtern { get; set; }
+            public string CKundeUstId { get; set; } = "";
+            public int NGutschriftStatus { get; set; }
+            public string CKundenNr { get; set; } = "";
+            public string CKundeName { get; set; } = "";
+            public DateTime? DStorniert { get; set; }
+            public string CStornoKommentar { get; set; } = "";
+            public string CStornogrund { get; set; } = "";
+
+            // Berechnete Eigenschaften
+            public string StornoTypName => NStornoTyp switch
+            {
+                0 => "Rechnungskorrektur",
+                1 => "Stornobeleg (Rechnung)",
+                2 => "Stornobeleg (Korrektur)",
+                _ => "Unbekannt"
+            };
+            public string StatusText => NStorno ? "Storniert" : "Aktiv";
+
+            // Positionen
+            public List<RechnungskorrekturPosition> Positionen { get; set; } = new();
+        }
+
+        /// <summary>
+        /// DTO fuer Rechnungskorrektur-Position
+        /// </summary>
+        public class RechnungskorrekturPosition
+        {
+            public int KGutschriftPos { get; set; }
+            public int KGutschrift { get; set; }
+            public int KArtikel { get; set; }
+            public string CArtNr { get; set; } = "";
+            public string CName { get; set; } = "";
+            public decimal FAnzahl { get; set; }
+            public decimal FMwSt { get; set; }
+            public decimal FVKNetto { get; set; }
+            public decimal FVKBrutto { get; set; }
+            public decimal FRabatt { get; set; }
+            public int NSort { get; set; }
+            public int KRechnungPosition { get; set; }
+
+            // Berechnete Eigenschaften
+            public decimal Gesamt => FAnzahl * FVKNetto * (1 - FRabatt / 100);
+            public decimal GesamtBrutto => FAnzahl * FVKBrutto * (1 - FRabatt / 100);
+        }
+
+        /// <summary>
+        /// Storniert eine Rechnungskorrektur via NOVVIA.spRechnungskorrekturStornieren
+        /// </summary>
+        public async Task<int> StorniereRechnungskorrekturAsync(int kGutschrift, int kBenutzer, string? kommentar = null)
+        {
+            using var conn = new SqlConnection(_connectionString);
+
+            var result = await conn.QueryFirstOrDefaultAsync<dynamic>(
+                "NOVVIA.spRechnungskorrekturStornieren",
+                new
+                {
+                    kGutschrift,
+                    kBenutzer,
+                    kGutschriftStornogrund = -1,  // Sonstiges
+                    cKommentar = kommentar
+                },
+                commandType: CommandType.StoredProcedure);
+
+            if (result?.nError != null && result.nError != 0)
+            {
+                throw new Exception($"Storno fehlgeschlagen: Fehler {result.nError}");
+            }
+
+            return result?.kStornoGutschrift ?? 0;
+        }
+
         #endregion
 
         #region Lager Übersicht
