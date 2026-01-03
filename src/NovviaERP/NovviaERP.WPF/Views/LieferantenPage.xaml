@@ -147,13 +147,15 @@
 
                     <!-- Toolbar -->
                     <StackPanel Orientation="Horizontal">
-                        <ComboBox x:Name="cboBestellStatus" Width="150" SelectedIndex="0" SelectionChanged="BestellStatus_Changed">
+                        <ComboBox x:Name="cboBestellStatus" Width="180" SelectedIndex="0" SelectionChanged="BestellStatus_Changed">
                             <ComboBoxItem Content="Alle Status"/>
                             <ComboBoxItem Content="Offen" Tag="0"/>
                             <ComboBoxItem Content="Freigegeben" Tag="5"/>
                             <ComboBoxItem Content="In Bearbeitung" Tag="20"/>
                             <ComboBoxItem Content="Teilgeliefert" Tag="30"/>
                             <ComboBoxItem Content="Abgeschlossen" Tag="500"/>
+                            <ComboBoxItem Content="Storniert" Tag="600"/>
+                            <ComboBoxItem Content="Dropshipping abg." Tag="700"/>
                         </ComboBox>
                         <Button Content="🔄 Aktualisieren" Margin="10,0,0,0" Click="BestellungenLaden_Click"/>
                         <Button Content="➕ Neue Bestellung" Margin="20,0,0,0" Background="{DynamicResource PrimaryBrush}" Foreground="White" Click="NeueBestellung_Click"/>

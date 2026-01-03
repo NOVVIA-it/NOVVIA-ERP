@@ -23,6 +23,8 @@ namespace NovviaERP.Core.Services
 
         public CoreService(string connectionString) => _connectionString = connectionString;
 
+        public string ConnectionString => _connectionString;
+
         public CoreService(string connectionString, LogService logService) : this(connectionString)
         {
             _logService = logService;
@@ -4376,7 +4378,7 @@ namespace NovviaERP.Core.Services
                     r.cRechnungsnr AS RechnungsNr,
                     r.kKunde AS KundeId,
                     r.dErstellt AS Erstellt,
-                    DATEADD(DAY, r.nZahlungszielTage, r.dErstellt) AS Faellig,
+                    DATEADD(DAY, ISNULL(r.nZahlungsziel, 14), r.dErstellt) AS Faellig,
                     -- Bezahlt = letztes Zahlungsdatum wenn komplett bezahlt
                     CASE WHEN ISNULL(zahlung.Summe, 0) >= ISNULL(pos.Brutto, 0)
                          THEN zahlung.LetztesZahlungsdatum ELSE NULL END AS Bezahlt,
@@ -7881,6 +7883,22 @@ namespace NovviaERP.Core.Services
             public decimal Gewicht { get; set; }
         }
 
+        /// <summary>
+        /// Artikel aus ABData-Daten anlegen
+        /// </summary>
+        public async Task<int> CreateArtikelFromABDataAsync(ABdataArtikel abArtikel)
+        {
+            var input = new ArtikelNeuInput
+            {
+                ArtNr = abArtikel.PZN,
+                Name = abArtikel.Name ?? "",
+                VKNetto = abArtikel.AVP > 0 ? abArtikel.AVP / 1.19m : 0, // Brutto -> Netto
+                EKNetto = abArtikel.AEK > 0 ? abArtikel.AEK : (abArtikel.AEP / 1.19m)
+            };
+
+            return await CreateArtikelAsync(input, null);
+        }
+
         #endregion
 
         #region Stammdaten-Verwaltung (Hersteller, Rueckgabegruende, Masseinheiten, Zustaende)
@@ -8573,7 +8591,7 @@ namespace NovviaERP.Core.Services
                     (SELECT COUNT(*) FROM dbo.tRMRetourePos p WHERE p.kRMRetoure = r.kRMRetoure) AS PositionenAnzahl
                 FROM dbo.tRMRetoure r
                 LEFT JOIN dbo.tKunde k ON r.kKunde = k.kKunde
-                LEFT JOIN dbo.lvKunde lk ON k.kKunde = lk.kKunde
+                LEFT JOIN Kunde.lvKunde lk ON k.kKunde = lk.kKunde
                 LEFT JOIN dbo.tRMStatusSprache s ON r.kRMStatus = s.kRMStatus AND s.kSprache = 1
                 LEFT JOIN Verkauf.tAuftrag au ON r.kBestellung = au.kAuftrag
                 LEFT JOIN dbo.tGutschrift gs ON r.kGutschrift = gs.kGutschrift
@@ -8704,7 +8722,7 @@ namespace NovviaERP.Core.Services
                     r.kRechnung AS KRechnung,
                     r.cRechnungsnr AS CRechnungsNr,
                     r.dErstellt AS DErstellt,
-                    DATEADD(DAY, r.nZahlungszielTage, r.dErstellt) AS DFaellig,
+                    DATEADD(DAY, ISNULL(r.nZahlungsziel, 14), r.dErstellt) AS DFaellig,
                     CASE WHEN ISNULL(zahlung.Summe, 0) >= ISNULL(pos.Brutto, 0) THEN r.dErstellt ELSE NULL END AS DBezahlt,
                     ISNULL(pos.Netto, 0) AS FNetto,
                     ISNULL(pos.Brutto, 0) AS FBrutto,
@@ -8762,7 +8780,7 @@ namespace NovviaERP.Core.Services
                 else if (status == 1) // Bezahlt
                     sql += " AND ISNULL(zahlung.Summe, 0) >= ISNULL(pos.Brutto, 0)";
                 else if (status == 2) // Überfällig
-                    sql += " AND ISNULL(zahlung.Summe, 0) < ISNULL(pos.Brutto, 0) AND r.nStorno = 0 AND DATEADD(DAY, r.nZahlungszielTage, r.dErstellt) < GETDATE()";
+                    sql += " AND ISNULL(zahlung.Summe, 0) < ISNULL(pos.Brutto, 0) AND r.nStorno = 0 AND DATEADD(DAY, ISNULL(r.nZahlungsziel, 14), r.dErstellt) < GETDATE()";
                 else if (status == 3) // Storniert
                     sql += " AND r.nStorno = 1";
             }
@@ -9458,6 +9476,362 @@ namespace NovviaERP.Core.Services
             public int AutoMatchSchwelle { get; set; } = 90;
             public string? Firmenname { get; set; }
             public string? LogoPfad { get; set; }  // Pfad zum Firmenlogo (PNG/JPG)
+        }
+
+        /// <summary>
+        /// ABData-Tabellen in angegebener Datenbank erstellen
+        /// </summary>
+        public async Task ExecuteABDataSetupAsync(string connectionString)
+        {
+            using var conn = new SqlConnection(connectionString);
+            await conn.OpenAsync();
+
+            // Schema erstellen falls nicht vorhanden
+            await conn.ExecuteAsync(@"IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'NOVVIA') EXEC('CREATE SCHEMA NOVVIA')");
+
+            // ABData Artikel-Tabelle
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ABdataArtikel' AND schema_id = SCHEMA_ID('NOVVIA'))
+                CREATE TABLE NOVVIA.ABdataArtikel (
+                    kABdataArtikel INT IDENTITY(1,1) PRIMARY KEY,
+                    cPZN NVARCHAR(8) NOT NULL,
+                    cName NVARCHAR(500) NOT NULL,
+                    cHersteller NVARCHAR(200),
+                    cDarreichungsform NVARCHAR(100),
+                    cPackungsgroesse NVARCHAR(50),
+                    fMenge DECIMAL(18,4),
+                    cEinheit NVARCHAR(20),
+                    fAEP DECIMAL(18,4),
+                    fAVP DECIMAL(18,4),
+                    fAEK DECIMAL(18,4),
+                    nRezeptpflicht BIT DEFAULT 0,
+                    nBTM BIT DEFAULT 0,
+                    nKuehlpflichtig BIT DEFAULT 0,
+                    cATC NVARCHAR(20),
+                    cWirkstoff NVARCHAR(500),
+                    dGueltigAb DATETIME,
+                    dGueltigBis DATETIME,
+                    dImportiert DATETIME DEFAULT GETDATE(),
+                    dAktualisiert DATETIME DEFAULT GETDATE(),
+                    CONSTRAINT UQ_ABdataArtikel_PZN UNIQUE (cPZN)
+                )");
+
+            // ABData Import-Log
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ABdataImportLog' AND schema_id = SCHEMA_ID('NOVVIA'))
+                CREATE TABLE NOVVIA.ABdataImportLog (
+                    kABdataImportLog INT IDENTITY(1,1) PRIMARY KEY,
+                    cDateiname NVARCHAR(500),
+                    dImportStart DATETIME DEFAULT GETDATE(),
+                    dImportEnde DATETIME,
+                    nAnzahlGesamt INT DEFAULT 0,
+                    nAnzahlNeu INT DEFAULT 0,
+                    nAnzahlAktualisiert INT DEFAULT 0,
+                    nAnzahlFehler INT DEFAULT 0,
+                    cStatus NVARCHAR(50),
+                    cFehlerDetails NVARCHAR(MAX)
+                )");
+
+            // ABData Mapping zu JTL-Artikeln
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ABdataArtikelMapping' AND schema_id = SCHEMA_ID('NOVVIA'))
+                CREATE TABLE NOVVIA.ABdataArtikelMapping (
+                    kABdataArtikelMapping INT IDENTITY(1,1) PRIMARY KEY,
+                    kArtikel INT NOT NULL,
+                    cPZN NVARCHAR(8) NOT NULL,
+                    nAutomatisch BIT DEFAULT 0,
+                    dErstellt DATETIME DEFAULT GETDATE(),
+                    CONSTRAINT UQ_ABdataMapping UNIQUE (kArtikel, cPZN)
+                )");
+
+            _log.Information("ABData-Tabellen erstellt in: {ConnectionString}", connectionString);
+        }
+
+        #endregion
+
+        #region Pharma-Validierung
+
+        /// <summary>
+        /// Alle Pharma-Kategorien laden
+        /// </summary>
+        public async Task<List<PharmaKategorie>> GetPharmaKategorienAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<PharmaKategorie>(@"
+                SELECT kPharmaKategorie, cKuerzel, cName, cBeschreibung, cFarbe,
+                       nErfordertValidierung, nAktiv, nSort
+                FROM NOVVIA.PharmaKategorie
+                WHERE nAktiv = 1
+                ORDER BY nSort")).ToList();
+        }
+
+        /// <summary>
+        /// Lieferanten-Validierungen laden
+        /// </summary>
+        public async Task<List<LieferantValidierungItem>> GetLieferantValidierungenAsync(int kLieferant)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<LieferantValidierungItem>(@"
+                SELECT * FROM NOVVIA.lvLieferantValidierung
+                WHERE kLieferant = @Lieferant", new { Lieferant = kLieferant })).ToList();
+        }
+
+        /// <summary>
+        /// Kunden-Validierungen laden
+        /// </summary>
+        public async Task<List<KundeValidierungItem>> GetKundeValidierungenAsync(int kKunde)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<KundeValidierungItem>(@"
+                SELECT * FROM NOVVIA.lvKundeValidierung
+                WHERE kKunde = @Kunde", new { Kunde = kKunde })).ToList();
+        }
+
+        /// <summary>
+        /// Lieferanten-Validierung setzen (nur Rolle RP)
+        /// </summary>
+        public async Task SetLieferantValidierungAsync(int kLieferant, int kPharmaKategorie, bool validiert,
+            DateTime? gueltigBis, string? zertifikatNr, string? bemerkung, int kBenutzer, string benutzerName)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Upsert
+            await conn.ExecuteAsync(@"
+                MERGE INTO NOVVIA.LieferantValidierung AS target
+                USING (SELECT @Lieferant AS kLieferant, @Kategorie AS kPharmaKategorie) AS source
+                ON target.kLieferant = source.kLieferant AND target.kPharmaKategorie = source.kPharmaKategorie
+                WHEN MATCHED THEN UPDATE SET
+                    nValidiert = @Validiert,
+                    dValidiert = CASE WHEN @Validiert = 1 THEN GETDATE() ELSE dValidiert END,
+                    dGueltigBis = @GueltigBis,
+                    kValidiertVon = @Benutzer,
+                    cZertifikatNr = @ZertifikatNr,
+                    cBemerkung = @Bemerkung,
+                    dGeaendert = GETDATE()
+                WHEN NOT MATCHED THEN INSERT
+                    (kLieferant, kPharmaKategorie, nValidiert, dValidiert, dGueltigBis, kValidiertVon, cZertifikatNr, cBemerkung)
+                    VALUES (@Lieferant, @Kategorie, @Validiert, CASE WHEN @Validiert = 1 THEN GETDATE() ELSE NULL END,
+                            @GueltigBis, @Benutzer, @ZertifikatNr, @Bemerkung);",
+                new { Lieferant = kLieferant, Kategorie = kPharmaKategorie, Validiert = validiert,
+                      GueltigBis = gueltigBis, ZertifikatNr = zertifikatNr, Bemerkung = bemerkung, Benutzer = kBenutzer });
+
+            // Log schreiben
+            await conn.ExecuteAsync(@"
+                INSERT INTO NOVVIA.ValidierungsLog (cEntitaet, kEntitaet, kPharmaKategorie, cAktion, nNeuerWert, cBemerkung, kBenutzer, cBenutzerName)
+                VALUES ('LIEFERANT', @Lieferant, @Kategorie, @Aktion, @Validiert, @Bemerkung, @Benutzer, @BenutzerName)",
+                new { Lieferant = kLieferant, Kategorie = kPharmaKategorie,
+                      Aktion = validiert ? "VALIDIERT" : "ENTZOGEN", Validiert = validiert,
+                      Bemerkung = bemerkung, Benutzer = kBenutzer, BenutzerName = benutzerName });
+
+            _log.Information("Lieferant {Lieferant} Validierung {Kategorie}: {Status} durch {Benutzer}",
+                kLieferant, kPharmaKategorie, validiert ? "gesetzt" : "entzogen", benutzerName);
+        }
+
+        /// <summary>
+        /// Kunden-Validierung setzen (nur Rolle RP)
+        /// </summary>
+        public async Task SetKundeValidierungAsync(int kKunde, int kPharmaKategorie, bool validiert,
+            DateTime? gueltigBis, string? apothekennummer, string? betriebserlaubnis, string? bemerkung,
+            int kBenutzer, string benutzerName)
+        {
+            var conn = await GetConnectionAsync();
+
+            await conn.ExecuteAsync(@"
+                MERGE INTO NOVVIA.KundeValidierung AS target
+                USING (SELECT @Kunde AS kKunde, @Kategorie AS kPharmaKategorie) AS source
+                ON target.kKunde = source.kKunde AND target.kPharmaKategorie = source.kPharmaKategorie
+                WHEN MATCHED THEN UPDATE SET
+                    nValidiert = @Validiert,
+                    dValidiert = CASE WHEN @Validiert = 1 THEN GETDATE() ELSE dValidiert END,
+                    dGueltigBis = @GueltigBis,
+                    kValidiertVon = @Benutzer,
+                    cApothekennummer = @Apotheke,
+                    cBetriebserlaubnis = @Betrieb,
+                    cBemerkung = @Bemerkung,
+                    dGeaendert = GETDATE()
+                WHEN NOT MATCHED THEN INSERT
+                    (kKunde, kPharmaKategorie, nValidiert, dValidiert, dGueltigBis, kValidiertVon, cApothekennummer, cBetriebserlaubnis, cBemerkung)
+                    VALUES (@Kunde, @Kategorie, @Validiert, CASE WHEN @Validiert = 1 THEN GETDATE() ELSE NULL END,
+                            @GueltigBis, @Benutzer, @Apotheke, @Betrieb, @Bemerkung);",
+                new { Kunde = kKunde, Kategorie = kPharmaKategorie, Validiert = validiert,
+                      GueltigBis = gueltigBis, Apotheke = apothekennummer, Betrieb = betriebserlaubnis,
+                      Bemerkung = bemerkung, Benutzer = kBenutzer });
+
+            await conn.ExecuteAsync(@"
+                INSERT INTO NOVVIA.ValidierungsLog (cEntitaet, kEntitaet, kPharmaKategorie, cAktion, nNeuerWert, cBemerkung, kBenutzer, cBenutzerName)
+                VALUES ('KUNDE', @Kunde, @Kategorie, @Aktion, @Validiert, @Bemerkung, @Benutzer, @BenutzerName)",
+                new { Kunde = kKunde, Kategorie = kPharmaKategorie,
+                      Aktion = validiert ? "VALIDIERT" : "ENTZOGEN", Validiert = validiert,
+                      Bemerkung = bemerkung, Benutzer = kBenutzer, BenutzerName = benutzerName });
+
+            _log.Information("Kunde {Kunde} Validierung {Kategorie}: {Status} durch {Benutzer}",
+                kKunde, kPharmaKategorie, validiert ? "gesetzt" : "entzogen", benutzerName);
+        }
+
+        /// <summary>
+        /// Prueft ob Lieferant/Kunde fuer einen Artikel validiert ist
+        /// </summary>
+        public async Task<PharmaValidierungResult> PruefePharmaValidierungAsync(string entitaet, int kEntitaet, int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            var p = new DynamicParameters();
+            p.Add("@cEntitaet", entitaet);
+            p.Add("@kEntitaet", kEntitaet);
+            p.Add("@kArtikel", kArtikel);
+            p.Add("@nIstValidiert", dbType: DbType.Boolean, direction: ParameterDirection.Output);
+            p.Add("@cFehlermeldung", dbType: DbType.String, size: 500, direction: ParameterDirection.Output);
+
+            await conn.ExecuteAsync("spNOVVIA_PruefePharmaValidierung", p, commandType: CommandType.StoredProcedure);
+
+            return new PharmaValidierungResult
+            {
+                IstValidiert = p.Get<bool>("@nIstValidiert"),
+                Fehlermeldung = p.Get<string?>("@cFehlermeldung")
+            };
+        }
+
+        public class PharmaKategorie
+        {
+            public int KPharmaKategorie { get; set; }
+            public string CKuerzel { get; set; } = "";
+            public string CName { get; set; } = "";
+            public string? CBeschreibung { get; set; }
+            public string CFarbe { get; set; } = "#666";
+            public bool NErfordertValidierung { get; set; }
+            public bool NAktiv { get; set; }
+            public int NSort { get; set; }
+        }
+
+        public class LieferantValidierungItem
+        {
+            public int KLieferant { get; set; }
+            public string? LieferantName { get; set; }
+            public int KPharmaKategorie { get; set; }
+            public string? Kategorie { get; set; }
+            public string? KategorieName { get; set; }
+            public string? CFarbe { get; set; }
+            public bool Validiert { get; set; }
+            public DateTime? DValidiert { get; set; }
+            public DateTime? DGueltigBis { get; set; }
+            public bool Abgelaufen { get; set; }
+            public string? CZertifikatNr { get; set; }
+            public string? CBemerkung { get; set; }
+        }
+
+        public class KundeValidierungItem
+        {
+            public int KKunde { get; set; }
+            public string? KundeName { get; set; }
+            public int KPharmaKategorie { get; set; }
+            public string? Kategorie { get; set; }
+            public string? KategorieName { get; set; }
+            public string? CFarbe { get; set; }
+            public bool Validiert { get; set; }
+            public DateTime? DValidiert { get; set; }
+            public DateTime? DGueltigBis { get; set; }
+            public bool Abgelaufen { get; set; }
+            public string? CApothekennummer { get; set; }
+            public string? CBetriebserlaubnis { get; set; }
+            public string? CBemerkung { get; set; }
+        }
+
+        public class PharmaValidierungResult
+        {
+            public bool IstValidiert { get; set; }
+            public string? Fehlermeldung { get; set; }
+        }
+
+        #endregion
+
+        #region Textmeldungen (Pharma-Fehlertexte)
+
+        public class TextmeldungItem
+        {
+            public int KTextmeldung { get; set; }
+            public string? CKategorie { get; set; }
+            public string? CSchluessel { get; set; }
+            public string? CText { get; set; }
+            public int NSeverity { get; set; }
+            public bool NAktiv { get; set; }
+            public DateTime? DGeaendert { get; set; }
+
+            public string SeverityText => NSeverity switch
+            {
+                0 => "Info",
+                1 => "Warnung",
+                2 => "Fehler",
+                3 => "Kritisch",
+                _ => "Unbekannt"
+            };
+        }
+
+        /// <summary>
+        /// Alle Textmeldungen laden, optional nach Kategorie gefiltert
+        /// </summary>
+        public async Task<List<TextmeldungItem>> GetTextmeldungenAsync(string? kategorie = null)
+        {
+            var conn = await GetConnectionAsync();
+            var sql = @"SELECT kTextmeldung AS KTextmeldung, cKategorie AS CKategorie, cSchluessel AS CSchluessel,
+                               cText AS CText, nSeverity AS NSeverity, nAktiv AS NAktiv, dGeaendert AS DGeaendert
+                        FROM NOVVIA.Textmeldung
+                        WHERE (@Kategorie IS NULL OR @Kategorie = '' OR cKategorie = @Kategorie)
+                        ORDER BY cKategorie, cSchluessel";
+            return (await conn.QueryAsync<TextmeldungItem>(sql, new { Kategorie = kategorie })).ToList();
+        }
+
+        /// <summary>
+        /// Einzelne Textmeldung nach Schluessel laden
+        /// </summary>
+        public async Task<string?> GetTextmeldungAsync(string schluessel)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleOrDefaultAsync<string>(
+                "SELECT cText FROM NOVVIA.Textmeldung WHERE cSchluessel = @Schluessel AND nAktiv = 1",
+                new { Schluessel = schluessel });
+        }
+
+        /// <summary>
+        /// Textmeldung speichern (UPSERT)
+        /// </summary>
+        public async Task SaveTextmeldungAsync(TextmeldungItem item)
+        {
+            var conn = await GetConnectionAsync();
+            if (item.KTextmeldung > 0)
+            {
+                // Update
+                await conn.ExecuteAsync(@"
+                    UPDATE NOVVIA.Textmeldung
+                    SET cKategorie = @CKategorie, cSchluessel = @CSchluessel, cText = @CText,
+                        nSeverity = @NSeverity, nAktiv = @NAktiv, dGeaendert = GETDATE()
+                    WHERE kTextmeldung = @KTextmeldung",
+                    item);
+            }
+            else
+            {
+                // Insert
+                await conn.ExecuteAsync(@"
+                    INSERT INTO NOVVIA.Textmeldung (cKategorie, cSchluessel, cText, nSeverity, nAktiv)
+                    VALUES (@CKategorie, @CSchluessel, @CText, @NSeverity, @NAktiv)",
+                    item);
+            }
+        }
+
+        /// <summary>
+        /// Textmeldung mit Platzhaltern ersetzen
+        /// </summary>
+        public async Task<string> GetTextmeldungFormatiertAsync(string schluessel, Dictionary<string, string>? platzhalter = null)
+        {
+            var text = await GetTextmeldungAsync(schluessel) ?? $"[Textmeldung '{schluessel}' nicht gefunden]";
+
+            if (platzhalter != null)
+            {
+                foreach (var kv in platzhalter)
+                {
+                    text = text.Replace($"{{{kv.Key}}}", kv.Value);
+                }
+            }
+
+            return text;
         }
 
         #endregion
@@ -11082,44 +11456,84 @@ namespace NovviaERP.Core.Services
         #region Finanzen - Mahnungslauf, OP-Liste, DATEV
 
         /// <summary>
-        /// Holt alle Rechnungen die gemahnt werden koennten
+        /// Holt alle Rechnungen die gemahnt werden koennten (nutzt JTL Mahnwesen.lvOffenePosten View)
         /// </summary>
         public async Task<IEnumerable<MahnKandidat>> GetMahnKandidatenAsync(int faelligSeitTagen = 14, decimal mindestbetrag = 10m)
         {
             var conn = await GetConnectionAsync();
             return await conn.QueryAsync<MahnKandidat>(@"
                 SELECT
-                    r.kRechnung AS RechnungId,
-                    ISNULL(k.cFirma, k.cVorname + ' ' + k.cName) AS KundeName,
-                    k.cKundenNr AS KundenNr,
-                    r.cRechnungsnr AS RechnungsNr,
-                    r.dErstellt AS RechnungsDatum,
-                    r.dFaellig AS FaelligAm,
-                    DATEDIFF(DAY, r.dFaellig, GETDATE()) AS TageUeberfaellig,
-                    r.fOffen AS OffenerBetrag,
-                    ISNULL(r.nMahnstufe, 0) AS AktuelleMahnstufe,
-                    r.dLetzteMahnung AS LetzteMahnung
-                FROM tRechnung r
-                INNER JOIN tKunde k ON r.kKunde = k.kKunde
-                WHERE r.fOffen >= @mindestbetrag
-                  AND r.dFaellig <= DATEADD(DAY, -@faelligSeitTagen, GETDATE())
-                  AND r.nStorno = 0
-                ORDER BY r.dFaellig",
+                    op.kRechnung AS RechnungId,
+                    ISNULL(op.cFirma, op.cVorname + ' ' + op.cName) AS KundeName,
+                    op.cKundenNr AS KundenNr,
+                    op.cRechnungsNr AS RechnungsNr,
+                    op.Rechnungsdatum AS RechnungsDatum,
+                    op.RechnungZahlungsZiel AS FaelligAm,
+                    DATEDIFF(DAY, op.RechnungZahlungsZiel, GETDATE()) AS TageUeberfaellig,
+                    op.OffenerPosten AS OffenerBetrag,
+                    ISNULL(op.Mahnstufe, 0) AS AktuelleMahnstufe,
+                    op.MahnungErstellt AS LetzteMahnung
+                FROM Mahnwesen.lvOffenePosten op
+                WHERE op.OffenerPosten >= @mindestbetrag
+                  AND op.RechnungZahlungsZiel <= DATEADD(DAY, -@faelligSeitTagen, GETDATE())
+                  AND op.nMahnstopp = 0
+                  AND op.nIstEntwurf = 0
+                ORDER BY op.RechnungZahlungsZiel",
                 new { faelligSeitTagen, mindestbetrag });
         }
 
         /// <summary>
-        /// Erstellt eine Mahnung fuer eine Rechnung
+        /// Erstellt eine Zahlungserinnerung/Mahnung fuer eine Rechnung (JTL tZahlungsErinnerung)
         /// </summary>
-        public async Task ErstelleMahnungAsync(int kRechnung, int mahnstufe)
+        public async Task ErstelleMahnungAsync(int kRechnung, int mahnstufe, decimal? gebuehr = null, string? kommentar = null)
         {
             var conn = await GetConnectionAsync();
-            await conn.ExecuteAsync(@"
-                UPDATE tRechnung SET
-                    nMahnstufe = @mahnstufe,
-                    dLetzteMahnung = GETDATE()
+
+            // Hole Rechnungsdaten aus der View
+            var rechnung = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
+                SELECT kRechnung, kKundenGruppe, kFirma, OffenerPosten, Karenzzeit
+                FROM Mahnwesen.lvOffenePosten
                 WHERE kRechnung = @kRechnung",
-                new { kRechnung, mahnstufe });
+                new { kRechnung });
+
+            if (rechnung == null) return;
+
+            // Hole Mahnstufen-Konfiguration
+            var stufeConfig = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
+                SELECT nZahlungsfristInTagen, fGebuehrPauschal, fGebuehrZinssatz
+                FROM dbo.tMahnstufe
+                WHERE nStufe = @mahnstufe AND (kKundengruppe = @kKundengruppe OR kKundengruppe IS NULL)
+                ORDER BY kKundengruppe DESC",
+                new { mahnstufe, kKundengruppe = (int?)rechnung.kKundenGruppe });
+
+            int zahlungsfrist = stufeConfig?.nZahlungsfristInTagen ?? 14;
+            decimal pauschal = gebuehr ?? (decimal)(stufeConfig?.fGebuehrPauschal ?? 0);
+
+            // Erstelle Zahlungserinnerung in JTL-Tabelle
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.tZahlungsErinnerung (
+                    kRechnung, kMahnstufe, kFirma, kKundengruppe, nMahnstufeAktuell,
+                    dZahlungsfrist, dErstellt, dMahndatum,
+                    fGebuehr, fGebuehrPauschal, fBruttoBetrag, cKommentar, kBenutzer
+                ) VALUES (
+                    @kRechnung, @kMahnstufe, @kFirma, @kKundengruppe, @nMahnstufeAktuell,
+                    DATEADD(DAY, @zahlungsfrist, GETDATE()), GETDATE(), GETDATE(),
+                    @fGebuehr, @fGebuehrPauschal, @fBruttoBetrag, @cKommentar, @kBenutzer
+                )",
+                new
+                {
+                    kRechnung,
+                    kMahnstufe = mahnstufe,
+                    kFirma = (int?)rechnung.kFirma ?? 1,
+                    kKundengruppe = (int?)rechnung.kKundenGruppe,
+                    nMahnstufeAktuell = mahnstufe,
+                    zahlungsfrist,
+                    fGebuehr = pauschal,
+                    fGebuehrPauschal = pauschal,
+                    fBruttoBetrag = (decimal?)rechnung.OffenerPosten ?? 0,
+                    cKommentar = kommentar ?? $"Mahnstufe {mahnstufe}",
+                    kBenutzer = 1
+                });
         }
 
         /// <summary>
@@ -11137,7 +11551,7 @@ namespace NovviaERP.Core.Services
                     op.cKundenNr AS PartnerNr,
                     op.cRechnungsnr AS BelegNr,
                     op.dErstellt AS BelegDatum,
-                    DATEADD(day, ISNULL(r.nZahlungszielTage, 14), op.dErstellt) AS FaelligAm,
+                    DATEADD(day, ISNULL(r.nZahlungsziel, 14), op.dErstellt) AS FaelligAm,
                     op.fWert AS Betrag,
                     op.fZahlung AS Bezahlt
                 FROM Zahlungsabgleich.vOffenerPostenRechnung op

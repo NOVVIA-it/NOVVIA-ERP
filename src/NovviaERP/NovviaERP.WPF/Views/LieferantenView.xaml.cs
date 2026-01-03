@@ -28,6 +28,9 @@ namespace NovviaERP.WPF.Views
         private LieferantStammdaten? _selectedLiefStammdaten;
         private MSV3Lieferant? _selectedLiefMSV3;
         private List<LieferantEigenesFeldViewModel> _lieferantEigeneFelder = new();
+        private LieferantErweitert? _selectedLiefErweitert;
+        private bool _isPharmaModus = false;
+        private bool _darfPharmaBearbeiten = false;
         private bool _isEditMode = false;
 
         public LieferantenView()
@@ -57,10 +60,50 @@ namespace NovviaERP.WPF.Views
 
                 await LadeLieferantenAsync();
                 await LadeBestellungenAsync();
+
+                // Pharma-Modus pruefen
+                await InitPharmaModus();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Laden: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async Task InitPharmaModus()
+        {
+            try
+            {
+                var einstellungen = await _coreService.GetNovviaEinstellungenAsync();
+                _isPharmaModus = einstellungen.PharmaModus;
+
+                if (_isPharmaModus)
+                {
+                    tabLiefPharmaValidierung.Visibility = Visibility.Visible;
+                    _darfPharmaBearbeiten = await _coreService.DarfValidierungBearbeitenAsync(App.BenutzerId, "Lieferanten");
+
+                    // UI-Elemente je nach Berechtigung
+                    chkPharmaAmbient.IsEnabled = _darfPharmaBearbeiten;
+                    chkPharmaCool.IsEnabled = _darfPharmaBearbeiten;
+                    chkPharmaMedcan.IsEnabled = _darfPharmaBearbeiten;
+                    chkPharmaTierarznei.IsEnabled = _darfPharmaBearbeiten;
+                    txtPharmaGDP.IsReadOnly = !_darfPharmaBearbeiten;
+                    txtPharmaGMP.IsReadOnly = !_darfPharmaBearbeiten;
+                    dpPharmaQualifiziertAm.IsEnabled = _darfPharmaBearbeiten;
+                    txtPharmaQualifiziertVon.IsReadOnly = !_darfPharmaBearbeiten;
+                    txtPharmaQualifikationsDocs.IsReadOnly = !_darfPharmaBearbeiten;
+                    btnLiefValSpeichern.IsEnabled = _darfPharmaBearbeiten;
+
+                    txtLiefValHinweis.Visibility = _darfPharmaBearbeiten ? Visibility.Collapsed : Visibility.Visible;
+                }
+                else
+                {
+                    tabLiefPharmaValidierung.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Pharma-Modus Fehler: {ex.Message}");
             }
         }
 
@@ -118,6 +161,7 @@ namespace NovviaERP.WPF.Views
                 await LadeLieferantStammdatenAsync(lieferant.KLieferant);
                 await LadeLieferantMSV3ConfigAsync(lieferant.KLieferant);
                 await LadeLieferantEigeneFelderAsync(lieferant.KLieferant);
+                if (_isPharmaModus) await LadeLieferantPharmaAsync(lieferant.KLieferant);
                 await pnlTextmeldungen.LoadAsync("Lieferant", lieferant.KLieferant, "Einkauf");
                 await pnlTextmeldungen.ShowPopupAsync("Lieferant", lieferant.KLieferant, "Einkauf", lieferant.CFirma ?? "");
             }
@@ -125,8 +169,10 @@ namespace NovviaERP.WPF.Views
             {
                 _selectedLieferant = null;
                 _selectedLiefStammdaten = null;
+                _selectedLiefErweitert = null;
                 _lieferantEigeneFelder.Clear();
                 dgLieferantEigeneFelder.ItemsSource = null;
+                ClearPharmaFelder();
                 pnlLieferantDetail.Visibility = Visibility.Collapsed;
                 pnlTextmeldungen.Clear();
             }
@@ -1754,6 +1800,112 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Pharma-Validierung
+
+        private async Task LadeLieferantPharmaAsync(int kLieferant)
+        {
+            try
+            {
+                _selectedLiefErweitert = await _einkaufService.GetLieferantErweitertAsync(kLieferant);
+
+                if (_selectedLiefErweitert != null)
+                {
+                    chkPharmaAmbient.IsChecked = _selectedLiefErweitert.Ambient;
+                    chkPharmaCool.IsChecked = _selectedLiefErweitert.Cool;
+                    chkPharmaMedcan.IsChecked = _selectedLiefErweitert.Medcan;
+                    chkPharmaTierarznei.IsChecked = _selectedLiefErweitert.Tierarznei;
+                    txtPharmaGDP.Text = _selectedLiefErweitert.GDP ?? "";
+                    txtPharmaGMP.Text = _selectedLiefErweitert.GMP ?? "";
+                    dpPharmaQualifiziertAm.SelectedDate = _selectedLiefErweitert.QualifiziertAm;
+                    txtPharmaQualifiziertVon.Text = _selectedLiefErweitert.QualifiziertVon ?? "";
+                    txtPharmaQualifikationsDocs.Text = _selectedLiefErweitert.QualifikationsDocs ?? "";
+                }
+                else
+                {
+                    ClearPharmaFelder();
+                    _selectedLiefErweitert = new LieferantErweitert { KLieferant = kLieferant };
+                }
+
+                txtLiefValStatus.Text = "";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Pharma-Daten Fehler: {ex.Message}");
+                ClearPharmaFelder();
+            }
+        }
+
+        private void ClearPharmaFelder()
+        {
+            chkPharmaAmbient.IsChecked = false;
+            chkPharmaCool.IsChecked = false;
+            chkPharmaMedcan.IsChecked = false;
+            chkPharmaTierarznei.IsChecked = false;
+            txtPharmaGDP.Text = "";
+            txtPharmaGMP.Text = "";
+            dpPharmaQualifiziertAm.SelectedDate = null;
+            txtPharmaQualifiziertVon.Text = "";
+            txtPharmaQualifikationsDocs.Text = "";
+            txtLiefValStatus.Text = "";
+        }
+
+        private async void LiefPharmaValidierungSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedLieferant == null)
+            {
+                MessageBox.Show("Bitte zuerst einen Lieferanten auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!_darfPharmaBearbeiten)
+            {
+                MessageBox.Show("Sie haben keine Berechtigung zum Bearbeiten der Pharma-Validierung.\nNur RP-Berechtigte koennen diese Daten aendern.", "Keine Berechtigung", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                btnLiefValSpeichern.IsEnabled = false;
+                txtLiefValStatus.Text = "Speichere...";
+                txtLiefValStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Gray);
+
+                // Daten aus UI lesen
+                _selectedLiefErweitert ??= new LieferantErweitert { KLieferant = _selectedLieferant.KLieferant };
+
+                _selectedLiefErweitert.KLieferant = _selectedLieferant.KLieferant;
+                _selectedLiefErweitert.Ambient = chkPharmaAmbient.IsChecked == true;
+                _selectedLiefErweitert.Cool = chkPharmaCool.IsChecked == true;
+                _selectedLiefErweitert.Medcan = chkPharmaMedcan.IsChecked == true;
+                _selectedLiefErweitert.Tierarznei = chkPharmaTierarznei.IsChecked == true;
+                _selectedLiefErweitert.GDP = txtPharmaGDP.Text.Trim();
+                _selectedLiefErweitert.GMP = txtPharmaGMP.Text.Trim();
+                _selectedLiefErweitert.QualifiziertAm = dpPharmaQualifiziertAm.SelectedDate;
+                _selectedLiefErweitert.QualifiziertVon = txtPharmaQualifiziertVon.Text.Trim();
+                _selectedLiefErweitert.QualifikationsDocs = txtPharmaQualifikationsDocs.Text.Trim();
+
+                await _einkaufService.SaveLieferantErweitertAsync(_selectedLiefErweitert);
+
+                txtLiefValStatus.Text = "Gespeichert!";
+                txtLiefValStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+
+                // Nach 3 Sekunden Status ausblenden
+                await Task.Delay(3000);
+                txtLiefValStatus.Text = "";
+            }
+            catch (Exception ex)
+            {
+                txtLiefValStatus.Text = "Fehler!";
+                txtLiefValStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                btnLiefValSpeichern.IsEnabled = _darfPharmaBearbeiten;
             }
         }
 

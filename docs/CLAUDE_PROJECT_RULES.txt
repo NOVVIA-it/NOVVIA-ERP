@@ -1,0 +1,17 @@
+Projektregel:
+ich möchte ein sauberes modulares System, in dem möglichst viel modular programmiert ist
+die grids etc sollen möglichst einheitlich aussehen - mit jtl Datums/Anzeigenlogik oben rechts
+das grid verwendet die Einstellungen aus DESIGN, das grid hat Spaltenauswahl - möglichst viele Spalten immer anbieten
+alle Änderungen eines Users müssen in der DB gespiechert werden 
+du hast DB Zugriff kannst also alles selber verifizieren
+es sollte immer über einheitlich SP gehen, JTL SP sollen zu NOVVIA SP kopiert werden, diese sollen dann verwendet werden, bitte dokumetieren in NOVVIA Erp Docs 
+es gibt in NOVVIAERP docs eine Beschreibung - diese soll immer erweitert - automatisch von dir 
+wir nutzen die JTL Tabellen, das NOVVIA Erp soll peralell zu JTL auf derselben DB laufen können, wenn immer möglich beleiben wir auf der JTL DB Struktur
+aber die Logik soll immer in eigenen NOVVIA SP sein, wenn JTL was ändert betrifft dann das die NOVVIA Logik nicht
+die NOVVIA SP werden auch in docs genau beschrieben
+auch die KUNDENSUCHE ist eine modulare funktion und sollte immer verwendet werden, keine neue bauen
+alle design einstellung sollen aus einstellungen DESIGN kommen - kein hardcodes hier
+alles was in JTL tabellen liegt bitte verwenden - keine eigenen NOVVIA tabellen erstellen wenn es eine JTL tab gibt
+nochmals: bitte alles super detailiert dokumentieren
+niemals was entwickeln was nicht in docs dokumentiert ist 
+

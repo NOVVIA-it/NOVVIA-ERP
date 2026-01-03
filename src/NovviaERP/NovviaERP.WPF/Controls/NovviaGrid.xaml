@@ -3,30 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:base="clr-namespace:NovviaERP.WPF.Controls.Base"
              x:Name="Root">
-    <UserControl.Resources>
-        <!-- Style für DataGridRow - Selektion bleibt auch ohne Fokus sichtbar -->
-        <Style x:Key="PersistentSelectionRowStyle" TargetType="DataGridRow">
-            <Style.Triggers>
-                <!-- Normale Selektion mit Fokus -->
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"/>
-                </Trigger>
-                <!-- Selektion OHNE Fokus - gleiche Farbe wie MIT Fokus -->
-                <MultiTrigger>
-                    <MultiTrigger.Conditions>
-                        <Condition Property="IsSelected" Value="True"/>
-                        <Condition Property="Selector.IsSelectionActive" Value="False"/>
-                    </MultiTrigger.Conditions>
-                    <MultiTrigger.Setters>
-                        <!-- Leicht transparentere Version der Highlight-Farbe -->
-                        <Setter Property="Background" Value="#B3D9FF"/>
-                        <Setter Property="Foreground" Value="Black"/>
-                    </MultiTrigger.Setters>
-                </MultiTrigger>
-            </Style.Triggers>
-        </Style>
-    </UserControl.Resources>
+    <!-- RowStyle wird von GridStyleHelper gesetzt (mit Selektion ohne Fokus Support) -->
+    <!-- Farben kommen aus Einstellungen -> Design -->
     <!-- Universelles NOVVIA Grid mit JTL-Datumslogik -->
     <Grid>
         <Grid.RowDefinitions>
@@ -69,7 +47,7 @@
             </Grid>
         </Border>
 
-        <!-- DataGrid mit persistenter Selektion -->
+        <!-- DataGrid - RowStyle wird von GridStyleHelper gesetzt (mit Selektion ohne Fokus Support) -->
         <DataGrid x:Name="InnerGrid" Grid.Row="1"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
@@ -81,7 +59,6 @@
                   CanUserResizeColumns="True"
                   HeadersVisibility="Column"
                   ItemsSource="{Binding ItemsSource, ElementName=Root}"
-                  RowStyle="{StaticResource PersistentSelectionRowStyle}"
                   MouseDoubleClick="InnerGrid_MouseDoubleClick"
                   SelectionChanged="InnerGrid_SelectionChanged"/>
     </Grid>

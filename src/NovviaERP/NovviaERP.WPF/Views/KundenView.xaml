@@ -5,6 +5,7 @@
              Background="#f0f2f5">
     <UserControl.Resources>
         <conv:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <!-- RowStyle wird von GridStyleHelper gesetzt (mit Selektion ohne Fokus Support) -->
         <Style x:Key="StatLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#666"/>
             <Setter Property="FontSize" Value="11"/>
@@ -92,7 +93,7 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Kundenliste DataGrid - Styling durch GridStyleHelper -->
+                <!-- Kundenliste DataGrid - Styling durch GridStyleHelper (inkl. Selektion ohne Fokus) -->
                 <DataGrid x:Name="dgKunden" Grid.Row="2" Margin="0"
                           AutoGenerateColumns="False" IsReadOnly="True"
                           SelectionMode="Single" SelectionUnit="FullRow"

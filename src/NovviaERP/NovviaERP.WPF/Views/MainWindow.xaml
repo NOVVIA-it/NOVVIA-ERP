@@ -331,6 +331,7 @@
                     </StackPanel>
 
                     <Button Style="{StaticResource NavButton}" Content="EDIFACT (EDI)" Click="NavEdifact_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="ABData Pharma" Click="NavABData_Click"/>
 
                     <TextBlock Text="LOGISTIK" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Lager" Click="NavLager_Click"/>
@@ -366,8 +367,7 @@
                         </Button>
                     </StackPanel>
 
-                    <TextBlock Text="AUTOMATISIERUNG" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
-                    <Button Style="{StaticResource NavButton}" Content="Workflows" Click="NavWorkflow_Click"/>
+                    <!-- Workflows sind in Einstellungen (noch nicht implementiert) -->
 
                     <TextBlock Text="TOOLS" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="▶ Tools" x:Name="btnTools" Click="NavTools_Click"/>

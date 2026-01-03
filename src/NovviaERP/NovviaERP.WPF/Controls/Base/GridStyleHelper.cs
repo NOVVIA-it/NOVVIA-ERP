@@ -127,6 +127,12 @@ namespace NovviaERP.WPF.Controls.Base
                         case "Grid.SelectionForeground":
                             _settings.SelektionTextfarbe = kv.Value;
                             break;
+                        case "Grid.SelectionNoFocusBackground":
+                            _settings.SelektionOhneFokusHintergrund = kv.Value;
+                            break;
+                        case "Grid.SelectionNoFocusForeground":
+                            _settings.SelektionOhneFokusTextfarbe = kv.Value;
+                            break;
 
                         // Datumsformatierung
                         case "Grid.DatumFormat":
@@ -155,6 +161,67 @@ namespace NovviaERP.WPF.Controls.Base
                             break;
                         case "Grid.WaehrungAnzeigen":
                             _settings.WaehrungSymbolAnzeigen = kv.Value == "True";
+                            break;
+
+                        // ========== SubGrid Einstellungen ==========
+                        case "SubGrid.Zeilenhoehe":
+                            if (double.TryParse(kv.Value, out var subZh))
+                                _settings.SubGridZeilenhoehe = subZh;
+                            break;
+                        case "SubGrid.Schriftgroesse":
+                            if (double.TryParse(kv.Value, out var subSg))
+                                _settings.SubGridSchriftgroesse = subSg;
+                            break;
+                        case "SubGrid.GridLines":
+                            _settings.SubGridGitternetzlinien = kv.Value;
+                            break;
+                        case "SubGrid.HeaderHoehe":
+                            if (double.TryParse(kv.Value, out var subHh))
+                                _settings.SubGridHeaderHoehe = subHh;
+                            break;
+                        case "SubGrid.HeaderBackground":
+                            _settings.SubGridHeaderHintergrund = kv.Value;
+                            break;
+                        case "SubGrid.HeaderForeground":
+                            _settings.SubGridHeaderTextfarbe = kv.Value;
+                            break;
+                        case "SubGrid.HeaderFontWeight":
+                            _settings.SubGridHeaderSchriftstaerke = kv.Value;
+                            break;
+                        case "SubGrid.RowBackground":
+                            _settings.SubGridZeileHintergrund = kv.Value;
+                            break;
+                        case "SubGrid.RowForeground":
+                            _settings.SubGridZeileTextfarbe = kv.Value;
+                            break;
+                        case "SubGrid.RowAltBackground":
+                            _settings.SubGridZeileAltHintergrund = kv.Value;
+                            break;
+                        case "SubGrid.ZebraStreifen":
+                            _settings.SubGridZebraStreifen = kv.Value == "True";
+                            break;
+                        case "SubGrid.SelectionBackground":
+                            _settings.SubGridSelektionHintergrund = kv.Value;
+                            break;
+                        case "SubGrid.SelectionForeground":
+                            _settings.SubGridSelektionTextfarbe = kv.Value;
+                            break;
+                        case "SubGrid.SelectionNoFocusBackground":
+                            _settings.SubGridSelektionOhneFokusHintergrund = kv.Value;
+                            break;
+                        case "SubGrid.SelectionNoFocusForeground":
+                            _settings.SubGridSelektionOhneFokusTextfarbe = kv.Value;
+                            break;
+                        case "SubGrid.BorderColor":
+                            _settings.SubGridRahmenfarbe = kv.Value;
+                            break;
+                        case "SubGrid.BorderWidth":
+                            if (double.TryParse(kv.Value, out var subBw))
+                                _settings.SubGridRahmenstaerke = subBw;
+                            break;
+                        case "SubGrid.CornerRadius":
+                            if (double.TryParse(kv.Value, out var subCr))
+                                _settings.SubGridEckenradius = subCr;
                             break;
                     }
                 }
@@ -237,7 +304,143 @@ namespace NovviaERP.WPF.Controls.Base
         }
 
         /// <summary>
+        /// Wendet SubGrid-Einstellungen an (fuer Positionen-Grids in Auftraegen, Rechnungen, etc.)
+        /// Verwendet die SubGrid-spezifischen Einstellungen aus Design
+        /// </summary>
+        public void ApplySubGridStyle(DataGrid dataGrid)
+        {
+            if (dataGrid == null) return;
+
+            try
+            {
+                // Schriftgroesse
+                dataGrid.FontSize = _settings.SubGridSchriftgroesse;
+                dataGrid.FontFamily = new System.Windows.Media.FontFamily(_settings.Schriftart);
+
+                // Zeilenhoehe
+                dataGrid.RowHeight = _settings.SubGridZeilenhoehe;
+
+                // Header-Hoehe
+                dataGrid.ColumnHeaderHeight = _settings.SubGridHeaderHoehe;
+
+                // Gitternetzlinien
+                dataGrid.GridLinesVisibility = _settings.SubGridGitternetzlinien switch
+                {
+                    "Horizontal" => DataGridGridLinesVisibility.Horizontal,
+                    "Vertical" => DataGridGridLinesVisibility.Vertical,
+                    "None" => DataGridGridLinesVisibility.None,
+                    _ => DataGridGridLinesVisibility.All
+                };
+
+                // Rahmenfarbe fuer Gitternetzlinien
+                var borderBrush = ParseBrush(_settings.SubGridRahmenfarbe);
+                dataGrid.HorizontalGridLinesBrush = borderBrush;
+                dataGrid.VerticalGridLinesBrush = borderBrush;
+
+                // Zeilen-Hintergrund
+                dataGrid.RowBackground = ParseBrush(_settings.SubGridZeileHintergrund);
+
+                // Zebrastreifen
+                if (_settings.SubGridZebraStreifen)
+                {
+                    dataGrid.AlternatingRowBackground = ParseBrush(_settings.SubGridZeileAltHintergrund);
+                }
+
+                // RowStyle mit SubGrid-Farben
+                dataGrid.RowStyle = CreateSubGridRowStyle();
+
+                // ColumnHeaderStyle mit SubGrid-Farben
+                dataGrid.ColumnHeaderStyle = CreateSubGridColumnHeaderStyle();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GridStyleHelper.ApplySubGridStyle Error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Erstellt den RowStyle fuer SubGrids mit SubGrid-spezifischen Farben
+        /// </summary>
+        private Style CreateSubGridRowStyle()
+        {
+            var style = new Style(typeof(DataGridRow));
+
+            // Textfarbe
+            style.Setters.Add(new Setter(DataGridRow.ForegroundProperty, ParseBrush(_settings.SubGridZeileTextfarbe)));
+
+            // Selektion Trigger (mit Fokus)
+            var selectionTrigger = new Trigger
+            {
+                Property = DataGridRow.IsSelectedProperty,
+                Value = true
+            };
+            selectionTrigger.Setters.Add(new Setter(DataGridRow.BackgroundProperty, ParseBrush(_settings.SubGridSelektionHintergrund)));
+            selectionTrigger.Setters.Add(new Setter(DataGridRow.ForegroundProperty, ParseBrush(_settings.SubGridSelektionTextfarbe)));
+            style.Triggers.Add(selectionTrigger);
+
+            // MultiTrigger: Selektion OHNE Fokus
+            var noFocusTrigger = new MultiTrigger();
+            noFocusTrigger.Conditions.Add(new Condition(DataGridRow.IsSelectedProperty, true));
+            noFocusTrigger.Conditions.Add(new Condition(Selector.IsSelectionActiveProperty, false));
+            noFocusTrigger.Setters.Add(new Setter(DataGridRow.BackgroundProperty, ParseBrush(_settings.SubGridSelektionOhneFokusHintergrund)));
+            noFocusTrigger.Setters.Add(new Setter(DataGridRow.ForegroundProperty, ParseBrush(_settings.SubGridSelektionOhneFokusTextfarbe)));
+            style.Triggers.Add(noFocusTrigger);
+
+            return style;
+        }
+
+        /// <summary>
+        /// Erstellt den ColumnHeaderStyle fuer SubGrids
+        /// </summary>
+        private Style CreateSubGridColumnHeaderStyle()
+        {
+            var style = new Style(typeof(DataGridColumnHeader));
+
+            style.Setters.Add(new Setter(DataGridColumnHeader.BackgroundProperty, ParseBrush(_settings.SubGridHeaderHintergrund)));
+            style.Setters.Add(new Setter(DataGridColumnHeader.ForegroundProperty, ParseBrush(_settings.SubGridHeaderTextfarbe)));
+            style.Setters.Add(new Setter(DataGridColumnHeader.FontWeightProperty, ParseFontWeight(_settings.SubGridHeaderSchriftstaerke)));
+            style.Setters.Add(new Setter(DataGridColumnHeader.PaddingProperty, new Thickness(8, 4, 8, 4)));
+            style.Setters.Add(new Setter(DataGridColumnHeader.BorderThicknessProperty, new Thickness(0, 0, 1, 1)));
+            style.Setters.Add(new Setter(DataGridColumnHeader.BorderBrushProperty, ParseBrush(_settings.SubGridRahmenfarbe)));
+
+            return style;
+        }
+
+        /// <summary>
+        /// Gibt die SubGrid-Header-Hintergrundfarbe zurueck (fuer Border/Header ausserhalb des Grids)
+        /// </summary>
+        public System.Windows.Media.Brush GetSubGridHeaderBrush()
+        {
+            return ParseBrush(_settings.SubGridHeaderHintergrund);
+        }
+
+        /// <summary>
+        /// Gibt die SubGrid-Header-Textfarbe zurueck
+        /// </summary>
+        public System.Windows.Media.Brush GetSubGridHeaderTextBrush()
+        {
+            return ParseBrush(_settings.SubGridHeaderTextfarbe);
+        }
+
+        /// <summary>
+        /// Gibt die SubGrid-Rahmenfarbe zurueck
+        /// </summary>
+        public System.Windows.Media.Brush GetSubGridBorderBrush()
+        {
+            return ParseBrush(_settings.SubGridRahmenfarbe);
+        }
+
+        /// <summary>
+        /// Gibt den SubGrid-Eckenradius zurueck
+        /// </summary>
+        public CornerRadius GetSubGridCornerRadius()
+        {
+            return new CornerRadius(_settings.SubGridEckenradius);
+        }
+
+        /// <summary>
         /// Erstellt den RowStyle mit Textfarbe, Schriftstaerke und Selektion
+        /// WICHTIG: Enthaelt auch MultiTrigger fuer "Selektion ohne Fokus" damit die Markierung sichtbar bleibt
         /// </summary>
         private Style CreateRowStyle()
         {
@@ -249,7 +452,7 @@ namespace NovviaERP.WPF.Controls.Base
             // Schriftstaerke
             style.Setters.Add(new Setter(DataGridRow.FontWeightProperty, ParseFontWeight(_settings.ZeileSchriftstaerke)));
 
-            // Selektion Trigger
+            // Selektion Trigger (mit Fokus)
             var selectionTrigger = new Trigger
             {
                 Property = DataGridRow.IsSelectedProperty,
@@ -258,6 +461,16 @@ namespace NovviaERP.WPF.Controls.Base
             selectionTrigger.Setters.Add(new Setter(DataGridRow.BackgroundProperty, ParseBrush(_settings.SelektionHintergrund)));
             selectionTrigger.Setters.Add(new Setter(DataGridRow.ForegroundProperty, ParseBrush(_settings.SelektionTextfarbe)));
             style.Triggers.Add(selectionTrigger);
+
+            // MultiTrigger: Selektion OHNE Fokus - hellere Variante der Selektionsfarbe
+            // Damit bleibt die Markierung sichtbar wenn ein anderes Grid/Control den Fokus hat
+            var noFocusTrigger = new MultiTrigger();
+            noFocusTrigger.Conditions.Add(new Condition(DataGridRow.IsSelectedProperty, true));
+            noFocusTrigger.Conditions.Add(new Condition(Selector.IsSelectionActiveProperty, false));
+            // Hellere Variante der Selektionsfarbe fuer "ohne Fokus"
+            noFocusTrigger.Setters.Add(new Setter(DataGridRow.BackgroundProperty, ParseBrush(_settings.SelektionOhneFokusHintergrund)));
+            noFocusTrigger.Setters.Add(new Setter(DataGridRow.ForegroundProperty, ParseBrush(_settings.SelektionOhneFokusTextfarbe)));
+            style.Triggers.Add(noFocusTrigger);
 
             // Alternating Row Trigger (fuer Textfarbe bei Zebrastreifen)
             if (_settings.ZebraStreifen && _settings.ZeileAltTextfarbe != _settings.ZeileTextfarbe)
@@ -390,9 +603,12 @@ namespace NovviaERP.WPF.Controls.Base
         public string ZeileAltSchriftstaerke { get; set; } = "Normal";
         public bool ZebraStreifen { get; set; } = true;
 
-        // Selektion
+        // Selektion (mit Fokus)
         public string SelektionHintergrund { get; set; } = "#E86B5C";
         public string SelektionTextfarbe { get; set; } = "#ffffff";
+        // Selektion (ohne Fokus) - hellere Variante damit Markierung sichtbar bleibt
+        public string SelektionOhneFokusHintergrund { get; set; } = "#B3D9FF";
+        public string SelektionOhneFokusTextfarbe { get; set; } = "#000000";
 
         // Status-Farben (fuer farbige Status-Badges, Ampeln, etc.)
         public string StatusErfolg { get; set; } = "#28a745";       // Gruen - OK, Abgeschlossen, Freigegeben
@@ -417,6 +633,37 @@ namespace NovviaERP.WPF.Controls.Base
         public int Dezimalstellen { get; set; } = 2;
         public string Tausendertrennzeichen { get; set; } = ".";
         public string Dezimaltrennzeichen { get; set; } = ",";
+
+        // ========== SubGrid (Positionen) Einstellungen ==========
+        // Fuer eingebettete Grids wie Positionen in Auftraegen, Rechnungen, etc.
+
+        // SubGrid Allgemein
+        public double SubGridZeilenhoehe { get; set; } = 24;
+        public double SubGridSchriftgroesse { get; set; } = 11;
+        public string SubGridGitternetzlinien { get; set; } = "Horizontal";
+
+        // SubGrid Header
+        public double SubGridHeaderHoehe { get; set; } = 28;
+        public string SubGridHeaderHintergrund { get; set; } = "#d9534f";  // Rot (wie bisher)
+        public string SubGridHeaderTextfarbe { get; set; } = "#ffffff";
+        public string SubGridHeaderSchriftstaerke { get; set; } = "SemiBold";
+
+        // SubGrid Zeilen
+        public string SubGridZeileHintergrund { get; set; } = "#ffffff";
+        public string SubGridZeileTextfarbe { get; set; } = "#333333";
+        public string SubGridZeileAltHintergrund { get; set; } = "#fafafa";
+        public bool SubGridZebraStreifen { get; set; } = true;
+
+        // SubGrid Selektion
+        public string SubGridSelektionHintergrund { get; set; } = "#5bc0de";  // Info-Blau
+        public string SubGridSelektionTextfarbe { get; set; } = "#ffffff";
+        public string SubGridSelektionOhneFokusHintergrund { get; set; } = "#d9edf7";
+        public string SubGridSelektionOhneFokusTextfarbe { get; set; } = "#333333";
+
+        // SubGrid Rahmen
+        public string SubGridRahmenfarbe { get; set; } = "#ddd";
+        public double SubGridRahmenstaerke { get; set; } = 1;
+        public double SubGridEckenradius { get; set; } = 4;
         public string WaehrungSymbol { get; set; } = "EUR";
         public bool WaehrungSymbolAnzeigen { get; set; } = true;
     }

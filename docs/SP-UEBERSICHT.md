@@ -45,6 +45,27 @@
 |---------|--------------|--------------|
 | **[NOVVIA]** `spLieferantEigenesFeldSpeichern` | CoreService.cs:7185 | Eigene Felder Lieferant |
 | **[NOVVIA]** `spLieferantAttributSpeichern` | CoreService.cs:7201 | Lieferant Attribute |
+| **[NOVVIA]** `spNOVVIA_LieferantErweitertLaden` | EinkaufService.cs:172 | Pharma-Daten Lieferant laden |
+| **[NOVVIA]** `spNOVVIA_LieferantErweitertSpeichern` | EinkaufService.cs:190 | Pharma-Daten Lieferant speichern |
+
+### Pharma-Validierung (GDP/GMP)
+| Tabelle | Beschreibung |
+|---------|--------------|
+| `NOVVIA.LieferantErweitert` | Pharma-Validierungsdaten pro Lieferant |
+
+**Felder in LieferantErweitert:**
+- `nAmbient` - Ambient (15-25 Grad)
+- `nCool` - Kuehlkette (2-8 Grad)
+- `nMedcan` - Medizin. Cannabis
+- `nTierarznei` - Tierarzneimittel
+- `cGDP` - GDP-Zertifikat
+- `cGMP` - GMP-Zertifikat
+- `dQualifiziertAm` - Qualifizierungsdatum
+- `cQualifiziertVon` - Qualifiziert von
+- `cQualifikationsDocs` - Dokumentenpfad
+
+**Aktivierung:** `PHARMA=1` in `NOVVIA.FirmaEinstellung`
+**Berechtigung:** Nur RP-Berechtigte duerfen bearbeiten (via `spDarfValidierungBearbeiten`)
 
 ### Benutzer & Rechte
 | SP Name | Verwendet in | Beschreibung |

@@ -48,8 +48,6 @@ namespace NovviaERP.WPF.Views
                 DataGridColumnConfig.EnableColumnChooser(dgZahlungsarten, "EinstellungenView.Zahlungsarten");
                 DataGridColumnConfig.EnableColumnChooser(dgVersandarten, "EinstellungenView.Versandarten");
                 DataGridColumnConfig.EnableColumnChooser(dgWooShops, "EinstellungenView.WooShops");
-                DataGridColumnConfig.EnableColumnChooser(dgSteuern, "EinstellungenView.Steuern");
-                DataGridColumnConfig.EnableColumnChooser(dgKonten, "EinstellungenView.Konten");
                 DataGridColumnConfig.EnableColumnChooser(dgLieferantAttribute, "EinstellungenView.LieferantAttr");
                 DataGridColumnConfig.EnableColumnChooser(dgKundeAttribute, "EinstellungenView.KundeAttr");
                 DataGridColumnConfig.EnableColumnChooser(dgArtikelAttribute, "EinstellungenView.ArtikelAttr");
@@ -82,6 +80,7 @@ namespace NovviaERP.WPF.Views
                 await LadeVorgangsfarbenAsync();
                 await LadeBriefpapierAsync();
                 await LadeMahnstufeAsync();
+                await LadeTextmeldungenAsync();
             }
             catch (Exception ex)
             {
@@ -734,18 +733,130 @@ namespace NovviaERP.WPF.Views
 
         #endregion
 
-        #region Steuern & Konten (nur Ansicht)
+        #region Steuern & Konten (bearbeitbar)
+
+        private List<SteuerSchluessel> _steuerschluesselListe = new();
+        private SteuerSatz? _selectedSteuersatz;
+        private SteuerSchluessel? _selectedSteuerschluessel;
 
         private async System.Threading.Tasks.Task LadeSteuernAsync()
         {
-            var steuern = await _core.GetSteuernAsync();
-            dgSteuern.ItemsSource = steuern.ToList();
+            try
+            {
+                // Steuersaetze laden
+                var steuersaetze = await _core.GetSteuersaetzeAsync();
+                dgSteuersaetze.ItemsSource = steuersaetze;
+
+                // Steuerschluessel laden (fuer ComboBoxen und Grid)
+                _steuerschluesselListe = await _core.GetSteuerschluesselAsync();
+                dgSteuerschluessel.ItemsSource = _steuerschluesselListe;
+                cmbSteuerSchluessel.ItemsSource = _steuerschluesselListe;
+                cmbSteuerIGL.ItemsSource = _steuerschluesselListe;
+
+                // Steuerklassen laden
+                var steuerklassen = await _core.GetSteuerklassenListAsync();
+                dgSteuerklassen.ItemsSource = steuerklassen;
+
+                // Steuerzonen laden
+                var steuerzonen = await _core.GetSteuerzoneAsync();
+                dgSteuerzonen.ItemsSource = steuerzonen;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LadeSteuernAsync Fehler: {ex.Message}");
+            }
         }
 
         private async System.Threading.Tasks.Task LadeKontenAsync()
         {
             var konten = await _core.GetKontenAsync();
             dgKonten.ItemsSource = konten.ToList();
+        }
+
+        private void DgSteuersaetze_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            _selectedSteuersatz = dgSteuersaetze.SelectedItem as SteuerSatz;
+            if (_selectedSteuersatz != null)
+            {
+                txtSteuerSatz.Text = _selectedSteuersatz.FSteuersatz.ToString("N2");
+                cmbSteuerSchluessel.SelectedValue = _selectedSteuersatz.KStSchl;
+                cmbSteuerIGL.SelectedValue = _selectedSteuersatz.KStSchlIGL;
+            }
+        }
+
+        private void SteuerBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedSteuersatz == null)
+            {
+                MessageBox.Show("Bitte zuerst einen Steuersatz auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            pnlSteuerEdit.Visibility = Visibility.Visible;
+        }
+
+        private async void SteuerSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedSteuersatz == null) return;
+
+            try
+            {
+                if (decimal.TryParse(txtSteuerSatz.Text, out var satz))
+                    _selectedSteuersatz.FSteuersatz = satz;
+
+                _selectedSteuersatz.KStSchl = (int?)cmbSteuerSchluessel.SelectedValue ?? 0;
+                _selectedSteuersatz.KStSchlIGL = (int?)cmbSteuerIGL.SelectedValue ?? 0;
+
+                await _core.UpdateSteuersatzAsync(_selectedSteuersatz);
+                await LadeSteuernAsync();
+                pnlSteuerEdit.Visibility = Visibility.Collapsed;
+                MessageBox.Show("Steuersatz gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DgSteuerschluessel_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            _selectedSteuerschluessel = dgSteuerschluessel.SelectedItem as SteuerSchluessel;
+            if (_selectedSteuerschluessel != null)
+            {
+                txtSchlSteuerkonto.Text = _selectedSteuerschluessel.CSteuerkonto ?? "";
+                txtSchlSkontokonto.Text = _selectedSteuerschluessel.CSkontokonto ?? "";
+                txtSchlErloeskonto.Text = _selectedSteuerschluessel.CErloeskonto ?? "";
+            }
+        }
+
+        private void SteuerschluesselBearbeiten_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedSteuerschluessel == null)
+            {
+                MessageBox.Show("Bitte zuerst einen Steuerschluessel auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            pnlSchluesselEdit.Visibility = Visibility.Visible;
+        }
+
+        private async void SteuerschluesselSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedSteuerschluessel == null) return;
+
+            try
+            {
+                _selectedSteuerschluessel.CSteuerkonto = txtSchlSteuerkonto.Text;
+                _selectedSteuerschluessel.CSkontokonto = txtSchlSkontokonto.Text;
+                _selectedSteuerschluessel.CErloeskonto = txtSchlErloeskonto.Text;
+
+                await _core.UpdateSteuerschluesselAsync(_selectedSteuerschluessel);
+                await LadeSteuernAsync();
+                pnlSchluesselEdit.Visibility = Visibility.Collapsed;
+                MessageBox.Show("Steuerschluessel gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async System.Threading.Tasks.Task LadeEigeneFelderAsync()
@@ -907,6 +1018,98 @@ namespace NovviaERP.WPF.Views
             {
                 txtNovviaStatus.Text = $"Fehler: {ex.Message}";
                 txtNovviaStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
+            }
+        }
+
+        private void ABDataTestVerbindung_Click(object sender, RoutedEventArgs e)
+        {
+            // ABData-Verbindungstest (Platzhalter - echte API-Implementierung wenn Zugang vorhanden)
+            var kundenNr = txtABDataKundenNr.Text.Trim();
+            var user = txtABDataUser.Text.Trim();
+
+            if (string.IsNullOrEmpty(kundenNr) || string.IsNullOrEmpty(user))
+            {
+                txtABDataStatus.Text = "Bitte Kundennummer und Benutzername eingeben";
+                txtABDataStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Orange);
+                return;
+            }
+
+            txtABDataStatus.Text = "Verbindungstest wird vorbereitet... (API-Zugang erforderlich)";
+            txtABDataStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
+        }
+
+        private void ABDataAbrufen_Click(object sender, RoutedEventArgs e)
+        {
+            txtABDataStatus.Text = "ABData-Abruf erfordert gueltigen API-Zugang. Nutzen Sie alternativ den CSV/TXT-Import.";
+            txtABDataStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Orange);
+        }
+
+        private async void ABDataDBErstellen_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var server = txtABDataDBServer.Text.Trim();
+                var dbName = txtABDataDBName.Text.Trim();
+                var user = txtABDataDBUser.Text.Trim();
+                var password = txtABDataDBPassword.Password;
+
+                if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(dbName))
+                {
+                    txtABDataDBStatus.Text = "Bitte Server und Datenbankname angeben";
+                    txtABDataDBStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Orange);
+                    return;
+                }
+
+                // Connection String bauen
+                var connBuilder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder
+                {
+                    DataSource = server,
+                    InitialCatalog = dbName,
+                    TrustServerCertificate = true
+                };
+
+                if (!string.IsNullOrEmpty(user))
+                {
+                    connBuilder.UserID = user;
+                    connBuilder.Password = password;
+                }
+                else
+                {
+                    connBuilder.IntegratedSecurity = true;
+                }
+
+                txtABDataDBStatus.Text = "Erstelle ABData-Tabellen...";
+                txtABDataDBStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Blue);
+
+                // SQL-Script aus Ressourcen laden und ausfuehren
+                var scriptPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\..\sql\ABData_Setup.sql");
+                if (!System.IO.File.Exists(scriptPath))
+                {
+                    // Alternative: Embedded script
+                    await _core.ExecuteABDataSetupAsync(connBuilder.ConnectionString);
+                }
+                else
+                {
+                    var script = await System.IO.File.ReadAllTextAsync(scriptPath);
+                    using var conn = new Microsoft.Data.SqlClient.SqlConnection(connBuilder.ConnectionString);
+                    await conn.OpenAsync();
+                    foreach (var batch in script.Split(new[] { "GO" }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (!string.IsNullOrWhiteSpace(batch))
+                        {
+                            using var cmd = new Microsoft.Data.SqlClient.SqlCommand(batch, conn);
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                    }
+                }
+
+                txtABDataDBStatus.Text = "ABData-Tabellen erfolgreich erstellt!";
+                txtABDataDBStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Green);
+            }
+            catch (Exception ex)
+            {
+                txtABDataDBStatus.Text = $"Fehler: {ex.Message}";
+                txtABDataDBStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.Red);
             }
         }
 
@@ -3354,6 +3557,138 @@ namespace NovviaERP.WPF.Views
                 _merkmalWerte?.Remove(w);
                 dgMerkmalWerte.ItemsSource = null;
                 dgMerkmalWerte.ItemsSource = _merkmalWerte;
+            }
+        }
+
+        #endregion
+
+        #region Textmeldungen
+
+        private List<CoreService.TextmeldungItem> _textmeldungen = new();
+        private CoreService.TextmeldungItem? _selectedTextmeldung;
+
+        private async System.Threading.Tasks.Task LadeTextmeldungenAsync()
+        {
+            try
+            {
+                var kategorie = (cmbTextmeldungKategorie?.SelectedItem as ComboBoxItem)?.Tag?.ToString();
+                _textmeldungen = await _core.GetTextmeldungenAsync(kategorie);
+                dgTextmeldungen.ItemsSource = _textmeldungen;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Textmeldungen laden: {ex.Message}");
+            }
+        }
+
+        private async void TextmeldungKategorie_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsLoaded) return;
+            await LadeTextmeldungenAsync();
+        }
+
+        private void TextmeldungNeu_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedTextmeldung = null;
+            cmbTextmeldungKatEdit.SelectedIndex = 0; // PHARMA
+            txtTextmeldungSchluessel.Text = "";
+            txtTextmeldungText.Text = "";
+            cmbTextmeldungSeverity.SelectedIndex = 1; // Warnung
+            chkTextmeldungAktiv.IsChecked = true;
+            txtTextmeldungSchluessel.Focus();
+        }
+
+        private void TextmeldungBearbeiten_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (dgTextmeldungen.SelectedItem is CoreService.TextmeldungItem tm)
+            {
+                _selectedTextmeldung = tm;
+
+                // Kategorie auswählen
+                for (int i = 0; i < cmbTextmeldungKatEdit.Items.Count; i++)
+                {
+                    if ((cmbTextmeldungKatEdit.Items[i] as ComboBoxItem)?.Content?.ToString() == tm.CKategorie)
+                    {
+                        cmbTextmeldungKatEdit.SelectedIndex = i;
+                        break;
+                    }
+                }
+
+                txtTextmeldungSchluessel.Text = tm.CSchluessel ?? "";
+                txtTextmeldungText.Text = tm.CText ?? "";
+
+                // Severity auswählen
+                for (int i = 0; i < cmbTextmeldungSeverity.Items.Count; i++)
+                {
+                    if ((cmbTextmeldungSeverity.Items[i] as ComboBoxItem)?.Tag?.ToString() == tm.NSeverity.ToString())
+                    {
+                        cmbTextmeldungSeverity.SelectedIndex = i;
+                        break;
+                    }
+                }
+
+                chkTextmeldungAktiv.IsChecked = tm.NAktiv;
+            }
+        }
+
+        private async void TextmeldungSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtTextmeldungSchluessel.Text))
+            {
+                MessageBox.Show("Bitte einen Schluessel eingeben.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var kategorie = (cmbTextmeldungKatEdit.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "PHARMA";
+                var severity = int.TryParse((cmbTextmeldungSeverity.SelectedItem as ComboBoxItem)?.Tag?.ToString(), out var s) ? s : 1;
+
+                var item = new CoreService.TextmeldungItem
+                {
+                    KTextmeldung = _selectedTextmeldung?.KTextmeldung ?? 0,
+                    CKategorie = kategorie,
+                    CSchluessel = txtTextmeldungSchluessel.Text.Trim(),
+                    CText = txtTextmeldungText.Text.Trim(),
+                    NSeverity = severity,
+                    NAktiv = chkTextmeldungAktiv.IsChecked == true
+                };
+
+                await _core.SaveTextmeldungAsync(item);
+
+                await LadeTextmeldungenAsync();
+                TextmeldungNeu_Click(sender, e);
+
+                MessageBox.Show("Textmeldung gespeichert!", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void TextmeldungLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedTextmeldung == null)
+            {
+                MessageBox.Show("Bitte erst eine Textmeldung auswaehlen.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var result = MessageBox.Show($"Textmeldung '{_selectedTextmeldung.CSchluessel}' wirklich loeschen?",
+                "Bestaetigung", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _core.DeleteTextmeldungAsync(_selectedTextmeldung.KTextmeldung);
+                await LadeTextmeldungenAsync();
+                TextmeldungNeu_Click(sender, e);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

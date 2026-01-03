@@ -3,6 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:base="clr-namespace:NovviaERP.WPF.Controls.Base"
              Background="#f0f2f5">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </UserControl.Resources>
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -651,25 +654,157 @@
 
             <!-- Steuern Tab -->
             <TabItem Header="Steuern">
-                <Grid Margin="15">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+                <TabControl Margin="10">
+                    <!-- Steuersaetze -->
+                    <TabItem Header="Steuersaetze">
+                        <Grid Margin="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                    <TextBlock Text="Steuersaetze (nur Ansicht - Aenderungen in JTL-Wawi)" FontStyle="Italic" Foreground="Gray" Margin="0,0,0,10"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <Button Content="Bearbeiten" Width="80" Click="SteuerBearbeiten_Click" Margin="0,0,5,0"/>
+                                <Button Content="Speichern" Width="80" Click="SteuerSpeichern_Click" Margin="0,0,15,0"/>
+                                <TextBlock Text="Steuersaetze pro Steuerzone und -klasse (DE = kSteuerzone 3)" VerticalAlignment="Center" Foreground="Gray" FontStyle="Italic"/>
+                            </StackPanel>
 
-                    <DataGrid x:Name="dgSteuern" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
-                              SelectionMode="Single" CanUserAddRows="False">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding KSteuer}" Width="60"/>
-                            <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
-                            <DataGridTextColumn Header="Steuersatz %" Binding="{Binding FSteuersatz, StringFormat=N2}" Width="100"/>
-                            <DataGridTextColumn Header="Land" Binding="{Binding CISO}" Width="60"/>
-                            <DataGridTextColumn Header="Standard" Binding="{Binding NStandard}" Width="70"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
+                            <DataGrid x:Name="dgSteuersaetze" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                                      SelectionMode="Single" CanUserAddRows="False" SelectionChanged="DgSteuersaetze_SelectionChanged">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Zone" Binding="{Binding CZoneName}" Width="100"/>
+                                    <DataGridTextColumn Header="Klasse" Binding="{Binding CKlasseName}" Width="120"/>
+                                    <DataGridTextColumn Header="Steuersatz %" Binding="{Binding FSteuersatz, StringFormat=N2}" Width="90"/>
+                                    <DataGridTextColumn Header="Schluessel" Binding="{Binding CSchluesselName}" Width="150"/>
+                                    <DataGridTextColumn Header="IGL" Binding="{Binding CSchluesselIGLName}" Width="120"/>
+                                    <DataGridTextColumn Header="Reverse" Binding="{Binding CSchluesselReverseName}" Width="120"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Bearbeitungsbereich -->
+                            <Border Grid.Row="2" BorderBrush="#ddd" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0"
+                                    x:Name="pnlSteuerEdit" Visibility="Collapsed">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Steuersatz %:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtSteuerSatz" Grid.Column="1"/>
+                                    <TextBlock Text="Schluessel:" VerticalAlignment="Center" Grid.Column="3"/>
+                                    <ComboBox x:Name="cmbSteuerSchluessel" Grid.Column="4" DisplayMemberPath="CName" SelectedValuePath="KSteuerschluessel"/>
+                                    <TextBlock Text="IGL-Schluessel:" VerticalAlignment="Center" Grid.Column="6"/>
+                                    <ComboBox x:Name="cmbSteuerIGL" Grid.Column="7" DisplayMemberPath="CName" SelectedValuePath="KSteuerschluessel"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Steuerschluessel (Konten) -->
+                    <TabItem Header="Steuerschluessel">
+                        <Grid Margin="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <Button Content="Bearbeiten" Width="80" Click="SteuerschluesselBearbeiten_Click" Margin="0,0,5,0"/>
+                                <Button Content="Speichern" Width="80" Click="SteuerschluesselSpeichern_Click" Margin="0,0,15,0"/>
+                                <TextBlock Text="Steuerschluessel mit Konten (fuer DATEV-Export)" VerticalAlignment="Center" Foreground="Gray" FontStyle="Italic"/>
+                            </StackPanel>
+
+                            <DataGrid x:Name="dgSteuerschluessel" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                                      SelectionMode="Single" CanUserAddRows="False" SelectionChanged="DgSteuerschluessel_SelectionChanged">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Nr" Binding="{Binding NSchluesselnummer}" Width="50"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                                    <DataGridTextColumn Header="Steuerkonto" Binding="{Binding CSteuerkonto}" Width="100"/>
+                                    <DataGridTextColumn Header="Skontokonto" Binding="{Binding CSkontokonto}" Width="100"/>
+                                    <DataGridTextColumn Header="Erloeskonto" Binding="{Binding CErloeskonto}" Width="100"/>
+                                    <DataGridCheckBoxColumn Header="Auto" Binding="{Binding NAutomatik, Mode=OneWay}" Width="50"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Bearbeitungsbereich -->
+                            <Border Grid.Row="2" BorderBrush="#ddd" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0"
+                                    x:Name="pnlSchluesselEdit" Visibility="Collapsed">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="20"/>
+                                        <ColumnDefinition Width="90"/>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Steuerkonto:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtSchlSteuerkonto" Grid.Column="1"/>
+                                    <TextBlock Text="Skontokonto:" VerticalAlignment="Center" Grid.Column="3"/>
+                                    <TextBox x:Name="txtSchlSkontokonto" Grid.Column="4"/>
+                                    <TextBlock Text="Erloeskonto:" VerticalAlignment="Center" Grid.Column="6"/>
+                                    <TextBox x:Name="txtSchlErloeskonto" Grid.Column="7"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Steuerklassen -->
+                    <TabItem Header="Steuerklassen">
+                        <Grid Margin="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Steuerklassen (Normal, Ermaessigt, etc.) - nur Ansicht" FontStyle="Italic" Foreground="Gray" Margin="0,0,0,10"/>
+
+                            <DataGrid x:Name="dgSteuerklassen" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                                      SelectionMode="Single" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="ID" Binding="{Binding KSteuerklasse}" Width="60"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                                    <DataGridCheckBoxColumn Header="Standard" Binding="{Binding NStandard, Mode=OneWay}" Width="70"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Steuerzonen -->
+                    <TabItem Header="Steuerzonen">
+                        <Grid Margin="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Steuerzonen (Inland, EU, Drittland) - nur Ansicht" FontStyle="Italic" Foreground="Gray" Margin="0,0,0,10"/>
+
+                            <DataGrid x:Name="dgSteuerzonen" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                                      SelectionMode="Single" CanUserAddRows="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="ID" Binding="{Binding KSteuerzone}" Width="60"/>
+                                    <DataGridTextColumn Header="Name" Binding="{Binding CName}" Width="200"/>
+                                    <DataGridTextColumn Header="Land-ISO" Binding="{Binding CLandISO}" Width="80"/>
+                                    <DataGridCheckBoxColumn Header="USt-ID B2B" Binding="{Binding NUstIdPflichtB2B, Mode=OneWay}" Width="80"/>
+                                    <DataGridCheckBoxColumn Header="USt-ID B2C" Binding="{Binding NUstIdPflichtB2C, Mode=OneWay}" Width="80"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
             </TabItem>
 
             <!-- Konten Tab -->
@@ -1048,10 +1183,101 @@
                                 <TextBlock Text="Pharma-Modus:" VerticalAlignment="Center"/>
                                 <CheckBox x:Name="chkPharmaModus" Grid.Column="1" Content="Aktiviert (erweiterte Chargen-Validierung)" VerticalAlignment="Center"/>
 
-                                <TextBlock Text="Quarantäne-Lager:" VerticalAlignment="Center" Grid.Row="1" Margin="0,10,0,0"/>
+                                <TextBlock Text="Quarantaene-Lager:" VerticalAlignment="Center" Grid.Row="1" Margin="0,10,0,0"/>
                                 <ComboBox x:Name="cmbQuarantaeneLager" Grid.Row="1" Grid.Column="1" Margin="0,10,0,0"
                                           DisplayMemberPath="CName" SelectedValuePath="KWarenLager"/>
                             </Grid>
+                        </GroupBox>
+
+                        <!-- ABData Pharma-Datenbank (nur bei Pharma-Modus) -->
+                        <GroupBox Header="ABData Pharma-Datenbank" Margin="0,0,0,20"
+                                  Visibility="{Binding IsChecked, ElementName=chkPharmaModus, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Margin="15">
+                                <TextBlock Text="ABData-Zugang fuer Pharma-Artikelstamm (PZN, Preise, etc.)" Foreground="Gray" Margin="0,0,0,15"/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180"/>
+                                        <ColumnDefinition Width="300"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Text="ABData Kundennummer:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="txtABDataKundenNr" Grid.Column="1"/>
+
+                                    <TextBlock Text="ABData Benutzername:" VerticalAlignment="Center" Grid.Row="1" Margin="0,10,0,0"/>
+                                    <TextBox x:Name="txtABDataUser" Grid.Row="1" Grid.Column="1" Margin="0,10,0,0"/>
+
+                                    <TextBlock Text="ABData Passwort:" VerticalAlignment="Center" Grid.Row="2" Margin="0,10,0,0"/>
+                                    <PasswordBox x:Name="txtABDataPassword" Grid.Row="2" Grid.Column="1" Margin="0,10,0,0"/>
+
+                                    <TextBlock Text="ABData Download-URL:" VerticalAlignment="Center" Grid.Row="3" Margin="0,10,0,0"/>
+                                    <TextBox x:Name="txtABDataUrl" Grid.Row="3" Grid.Column="1" Margin="0,10,0,0"
+                                             Text="https://download.abdata.de/"/>
+
+                                    <StackPanel Orientation="Horizontal" Grid.Row="4" Grid.Column="1" Margin="0,15,0,0">
+                                        <Button Content="Verbindung testen" Padding="15,6" Click="ABDataTestVerbindung_Click"/>
+                                        <Button Content="Daten jetzt abrufen" Padding="15,6" Margin="10,0,0,0" Click="ABDataAbrufen_Click"
+                                                Background="#17a2b8" Foreground="White"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock x:Name="txtABDataStatus" Text="" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- Eigene ABData-Datenbank (nur bei Pharma-Modus) -->
+                        <GroupBox Header="Lokale ABData-Datenbank (eigener SQL Server)" Margin="0,0,0,20"
+                                  Visibility="{Binding IsChecked, ElementName=chkPharmaModus, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Margin="15">
+                                <TextBlock Text="Optionale separate Datenbank fuer ABData-Artikel (Standard: JTL-Datenbank)" Foreground="Gray" Margin="0,0,0,15"/>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="180"/>
+                                        <ColumnDefinition Width="300"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <CheckBox x:Name="chkABDataEigeneDB" Grid.ColumnSpan="2" Content="Eigene Datenbank verwenden" Margin="0,0,0,15"/>
+
+                                    <TextBlock Text="Server:" VerticalAlignment="Center" Grid.Row="1"/>
+                                    <TextBox x:Name="txtABDataDBServer" Grid.Row="1" Grid.Column="1" IsEnabled="{Binding IsChecked, ElementName=chkABDataEigeneDB}"/>
+
+                                    <TextBlock Text="Datenbank:" VerticalAlignment="Center" Grid.Row="2" Margin="0,10,0,0"/>
+                                    <TextBox x:Name="txtABDataDBName" Grid.Row="2" Grid.Column="1" Margin="0,10,0,0" Text="ABData"
+                                             IsEnabled="{Binding IsChecked, ElementName=chkABDataEigeneDB}"/>
+
+                                    <TextBlock Text="Benutzer:" VerticalAlignment="Center" Grid.Row="3" Margin="0,10,0,0"/>
+                                    <TextBox x:Name="txtABDataDBUser" Grid.Row="3" Grid.Column="1" Margin="0,10,0,0"
+                                             IsEnabled="{Binding IsChecked, ElementName=chkABDataEigeneDB}"/>
+
+                                    <TextBlock Text="Passwort:" VerticalAlignment="Center" Grid.Row="4" Margin="0,10,0,0"/>
+                                    <PasswordBox x:Name="txtABDataDBPassword" Grid.Row="4" Grid.Column="1" Margin="0,10,0,0"
+                                                 IsEnabled="{Binding IsChecked, ElementName=chkABDataEigeneDB}"/>
+
+                                    <Button Content="DB erstellen" Grid.Row="4" Grid.Column="2" Padding="10,4" Margin="10,10,0,0"
+                                            Click="ABDataDBErstellen_Click" IsEnabled="{Binding IsChecked, ElementName=chkABDataEigeneDB}"
+                                            ToolTip="Erstellt die ABData-Tabellen in der angegebenen Datenbank"/>
+                                </Grid>
+
+                                <TextBlock x:Name="txtABDataDBStatus" Text="" Margin="0,10,0,0"/>
+                            </StackPanel>
                         </GroupBox>
 
                         <!-- Zahlungsabgleich Einstellungen -->
@@ -2206,6 +2432,101 @@
                         <Button Content="Speichern" Click="AttributSpeichern_Click" Padding="15,8" Margin="0,0,10,0"/>
                         <Button Content="Loeschen" Click="AttributLoeschen_Click" Padding="15,8" Foreground="#D32F2F"/>
                     </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Textmeldungen Tab (nur bei Pharma-Modus) -->
+            <TabItem Header="Textmeldungen"
+                     Visibility="{Binding IsChecked, ElementName=chkPharmaModus, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid Margin="15">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <TextBlock Text="Textmeldungen verwalten" FontSize="18" FontWeight="SemiBold"/>
+                        <TextBlock Text=" - Fehlertexte, Warnungen, Hinweise" Foreground="Gray" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+
+                    <!-- Filter -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBlock Text="Kategorie:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox x:Name="cmbTextmeldungKategorie" Width="150" Height="28" SelectionChanged="TextmeldungKategorie_Changed">
+                            <ComboBoxItem Content="Alle" Tag="" IsSelected="True"/>
+                            <ComboBoxItem Content="PHARMA" Tag="PHARMA"/>
+                            <ComboBoxItem Content="SYSTEM" Tag="SYSTEM"/>
+                            <ComboBoxItem Content="AUFTRAG" Tag="AUFTRAG"/>
+                            <ComboBoxItem Content="RECHNUNG" Tag="RECHNUNG"/>
+                        </ComboBox>
+                        <Button Content="Neu" Margin="20,0,0,0" Padding="15,4" Click="TextmeldungNeu_Click"/>
+                    </StackPanel>
+
+                    <!-- DataGrid -->
+                    <DataGrid x:Name="dgTextmeldungen" Grid.Row="2" AutoGenerateColumns="False"
+                              IsReadOnly="True" SelectionMode="Single" CanUserAddRows="False"
+                              MouseDoubleClick="TextmeldungBearbeiten_Click">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Kategorie" Binding="{Binding CKategorie}" Width="100"/>
+                            <DataGridTextColumn Header="Schluessel" Binding="{Binding CSchluessel}" Width="200"/>
+                            <DataGridTextColumn Header="Text" Binding="{Binding CText}" Width="*"/>
+                            <DataGridTextColumn Header="Severity" Binding="{Binding SeverityText}" Width="80"/>
+                            <DataGridCheckBoxColumn Header="Aktiv" Binding="{Binding NAktiv}" Width="50"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Bearbeiten-Panel -->
+                    <Border Grid.Row="3" Background="#f5f5f5" Padding="15" Margin="0,10,0,0" CornerRadius="5">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Text="Kategorie:" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="cmbTextmeldungKatEdit" Grid.Column="1" Height="26">
+                                <ComboBoxItem Content="PHARMA"/>
+                                <ComboBoxItem Content="SYSTEM"/>
+                                <ComboBoxItem Content="AUFTRAG"/>
+                                <ComboBoxItem Content="RECHNUNG"/>
+                            </ComboBox>
+
+                            <TextBlock Text="Schluessel:" Grid.Column="2" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                            <TextBox x:Name="txtTextmeldungSchluessel" Grid.Column="3"/>
+
+                            <TextBlock Text="Text:" VerticalAlignment="Top" Grid.Row="1" Margin="0,10,0,0"/>
+                            <TextBox x:Name="txtTextmeldungText" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3"
+                                     Height="60" TextWrapping="Wrap" AcceptsReturn="True" Margin="0,10,0,0"
+                                     ToolTip="Platzhalter: {ArtNr}, {Bezeichnung}, {Kategorie}, {Name}, {Datum}, {Tage}, {Rolle}"/>
+
+                            <TextBlock Text="Severity:" VerticalAlignment="Center" Grid.Row="2" Margin="0,10,0,0"/>
+                            <ComboBox x:Name="cmbTextmeldungSeverity" Grid.Row="2" Grid.Column="1" Height="26" Margin="0,10,0,0">
+                                <ComboBoxItem Content="Info" Tag="0"/>
+                                <ComboBoxItem Content="Warnung" Tag="1" IsSelected="True"/>
+                                <ComboBoxItem Content="Fehler" Tag="2"/>
+                                <ComboBoxItem Content="Kritisch" Tag="3"/>
+                            </ComboBox>
+
+                            <CheckBox x:Name="chkTextmeldungAktiv" Grid.Row="2" Grid.Column="2" Content="Aktiv"
+                                      IsChecked="True" VerticalAlignment="Center" Margin="15,10,0,0"/>
+
+                            <StackPanel Grid.Row="3" Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                                <Button Content="Speichern" Padding="20,6" Click="TextmeldungSpeichern_Click"
+                                        Background="{DynamicResource PrimaryBrush}" Foreground="White"/>
+                                <Button Content="Loeschen" Padding="15,6" Margin="10,0,0,0" Click="TextmeldungLoeschen_Click"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
             </TabItem>
 

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using NovviaERP.WPF.Controls.Base;
 
 namespace NovviaERP.WPF.Controls
 {
@@ -102,6 +103,38 @@ namespace NovviaERP.WPF.Controls
             InitializeComponent();
             dgPositionen.ItemsSource = _positionen;
             _positionen.CollectionChanged += (s, e) => UpdateSummen();
+        }
+
+        private void UserControl_Loaded(object sender, RoutedEventArgs e)
+        {
+            ApplySubGridStyles();
+        }
+
+        /// <summary>
+        /// Wendet die SubGrid-Styles aus den Design-Einstellungen an
+        /// </summary>
+        private void ApplySubGridStyles()
+        {
+            try
+            {
+                var helper = GridStyleHelper.Instance;
+
+                // DataGrid mit SubGrid-Style versehen
+                helper.ApplySubGridStyle(dgPositionen);
+
+                // Header-Border stylen
+                borderHeader.Background = helper.GetSubGridHeaderBrush();
+                txtHeader.Foreground = helper.GetSubGridHeaderTextBrush();
+                txtAnzahl.Foreground = helper.GetSubGridHeaderTextBrush();
+
+                // Rahmen stylen
+                borderMain.BorderBrush = helper.GetSubGridBorderBrush();
+                borderMain.CornerRadius = helper.GetSubGridCornerRadius();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"PositionenControl.ApplySubGridStyles Error: {ex.Message}");
+            }
         }
 
         #endregion

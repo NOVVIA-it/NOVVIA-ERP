@@ -311,11 +311,18 @@ namespace NovviaERP.WPF.Views
             ShowView<EdifactPage>();
         }
 
-        private void NavWorkflow_Click(object sender, RoutedEventArgs e)
+        private void NavABData_Click(object sender, RoutedEventArgs e)
         {
             AlleStatusMenusEinklappen();
-            ShowView<WorkflowPage>();
+            ShowView<ABDataPage>();
         }
+
+        // Workflows sind in Einstellungen verschoben (noch nicht implementiert)
+        // private void NavWorkflow_Click(object sender, RoutedEventArgs e)
+        // {
+        //     AlleStatusMenusEinklappen();
+        //     ShowView<WorkflowPage>();
+        // }
 
         private void NavFormularDesigner_Click(object sender, RoutedEventArgs e)
         {
