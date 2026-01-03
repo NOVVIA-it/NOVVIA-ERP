@@ -1,7 +1,7 @@
 # NOVVIA ERP - Systemdokumentation
 
-> **Version:** 1.0.0
-> **Letzte Aktualisierung:** 2025-12-31
+> **Version:** 1.0.3
+> **Letzte Aktualisierung:** 2026-01-03
 > **Autor:** NOVVIA IT / Claude AI
 
 ---
@@ -905,6 +905,35 @@ curl -X PATCH "https://server:5001/api/bestellungen/456/status" \
 ---
 
 ## 10. Aenderungsprotokoll
+
+### Version 1.0.3 (2026-01-03)
+
+**Neue Controls:**
+- **NovviaGrid** (`Controls/NovviaGrid.xaml`): Universelles Grid-Control mit integriertem Datumsfilter, Spaltenauswahl und JTL-Style Styling
+- **MonthYearNavigator** (`Controls/Base/MonthYearNavigator.xaml`): Monats-/Jahresnavigation mit Dropdown (Heute, Woche, Monat, Jahr, Alle anzeigen)
+
+**Benutzereinstellungen speichern:**
+- MainWindow: Sidebar-Breite wird pro Benutzer gespeichert
+- BestellungenView: Status-Filter, Sidebar-Breite, Auftraege/Positionen-Splitter
+- KundenView: Alle Splitter-Positionen (Kundenliste, Details, 360-Sicht, Tabs)
+
+**BestellungenView Redesign:**
+- Status-Sidebar links mit farbigen Status-Icons
+- Automatisches Neuladen bei Filter-Aenderung
+- Summen aktualisieren bei Datumsfilter-Aenderung
+
+**KundenView Erweiterungen:**
+- Tickets-Tab entfernt
+- Auftraege-Tab: Offener Betrag, Zahlungsart, Versandart hinzugefuegt
+- 1000 Kunden statt 100 laden
+
+**Dateien geaendert:**
+- `+` NovviaGrid.xaml/cs (Neues Universal-Grid)
+- `+` MonthYearNavigator.xaml/cs (JTL-Style Datumsnavigation)
+- `~` BestellungenView.xaml/cs (Status-Sidebar, Splitter speichern)
+- `~` KundenView.xaml/cs (Splitter speichern, Auftragsfelder)
+- `~` MainWindow.xaml/cs (Sidebar-Breite speichern)
+- `~` CoreService.cs (KundeAuftragKurz erweitert)
 
 ### Version 1.0.2 (2026-01-01)
 
