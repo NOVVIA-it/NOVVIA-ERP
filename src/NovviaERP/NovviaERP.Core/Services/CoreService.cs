@@ -10021,6 +10021,19 @@ namespace NovviaERP.Core.Services
         }
 
         /// <summary>
+        /// Laedt ein neues Briefpapier-Bild in Report.tVorlage hoch
+        /// </summary>
+        public async Task UploadBriefpapierBildAsync(string name, byte[] bildDaten)
+        {
+            var conn = await GetConnectionAsync();
+
+            await conn.ExecuteAsync(@"
+                INSERT INTO Report.tVorlage (cName, cTyp, bDaten, dGeaendert)
+                VALUES (@name, 'resource/image', @bildDaten, GETDATE())",
+                new { name, bildDaten });
+        }
+
+        /// <summary>
         /// Holt die Briefpapier-Einstellung (welches Bild fuer welchen Belegtyp)
         /// </summary>
         public async Task<BriefpapierEinstellung> GetBriefpapierEinstellungAsync()

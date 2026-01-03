@@ -316,7 +316,6 @@
                     <Button Style="{StaticResource NavButton}" Content="Workflows" Click="NavWorkflow_Click"/>
 
                     <TextBlock Text="TOOLS" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
-                    <Button Style="{StaticResource NavButton}" Content="Formular-Designer" Click="NavFormularDesigner_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Textmeldungen" Click="NavTextmeldungen_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Ameise (Import/Export)" Click="NavAmeise_Click"/>
 

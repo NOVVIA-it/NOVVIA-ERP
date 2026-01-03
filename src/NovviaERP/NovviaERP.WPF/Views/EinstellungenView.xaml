@@ -1618,6 +1618,7 @@
                                     <Button Content="Alle Bilder anzeigen" Click="BtnAlleBilderAnzeigen_Click" Padding="10,5" Margin="0,0,10,0"/>
                                     <Button Content="Nur Briefpapier anzeigen" Click="BtnNurBriefpapierAnzeigen_Click" Padding="10,5" Margin="0,0,10,0"/>
                                     <Button Content="Vorschau" Click="BtnBriefpapierVorschau_Click" Padding="10,5" Margin="0,0,10,0"/>
+                                    <Button Content="Neues Bild hochladen..." Click="BtnBriefpapierUpload_Click" Padding="10,5" Background="#0078D4" Foreground="White" BorderThickness="0"/>
                                 </StackPanel>
                             </Grid>
                         </GroupBox>
@@ -1760,6 +1761,39 @@
                         </Border>
 
                         <TextBlock x:Name="txtVorlagenStatus" Text="" Foreground="Green" Margin="0,15,0,0"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Formular-Designer Tab -->
+            <TabItem Header="Formular-Designer">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="15">
+                        <TextBlock Text="NOVVIA Formular-Designer" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,15"/>
+                        <TextBlock Text="Erstellen und bearbeiten Sie eigene Formulare fuer Rechnungen, Lieferscheine, Angebote etc."
+                                   Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+                        <Border Background="#e3f2fd" Padding="20" CornerRadius="8" Margin="0,0,0,20">
+                            <StackPanel>
+                                <TextBlock Text="Formular-Designer oeffnen" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock Text="Der Formular-Designer ermoeglicht die visuelle Bearbeitung von Belegen mit Drag &amp; Drop."
+                                           Foreground="#666" TextWrapping="Wrap" Margin="0,0,0,15"/>
+                                <Button Content="Formular-Designer oeffnen" Padding="20,10"
+                                        Background="#0078D4" Foreground="White" BorderThickness="0"
+                                        FontSize="14" HorizontalAlignment="Left"
+                                        Click="BtnFormularDesigner_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#fff3e0" Padding="15" CornerRadius="5">
+                            <StackPanel>
+                                <TextBlock Text="Hinweis" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <TextBlock TextWrapping="Wrap" Foreground="#666">
+                                    Der Formular-Designer befindet sich noch in Entwicklung.
+                                    Grundlegende Funktionen wie Drag &amp; Drop von Elementen sind bereits verfuegbar.
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

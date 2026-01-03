@@ -2909,6 +2909,37 @@ namespace NovviaERP.WPF.Views
             // Optional: UI-Elemente aktivieren/deaktivieren
         }
 
+        private async void BtnBriefpapierUpload_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Briefpapier-Bild auswaehlen",
+                Filter = "Bilder|*.png;*.jpg;*.jpeg;*.bmp|PNG|*.png|JPEG|*.jpg;*.jpeg|BMP|*.bmp|Alle Dateien|*.*",
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                var dateiName = System.IO.Path.GetFileNameWithoutExtension(dialog.FileName);
+                var bildDaten = System.IO.File.ReadAllBytes(dialog.FileName);
+
+                // Bild in Report.tVorlage speichern
+                await _core.UploadBriefpapierBildAsync(dateiName, bildDaten);
+
+                MessageBox.Show($"Bild '{dateiName}' wurde erfolgreich hochgeladen.\n\nSie koennen es jetzt in der Liste auswaehlen.",
+                    "Upload erfolgreich", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Liste neu laden
+                await LadeBriefpapierAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Hochladen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         #endregion
 
         #region Mahnstufen
@@ -2946,6 +2977,21 @@ namespace NovviaERP.WPF.Views
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Formular-Designer
+
+        private void BtnFormularDesigner_Click(object sender, RoutedEventArgs e)
+        {
+            if (Window.GetWindow(this) is MainWindow main)
+            {
+                var frame = new System.Windows.Controls.Frame();
+                var db = new NovviaERP.Core.Data.JtlDbContext(App.ConnectionString!);
+                frame.Navigate(new FormularDesignerPage(db));
+                main.contentMain.Content = frame;
             }
         }
 
