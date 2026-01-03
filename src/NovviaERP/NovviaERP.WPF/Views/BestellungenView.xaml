@@ -38,109 +38,8 @@
             </Grid>
         </Border>
 
-        <!-- Hauptbereich: Links Filter, Rechts Grid -->
-        <Grid x:Name="mainGrid" Grid.Row="1" Margin="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="sidebarColumn" Width="220" MinWidth="120"/>
-                <ColumnDefinition Width="8"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Linke Seitenleiste: Filter -->
-            <Border Background="White" BorderBrush="#ddd" BorderThickness="0,0,1,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="0">
-                        <!-- Status-Filter -->
-                        <Border Background="#f8f9fa" Padding="15,10" BorderBrush="#e0e0e0" BorderThickness="0,0,0,1">
-                            <TextBlock Text="Status" FontWeight="SemiBold" Foreground="#333"/>
-                        </Border>
-                        <ListBox x:Name="lstStatus" SelectionChanged="LstStatus_Changed" BorderThickness="0" Background="Transparent">
-                            <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem">
-                                    <Setter Property="Padding" Value="15,10"/>
-                                    <Setter Property="Cursor" Value="Hand"/>
-                                    <Style.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#e3f2fd"/>
-                                            <Setter Property="Foreground" Value="#0078D4"/>
-                                        </Trigger>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="#f5f5f5"/>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </ListBox.ItemContainerStyle>
-                            <ListBoxItem Tag="" IsSelected="True">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="12" Height="12" CornerRadius="6" Background="#6c757d" Margin="0,0,10,0"/>
-                                    <TextBlock Text="Alle"/>
-                                    <TextBlock x:Name="txtCountAlle" Text="" Foreground="#888" Margin="5,0,0,0"/>
-                                </StackPanel>
-                            </ListBoxItem>
-                            <ListBoxItem Tag="Offen">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="12" Height="12" CornerRadius="6" Background="#ffc107" Margin="0,0,10,0"/>
-                                    <TextBlock Text="Offen"/>
-                                    <TextBlock x:Name="txtCountOffen" Text="" Foreground="#888" Margin="5,0,0,0"/>
-                                </StackPanel>
-                            </ListBoxItem>
-                            <ListBoxItem Tag="In Bearbeitung">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="12" Height="12" CornerRadius="6" Background="#17a2b8" Margin="0,0,10,0"/>
-                                    <TextBlock Text="In Bearbeitung"/>
-                                    <TextBlock x:Name="txtCountInBearbeitung" Text="" Foreground="#888" Margin="5,0,0,0"/>
-                                </StackPanel>
-                            </ListBoxItem>
-                            <ListBoxItem Tag="Bezahlt">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="12" Height="12" CornerRadius="6" Background="#28a745" Margin="0,0,10,0"/>
-                                    <TextBlock Text="Bezahlt"/>
-                                    <TextBlock x:Name="txtCountBezahlt" Text="" Foreground="#888" Margin="5,0,0,0"/>
-                                </StackPanel>
-                            </ListBoxItem>
-                            <ListBoxItem Tag="Versendet">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="12" Height="12" CornerRadius="6" Background="#007bff" Margin="0,0,10,0"/>
-                                    <TextBlock Text="Versendet"/>
-                                    <TextBlock x:Name="txtCountVersendet" Text="" Foreground="#888" Margin="5,0,0,0"/>
-                                </StackPanel>
-                            </ListBoxItem>
-                            <ListBoxItem Tag="Storniert">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="12" Height="12" CornerRadius="6" Background="#dc3545" Margin="0,0,10,0"/>
-                                    <TextBlock Text="Storniert"/>
-                                    <TextBlock x:Name="txtCountStorniert" Text="" Foreground="#888" Margin="5,0,0,0"/>
-                                </StackPanel>
-                            </ListBoxItem>
-                        </ListBox>
-
-                        <!-- Shops-Filter -->
-                        <Border Background="#f8f9fa" Padding="15,10" BorderBrush="#e0e0e0" BorderThickness="0,1,0,1" Margin="0,10,0,0">
-                            <TextBlock Text="Shops" FontWeight="SemiBold" Foreground="#333"/>
-                        </Border>
-                        <ItemsControl x:Name="lstShops" Margin="10,5">
-                            <!-- Wird dynamisch befüllt -->
-                        </ItemsControl>
-
-                        <!-- Zahlungsart-Filter -->
-                        <Border Background="#f8f9fa" Padding="15,10" BorderBrush="#e0e0e0" BorderThickness="0,1,0,1" Margin="0,10,0,0">
-                            <TextBlock Text="Zahlungsart" FontWeight="SemiBold" Foreground="#333"/>
-                        </Border>
-                        <ItemsControl x:Name="lstZahlungsarten" Margin="10,5">
-                            <!-- Wird dynamisch befüllt -->
-                        </ItemsControl>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
-
-            <!-- Vertikaler Splitter -->
-            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                          Background="#a0a0a0" Cursor="SizeWE"
-                          ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
-                          ShowsPreview="True" Focusable="False" Panel.ZIndex="100"/>
-
-            <!-- Rechter Bereich: Grids -->
-            <Grid x:Name="contentGrid" Grid.Column="2" Margin="15,15,15,10">
+        <!-- Hauptbereich -->
+        <Grid x:Name="contentGrid" Grid.Row="1" Margin="15,10,15,10">
             <Grid.RowDefinitions>
                 <RowDefinition x:Name="auftraegeRow" Height="2*" MinHeight="100"/>
                 <RowDefinition Height="8"/>
@@ -223,7 +122,8 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Zahlungsart" Binding="{Binding CZahlungsart}" Width="100"/>
+                    <DataGridTextColumn Header="Zahlungsart" Binding="{Binding CZahlungsart}" Width="120"/>
+                    <DataGridTextColumn Header="Versandart" Binding="{Binding CVersandart}" Width="120"/>
                     <DataGridTextColumn Header="Shop" Binding="{Binding ShopName}" Width="100"/>
                     <!-- Rechnungsadresse -->
                     <DataGridTextColumn Header="Re-Firma" Binding="{Binding ReFirma}" Width="150" Visibility="Collapsed"/>
@@ -348,7 +248,6 @@
                 </DataGrid>
                 </Grid>
             </Grid>
-        </Grid>
         </Grid>
 
         <!-- Statusleiste -->

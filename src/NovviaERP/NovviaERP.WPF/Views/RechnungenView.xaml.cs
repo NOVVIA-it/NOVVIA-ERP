@@ -3,40 +3,70 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
-using NovviaERP.Core.Services.Base;
-using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
     public partial class RechnungenView : UserControl
     {
         private readonly CoreService _core;
-        private List<CoreService.RechnungUebersicht> _rechnungen = new();
-        private ComboBox? _cmbStatus;
+        private List<CoreService.RechnungUebersicht> _alleRechnungen = new();
+        private string _selectedStatus = "";
+        private bool _statusFromMainWindow = false;
 
         public RechnungenView()
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
-
             Loaded += async (s, e) =>
             {
-                // Status-Filter hinzufuegen
-                _cmbStatus = filterBar.AddFilter("Status:", new[]
-                {
-                    new { Text = "Alle", Value = (int?)null },
-                    new { Text = "Offen", Value = (int?)0 },
-                    new { Text = "Bezahlt", Value = (int?)1 },
-                    new { Text = "Ueberfaellig", Value = (int?)2 },
-                    new { Text = "Storniert", Value = (int?)3 }
-                }, "Text");
-
-                // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
-                DataGridColumnConfig.EnableColumnChooser(dgRechnungen, "RechnungenView");
-
-                // Daten sofort laden (kein Aktualisieren-Button)
+                await LadeEinstellungenAsync();
                 await LadeRechnungenAsync();
+                dgRechnungen.DateFilterChanged += DgRechnungen_DateFilterChanged;
             };
+
+            Unloaded += async (s, e) =>
+            {
+                await SpeichereSplitterEinstellungenAsync();
+            };
+        }
+
+        /// <summary>
+        /// Setzt den Status-Filter von außen (z.B. vom MainWindow-Menü)
+        /// </summary>
+        public void SetStatusFilter(string status)
+        {
+            _selectedStatus = status;
+            _statusFromMainWindow = true;
+        }
+
+        private async Task LadeEinstellungenAsync()
+        {
+            try
+            {
+                // Splitter-Positionen laden
+                var rechnungenHoehe = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "RechnungenView.RechnungenHoehe");
+                if (!string.IsNullOrEmpty(rechnungenHoehe) && double.TryParse(rechnungenHoehe, out double rhHeight))
+                {
+                    rechnungenRow.Height = new GridLength(rhHeight, GridUnitType.Star);
+                }
+
+                var positionenHoehe = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "RechnungenView.PositionenHoehe");
+                if (!string.IsNullOrEmpty(positionenHoehe) && double.TryParse(positionenHoehe, out double phHeight))
+                {
+                    positionenRow.Height = new GridLength(phHeight, GridUnitType.Star);
+                }
+            }
+            catch { /* Ignorieren - Standardwerte verwenden */ }
+        }
+
+        private async Task SpeichereSplitterEinstellungenAsync()
+        {
+            try
+            {
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "RechnungenView.RechnungenHoehe", rechnungenRow.Height.Value.ToString());
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "RechnungenView.PositionenHoehe", positionenRow.Height.Value.ToString());
+            }
+            catch { /* Ignorieren */ }
         }
 
         private async Task LadeRechnungenAsync()
@@ -44,113 +74,129 @@ namespace NovviaERP.WPF.Views
             try
             {
                 txtStatus.Text = "Lade Rechnungen...";
-                filterBar.SetLoading(true);
 
-                // Status aus Filter lesen
-                int? status = null;
-                if (_cmbStatus?.SelectedItem != null)
+                var suche = txtSuche.Text.Trim();
+
+                // Status in int? umwandeln für die API
+                int? statusInt = null;
+                if (!string.IsNullOrEmpty(_selectedStatus))
                 {
-                    var selected = _cmbStatus.SelectedItem;
-                    var valueProp = selected.GetType().GetProperty("Value");
-                    if (valueProp != null)
-                        status = valueProp.GetValue(selected) as int?;
+                    statusInt = _selectedStatus switch
+                    {
+                        "Offen" => 0,
+                        "Teilbezahlt" => 1,
+                        "Bezahlt" => 2,
+                        "Ueberfaellig" => 3,
+                        "Storniert" => 4,
+                        _ => null
+                    };
                 }
 
-                // JTL-Zeitraum in Datum umwandeln
-                var zeitraum = filterBar.Zeitraum;
-                DateTime? vonDatum = null;
-                DateTime? bisDatum = null;
-
-                if (!string.IsNullOrEmpty(zeitraum) && zeitraum != "Alle")
-                {
-                    var (von, bis) = BaseDatabaseService.JtlZeitraumZuDatum(zeitraum);
-                    vonDatum = von;
-                    bisDatum = bis;
-                }
-
-                var suche = filterBar.Suchbegriff;
-
-                _rechnungen = (await _core.GetAllRechnungenAsync(
+                var rechnungen = await _core.GetAllRechnungenAsync(
                     suche: string.IsNullOrEmpty(suche) ? null : suche,
-                    status: status,
-                    vonDatum: vonDatum,
-                    bisDatum: bisDatum
-                )).ToList();
+                    status: statusInt,
+                    limit: 100000);
 
-                dgRechnungen.ItemsSource = _rechnungen;
+                _alleRechnungen = rechnungen.ToList();
+                dgRechnungen.ItemsSource = _alleRechnungen;
+                txtAnzahl.Text = $"({_alleRechnungen.Count} Rechnungen)";
+                txtStatus.Text = $"{_alleRechnungen.Count} Rechnungen geladen";
 
-                // Summen berechnen
-                var anzahl = _rechnungen.Count;
-                var summeNetto = _rechnungen.Where(r => !r.NStorno).Sum(r => r.FNetto);
-                var summeBrutto = _rechnungen.Where(r => !r.NStorno).Sum(r => r.FBrutto);
-                var summeOffen = _rechnungen.Where(r => !r.NStorno).Sum(r => r.Offen);
-
-                txtSummeAnzahl.Text = $"{anzahl} Rechnungen";
-                txtSummeNetto.Text = $"{summeNetto:N2}";
-                txtSummeBrutto.Text = $"{summeBrutto:N2}";
-                txtSummeOffen.Text = $"{summeOffen:N2}";
-
-                filterBar.Anzahl = anzahl;
-                txtAnzahl.Text = $"({anzahl} Rechnungen, {summeOffen:N2} EUR offen)";
-                txtStatus.Text = $"{anzahl} Rechnungen geladen";
+                UpdateSummen();
             }
             catch (Exception ex)
             {
                 txtStatus.Text = $"Fehler: {ex.Message}";
                 MessageBox.Show($"Fehler beim Laden:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            finally
+        }
+
+        private void DgRechnungen_DateFilterChanged(object? sender, EventArgs e)
+        {
+            UpdateSummen();
+        }
+
+        private void UpdateSummen()
+        {
+            var gefiltert = dgRechnungen.FilteredItemsSource?.Cast<CoreService.RechnungUebersicht>().ToList()
+                ?? new List<CoreService.RechnungUebersicht>();
+
+            var summeNetto = gefiltert.Where(r => !r.NStorno).Sum(r => r.FNetto);
+            var summeBrutto = gefiltert.Where(r => !r.NStorno).Sum(r => r.FBrutto);
+            var summeOffen = gefiltert.Where(r => !r.NStorno).Sum(r => r.Offen);
+
+            txtSummeAnzahl.Text = $"{gefiltert.Count} Rechnungen";
+            txtSummeNetto.Text = $"{summeNetto:N2}";
+            txtSummeBrutto.Text = $"{summeBrutto:N2} EUR";
+            txtSummeOffen.Text = $"{summeOffen:N2} EUR";
+        }
+
+        private async void Suchen_Click(object sender, RoutedEventArgs e) => await LadeRechnungenAsync();
+
+        private async void TxtSuche_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter) await LadeRechnungenAsync();
+        }
+
+        private async void DG_SelectionChanged(object? sender, object? e)
+        {
+            var selected = dgRechnungen.Grid.SelectedItem as CoreService.RechnungUebersicht;
+            var hasSelection = selected != null;
+
+            btnOeffnen.IsEnabled = hasSelection;
+            btnAuftrag.IsEnabled = hasSelection && selected?.KAuftrag != null;
+            btnKunde.IsEnabled = hasSelection;
+            btnZahlung.IsEnabled = hasSelection && !selected!.NStorno && selected.Offen > 0;
+            btnMahnung.IsEnabled = hasSelection && !selected!.NStorno && selected.Offen > 0;
+            btnDrucken.IsEnabled = hasSelection;
+            btnStorno.IsEnabled = hasSelection && !selected!.NStorno;
+
+            // Positionen laden
+            if (selected != null)
             {
-                filterBar.SetLoading(false);
+                await LadePositionenAsync(selected.KRechnung);
+            }
+            else
+            {
+                dgPositionen.ItemsSource = null;
             }
         }
 
-        #region FilterBar Events
-
-        private async void FilterBar_SucheGestartet(object? sender, EventArgs e)
+        private async Task LadePositionenAsync(int kRechnung)
         {
-            await LadeRechnungenAsync();
+            try
+            {
+                var rechnung = await _core.GetRechnungMitPositionenAsync(kRechnung);
+                dgPositionen.ItemsSource = rechnung?.Positionen;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der Positionen: {ex.Message}");
+                dgPositionen.ItemsSource = null;
+            }
         }
 
-        #endregion
-
-        #region DataGrid Events
-
-        private void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void DG_DoubleClick(object? sender, object? e)
         {
-            var selected = dgRechnungen.SelectedItem is CoreService.RechnungUebersicht r;
-            btnOeffnen.IsEnabled = selected;
-            btnAuftrag.IsEnabled = selected && (dgRechnungen.SelectedItem as CoreService.RechnungUebersicht)?.KAuftrag != null;
-            btnZahlung.IsEnabled = selected && !(dgRechnungen.SelectedItem as CoreService.RechnungUebersicht)?.NStorno == true
-                                            && (dgRechnungen.SelectedItem as CoreService.RechnungUebersicht)?.Offen > 0;
-            btnStorno.IsEnabled = selected && !(dgRechnungen.SelectedItem as CoreService.RechnungUebersicht)?.NStorno == true;
-        }
-
-        private void DG_DoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            if (dgRechnungen.SelectedItem is CoreService.RechnungUebersicht rechnung)
+            if (e is CoreService.RechnungUebersicht rechnung)
                 NavigateToRechnung(rechnung.KRechnung);
         }
 
-        #endregion
-
-        #region Button Click Events
-
         private void Oeffnen_Click(object sender, RoutedEventArgs e)
         {
-            if (dgRechnungen.SelectedItem is CoreService.RechnungUebersicht rechnung)
+            if (dgRechnungen.Grid.SelectedItem is CoreService.RechnungUebersicht rechnung)
                 NavigateToRechnung(rechnung.KRechnung);
         }
 
         private void Auftrag_Click(object sender, RoutedEventArgs e)
         {
-            if (dgRechnungen.SelectedItem is CoreService.RechnungUebersicht rechnung && rechnung.KAuftrag.HasValue)
+            if (dgRechnungen.Grid.SelectedItem is CoreService.RechnungUebersicht rechnung && rechnung.KAuftrag.HasValue)
                 NavigateToAuftrag(rechnung.KAuftrag.Value);
         }
 
         private async void Zahlung_Click(object sender, RoutedEventArgs e)
         {
-            if (dgRechnungen.SelectedItem is not CoreService.RechnungUebersicht rechnung) return;
+            if (dgRechnungen.Grid.SelectedItem is not CoreService.RechnungUebersicht rechnung) return;
             if (rechnung.NStorno || rechnung.Offen <= 0) return;
 
             var input = Microsoft.VisualBasic.Interaction.InputBox(
@@ -180,7 +226,7 @@ namespace NovviaERP.WPF.Views
 
         private async void Storno_Click(object sender, RoutedEventArgs e)
         {
-            if (dgRechnungen.SelectedItem is not CoreService.RechnungUebersicht rechnung) return;
+            if (dgRechnungen.Grid.SelectedItem is not CoreService.RechnungUebersicht rechnung) return;
             if (rechnung.NStorno) return;
 
             var result = MessageBox.Show(
@@ -202,10 +248,6 @@ namespace NovviaERP.WPF.Views
                 MessageBox.Show($"Fehler:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
-        #endregion
-
-        #region Navigation
 
         private void NavigateToRechnung(int rechnungId)
         {
@@ -237,7 +279,5 @@ namespace NovviaERP.WPF.Views
                     "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
-        #endregion
     }
 }

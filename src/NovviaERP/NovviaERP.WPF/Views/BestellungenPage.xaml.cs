@@ -6,7 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
-using NovviaERP.WPF.Controls.Base;
+using NovviaERP.WPF.Controls;
 
 namespace NovviaERP.WPF.Views
 {
@@ -21,7 +21,7 @@ namespace NovviaERP.WPF.Views
             _coreService = App.Services.GetRequiredService<CoreService>();
             Loaded += async (s, e) =>
             {
-                await GridStyleHelper.InitializeGridAsync(dgBestellungen, "BestellungenPage", _coreService, App.BenutzerId);
+                // NovviaGrid initialisiert sich selbst mit GridStyleHelper
                 await LadeBestellungenAsync();
             };
         }
@@ -36,23 +36,22 @@ namespace NovviaERP.WPF.Views
                 if (cmbStatus.SelectedItem is ComboBoxItem item && item.Tag != null)
                     status = item.Tag.ToString();
 
-                DateTime? von = dpVon.SelectedDate;
-                DateTime? bis = dpBis.SelectedDate?.AddDays(1); // End of day
+                // Datum-Filterung erfolgt jetzt durch NovviaGrid (MonthNavigator)
+                // Hier laden wir alle Daten und das Grid filtert clientseitig
 
                 bool nurOffene = chkNurOffene.IsChecked == true;
 
                 _bestellungen = (await _coreService.GetBestellungenAsync(
                     suche: string.IsNullOrWhiteSpace(txtSuche.Text) ? null : txtSuche.Text,
                     status: status,
-                    von: von,
-                    bis: bis,
+                    von: null, // Grid filtert
+                    bis: null, // Grid filtert
                     nurOffene: nurOffene
                 )).ToList();
 
                 dgBestellungen.ItemsSource = _bestellungen;
-                txtAnzahl.Text = $"({_bestellungen.Count} Auftraege)";
 
-                // Summen berechnen
+                // Anzahl wird vom NovviaGrid angezeigt, aber Summe in Statusleiste
                 var summe = _bestellungen.Sum(b => b.GesamtBrutto);
                 txtStatus.Text = $"{_bestellungen.Count} Auftraege geladen - Summe: {summe:N2} EUR";
             }
@@ -97,13 +96,13 @@ namespace NovviaERP.WPF.Views
                 NavigationService?.Navigate(new BestellungDetailPage(best.KBestellung));
         }
 
-        private void DG_DoubleClick(object sender, MouseButtonEventArgs e)
+        private void DG_DoubleClick(object? sender, object? e)
         {
-            if (dgBestellungen.SelectedItem is CoreService.BestellungUebersicht best)
+            if (e is CoreService.BestellungUebersicht best)
                 NavigationService?.Navigate(new BestellungDetailPage(best.KBestellung));
         }
 
-        private void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void DG_SelectionChanged(object? sender, object? e)
         {
             bool hasSelection = dgBestellungen.SelectedItem != null;
             btnDetails.IsEnabled = hasSelection;

@@ -193,6 +193,7 @@ namespace NovviaERP.WPF
             services.AddTransient<BestellungenView>();
             services.AddTransient<BestellungDetailView>();
             services.AddTransient<RechnungenView>();
+            services.AddTransient<RechnungskorrekturenView>();
             services.AddTransient<LieferantenView>();
             services.AddTransient<LagerView>();
             services.AddTransient<LagerChargenView>();

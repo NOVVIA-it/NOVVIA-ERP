@@ -9,6 +9,7 @@ namespace NovviaERP.WPF.Views
     {
         private readonly CoreService _core;
         private bool _isLoading = true;
+        private string _currentSection = ""; // Aktueller Abschnitt (Auftraege, Rechnungen, etc.)
 
         public MainWindow()
         {
@@ -31,6 +32,56 @@ namespace NovviaERP.WPF.Views
             {
                 await SpeichereSidebarBreiteAsync();
             };
+        }
+
+        private void AlleStatusMenusEinklappen()
+        {
+            // Verkauf
+            pnlAuftraegeStatus.Visibility = Visibility.Collapsed;
+            pnlRechnungenStatus.Visibility = Visibility.Collapsed;
+            pnlRechnungskorrekturenStatus.Visibility = Visibility.Collapsed;
+            btnAuftraege.Content = "▶ Auftraege";
+            btnRechnungen.Content = "▶ Rechnungen";
+            btnRechnungskorrekturen.Content = "▶ Rechnungskorrekturen";
+
+            // Einkauf
+            pnlLieferantenBestellungenStatus.Visibility = Visibility.Collapsed;
+            pnlEingangsrechnungenStatus.Visibility = Visibility.Collapsed;
+            btnLieferantenBestellungen.Content = "▶ Bestellungen";
+            btnEingangsrechnungen.Content = "▶ Eingangsrechnungen";
+        }
+
+        private void StatusMenuAufklappen(string section)
+        {
+            AlleStatusMenusEinklappen();
+            _currentSection = section;
+
+            switch (section)
+            {
+                // Verkauf
+                case "Auftraege":
+                    pnlAuftraegeStatus.Visibility = Visibility.Visible;
+                    btnAuftraege.Content = "▼ Auftraege";
+                    break;
+                case "Rechnungen":
+                    pnlRechnungenStatus.Visibility = Visibility.Visible;
+                    btnRechnungen.Content = "▼ Rechnungen";
+                    break;
+                case "Rechnungskorrekturen":
+                    pnlRechnungskorrekturenStatus.Visibility = Visibility.Visible;
+                    btnRechnungskorrekturen.Content = "▼ Rechnungskorrekturen";
+                    break;
+
+                // Einkauf
+                case "LieferantenBestellungen":
+                    pnlLieferantenBestellungenStatus.Visibility = Visibility.Visible;
+                    btnLieferantenBestellungen.Content = "▼ Bestellungen";
+                    break;
+                case "Eingangsrechnungen":
+                    pnlEingangsrechnungenStatus.Visibility = Visibility.Visible;
+                    btnEingangsrechnungen.Content = "▼ Eingangsrechnungen";
+                    break;
+            }
         }
 
         private async Task LadeSidebarBreiteAsync()
@@ -68,33 +119,210 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private void NavDashboard_Click(object sender, RoutedEventArgs e) => contentMain.Content = new DashboardPage();
-        private void NavKunden_Click(object sender, RoutedEventArgs e) => ShowView<KundenView>();
-        private void NavArtikel_Click(object sender, RoutedEventArgs e) => ShowView<ArtikelView>();
-        private void NavBestellungen_Click(object sender, RoutedEventArgs e) => ShowView<BestellungenView>();
-        private void NavRechnungen_Click(object sender, RoutedEventArgs e) => ShowView<RechnungenView>();
-        private void NavLieferanten_Click(object sender, RoutedEventArgs e) => ShowView<LieferantenView>();
-        private void NavLieferantenBestellungen_Click(object sender, RoutedEventArgs e) => contentMain.Content = new LieferantenBestellungPage();
-        private void NavEingangsrechnungen_Click(object sender, RoutedEventArgs e) => contentMain.Content = new EingangsrechnungenPage();
-        private void NavEdifact_Click(object sender, RoutedEventArgs e) => ShowView<EdifactPage>();
-        private void NavWorkflow_Click(object sender, RoutedEventArgs e) => ShowView<WorkflowPage>();
+        private void NavDashboard_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new DashboardPage();
+        }
+
+        private void NavKunden_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<KundenView>();
+        }
+
+        private void NavArtikel_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<ArtikelView>();
+        }
+
+        // Aufträge - Hauptbutton klappt Menü auf und zeigt "Alle"
+        private void NavBestellungen_Click(object sender, RoutedEventArgs e)
+        {
+            StatusMenuAufklappen("Auftraege");
+            var view = App.Services.GetRequiredService<BestellungenView>();
+            view.SetStatusFilter(""); // Alle
+            contentMain.Content = view;
+        }
+
+        // Aufträge - Status-Untermenü
+        private void NavAuftragStatus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string status)
+            {
+                var view = App.Services.GetRequiredService<BestellungenView>();
+                view.SetStatusFilter(status);
+                contentMain.Content = view;
+            }
+        }
+
+        // Rechnungen - Hauptbutton klappt Menü auf und zeigt "Alle"
+        private void NavRechnungen_Click(object sender, RoutedEventArgs e)
+        {
+            StatusMenuAufklappen("Rechnungen");
+            var view = App.Services.GetRequiredService<RechnungenView>();
+            view.SetStatusFilter(""); // Alle
+            contentMain.Content = view;
+        }
+
+        // Rechnungen - Status-Untermenü
+        private void NavRechnungStatus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string status)
+            {
+                var view = App.Services.GetRequiredService<RechnungenView>();
+                view.SetStatusFilter(status);
+                contentMain.Content = view;
+            }
+        }
+
+        // Rechnungskorrekturen - Hauptbutton klappt Menü auf und zeigt "Alle"
+        private void NavRechnungskorrekturen_Click(object sender, RoutedEventArgs e)
+        {
+            StatusMenuAufklappen("Rechnungskorrekturen");
+            var view = App.Services.GetRequiredService<RechnungskorrekturenView>();
+            view.SetStatusFilter("");
+            contentMain.Content = view;
+        }
+
+        // Rechnungskorrekturen - Status-Untermenü
+        private void NavRechnungskorrekturStatus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string status)
+            {
+                var view = App.Services.GetRequiredService<RechnungskorrekturenView>();
+                view.SetStatusFilter(status);
+                contentMain.Content = view;
+            }
+        }
+
+        private void NavLieferanten_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<LieferantenView>();
+        }
+
+        // Lieferantenbestellungen - Hauptbutton klappt Menü auf und zeigt "Alle"
+        private void NavLieferantenBestellungen_Click(object sender, RoutedEventArgs e)
+        {
+            StatusMenuAufklappen("LieferantenBestellungen");
+            var view = new LieferantenBestellungPage();
+            view.SetStatusFilter("");
+            contentMain.Content = view;
+        }
+
+        // Lieferantenbestellungen - Status-Untermenü
+        private void NavLieferantenBestellungStatus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string status)
+            {
+                var view = new LieferantenBestellungPage();
+                view.SetStatusFilter(status);
+                contentMain.Content = view;
+            }
+        }
+
+        // Eingangsrechnungen - Hauptbutton klappt Menü auf und zeigt "Alle"
+        private void NavEingangsrechnungen_Click(object sender, RoutedEventArgs e)
+        {
+            StatusMenuAufklappen("Eingangsrechnungen");
+            var view = new EingangsrechnungenPage();
+            view.SetStatusFilter("");
+            contentMain.Content = view;
+        }
+
+        // Eingangsrechnungen - Status-Untermenü
+        private void NavEingangsrechnungStatus_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string status)
+            {
+                var view = new EingangsrechnungenPage();
+                view.SetStatusFilter(status);
+                contentMain.Content = view;
+            }
+        }
+
+        private void NavEdifact_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<EdifactPage>();
+        }
+
+        private void NavWorkflow_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<WorkflowPage>();
+        }
+
         private void NavFormularDesigner_Click(object sender, RoutedEventArgs e)
         {
+            AlleStatusMenusEinklappen();
             var frame = new System.Windows.Controls.Frame();
             var db = new NovviaERP.Core.Data.JtlDbContext(App.ConnectionString!);
             frame.Navigate(new FormularDesignerPage(db));
             contentMain.Content = frame;
         }
-        private void NavLager_Click(object sender, RoutedEventArgs e) => ShowView<LagerView>();
-        private void NavChargen_Click(object sender, RoutedEventArgs e) => ShowView<LagerChargenView>();
-        private void NavVersand_Click(object sender, RoutedEventArgs e) => contentMain.Content = new VersandPage();
-        private void NavZahlungsabgleich_Click(object sender, RoutedEventArgs e) => contentMain.Content = new ZahlungsabgleichView();
-        private void NavImport_Click(object sender, RoutedEventArgs e) => contentMain.Content = new ImportView();
-        private void NavEigeneFelder_Click(object sender, RoutedEventArgs e) => contentMain.Content = new EigeneFelderView();
-        private void NavTextmeldungen_Click(object sender, RoutedEventArgs e) => contentMain.Content = new TextmeldungenPage();
-        private void NavAmeise_Click(object sender, RoutedEventArgs e) => ShowView<AmeiseView>();
-        private void NavEinstellungen_Click(object sender, RoutedEventArgs e) => ShowView<EinstellungenView>();
-        private void NavTest_Click(object sender, RoutedEventArgs e) => contentMain.Content = new TestView();
+
+        private void NavLager_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<LagerView>();
+        }
+
+        private void NavChargen_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<LagerChargenView>();
+        }
+
+        private void NavVersand_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new VersandPage();
+        }
+
+        private void NavZahlungsabgleich_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new ZahlungsabgleichView();
+        }
+
+        private void NavImport_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new ImportView();
+        }
+
+        private void NavEigeneFelder_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new EigeneFelderView();
+        }
+
+        private void NavTextmeldungen_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new TextmeldungenPage();
+        }
+
+        private void NavAmeise_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<AmeiseView>();
+        }
+
+        private void NavEinstellungen_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            ShowView<EinstellungenView>();
+        }
+
+        private void NavTest_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new TestView();
+        }
 
         public void ShowContent(UserControl view)
         {

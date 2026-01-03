@@ -14,13 +14,37 @@ namespace NovviaERP.WPF.Views
         private readonly CoreService _core;
         private List<CoreService.EingangsrechnungItem> _liste = new();
         private DateTime _selectedMonth = DateTime.Today;
+        private string _statusFilterFromMenu = "";
 
         public EingangsrechnungenPage()
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
             UpdateMonatAnzeige();
-            Loaded += async (s, e) => await LadeListeAsync();
+            Loaded += async (s, e) =>
+            {
+                // Wenn Status vom Menü vorgegeben, ComboBox setzen
+                if (!string.IsNullOrEmpty(_statusFilterFromMenu))
+                {
+                    foreach (ComboBoxItem item in cmbStatus.Items)
+                    {
+                        if (item.Tag?.ToString() == _statusFilterFromMenu)
+                        {
+                            cmbStatus.SelectedItem = item;
+                            break;
+                        }
+                    }
+                }
+                await LadeListeAsync();
+            };
+        }
+
+        /// <summary>
+        /// Setzt den Status-Filter von außen (z.B. vom MainWindow-Menü)
+        /// </summary>
+        public void SetStatusFilter(string status)
+        {
+            _statusFilterFromMenu = status;
         }
 
         private void UpdateMonatAnzeige()

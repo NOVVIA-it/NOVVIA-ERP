@@ -30,6 +30,32 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Status-Untermenü Button Style -->
+        <Style x:Key="StatusSubButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#AAA"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="24,4,12,4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#3E3E42"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -76,13 +102,203 @@
                     <Button Style="{StaticResource NavButton}" Content="Artikel" Click="NavArtikel_Click"/>
 
                     <TextBlock Text="VERKAUF" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
-                    <Button Style="{StaticResource NavButton}" Content="Auftraege" Click="NavBestellungen_Click"/>
-                    <Button Style="{StaticResource NavButton}" Content="Rechnungen" Click="NavRechnungen_Click"/>
+
+                    <!-- Aufträge mit aufklappbarem Status-Menü -->
+                    <Button Style="{StaticResource NavButton}" Content="▶ Auftraege" x:Name="btnAuftraege" Click="NavBestellungen_Click"/>
+                    <StackPanel x:Name="pnlAuftraegeStatus" Visibility="Collapsed">
+                        <Button Style="{StaticResource StatusSubButton}" Tag="" Click="NavAuftragStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#6c757d" Margin="0,0,6,0"/>
+                                <TextBlock Text="Alle"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Offen" Click="NavAuftragStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#ffc107" Margin="0,0,6,0"/>
+                                <TextBlock Text="Offen"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="In Bearbeitung" Click="NavAuftragStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#17a2b8" Margin="0,0,6,0"/>
+                                <TextBlock Text="In Bearbeitung"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Bezahlt" Click="NavAuftragStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#28a745" Margin="0,0,6,0"/>
+                                <TextBlock Text="Bezahlt"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Versendet" Click="NavAuftragStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#007bff" Margin="0,0,6,0"/>
+                                <TextBlock Text="Versendet"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Storniert" Click="NavAuftragStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#dc3545" Margin="0,0,6,0"/>
+                                <TextBlock Text="Storniert"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Rechnungen mit aufklappbarem Status-Menü -->
+                    <Button Style="{StaticResource NavButton}" Content="▶ Rechnungen" x:Name="btnRechnungen" Click="NavRechnungen_Click"/>
+                    <StackPanel x:Name="pnlRechnungenStatus" Visibility="Collapsed">
+                        <Button Style="{StaticResource StatusSubButton}" Tag="" Click="NavRechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#6c757d" Margin="0,0,6,0"/>
+                                <TextBlock Text="Alle"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Offen" Click="NavRechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#ffc107" Margin="0,0,6,0"/>
+                                <TextBlock Text="Offen"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Teilbezahlt" Click="NavRechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#17a2b8" Margin="0,0,6,0"/>
+                                <TextBlock Text="Teilbezahlt"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Bezahlt" Click="NavRechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#28a745" Margin="0,0,6,0"/>
+                                <TextBlock Text="Bezahlt"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Ueberfaellig" Click="NavRechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#dc3545" Margin="0,0,6,0"/>
+                                <TextBlock Text="Überfällig"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Storniert" Click="NavRechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#6c757d" Margin="0,0,6,0"/>
+                                <TextBlock Text="Storniert"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Rechnungskorrekturen mit aufklappbarem Status-Menü -->
+                    <Button Style="{StaticResource NavButton}" Content="▶ Rechnungskorrekturen" x:Name="btnRechnungskorrekturen" Click="NavRechnungskorrekturen_Click"/>
+                    <StackPanel x:Name="pnlRechnungskorrekturenStatus" Visibility="Collapsed">
+                        <Button Style="{StaticResource StatusSubButton}" Tag="" Click="NavRechnungskorrekturStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#6c757d" Margin="0,0,6,0"/>
+                                <TextBlock Text="Alle"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Offen" Click="NavRechnungskorrekturStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#ffc107" Margin="0,0,6,0"/>
+                                <TextBlock Text="Offen"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Ausgeglichen" Click="NavRechnungskorrekturStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#28a745" Margin="0,0,6,0"/>
+                                <TextBlock Text="Ausgeglichen"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Storniert" Click="NavRechnungskorrekturStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#dc3545" Margin="0,0,6,0"/>
+                                <TextBlock Text="Storniert"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
                     <TextBlock Text="EINKAUF" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Lieferanten" Click="NavLieferanten_Click"/>
-                    <Button Style="{StaticResource NavButton}" Content="Bestellungen (Einkauf)" Click="NavLieferantenBestellungen_Click"/>
-                    <Button Style="{StaticResource NavButton}" Content="Eingangsrechnungen" Click="NavEingangsrechnungen_Click"/>
+
+                    <!-- Lieferantenbestellungen mit aufklappbarem Status-Menü -->
+                    <Button Style="{StaticResource NavButton}" Content="▶ Bestellungen" x:Name="btnLieferantenBestellungen" Click="NavLieferantenBestellungen_Click"/>
+                    <StackPanel x:Name="pnlLieferantenBestellungenStatus" Visibility="Collapsed">
+                        <Button Style="{StaticResource StatusSubButton}" Tag="" Click="NavLieferantenBestellungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#6c757d" Margin="0,0,6,0"/>
+                                <TextBlock Text="Alle"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="5" Click="NavLieferantenBestellungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#9e9e9e" Margin="0,0,6,0"/>
+                                <TextBlock Text="Entwurf"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="100" Click="NavLieferantenBestellungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#ffc107" Margin="0,0,6,0"/>
+                                <TextBlock Text="Offen"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="200" Click="NavLieferantenBestellungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#2196f3" Margin="0,0,6,0"/>
+                                <TextBlock Text="Bestellt"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="300" Click="NavLieferantenBestellungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#9c27b0" Margin="0,0,6,0"/>
+                                <TextBlock Text="Teilgeliefert"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="400" Click="NavLieferantenBestellungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#4caf50" Margin="0,0,6,0"/>
+                                <TextBlock Text="Geliefert"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="500" Click="NavLieferantenBestellungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#28a745" Margin="0,0,6,0"/>
+                                <TextBlock Text="Abgeschlossen"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="600" Click="NavLieferantenBestellungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#dc3545" Margin="0,0,6,0"/>
+                                <TextBlock Text="Storniert"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Eingangsrechnungen mit aufklappbarem Status-Menü -->
+                    <Button Style="{StaticResource NavButton}" Content="▶ Eingangsrechnungen" x:Name="btnEingangsrechnungen" Click="NavEingangsrechnungen_Click"/>
+                    <StackPanel x:Name="pnlEingangsrechnungenStatus" Visibility="Collapsed">
+                        <Button Style="{StaticResource StatusSubButton}" Tag="" Click="NavEingangsrechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#6c757d" Margin="0,0,6,0"/>
+                                <TextBlock Text="Alle"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="0" Click="NavEingangsrechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#ffc107" Margin="0,0,6,0"/>
+                                <TextBlock Text="Offen"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="1" Click="NavEingangsrechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#17a2b8" Margin="0,0,6,0"/>
+                                <TextBlock Text="Geprueft"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="2" Click="NavEingangsrechnungStatus_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#28a745" Margin="0,0,6,0"/>
+                                <TextBlock Text="Bezahlt"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
                     <Button Style="{StaticResource NavButton}" Content="EDIFACT (EDI)" Click="NavEdifact_Click"/>
 
                     <TextBlock Text="LOGISTIK" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>

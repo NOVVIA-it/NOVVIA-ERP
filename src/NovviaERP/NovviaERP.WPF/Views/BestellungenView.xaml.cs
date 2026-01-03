@@ -14,6 +14,7 @@ namespace NovviaERP.WPF.Views
         private List<CoreService.BestellungUebersicht> _alleBestellungen = new();
         private string _selectedStatus = "";
         private bool _isInitializing = true;
+        private bool _statusFromMainWindow = false; // Status wurde vom MainWindow gesetzt
 
         public BestellungenView()
         {
@@ -34,33 +35,30 @@ namespace NovviaERP.WPF.Views
             };
         }
 
+        /// <summary>
+        /// Setzt den Status-Filter von außen (z.B. vom MainWindow-Menü)
+        /// </summary>
+        public void SetStatusFilter(string status)
+        {
+            _selectedStatus = status;
+            _statusFromMainWindow = true;
+        }
+
         private async Task LadeEinstellungenAsync()
         {
             try
             {
-                // Gespeicherten Status laden
-                var savedStatus = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.Status");
-                if (!string.IsNullOrEmpty(savedStatus))
+                // Gespeicherten Status laden (nur wenn nicht vom MainWindow vorgegeben)
+                if (!_statusFromMainWindow)
                 {
-                    _selectedStatus = savedStatus;
-                    // ListBox-Auswahl setzen
-                    foreach (ListBoxItem item in lstStatus.Items)
+                    var savedStatus = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.Status");
+                    if (!string.IsNullOrEmpty(savedStatus))
                     {
-                        if (item.Tag?.ToString() == savedStatus)
-                        {
-                            lstStatus.SelectedItem = item;
-                            break;
-                        }
+                        _selectedStatus = savedStatus;
                     }
                 }
 
                 // Splitter-Positionen laden
-                var sidebarBreite = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.SidebarBreite");
-                if (!string.IsNullOrEmpty(sidebarBreite) && double.TryParse(sidebarBreite, out double sbWidth) && sbWidth >= 120)
-                {
-                    sidebarColumn.Width = new GridLength(sbWidth);
-                }
-
                 var auftraegeHoehe = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.AuftraegeHoehe");
                 if (!string.IsNullOrEmpty(auftraegeHoehe) && double.TryParse(auftraegeHoehe, out double ahHeight))
                 {
@@ -89,9 +87,6 @@ namespace NovviaERP.WPF.Views
         {
             try
             {
-                // Sidebar-Breite speichern
-                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.SidebarBreite", sidebarColumn.Width.Value.ToString());
-
                 // Aufträge/Positionen Höhen speichern (als Star-Werte)
                 await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.AuftraegeHoehe", auftraegeRow.Height.Value.ToString());
                 await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.PositionenHoehe", positionenRow.Height.Value.ToString());
@@ -121,9 +116,6 @@ namespace NovviaERP.WPF.Views
                 txtAnzahl.Text = $"({_alleBestellungen.Count} Auftraege)";
                 txtStatus.Text = $"{_alleBestellungen.Count} Bestellungen geladen";
 
-                // Status-Counts aktualisieren
-                UpdateStatusCounts();
-
                 // Summen basierend auf gefilterten Daten aktualisieren
                 UpdateSummen();
             }
@@ -151,38 +143,6 @@ namespace NovviaERP.WPF.Views
 
             txtSummeAnzahl.Text = $"{gefiltert.Count} Auftraege";
             txtSummeBrutto.Text = $"{summeBrutto:N2} EUR";
-        }
-
-        private void UpdateStatusCounts()
-        {
-            // Counts fuer jeden Status berechnen
-            var countAlle = _alleBestellungen.Count;
-            var countOffen = _alleBestellungen.Count(b => b.CStatus == "Offen");
-            var countInBearbeitung = _alleBestellungen.Count(b => b.CStatus == "In Bearbeitung");
-            var countBezahlt = _alleBestellungen.Count(b => b.CStatus == "Bezahlt" || b.CStatus == "Versandbereit");
-            var countVersendet = _alleBestellungen.Count(b => b.CStatus == "Versendet" || b.CStatus == "Abgeschlossen");
-            var countStorniert = _alleBestellungen.Count(b => b.CStatus == "Storniert");
-
-            txtCountAlle.Text = $"({countAlle})";
-            txtCountOffen.Text = $"({countOffen})";
-            txtCountInBearbeitung.Text = $"({countInBearbeitung})";
-            txtCountBezahlt.Text = $"({countBezahlt})";
-            txtCountVersendet.Text = $"({countVersendet})";
-            txtCountStorniert.Text = $"({countStorniert})";
-        }
-
-        private async void LstStatus_Changed(object sender, SelectionChangedEventArgs e)
-        {
-            if (_isInitializing) return;
-
-            var selected = lstStatus.SelectedItem as ListBoxItem;
-            _selectedStatus = selected?.Tag?.ToString() ?? "";
-
-            // Einstellung speichern
-            await SpeichereEinstellungenAsync();
-
-            // Automatisch neu laden
-            await LadeBestellungenAsync();
         }
 
         private async void Suchen_Click(object sender, RoutedEventArgs e) => await LadeBestellungenAsync();

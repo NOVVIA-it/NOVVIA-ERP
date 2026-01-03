@@ -510,6 +510,11 @@ namespace NovviaERP.Core.Services
             // Texte
             public string? CAnmerkung { get; set; }
 
+            // Zahlungs- und Versandart
+            public string? CZahlungsart { get; set; }
+            public string? CVersandart { get; set; }
+            public decimal OffenerBetrag { get; set; }
+
             public bool Storniert => NStorno == 1;
             public bool Versendet => DVersandt.HasValue;
             public bool Bezahlt => DBezahlt.HasValue;
@@ -1194,7 +1199,7 @@ namespace NovviaERP.Core.Services
                     a.dErstellt AS DErstellt,
                     CASE a.nAuftragStatus WHEN 0 THEN 'Neu' WHEN 1 THEN 'In Bearbeitung' WHEN 2 THEN 'Versandbereit' WHEN 3 THEN 'Versendet' WHEN 4 THEN 'Abgeschlossen' ELSE 'Offen' END AS CStatus,
                     ISNULL(ae.fWertBrutto, 0) AS GesamtBrutto,
-                    ISNULL(ae.fOffenerBetrag, 0) AS OffenerBetrag,
+                    ISNULL(ae.fOffenerWert, 0) AS OffenerBetrag,
                     ISNULL(z.cName, '') AS CZahlungsart,
                     ISNULL(v.cName, '') AS CVersandart
                 FROM Verkauf.tAuftrag a
@@ -2945,15 +2950,22 @@ namespace NovviaERP.Core.Services
                     -- Lieferadresse
                     li.cFirma AS LiFirma, li.cName AS LiName, li.cVorname AS LiVorname,
                     li.cStrasse AS LiStrasse, li.cPLZ AS LiPlz, li.cOrt AS LiOrt, li.cLand AS LiLand,
+                    -- Zahlungs- und Versandart
+                    ISNULL(z.cName, '') AS CZahlungsart,
+                    ISNULL(v.cName, '') AS CVersandart,
+                    ISNULL(ae.fOffenerWert, 0) AS OffenerBetrag,
                     ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtNetto,
                     ISNULL((SELECT SUM(bp.nAnzahl * bp.fVkNetto * (1 - ISNULL(bp.fRabatt,0)/100) * (1 + bp.fMwSt/100)) FROM tbestellpos bp WHERE bp.tBestellung_kBestellung = b.kBestellung), 0) AS GesamtBrutto
                 FROM tBestellung b
                 LEFT JOIN Verkauf.tAuftrag va ON va.kAuftrag = b.kBestellung
+                LEFT JOIN Verkauf.tAuftragEckdaten ae ON va.kAuftrag = ae.kAuftrag
                 LEFT JOIN tkunde k ON b.tKunde_kKunde = k.kKunde
                 OUTER APPLY (SELECT TOP 1 * FROM tAdresse WHERE kKunde = k.kKunde ORDER BY nStandard DESC, kAdresse) a
                 OUTER APPLY (SELECT TOP 1 * FROM Verkauf.tAuftragAdresse WHERE kAuftrag = b.kBestellung AND nTyp = 0) re
                 OUTER APPLY (SELECT TOP 1 * FROM Verkauf.tAuftragAdresse WHERE kAuftrag = b.kBestellung AND nTyp = 1) li
                 LEFT JOIN tShop s ON b.kShop = s.kShop
+                LEFT JOIN dbo.tZahlungsart z ON va.kZahlungsart = z.kZahlungsart
+                LEFT JOIN dbo.tVersandart v ON va.kVersandart = v.kVersandart
                 WHERE b.nStorno = 0";
 
             if (!string.IsNullOrEmpty(status))
@@ -7806,6 +7818,107 @@ namespace NovviaERP.Core.Services
             public string Status => NStorno ? "Storniert" : (DBezahlt.HasValue ? "Bezahlt" : (DFaellig < DateTime.Today ? "Überfällig" : "Offen"));
             public string StatusFarbe => NStorno ? "#dc3545" : (DBezahlt.HasValue ? "#28a745" : (DFaellig < DateTime.Today ? "#dc3545" : "#ffc107"));
             public string TypName => NTyp switch { 0 => "Rechnung", 1 => "Rechnung", 2 => "Gutschrift", _ => "Rechnung" };
+        }
+
+        #endregion
+
+        #region Rechnungskorrekturen / Gutschriften
+
+        /// <summary>
+        /// Rechnungskorrekturen/Gutschriften aus Verkauf.lvRechnungskorrekturverwaltung laden
+        /// </summary>
+        /// <param name="suche">Suchbegriff für Korrekturnummer, Rechnungsnummer, Kunde</param>
+        /// <param name="storno">null=alle, true=nur stornierte, false=nur nicht-stornierte</param>
+        /// <param name="vonDatum">Startdatum für Filterung</param>
+        /// <param name="bisDatum">Enddatum für Filterung</param>
+        /// <param name="limit">Maximale Anzahl der Ergebnisse</param>
+        public async Task<IEnumerable<RechnungskorrekturUebersicht>> GetRechnungskorrekturenAsync(
+            string? suche = null,
+            bool? storno = null,
+            DateTime? vonDatum = null,
+            DateTime? bisDatum = null,
+            int limit = 1000)
+        {
+            using var conn = new SqlConnection(_connectionString);
+
+            var sql = @"
+                SELECT TOP (@Limit)
+                    kGutschrift AS KGutschrift,
+                    kRechnung AS KRechnung,
+                    cRechnungskorrekturnummer AS CRechnungskorrekturnummer,
+                    cRechnungsnummer AS CRechnungsnummer,
+                    ISNULL(cKurztext, '') AS CKurztext,
+                    ISNULL(cText, '') AS CText,
+                    ISNULL(fPreisBrutto, 0) AS FPreisBrutto,
+                    ISNULL(fPreisNetto, 0) AS FPreisNetto,
+                    dErstellt AS DErstellt,
+                    ISNULL(cKundeNr, '') AS CKundeNr,
+                    ISNULL(cRechnungsadresseFirma, '') AS CRechnungsadresseFirma,
+                    ISNULL(cRechnungsadresseVorname, '') AS CRechnungsadresseVorname,
+                    ISNULL(cRechnungsadresseNachname, '') AS CRechnungsadresseNachname,
+                    ISNULL(cShopname, '') AS CShopname,
+                    ISNULL(cBenutzername, '') AS CBenutzername,
+                    ISNULL(cAnmerkung, '') AS CAnmerkung,
+                    ISNULL(nStorno, 0) AS NStorno
+                FROM Verkauf.lvRechnungskorrekturverwaltung
+                WHERE 1=1";
+
+            if (!string.IsNullOrEmpty(suche))
+            {
+                sql += @" AND (
+                    cRechnungskorrekturnummer LIKE @Suche
+                    OR cRechnungsnummer LIKE @Suche
+                    OR cKundeNr LIKE @Suche
+                    OR cRechnungsadresseFirma LIKE @Suche
+                    OR cRechnungsadresseNachname LIKE @Suche
+                )";
+            }
+
+            if (storno.HasValue)
+            {
+                sql += storno.Value ? " AND nStorno = 1" : " AND nStorno = 0";
+            }
+
+            if (vonDatum.HasValue)
+                sql += " AND dErstellt >= @VonDatum";
+            if (bisDatum.HasValue)
+                sql += " AND dErstellt <= @BisDatum";
+
+            sql += " ORDER BY dErstellt DESC";
+
+            return await conn.QueryAsync<RechnungskorrekturUebersicht>(sql, new
+            {
+                Limit = limit,
+                Suche = $"%{suche}%",
+                VonDatum = vonDatum,
+                BisDatum = bisDatum
+            });
+        }
+
+        /// <summary>
+        /// DTO für Rechnungskorrekturen / Gutschriften
+        /// </summary>
+        public class RechnungskorrekturUebersicht
+        {
+            public int KGutschrift { get; set; }
+            public int KRechnung { get; set; }
+            public string CRechnungskorrekturnummer { get; set; } = "";
+            public string CRechnungsnummer { get; set; } = "";
+            public string CKurztext { get; set; } = "";
+            public string CText { get; set; } = "";
+            public decimal FPreisBrutto { get; set; }
+            public decimal FPreisNetto { get; set; }
+            public DateTime DErstellt { get; set; }
+            public string CKundeNr { get; set; } = "";
+            public string CRechnungsadresseFirma { get; set; } = "";
+            public string CRechnungsadresseVorname { get; set; } = "";
+            public string CRechnungsadresseNachname { get; set; } = "";
+            public string KundeName => $"{CRechnungsadresseVorname} {CRechnungsadresseNachname}".Trim();
+            public string CShopname { get; set; } = "";
+            public string CBenutzername { get; set; } = "";
+            public string CAnmerkung { get; set; } = "";
+            public bool NStorno { get; set; }
+            public string Status => NStorno ? "Storniert" : "Offen";
         }
 
         #endregion

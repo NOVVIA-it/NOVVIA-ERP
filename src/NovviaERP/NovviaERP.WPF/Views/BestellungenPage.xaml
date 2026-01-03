@@ -1,6 +1,7 @@
 <Page x:Class="NovviaERP.WPF.Views.BestellungenPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:controls="clr-namespace:NovviaERP.WPF.Controls"
       Title="Auftraege" Background="#f5f5f5">
     <Grid>
         <Grid.RowDefinitions>
@@ -29,13 +30,11 @@
             </Grid>
         </Border>
 
-        <!-- Filter -->
+        <!-- Filter (ohne Datum - Datum ist jetzt im NovviaGrid oben rechts) -->
         <Border Grid.Row="1" Background="White" BorderBrush="#ddd" BorderThickness="0,0,0,1" Padding="20,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="300"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
@@ -63,75 +62,65 @@
                     </ComboBox>
                 </StackPanel>
 
-                <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="15,0,0,0">
-                    <TextBlock Text="Von:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                    <DatePicker x:Name="dpVon" Width="110" Height="32" SelectedDateChanged="Filter_Changed"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="10,0,0,0">
-                    <TextBlock Text="Bis:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                    <DatePicker x:Name="dpBis" Width="110" Height="32" SelectedDateChanged="Filter_Changed"/>
-                </StackPanel>
-
-                <CheckBox x:Name="chkNurOffene" Grid.Column="5" Content="Nur offene"
+                <CheckBox x:Name="chkNurOffene" Grid.Column="3" Content="Nur offene"
                           VerticalAlignment="Center" Margin="20,0,0,0"
                           Checked="Filter_Changed" Unchecked="Filter_Changed"/>
 
-                <Button Grid.Column="7" Content="Aktualisieren" Click="Aktualisieren_Click"
+                <Button Grid.Column="5" Content="Aktualisieren" Click="Aktualisieren_Click"
                         Padding="15,5" Background="#f0f0f0" BorderThickness="1" BorderBrush="#ccc"/>
             </Grid>
         </Border>
 
-        <!-- Bestellungsliste -->
-        <DataGrid x:Name="dgBestellungen" Grid.Row="2" Margin="20,15,20,0"
-                  AutoGenerateColumns="False" IsReadOnly="True"
-                  SelectionMode="Single" SelectionUnit="FullRow"
-                  HeadersVisibility="Column" BorderThickness="0"
-                  MouseDoubleClick="DG_DoubleClick" SelectionChanged="DG_SelectionChanged">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="Bestellnr." Binding="{Binding CBestellNr}" Width="100"/>
-                <DataGridTextColumn Header="Externe Nr." Binding="{Binding CInetBestellNr}" Width="110"/>
-                <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy HH:mm}" Width="120" SortMemberPath="DErstellt" CanUserSort="True"/>
-                <DataGridTextColumn Header="Kd-Nr." Binding="{Binding CKundenNr}" Width="80"/>
-                <DataGridTextColumn Header="Firma" Binding="{Binding KundeFirma}" Width="180"/>
-                <DataGridTextColumn Header="Name" Binding="{Binding KundeName}" Width="140"/>
-                <DataGridTextColumn Header="Netto" Binding="{Binding GesamtNetto, StringFormat=N2}" Width="90">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,10,0"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="Brutto" Binding="{Binding GesamtBrutto, StringFormat=N2}" Width="90">
-                    <DataGridTextColumn.ElementStyle>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="HorizontalAlignment" Value="Right"/>
-                            <Setter Property="Padding" Value="0,0,10,0"/>
-                            <Setter Property="FontWeight" Value="SemiBold"/>
-                        </Style>
-                    </DataGridTextColumn.ElementStyle>
-                </DataGridTextColumn>
-                <DataGridTextColumn Header="Status" Binding="{Binding CStatus}" Width="100"/>
-                <DataGridTextColumn Header="Shop" Binding="{Binding ShopName}" Width="100"/>
-                <DataGridTemplateColumn Header="Bezahlt" Width="70">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Ellipse Width="12" Height="12" HorizontalAlignment="Center"
-                                     Fill="{Binding Bezahlt, Converter={StaticResource BoolToColorConverter}}"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Versendet" Width="70">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Ellipse Width="12" Height="12" HorizontalAlignment="Center"
-                                     Fill="{Binding Versendet, Converter={StaticResource BoolToColorConverter}}"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+        <!-- Bestellungsliste mit NovviaGrid + JTL-Datumslogik (MonthNavigator) -->
+        <controls:NovviaGrid x:Name="dgBestellungen" Grid.Row="2" Margin="20,15,20,0"
+                             ViewName="BestellungenPage"
+                             ShowDateFilter="True"
+                             DateFilterMode="MonthNavigator"
+                             DatePropertyName="DErstellt"
+                             AnzahlText="Auftraege"
+                             ItemDoubleClick="DG_DoubleClick" ItemSelected="DG_SelectionChanged">
+            <DataGridTextColumn Header="Bestellnr." Binding="{Binding CBestellNr}" Width="100"/>
+            <DataGridTextColumn Header="Externe Nr." Binding="{Binding CInetBestellNr}" Width="110"/>
+            <DataGridTextColumn Header="Datum" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy HH:mm}" Width="120" SortMemberPath="DErstellt" CanUserSort="True"/>
+            <DataGridTextColumn Header="Kd-Nr." Binding="{Binding CKundenNr}" Width="80"/>
+            <DataGridTextColumn Header="Firma" Binding="{Binding KundeFirma}" Width="180"/>
+            <DataGridTextColumn Header="Name" Binding="{Binding KundeName}" Width="140"/>
+            <DataGridTextColumn Header="Netto" Binding="{Binding GesamtNetto, StringFormat=N2}" Width="90">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                        <Setter Property="Padding" Value="0,0,10,0"/>
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+            <DataGridTextColumn Header="Brutto" Binding="{Binding GesamtBrutto, StringFormat=N2}" Width="90">
+                <DataGridTextColumn.ElementStyle>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                        <Setter Property="Padding" Value="0,0,10,0"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                    </Style>
+                </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+            <DataGridTextColumn Header="Status" Binding="{Binding CStatus}" Width="100"/>
+            <DataGridTextColumn Header="Shop" Binding="{Binding ShopName}" Width="100"/>
+            <DataGridTemplateColumn Header="Bezahlt" Width="70">
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                        <Ellipse Width="12" Height="12" HorizontalAlignment="Center"
+                                 Fill="{Binding Bezahlt, Converter={StaticResource BoolToColorConverter}}"/>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Versendet" Width="70">
+                <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                        <Ellipse Width="12" Height="12" HorizontalAlignment="Center"
+                                 Fill="{Binding Versendet, Converter={StaticResource BoolToColorConverter}}"/>
+                    </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+        </controls:NovviaGrid>
 
         <!-- Statusleiste -->
         <Border Grid.Row="3" Background="#f0f0f0" Padding="20,10" BorderBrush="#ddd" BorderThickness="0,1,0,0">

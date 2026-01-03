@@ -14,6 +14,7 @@ namespace NovviaERP.WPF.Views
     {
         private readonly CoreService _coreService;
         private List<CoreService.LieferantRef> _lieferanten = new();
+        private string _statusFilterFromMenu = "";
 
         public LieferantenBestellungPage()
         {
@@ -23,8 +24,30 @@ namespace NovviaERP.WPF.Views
             {
                 // Spalten-Konfiguration aktivieren (Rechtsklick auf Header)
                 DataGridColumnConfig.EnableColumnChooser(dgBestellungen, "LieferantenBestellungPage");
+
+                // Wenn Status vom Menü vorgegeben, ComboBox setzen
+                if (!string.IsNullOrEmpty(_statusFilterFromMenu))
+                {
+                    foreach (ComboBoxItem item in cboFilterStatus.Items)
+                    {
+                        if (item.Tag?.ToString() == _statusFilterFromMenu)
+                        {
+                            cboFilterStatus.SelectedItem = item;
+                            break;
+                        }
+                    }
+                }
+
                 await LadeDataAsync();
             };
+        }
+
+        /// <summary>
+        /// Setzt den Status-Filter von außen (z.B. vom MainWindow-Menü)
+        /// </summary>
+        public void SetStatusFilter(string status)
+        {
+            _statusFilterFromMenu = status;
         }
 
         private async System.Threading.Tasks.Task LadeDataAsync()
