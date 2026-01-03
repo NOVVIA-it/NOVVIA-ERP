@@ -9753,6 +9753,227 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region Nummernkreise
+
+        /// <summary>
+        /// Laedt alle Nummernkreise aus tLaufendeNummern
+        /// </summary>
+        public async Task<IEnumerable<Nummernkreis>> GetNummernkreiseAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<Nummernkreis>(@"
+                SELECT kLaufendeNummer AS KLaufendeNummer, cName AS CName, cAnzeigename AS CAnzeigename,
+                       nNummer AS NNummer, cPrefix AS CPrefix, cSuffix AS CSuffix,
+                       kFirma AS KFirma, cTable AS CTable, cColumn AS CColumn
+                FROM dbo.tLaufendeNummern
+                ORDER BY ISNULL(cAnzeigename, cName)
+            ");
+        }
+
+        /// <summary>
+        /// Aktualisiert einen Nummernkreis
+        /// </summary>
+        public async Task UpdateNummernkreisAsync(Nummernkreis nk)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tLaufendeNummern
+                SET cPrefix = @CPrefix, cSuffix = @CSuffix, nNummer = @NNummer
+                WHERE kLaufendeNummer = @KLaufendeNummer
+            ", nk);
+        }
+
+        public class Nummernkreis
+        {
+            public int KLaufendeNummer { get; set; }
+            public string CName { get; set; } = "";
+            public string? CAnzeigename { get; set; }
+            public int NNummer { get; set; }
+            public string? CPrefix { get; set; }
+            public string? CSuffix { get; set; }
+            public int KFirma { get; set; }
+            public string? CTable { get; set; }
+            public string? CColumn { get; set; }
+
+            public string Anzeigename => CAnzeigename ?? CName;
+        }
+
+        #endregion
+
+        #region Vorgangsfarben
+
+        /// <summary>
+        /// Laedt alle Vorgangsfarben aus NOVVIA.Vorgangsfarbe
+        /// </summary>
+        public async Task<IEnumerable<Vorgangsfarbe>> GetVorgangsfarbenAsync()
+        {
+            var conn = await GetConnectionAsync();
+
+            // Tabelle erstellen falls nicht vorhanden
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Vorgangsfarbe' AND schema_id = SCHEMA_ID('NOVVIA'))
+                BEGIN
+                    CREATE TABLE NOVVIA.Vorgangsfarbe (
+                        kVorgangsfarbe INT IDENTITY(1,1) PRIMARY KEY,
+                        cBedeutung NVARCHAR(100) NOT NULL,
+                        nRotwert TINYINT NOT NULL DEFAULT 128,
+                        nGruenwert TINYINT NOT NULL DEFAULT 128,
+                        nBlauwert TINYINT NOT NULL DEFAULT 128,
+                        nAlphawert TINYINT NOT NULL DEFAULT 255,
+                        nAngebot BIT NOT NULL DEFAULT 0,
+                        nAuftrag BIT NOT NULL DEFAULT 0,
+                        nRechnung BIT NOT NULL DEFAULT 0,
+                        nRechnungskorrektur BIT NOT NULL DEFAULT 0,
+                        nAktiv BIT NOT NULL DEFAULT 1
+                    );
+
+                    -- Standard-Farben einfuegen
+                    INSERT INTO NOVVIA.Vorgangsfarbe (cBedeutung, nRotwert, nGruenwert, nBlauwert, nAuftrag, nRechnung, nAngebot, nRechnungskorrektur, nAktiv)
+                    VALUES
+                        ('Offen', 255, 193, 7, 1, 1, 1, 0, 1),           -- Gelb
+                        ('In Bearbeitung', 0, 123, 255, 1, 0, 0, 0, 1), -- Blau
+                        ('Versendet', 23, 162, 184, 1, 0, 0, 0, 1),     -- Cyan
+                        ('Abgeschlossen', 40, 167, 69, 1, 1, 1, 1, 1),  -- Gruen
+                        ('Storniert', 108, 117, 125, 1, 1, 1, 1, 1),    -- Grau
+                        ('Ueberfaellig', 220, 53, 69, 0, 1, 0, 0, 1),   -- Rot
+                        ('Teilbezahlt', 111, 66, 193, 0, 1, 0, 0, 1),   -- Lila
+                        ('Mahnung', 253, 126, 20, 0, 1, 0, 0, 1);       -- Orange
+                END
+            ");
+
+            return await conn.QueryAsync<Vorgangsfarbe>(@"
+                SELECT kVorgangsfarbe AS KVorgangsfarbe, cBedeutung AS CBedeutung,
+                       nRotwert AS NRotwert, nGruenwert AS NGruenwert, nBlauwert AS NBlauwert, nAlphawert AS NAlphawert,
+                       nAngebot AS NAngebot, nAuftrag AS NAuftrag, nRechnung AS NRechnung, nRechnungskorrektur AS NRechnungskorrektur,
+                       nAktiv AS NAktiv
+                FROM NOVVIA.Vorgangsfarbe
+                ORDER BY cBedeutung
+            ");
+        }
+
+        /// <summary>
+        /// Speichert eine Vorgangsfarbe (Insert oder Update)
+        /// </summary>
+        public async Task<int> SaveVorgangsfarbeAsync(Vorgangsfarbe farbe)
+        {
+            var conn = await GetConnectionAsync();
+
+            if (farbe.KVorgangsfarbe == 0)
+            {
+                // Insert
+                return await conn.QueryFirstAsync<int>(@"
+                    INSERT INTO NOVVIA.Vorgangsfarbe (cBedeutung, nRotwert, nGruenwert, nBlauwert, nAlphawert, nAngebot, nAuftrag, nRechnung, nRechnungskorrektur, nAktiv)
+                    VALUES (@CBedeutung, @NRotwert, @NGruenwert, @NBlauwert, @NAlphawert, @NAngebot, @NAuftrag, @NRechnung, @NRechnungskorrektur, @NAktiv);
+                    SELECT SCOPE_IDENTITY();
+                ", farbe);
+            }
+            else
+            {
+                // Update
+                await conn.ExecuteAsync(@"
+                    UPDATE NOVVIA.Vorgangsfarbe
+                    SET cBedeutung = @CBedeutung, nRotwert = @NRotwert, nGruenwert = @NGruenwert, nBlauwert = @NBlauwert,
+                        nAlphawert = @NAlphawert, nAngebot = @NAngebot, nAuftrag = @NAuftrag, nRechnung = @NRechnung,
+                        nRechnungskorrektur = @NRechnungskorrektur, nAktiv = @NAktiv
+                    WHERE kVorgangsfarbe = @KVorgangsfarbe
+                ", farbe);
+                return farbe.KVorgangsfarbe;
+            }
+        }
+
+        /// <summary>
+        /// Loescht eine Vorgangsfarbe
+        /// </summary>
+        public async Task DeleteVorgangsfarbeAsync(int kVorgangsfarbe)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM NOVVIA.Vorgangsfarbe WHERE kVorgangsfarbe = @kVorgangsfarbe", new { kVorgangsfarbe });
+        }
+
+        public class Vorgangsfarbe : System.ComponentModel.INotifyPropertyChanged
+        {
+            public int KVorgangsfarbe { get; set; }
+
+            private string _cBedeutung = "";
+            public string CBedeutung
+            {
+                get => _cBedeutung;
+                set { _cBedeutung = value; OnPropertyChanged(); }
+            }
+
+            private byte _nRotwert = 128;
+            public byte NRotwert
+            {
+                get => _nRotwert;
+                set { _nRotwert = value; OnPropertyChanged(); OnPropertyChanged(nameof(FarbeHex)); }
+            }
+
+            private byte _nGruenwert = 128;
+            public byte NGruenwert
+            {
+                get => _nGruenwert;
+                set { _nGruenwert = value; OnPropertyChanged(); OnPropertyChanged(nameof(FarbeHex)); }
+            }
+
+            private byte _nBlauwert = 128;
+            public byte NBlauwert
+            {
+                get => _nBlauwert;
+                set { _nBlauwert = value; OnPropertyChanged(); OnPropertyChanged(nameof(FarbeHex)); }
+            }
+
+            private byte _nAlphawert = 255;
+            public byte NAlphawert
+            {
+                get => _nAlphawert;
+                set { _nAlphawert = value; OnPropertyChanged(); OnPropertyChanged(nameof(FarbeHex)); }
+            }
+
+            private bool _nAngebot;
+            public bool NAngebot
+            {
+                get => _nAngebot;
+                set { _nAngebot = value; OnPropertyChanged(); }
+            }
+
+            private bool _nAuftrag;
+            public bool NAuftrag
+            {
+                get => _nAuftrag;
+                set { _nAuftrag = value; OnPropertyChanged(); }
+            }
+
+            private bool _nRechnung;
+            public bool NRechnung
+            {
+                get => _nRechnung;
+                set { _nRechnung = value; OnPropertyChanged(); }
+            }
+
+            private bool _nRechnungskorrektur;
+            public bool NRechnungskorrektur
+            {
+                get => _nRechnungskorrektur;
+                set { _nRechnungskorrektur = value; OnPropertyChanged(); }
+            }
+
+            private bool _nAktiv = true;
+            public bool NAktiv
+            {
+                get => _nAktiv;
+                set { _nAktiv = value; OnPropertyChanged(); }
+            }
+
+            // Farbe als Hex-String fuer Anzeige
+            public string FarbeHex => $"#{NAlphawert:X2}{NRotwert:X2}{NGruenwert:X2}{NBlauwert:X2}";
+
+            public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+            protected void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string? name = null)
+                => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
+        }
+
+        #endregion
     }
 
     #region Benutzerrechte DTOs

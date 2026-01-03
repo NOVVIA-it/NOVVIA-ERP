@@ -2624,5 +2624,153 @@ namespace NovviaERP.WPF.Views
         }
 
         #endregion
+
+        #region Nummernkreise
+
+        private List<CoreService.Nummernkreis> _nummernkreise = new();
+        private bool _nummernkreiseGeaendert = false;
+
+        private async void BtnNummernkreiseAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeNummernkreiseAsync();
+        }
+
+        private async Task LadeNummernkreiseAsync()
+        {
+            try
+            {
+                _nummernkreise = (await _core.GetNummernkreiseAsync()).ToList();
+                dgNummernkreise.ItemsSource = _nummernkreise;
+                _nummernkreiseGeaendert = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Laden der Nummernkreise:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DgNummernkreise_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            _nummernkreiseGeaendert = true;
+        }
+
+        private async void BtnNummernkreiseSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_nummernkreiseGeaendert)
+            {
+                MessageBox.Show("Keine Aenderungen zum Speichern.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                foreach (var nk in _nummernkreise)
+                {
+                    await _core.UpdateNummernkreisAsync(nk);
+                }
+                MessageBox.Show("Nummernkreise wurden gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                _nummernkreiseGeaendert = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Vorgangsfarben
+
+        private List<CoreService.Vorgangsfarbe> _vorgangsfarben = new();
+
+        private async void BtnVorgangsfarbenAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeVorgangsfarbenAsync();
+        }
+
+        private async Task LadeVorgangsfarbenAsync()
+        {
+            try
+            {
+                _vorgangsfarben = (await _core.GetVorgangsfarbenAsync()).ToList();
+                dgVorgangsfarben.ItemsSource = _vorgangsfarben;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Laden der Vorgangsfarben:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DgVorgangsfarben_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            btnVorgangsfarbeLoeschen.IsEnabled = dgVorgangsfarben.SelectedItem != null;
+        }
+
+        private async void BtnVorgangsfarbeNeu_Click(object sender, RoutedEventArgs e)
+        {
+            var neueFarbe = new CoreService.Vorgangsfarbe
+            {
+                CBedeutung = "Neue Farbe",
+                NRotwert = 128,
+                NGruenwert = 128,
+                NBlauwert = 128,
+                NAlphawert = 255,
+                NAktiv = true
+            };
+
+            try
+            {
+                var id = await _core.SaveVorgangsfarbeAsync(neueFarbe);
+                neueFarbe.KVorgangsfarbe = id;
+                _vorgangsfarben.Add(neueFarbe);
+                dgVorgangsfarben.ItemsSource = null;
+                dgVorgangsfarben.ItemsSource = _vorgangsfarben;
+                dgVorgangsfarben.SelectedItem = neueFarbe;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Erstellen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnVorgangsfarbeLoeschen_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgVorgangsfarben.SelectedItem is not CoreService.Vorgangsfarbe farbe) return;
+
+            var result = MessageBox.Show($"Vorgangsfarbe '{farbe.CBedeutung}' wirklich loeschen?",
+                "Loeschen bestaetigen", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            try
+            {
+                await _core.DeleteVorgangsfarbeAsync(farbe.KVorgangsfarbe);
+                _vorgangsfarben.Remove(farbe);
+                dgVorgangsfarben.ItemsSource = null;
+                dgVorgangsfarben.ItemsSource = _vorgangsfarben;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Loeschen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnVorgangsfarbenSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                foreach (var farbe in _vorgangsfarben)
+                {
+                    await _core.SaveVorgangsfarbeAsync(farbe);
+                }
+                MessageBox.Show("Vorgangsfarben wurden gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
     }
 }

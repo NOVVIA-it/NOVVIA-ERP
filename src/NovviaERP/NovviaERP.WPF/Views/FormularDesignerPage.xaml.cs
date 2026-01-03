@@ -293,21 +293,38 @@ namespace NovviaERP.WPF.Views
         #region Drag & Drop
         private void ElementeListe_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (sender is ListBox listBox && listBox.SelectedItem is ListBoxItem item)
+            // Finde das geklickte ListBoxItem (nicht SelectedItem - das ist noch nicht gesetzt)
+            var source = e.OriginalSource as DependencyObject;
+            while (source != null && source is not ListBoxItem)
+            {
+                source = VisualTreeHelper.GetParent(source);
+            }
+
+            if (source is ListBoxItem item)
             {
                 var elementTyp = item.Tag?.ToString();
                 if (!string.IsNullOrEmpty(elementTyp))
                 {
-                    DragDrop.DoDragDrop(listBox, elementTyp, DragDropEffects.Copy);
+                    DragDrop.DoDragDrop(item, elementTyp, DragDropEffects.Copy);
+                    e.Handled = true;
                 }
             }
         }
 
         private void DatenfelderListe_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (sender is ListBox listBox && listBox.SelectedItem is string feld)
+            // Finde das geklickte Item
+            var source = e.OriginalSource as DependencyObject;
+            while (source != null && source is not ListBoxItem)
             {
-                DragDrop.DoDragDrop(listBox, $"DataField:{feld}", DragDropEffects.Copy);
+                source = VisualTreeHelper.GetParent(source);
+            }
+
+            // Bei ItemsSource-gebundener ListBox ist der DataContext das eigentliche Item
+            if (source is ListBoxItem item && item.DataContext is string feld)
+            {
+                DragDrop.DoDragDrop(item, $"DataField:{feld}", DragDropEffects.Copy);
+                e.Handled = true;
             }
         }
 
