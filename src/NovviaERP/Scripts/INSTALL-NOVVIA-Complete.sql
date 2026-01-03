@@ -924,6 +924,381 @@ PRINT '      Stored Procedures OK';
 GO
 
 -- =====================================================
+-- 7b. RECHNUNG & RECHNUNGSKORREKTUR SPs
+-- =====================================================
+PRINT '[7b/8] Rechnung/Rechnungskorrektur SPs...';
+
+-- -------------------------------------------------------
+-- NOVVIA.spRechnungLesen
+-- Liest eine einzelne Rechnung mit allen Details und Positionen
+-- -------------------------------------------------------
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spRechnungLesen' AND schema_id = SCHEMA_ID('NOVVIA'))
+    DROP PROCEDURE NOVVIA.spRechnungLesen;
+GO
+
+CREATE PROCEDURE NOVVIA.spRechnungLesen
+    -- ============================================================================
+    -- Parameter
+    -- ============================================================================
+    @kRechnung INT                     -- Primaerschluessel der Rechnung (Pflicht)
+
+    -- ============================================================================
+    -- Beschreibung:
+    --   Liest eine einzelne Rechnung mit allen Details und Positionen.
+    --   Gibt zwei Resultsets zurueck:
+    --     1. Rechnungskopf mit Adress- und Zahlungsdaten
+    --     2. Rechnungspositionen mit Artikeldetails
+    --
+    -- Verwendet Views:
+    --   - dbo.lvRechnungsverwaltung (JTL-Standardview fuer Rechnungen)
+    --   - dbo.lvRechnungspositionsverwaltung (JTL-Standardview fuer Positionen)
+    --
+    -- Beispiel:
+    --   EXEC NOVVIA.spRechnungLesen @kRechnung = 12345
+    --
+    -- Historie:
+    --   2026-01-03 - Erstellt (NovviaERP, basierend auf JTL-Struktur)
+    -- ============================================================================
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Resultset 1: Rechnungskopf
+    SELECT
+        r.kRechnung, r.kKunde, r.kAuftrag, r.kBenutzer, r.kFirma, r.kZahlungsart, r.kVersandart,
+        r.kPlattform, r.kShop, r.kSprache, r.cRechnungsnummer, r.nStorno, r.nIstEntwurf, r.nArchiv,
+        r.nIstExterneRechnung, r.nKorrigiert, r.nRechnungskorrekturErstellt, r.dErstellt, r.dValutadatum,
+        r.dBezahldatum, r.dDruckdatum, r.dMaildatum, r.dStorniert, r.dZahlungsziel, r.nZahlungszielInTagen,
+        r.fGesamtNettopreis, r.fGesamtBruttopreis, r.fRechnungswertVersandlandNetto, r.fRechnungswertVersandlandBrutto,
+        r.fOffenerWert, r.fBereitsgezahltWert, r.fGutgeschriebenerWert, r.nIstKomplettBezahlt,
+        r.cWaehrung, r.fWaehrungsfaktor, r.cKundeNr, r.nDebitorennr, r.cKundengruppe,
+        r.cZahlungsartname, r.cZahlungsart, r.cVersandart, r.nMahnstopp, r.nMahnstufe, r.dMahndatum, r.nIstAngemahnt,
+        r.cStornoKommentar, r.cStornogrund, r.cStornoBenutzername,
+        r.cRechnungsadresseFirma, r.cRechnungsadresseAnrede, r.cRechnungsadresseTitel, r.cRechnungsadresseVorname,
+        r.cRechnungsadresseNachname, r.cRechnungsadresseStrasse, r.cRechnungsadresseAdresszusatz,
+        r.cRechnungsadressePlz, r.cRechnungsadresseOrt, r.cRechnungsadresseLand, r.cRechnungsadresseLandIso,
+        r.cRechnungsadresseBundesland, r.cRechnungsadresseTelefon, r.cRechnungsadresseMobilTelefon,
+        r.cRechnungsadresseFax, r.cRechnungsadresseMail,
+        r.cLieferadresseFirma, r.cLieferadresseAnrede, r.cLieferadresseTitel, r.cLieferadresseVorname,
+        r.cLieferadresseNachname, r.cLieferadresseStrasse, r.cLieferadresseAdresszusatz,
+        r.cLieferadressePlz, r.cLieferadresseOrt, r.cLieferadresseLand, r.cLieferadresseLandIso,
+        r.cLieferadresseBundesland, r.cLieferadresseTelefon, r.cLieferadresseMobilTelefon,
+        r.cLieferadresseFax, r.cLieferadresseMail,
+        r.cFirmenname, r.cBenutzername, r.cAuftragsNr, r.cExterneAuftragsnummer, r.ceBayBenutzername,
+        r.cShopname, r.nPlattformTyp, r.cAnmerkung, r.cSonstiges, r.nFarbcode, r.cFarbbedeutung,
+        r.nSteuereinstellung, r.cUmsatzsteuerID, r.nZahlungStatus
+    FROM Verkauf.lvRechnungsverwaltung r
+    WHERE r.kRechnung = @kRechnung;
+
+    -- Resultset 2: Rechnungspositionen
+    SELECT p.kRechnungPosition, p.kRechnung, p.kArtikel, p.kAuftrag, p.kAuftragPosition,
+        p.cArtNr, p.cName, p.cEinheit, p.fAnzahl, p.fMwSt,
+        p.fNettoPreisEinzeln AS fVkNetto, p.fBruttoPreisEinzeln AS fVkBrutto,
+        p.fRabattProzent AS fRabatt, p.fGewichtEinzeln AS fGewicht,
+        p.fVersandgewichtEinzeln AS fVersandgewicht, p.nSort
+    FROM Verkauf.lvRechnungsposition p
+    WHERE p.kRechnung = @kRechnung
+    ORDER BY p.nSort, p.kRechnungPosition;
+END;
+GO
+
+-- -------------------------------------------------------
+-- NOVVIA.spMahnstufen
+-- Liefert alle Mahnstufen aus der JTL-Tabelle tMahnstufe
+-- So bleibt die Anwendung unabhaengig von JTL-Aenderungen
+-- -------------------------------------------------------
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spMahnstufen' AND schema_id = SCHEMA_ID('NOVVIA'))
+    DROP PROCEDURE NOVVIA.spMahnstufen;
+GO
+
+CREATE PROCEDURE NOVVIA.spMahnstufen
+    -- ============================================================================
+    -- NOVVIA.spMahnstufen - Mahnstufen aus JTL-Tabelle lesen
+    -- ============================================================================
+    -- Liefert alle Mahnstufen inkl. "Keine Mahnung" (nStufe=0)
+    -- Quelle: dbo.tMahnstufe (JTL-Tabelle, nicht aendern!)
+    --
+    -- Rueckgabe:
+    --   nStufe                  - Mahnstufe (0=keine, 1-n aus tMahnstufe)
+    --   cName                   - Bezeichnung der Mahnstufe
+    --   fGebuehrPauschal        - Mahngebuehr (pauschal)
+    --   fGebuehrZinssatz        - Zinssatz fuer Mahnungen
+    --   nKarenzzeit             - Karenzzeit in Tagen
+    --   nZahlungsfristInTagen   - Zahlungsfrist nach Mahnung
+    --
+    -- Verwendung in C#:
+    --   var mahnstufen = await coreService.GetMahnstufen();
+    --   // Fuer Dropdown-Filter in RechnungenView
+    --
+    -- Changelog:
+    --   2026-01-03 - Erstellt (NovviaERP)
+    -- ============================================================================
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Liefert alle Mahnstufen aus der JTL-Tabelle tMahnstufe
+    -- So bleibt die Anwendung unabhaengig von JTL-Aenderungen
+    SELECT
+        0 AS nStufe,
+        N'Keine Mahnung' AS cName,
+        CAST(0 AS DECIMAL(18,13)) AS fGebuehrPauschal,
+        CAST(0 AS DECIMAL(18,13)) AS fGebuehrZinssatz,
+        0 AS nKarenzzeit,
+        0 AS nZahlungsfristInTagen
+    UNION ALL
+    SELECT
+        nStufe,
+        cName,
+        fGebuehrPauschal,
+        fGebuehrZinssatz,
+        nKarenzzeit,
+        nZahlungsfristInTagen
+    FROM dbo.tMahnstufe
+    WHERE kFirma = 0  -- Standard-Mahnstufen (nicht kundengruppen-spezifisch)
+    ORDER BY nStufe;
+END;
+GO
+
+-- -------------------------------------------------------
+-- NOVVIA.spRechnungenAuflisten
+-- Listet Rechnungen mit diversen Filtermoeglichkeiten auf
+-- -------------------------------------------------------
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spRechnungenAuflisten' AND schema_id = SCHEMA_ID('NOVVIA'))
+    DROP PROCEDURE NOVVIA.spRechnungenAuflisten;
+GO
+
+CREATE PROCEDURE NOVVIA.spRechnungenAuflisten
+    @cSuche NVARCHAR(100) = NULL,       -- Suche in Rechnungsnummer, Kundennummer, Name
+    @nStatus INT = NULL,                 -- 0=Offen, 1=Bezahlt, 2=Storniert, 3=Teilbezahlt, 4=Angemahnt
+    @nMahnstufe INT = NULL,              -- Filter nach Mahnstufe (Werte aus NOVVIA.spMahnstufen, 0=keine)
+    @kKunde INT = NULL,                  -- Filter nach Kunde
+    @kPlattform INT = NULL,              -- Filter nach Plattform
+    @dVon DATETIME = NULL,               -- Erstellt ab Datum
+    @dBis DATETIME = NULL,               -- Erstellt bis Datum
+    @nNurOffene BIT = 0,                 -- Nur offene Rechnungen (fOffenerWert > 0)
+    @nNurStornierte BIT = 0,             -- Nur stornierte Rechnungen
+    @nNurAngemahnt BIT = 0,              -- Nur angemahnte Rechnungen
+    @nLimit INT = 1000                   -- Maximale Anzahl Ergebnisse
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP (@nLimit)
+        r.kRechnung, r.kKunde, r.kAuftrag, r.cRechnungsnummer, r.dErstellt, r.dValutadatum,
+        r.dBezahldatum, r.dZahlungsziel, r.fGesamtNettopreis, r.fGesamtBruttopreis,
+        r.fOffenerWert, r.fBereitsgezahltWert, r.fGutgeschriebenerWert, r.nIstKomplettBezahlt,
+        r.nStorno, r.nIstEntwurf, r.nIstAngemahnt, r.nMahnstufe, r.dMahndatum, r.nKorrigiert, r.nRechnungskorrekturErstellt,
+        r.cKundeNr, r.nDebitorennr,
+        ISNULL(r.cRechnungsadresseFirma, LTRIM(RTRIM(ISNULL(r.cRechnungsadresseVorname, '') + ' ' + ISNULL(r.cRechnungsadresseNachname, '')))) AS cKundeName,
+        r.cRechnungsadresseOrt, r.cZahlungsartname, r.cVersandart, r.cWaehrung,
+        r.kPlattform, r.kShop, r.cShopname, r.cAuftragsNr, r.cExterneAuftragsnummer,
+        r.dDruckdatum, r.dMaildatum, r.dStorniert, r.cStornogrund, r.nFarbcode, r.cFarbbedeutung
+    FROM Verkauf.lvRechnungsverwaltung r
+    WHERE (@cSuche IS NULL OR r.cRechnungsnummer LIKE '%' + @cSuche + '%' OR r.cKundeNr LIKE '%' + @cSuche + '%'
+           OR r.cRechnungsadresseFirma LIKE '%' + @cSuche + '%' OR r.cRechnungsadresseNachname LIKE '%' + @cSuche + '%'
+           OR r.cAuftragsNr LIKE '%' + @cSuche + '%')
+        AND (@nStatus IS NULL OR
+             (@nStatus = 0 AND r.nIstKomplettBezahlt = 0 AND r.nStorno = 0) OR
+             (@nStatus = 1 AND r.nIstKomplettBezahlt = 1 AND r.nStorno = 0) OR
+             (@nStatus = 2 AND r.nStorno = 1) OR
+             (@nStatus = 3 AND r.fBereitsgezahltWert > 0 AND r.fOffenerWert > 0) OR
+             (@nStatus = 4 AND r.nIstAngemahnt = 1))
+        -- Mahnstufen-Filter (Werte dynamisch aus dbo.tMahnstufe via NOVVIA.spMahnstufen)
+        AND (@nMahnstufe IS NULL OR
+             (@nMahnstufe = 0 AND r.nMahnstufe IS NULL) OR
+             (@nMahnstufe > 0 AND r.nMahnstufe = @nMahnstufe))
+        AND (@kKunde IS NULL OR r.kKunde = @kKunde)
+        AND (@kPlattform IS NULL OR r.kPlattform = @kPlattform)
+        AND (@dVon IS NULL OR r.dErstellt >= @dVon)
+        AND (@dBis IS NULL OR r.dErstellt < DATEADD(DAY, 1, @dBis))
+        AND (@nNurOffene = 0 OR r.fOffenerWert > 0)
+        AND (@nNurStornierte = 0 OR r.nStorno = 1)
+        AND (@nNurAngemahnt = 0 OR r.nIstAngemahnt = 1)
+    ORDER BY r.dErstellt DESC, r.kRechnung DESC;
+END;
+GO
+
+-- -------------------------------------------------------
+-- NOVVIA.spRechnungStornieren
+-- Storniert eine einzelne Rechnung (Wrapper um JTL-SP)
+-- -------------------------------------------------------
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spRechnungStornieren' AND schema_id = SCHEMA_ID('NOVVIA'))
+    DROP PROCEDURE NOVVIA.spRechnungStornieren;
+GO
+
+CREATE PROCEDURE NOVVIA.spRechnungStornieren
+    @kRechnung INT,                                  -- Primaerschluessel der Rechnung
+    @kBenutzer INT,                                  -- Benutzer-ID
+    @kRechnungStornogrund INT = -1,                  -- Stornogrund: -5=Steuern, -4=Preise, -3=Positionen, -2=Adresse, -1=Sonstiges
+    @cKommentar NVARCHAR(100) = NULL,               -- Optionaler Kommentar
+    @dStorniert DATETIME = NULL,                     -- Stornodatum (Standard: GETDATE())
+    @nZahlungenZusammenfassen BIT = 1,               -- Zahlungen auf Auftrag umbuchen
+    @kGutschrift INT = NULL OUTPUT                   -- Rueckgabe: ID des erstellten Stornobelegs
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @xResult XML;
+    DECLARE @Rechnungen Rechnung.TYPE_spRechnungenStornieren;
+
+    IF @dStorniert IS NULL SET @dStorniert = GETDATE();
+    INSERT INTO @Rechnungen (kRechnung) VALUES (@kRechnung);
+
+    EXEC Rechnung.spRechnungenStornieren
+        @Rechnungen = @Rechnungen, @kRechnungStornogrund = @kRechnungStornogrund,
+        @cKommentar = @cKommentar, @kBenutzer = @kBenutzer, @dStorniert = @dStorniert,
+        @ZahlungenZusammenfassen = @nZahlungenZusammenfassen, @xResult = @xResult OUTPUT;
+
+    SELECT @kGutschrift = T.C.value('kGutschrift[1]', 'INT')
+    FROM @xResult.nodes('/StornoResults/StornoResult') AS T(C)
+    WHERE T.C.value('kRechnung[1]', 'INT') = @kRechnung;
+
+    SELECT T.C.value('kRechnung[1]', 'INT') AS kRechnung, T.C.value('cRechnungsnr[1]', 'NVARCHAR(50)') AS cRechnungsnr,
+           T.C.value('nError[1]', 'INT') AS nError, T.C.value('kGutschrift[1]', 'INT') AS kGutschrift
+    FROM @xResult.nodes('/StornoResults/StornoResult') AS T(C);
+
+    EXEC NOVVIA.spLogSchreiben @cKategorie = 'Rechnung', @cAktion = 'Storniert', @cModul = 'Rechnungen',
+        @cEntityTyp = 'Rechnung', @kEntity = @kRechnung, @cBeschreibung = @cKommentar, @kBenutzer = @kBenutzer, @nSeverity = 1;
+END;
+GO
+
+-- -------------------------------------------------------
+-- NOVVIA.spRechnungskorrekturLesen
+-- Liest eine einzelne Rechnungskorrektur mit Positionen
+-- -------------------------------------------------------
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spRechnungskorrekturLesen' AND schema_id = SCHEMA_ID('NOVVIA'))
+    DROP PROCEDURE NOVVIA.spRechnungskorrekturLesen;
+GO
+
+CREATE PROCEDURE NOVVIA.spRechnungskorrekturLesen
+    @kGutschrift INT                     -- Primaerschluessel der Rechnungskorrektur
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Resultset 1: Rechnungskorrektur-Kopf
+    SELECT g.kGutschrift, g.kRechnung, g.kKunde, g.kBenutzer, g.kFirma, g.kPlattform, g.kShop, g.kSprache,
+        g.kRechnungsadresse, g.cRechnungskorrekturnummer, g.cRechnungsnummer, g.nStorno, g.nStornoTyp,
+        g.dErstellt, g.dDruckdatum, g.dMaildatum, g.dStorniert, g.fPreisNetto, g.fPreisBrutto, g.fMwst,
+        g.cWaehrung, g.fFaktor, g.cKundeNr, g.cKundengruppe, g.cKurztext, g.cText, g.cAnmerkung, g.cSonstiges,
+        g.cStatustext, g.cErloeskonto, g.cRechnungsadresseFirma, g.cRechnungsadresseAnrede, g.cRechnungsadresseTitel,
+        g.cRechnungsadresseVorname, g.cRechnungsadresseNachname, g.cRechnungsadresseStrasse, g.cRechnungsadresseAdresszusatz,
+        g.cRechnungsadressePlz, g.cRechnungsadresseOrt, g.cRechnungsadresseLand, g.cRechnungsadresseLandIso,
+        g.cRechnungsadresseBundesland, g.cRechnungsadresseTelefon, g.cRechnungsadresseMobilTelefon,
+        g.cRechnungsadresseFax, g.cRechnungsadresseMail, g.cLieferadresseFirma, g.cLieferadresseAnrede,
+        g.cLieferadresseTitel, g.cLieferadresseVorname, g.cLieferadresseNachname, g.cLieferadresseStrasse,
+        g.cLieferadresseAdresszusatz, g.cLieferadressePlz, g.cLieferadresseOrt, g.cLieferadresseLand,
+        g.cLieferadresseLandIso, g.cLieferadresseBundesland, g.cLieferadresseTelefon, g.cLieferadresseMobilTelefon,
+        g.cLieferadresseFax, g.cLieferadresseMail, g.cFirmenname, g.cBenutzername, g.ceBayBenutzername, g.cShopname,
+        g.cStornoKommentar, g.cStornogrund, g.cStorniertVon
+    FROM Verkauf.lvRechnungskorrekturverwaltung g
+    WHERE g.kGutschrift = @kGutschrift;
+
+    -- Resultset 2: Rechnungskorrektur-Positionen
+    SELECT p.kGutschriftPos, p.kGutschrift, p.kArtikel, p.kAuftrag, p.kAuftragPosition, p.kRechnungPosition,
+        p.cArtNr, p.cName, p.fAnzahl, p.fMwSt, p.fVKNetto, p.fVKBrutto, p.kStuecklistenVater, p.kKonfigurationsVater, p.nSort
+    FROM Verkauf.lvRechnungskorrekturposition p
+    WHERE p.kGutschrift = @kGutschrift
+    ORDER BY p.nSort, p.kGutschriftPos;
+END;
+GO
+
+-- -------------------------------------------------------
+-- NOVVIA.spRechnungskorrekturenAuflisten
+-- Listet Rechnungskorrekturen mit Filtermoeglichkeiten auf
+-- -------------------------------------------------------
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spRechnungskorrekturenAuflisten' AND schema_id = SCHEMA_ID('NOVVIA'))
+    DROP PROCEDURE NOVVIA.spRechnungskorrekturenAuflisten;
+GO
+
+CREATE PROCEDURE NOVVIA.spRechnungskorrekturenAuflisten
+    @cSuche NVARCHAR(100) = NULL,       -- Suche in Korrekturnummer, Rechnungsnummer, Kundennr
+    @nNurStornierte BIT = NULL,         -- NULL=Alle, 0=Nicht storniert, 1=Nur storniert
+    @kKunde INT = NULL,                  -- Filter nach Kunde
+    @kPlattform INT = NULL,              -- Filter nach Plattform
+    @dVon DATETIME = NULL,               -- Erstellt ab Datum
+    @dBis DATETIME = NULL,               -- Erstellt bis Datum
+    @nNurStornobelege BIT = 0,           -- Nur Stornobelege (nStornoTyp = 1)
+    @nLimit INT = 1000                   -- Maximale Anzahl Ergebnisse
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP (@nLimit)
+        g.kGutschrift, g.kRechnung, g.kKunde, g.cRechnungskorrekturnummer, g.cRechnungsnummer,
+        g.dErstellt, g.dDruckdatum, g.dMaildatum, g.dStorniert, g.fPreisNetto, g.fPreisBrutto, g.fMwst,
+        g.nStorno, g.nStornoTyp, g.cKundeNr,
+        ISNULL(g.cRechnungsadresseFirma, LTRIM(RTRIM(ISNULL(g.cRechnungsadresseVorname, '') + ' ' + ISNULL(g.cRechnungsadresseNachname, '')))) AS cKundeName,
+        g.cRechnungsadresseOrt, g.cKurztext, g.cText, g.cAnmerkung, g.cWaehrung,
+        g.kPlattform, g.kShop, g.cShopname, g.cFirmenname, g.cBenutzername, g.cStornogrund, g.cStornoKommentar, g.cStorniertVon
+    FROM Verkauf.lvRechnungskorrekturverwaltung g
+    WHERE (@cSuche IS NULL OR g.cRechnungskorrekturnummer LIKE '%' + @cSuche + '%' OR g.cRechnungsnummer LIKE '%' + @cSuche + '%'
+           OR g.cKundeNr LIKE '%' + @cSuche + '%' OR g.cRechnungsadresseFirma LIKE '%' + @cSuche + '%'
+           OR g.cRechnungsadresseNachname LIKE '%' + @cSuche + '%')
+        AND (@nNurStornierte IS NULL OR g.nStorno = @nNurStornierte)
+        AND (@nNurStornobelege = 0 OR g.nStornoTyp = 1)
+        AND (@kKunde IS NULL OR g.kKunde = @kKunde)
+        AND (@kPlattform IS NULL OR g.kPlattform = @kPlattform)
+        AND (@dVon IS NULL OR g.dErstellt >= @dVon)
+        AND (@dBis IS NULL OR g.dErstellt < DATEADD(DAY, 1, @dBis))
+    ORDER BY g.dErstellt DESC, g.kGutschrift DESC;
+END;
+GO
+
+-- -------------------------------------------------------
+-- NOVVIA.spRechnungskorrekturStornieren
+-- Storniert eine einzelne Rechnungskorrektur (Wrapper um JTL-SP)
+-- -------------------------------------------------------
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'spRechnungskorrekturStornieren' AND schema_id = SCHEMA_ID('NOVVIA'))
+    DROP PROCEDURE NOVVIA.spRechnungskorrekturStornieren;
+GO
+
+CREATE PROCEDURE NOVVIA.spRechnungskorrekturStornieren
+    @kGutschrift INT,                                -- Primaerschluessel der Rechnungskorrektur
+    @kBenutzer INT,                                  -- Benutzer-ID
+    @kGutschriftStornogrund INT = -1,                -- Stornogrund: -5=Steuern, -4=Preise, -3=Positionen, -2=Adresse, -1=Sonstiges
+    @cKommentar NVARCHAR(100) = NULL,               -- Optionaler Kommentar
+    @dStorniert DATETIME = NULL,                     -- Stornodatum (Standard: GETDATE())
+    @kStornoGutschrift INT = NULL OUTPUT             -- Rueckgabe: ID des erstellten Gegen-Stornobelegs
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @xResult XML;
+    DECLARE @Gutschriften dbo.TYPE_spGutschriftenStornieren;
+
+    IF @dStorniert IS NULL SET @dStorniert = GETDATE();
+    INSERT INTO @Gutschriften (kGutschrift) VALUES (@kGutschrift);
+
+    EXEC dbo.spGutschriftenStornieren
+        @Gutschriften = @Gutschriften, @kGutschriftStornogrund = @kGutschriftStornogrund,
+        @cKommentar = @cKommentar, @kBenutzer = @kBenutzer, @dStorniert = @dStorniert, @xResult = @xResult OUTPUT;
+
+    SELECT @kStornoGutschrift = T.C.value('kStornoGutschrift[1]', 'INT')
+    FROM @xResult.nodes('/StornoResults/StornoResult') AS T(C)
+    WHERE T.C.value('kGutschrift[1]', 'INT') = @kGutschrift;
+
+    SELECT T.C.value('kGutschrift[1]', 'INT') AS kGutschrift, T.C.value('cGutschriftNr[1]', 'NVARCHAR(50)') AS cGutschriftNr,
+           T.C.value('nError[1]', 'INT') AS nError, T.C.value('kStornoGutschrift[1]', 'INT') AS kStornoGutschrift
+    FROM @xResult.nodes('/StornoResults/StornoResult') AS T(C);
+
+    EXEC NOVVIA.spLogSchreiben @cKategorie = 'Rechnungskorrektur', @cAktion = 'Storniert', @cModul = 'Rechnungskorrekturen',
+        @cEntityTyp = 'Gutschrift', @kEntity = @kGutschrift, @cBeschreibung = @cKommentar, @kBenutzer = @kBenutzer, @nSeverity = 1;
+END;
+GO
+
+PRINT '      Rechnung/Rechnungskorrektur SPs OK';
+PRINT '';
+PRINT '      WICHTIG: Fuer JTL-unabhaengige Basistabellen-Version';
+PRINT '      fuehre nach dieser Installation aus:';
+PRINT '      Scripts/UPDATE-NOVVIA-BaseTables.sql';
+PRINT '';
+PRINT '      Neue SPs (Basistabellen):';
+PRINT '      - spLieferscheineAuflisten, spLieferscheinLesen';
+PRINT '      - spLieferantenbestellungenAuflisten, spLieferantenbestellungLesen';
+PRINT '      - spEingangsrechnungenAuflisten, spEingangsrechnungLesen';
+GO
+
+-- =====================================================
 -- INDIZES
 -- =====================================================
 PRINT '';
@@ -1024,17 +1399,28 @@ PRINT '    - NOVVIA.spArtikelEigenesFeldCreateOrUpdate';
 PRINT '    - NOVVIA.spAuftragEigenesFeldCreateOrUpdate';
 PRINT '    - NOVVIA.spABdataArtikelUpsert, NOVVIA.spABdataAutoMapping';
 PRINT '';
+PRINT '  Rechnung/Rechnungskorrektur SPs:';
+PRINT '    - NOVVIA.spMahnstufen (dynamisch aus tMahnstufe)';
+PRINT '    - NOVVIA.spRechnungLesen, spRechnungenAuflisten, spRechnungStornieren';
+PRINT '    - NOVVIA.spRechnungskorrekturLesen, spRechnungskorrekturenAuflisten, spRechnungskorrekturStornieren';
+PRINT '';
+PRINT '  Einkauf/Versand SPs (nach UPDATE-NOVVIA-BaseTables.sql):';
+PRINT '    - NOVVIA.spLieferscheineAuflisten, spLieferscheinLesen';
+PRINT '    - NOVVIA.spLieferantenbestellungenAuflisten, spLieferantenbestellungLesen';
+PRINT '    - NOVVIA.spEingangsrechnungenAuflisten, spEingangsrechnungLesen';
+PRINT '';
 PRINT '  Types:';
 PRINT '    - NOVVIA.TYPE_ArtikelEigenesFeldAnpassen';
 PRINT '    - NOVVIA.TYPE_AuftragEigenesFeldAnpassen';
 PRINT '';
 PRINT 'Naechste Schritte:';
-PRINT '  1. Setup-NOVVIA-Benutzerrechte.sql ausfuehren (Rollen & Rechte)';
-PRINT '  2. Setup-NOVVIA-Log.sql ausfuehren (Logging-System)';
-PRINT '  3. Setup-NOVVIA-Quarantaene.sql ausfuehren (Chargen-Sperren)';
-PRINT '  4. MSV3-Lieferanten konfigurieren (Pharma-Grosshandel)';
-PRINT '  5. ABdata-Stammdaten importieren (falls Pharma-Betrieb)';
-PRINT '  6. Worker-Dienst starten';
+PRINT '  1. UPDATE-NOVVIA-BaseTables.sql ausfuehren (JTL-unabhaengige SPs!)';
+PRINT '  2. Setup-NOVVIA-Benutzerrechte.sql ausfuehren (Rollen & Rechte)';
+PRINT '  3. Setup-NOVVIA-Log.sql ausfuehren (Logging-System)';
+PRINT '  4. Setup-NOVVIA-Quarantaene.sql ausfuehren (Chargen-Sperren)';
+PRINT '  5. MSV3-Lieferanten konfigurieren (Pharma-Grosshandel)';
+PRINT '  6. ABdata-Stammdaten importieren (falls Pharma-Betrieb)';
+PRINT '  7. Worker-Dienst starten';
 PRINT '';
 PRINT 'Pharma-Modus aktivieren:';
 PRINT '  UPDATE NOVVIA.FirmaEinstellung SET cWert=''1'' WHERE cSchluessel=''PHARMA''';
