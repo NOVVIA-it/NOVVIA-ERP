@@ -338,17 +338,59 @@
                     <Button Style="{StaticResource NavButton}" Content="Versand" Click="NavVersand_Click"/>
 
                     <TextBlock Text="FINANZEN" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
-                    <Button Style="{StaticResource NavButton}" Content="Zahlungsabgleich" Click="NavZahlungsabgleich_Click"/>
-                    <Button Style="{StaticResource NavButton}" Content="Mahnungslauf" Click="NavMahnungslauf_Click"/>
-                    <Button Style="{StaticResource NavButton}" Content="OP-Liste" Click="NavOpListe_Click"/>
-                    <Button Style="{StaticResource NavButton}" Content="DATEV-Export" Click="NavDatevExport_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="▶ Finanzen" x:Name="btnFinanzen" Click="NavFinanzen_Click"/>
+                    <StackPanel x:Name="pnlFinanzenMenu" Visibility="Collapsed">
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Zahlungsabgleich" Click="NavFinanzItem_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#28a745" Margin="0,0,6,0"/>
+                                <TextBlock Text="Zahlungsabgleich"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Mahnungslauf" Click="NavFinanzItem_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#dc3545" Margin="0,0,6,0"/>
+                                <TextBlock Text="Mahnungslauf"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="OpListe" Click="NavFinanzItem_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#ffc107" Margin="0,0,6,0"/>
+                                <TextBlock Text="OP-Liste"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="DatevExport" Click="NavFinanzItem_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#17a2b8" Margin="0,0,6,0"/>
+                                <TextBlock Text="DATEV-Export"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
                     <TextBlock Text="AUTOMATISIERUNG" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Workflows" Click="NavWorkflow_Click"/>
 
                     <TextBlock Text="TOOLS" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
-                    <Button Style="{StaticResource NavButton}" Content="Textmeldungen" Click="NavTextmeldungen_Click"/>
-                    <Button Style="{StaticResource NavButton}" Content="Ameise (Import/Export)" Click="NavAmeise_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="▶ Tools" x:Name="btnTools" Click="NavTools_Click"/>
+                    <StackPanel x:Name="pnlToolsMenu" Visibility="Collapsed">
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Textmeldungen" Click="NavToolItem_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#6c757d" Margin="0,0,6,0"/>
+                                <TextBlock Text="Textmeldungen"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="Ameise" Click="NavToolItem_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#17a2b8" Margin="0,0,6,0"/>
+                                <TextBlock Text="Ameise (Import/Export)"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource StatusSubButton}" Tag="FormularDesigner" Click="NavToolItem_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="8" Height="8" CornerRadius="4" Background="#28a745" Margin="0,0,6,0"/>
+                                <TextBlock Text="Formular-Designer"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
                     <TextBlock Text="SYSTEM" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Einstellungen" Click="NavEinstellungen_Click"/>

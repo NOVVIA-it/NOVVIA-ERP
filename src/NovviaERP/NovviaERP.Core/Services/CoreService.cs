@@ -8271,25 +8271,25 @@ namespace NovviaERP.Core.Services
             var sql = @"
                 WITH KategoriePfad AS (
                     SELECT k.kKategorie, k.kOberKategorie, ks.cName, k.cAktiv, k.nSort, 0 AS Ebene,
-                           CAST(ks.cName AS NVARCHAR(1000)) AS Pfad
+                           CAST(ISNULL(ks.cName, '') AS NVARCHAR(1000)) AS Pfad
                     FROM dbo.tkategorie k
-                    LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1
+                    LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1 AND ks.kPlattform = 1
                     WHERE k.kOberKategorie = 0
 
                     UNION ALL
 
                     SELECT k.kKategorie, k.kOberKategorie, ks.cName, k.cAktiv, k.nSort, kp.Ebene + 1,
-                           CAST(kp.Pfad + ' > ' + ks.cName AS NVARCHAR(1000))
+                           CAST(kp.Pfad + ' > ' + ISNULL(ks.cName, '') AS NVARCHAR(1000))
                     FROM dbo.tkategorie k
                     INNER JOIN KategoriePfad kp ON k.kOberKategorie = kp.kKategorie
-                    LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1
+                    LEFT JOIN dbo.tKategorieSprache ks ON k.kKategorie = ks.kKategorie AND ks.kSprache = 1 AND ks.kPlattform = 1
                 )
                 SELECT kp.kKategorie, kp.kOberKategorie, kp.cName, kp.cAktiv, kp.nSort, kp.Ebene, kp.Pfad,
                        ks.cBeschreibung,
                        (SELECT COUNT(*) FROM dbo.tkategorieartikel ka WHERE ka.kKategorie = kp.kKategorie) AS ArtikelAnzahl,
                        (SELECT COUNT(*) FROM dbo.tkategorie sub WHERE sub.kOberKategorie = kp.kKategorie) AS SubkategorienAnzahl
                 FROM KategoriePfad kp
-                LEFT JOIN dbo.tKategorieSprache ks ON kp.kKategorie = ks.kKategorie AND ks.kSprache = 1
+                LEFT JOIN dbo.tKategorieSprache ks ON kp.kKategorie = ks.kKategorie AND ks.kSprache = 1 AND ks.kPlattform = 1
                 ORDER BY kp.Pfad
             ";
 
@@ -8566,14 +8566,14 @@ namespace NovviaERP.Core.Services
                     r.kRMRetoure, r.cRetoureNr, r.kKunde, r.kRMStatus, r.dErstellt, r.kBestellung, r.kGutschrift,
                     r.fKorrekturBetrag, r.nVersandkostenErstatten, r.cKommentarExtern, r.cKommentarIntern,
                     k.cKundenNr,
-                    ISNULL(a.cFirma, a.cVorname + ' ' + a.cName) AS CKundeName,
+                    ISNULL(lk.cFirma, lk.cVorname + ' ' + lk.cName) AS CKundeName,
                     s.cName AS CStatus,
                     au.cAuftragsNr AS CAuftragNr,
                     gs.cGutschriftNr AS CGutschriftNr,
                     (SELECT COUNT(*) FROM dbo.tRMRetourePos p WHERE p.kRMRetoure = r.kRMRetoure) AS PositionenAnzahl
                 FROM dbo.tRMRetoure r
                 LEFT JOIN dbo.tKunde k ON r.kKunde = k.kKunde
-                LEFT JOIN dbo.tKundeAdresse a ON k.kKunde = a.kKunde AND a.nStandard = 1
+                LEFT JOIN dbo.lvKunde lk ON k.kKunde = lk.kKunde
                 LEFT JOIN dbo.tRMStatusSprache s ON r.kRMStatus = s.kRMStatus AND s.kSprache = 1
                 LEFT JOIN Verkauf.tAuftrag au ON r.kBestellung = au.kAuftrag
                 LEFT JOIN dbo.tGutschrift gs ON r.kGutschrift = gs.kGutschrift
@@ -8583,7 +8583,7 @@ namespace NovviaERP.Core.Services
             if (kRMStatus.HasValue)
                 sql += " AND r.kRMStatus = @kRMStatus";
             if (!string.IsNullOrWhiteSpace(suche))
-                sql += " AND (r.cRetoureNr LIKE '%' + @suche + '%' OR k.cKundenNr LIKE '%' + @suche + '%' OR a.cFirma LIKE '%' + @suche + '%' OR a.cName LIKE '%' + @suche + '%')";
+                sql += " AND (r.cRetoureNr LIKE '%' + @suche + '%' OR k.cKundenNr LIKE '%' + @suche + '%' OR lk.cFirma LIKE '%' + @suche + '%' OR lk.cName LIKE '%' + @suche + '%')";
             if (vonDatum.HasValue)
                 sql += " AND r.dErstellt >= @vonDatum";
             if (bisDatum.HasValue)
@@ -11186,13 +11186,13 @@ namespace NovviaERP.Core.Services
                         'R' AS Typ,
                         r.dErstellt AS Datum,
                         r.cRechnungsnr AS BelegNr,
-                        'Rechnung ' + r.cRechnungsnr + ' - ' + ISNULL(k.cFirma, k.cName) AS Buchungstext,
+                        'Rechnung ' + r.cRechnungsnr + ' - ' + ISNULL(lv.cRechnungsadresseFirma, lv.cRechnungsadresseVorname + ' ' + lv.cRechnungsadresseNachname) AS Buchungstext,
                         '10000' AS SollKonto,
                         '4400' AS HabenKonto,
-                        r.fBrutto AS Betrag,
+                        lv.fRechnungswert AS Betrag,
                         '9' AS UstSchluessel
-                    FROM tRechnung r
-                    INNER JOIN tKunde k ON r.kKunde = k.kKunde
+                    FROM dbo.tRechnung r
+                    INNER JOIN dbo.lvRechnungen lv ON r.kRechnung = lv.kRechnung
                     WHERE r.dErstellt BETWEEN @von AND @bis
                       AND r.nStorno = 0",
                     new { von, bis });
@@ -11209,9 +11209,10 @@ namespace NovviaERP.Core.Services
                         'Gutschrift ' + rk.cKorrekturNr AS Buchungstext,
                         '8400' AS SollKonto,
                         '10000' AS HabenKonto,
-                        rk.fBrutto AS Betrag,
+                        ISNULL(lv.fKorrekturwert, 0) AS Betrag,
                         '9' AS UstSchluessel
-                    FROM tRechnungskorrektur rk
+                    FROM dbo.tRechnungskorrektur rk
+                    LEFT JOIN dbo.lvRechnungskorrekturen lv ON rk.kRechnungskorrektur = lv.kRechnungskorrektur
                     WHERE rk.dErstellt BETWEEN @von AND @bis",
                     new { von, bis });
                 buchungen.AddRange(gs);
@@ -11223,14 +11224,14 @@ namespace NovviaERP.Core.Services
                     SELECT
                         'E' AS Typ,
                         e.dRechnungsdatum AS Datum,
-                        e.cRechnungsnr AS BelegNr,
-                        'Eingangsrechnung ' + e.cRechnungsnr + ' - ' + ISNULL(l.cFirma, l.cName) AS Buchungstext,
+                        e.cFremdbelegnummer AS BelegNr,
+                        'Eingangsrechnung ' + e.cFremdbelegnummer + ' - ' + ISNULL(l.cFirma, l.cName) AS Buchungstext,
                         '3400' AS SollKonto,
                         '70000' AS HabenKonto,
                         e.fBrutto AS Betrag,
                         '9' AS UstSchluessel
-                    FROM tEingangsrechnung e
-                    INNER JOIN tLieferant l ON e.kLieferant = l.kLieferant
+                    FROM dbo.tEingangsrechnung e
+                    INNER JOIN dbo.tLieferant l ON e.kLieferant = l.kLieferant
                     WHERE e.dRechnungsdatum BETWEEN @von AND @bis",
                     new { von, bis });
                 buchungen.AddRange(er);

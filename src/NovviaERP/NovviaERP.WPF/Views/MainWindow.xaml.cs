@@ -56,6 +56,14 @@ namespace NovviaERP.WPF.Views
             btnRechnungskorrekturen.Content = "▶ Rechnungskorrekturen";
             btnRetouren.Content = "▶ Retouren";
 
+            // Finanzen
+            pnlFinanzenMenu.Visibility = Visibility.Collapsed;
+            btnFinanzen.Content = "▶ Finanzen";
+
+            // Tools
+            pnlToolsMenu.Visibility = Visibility.Collapsed;
+            btnTools.Content = "▶ Tools";
+
             // Einkauf
             pnlLieferantenBestellungenStatus.Visibility = Visibility.Collapsed;
             pnlEingangsrechnungenStatus.Visibility = Visibility.Collapsed;
@@ -86,6 +94,18 @@ namespace NovviaERP.WPF.Views
                 case "Retouren":
                     pnlRetourenStatus.Visibility = Visibility.Visible;
                     btnRetouren.Content = "▼ Retouren";
+                    break;
+
+                // Finanzen
+                case "Finanzen":
+                    pnlFinanzenMenu.Visibility = Visibility.Visible;
+                    btnFinanzen.Content = "▼ Finanzen";
+                    break;
+
+                // Tools
+                case "Tools":
+                    pnlToolsMenu.Visibility = Visibility.Visible;
+                    btnTools.Content = "▼ Tools";
                     break;
 
                 // Einkauf
@@ -324,6 +344,37 @@ namespace NovviaERP.WPF.Views
             contentMain.Content = new VersandPage();
         }
 
+        // Finanzen - Hauptbutton klappt Menü auf
+        private void NavFinanzen_Click(object sender, RoutedEventArgs e)
+        {
+            StatusMenuAufklappen("Finanzen");
+            // Standardmäßig Zahlungsabgleich anzeigen
+            contentMain.Content = new ZahlungsabgleichView();
+        }
+
+        // Finanzen - Untermenü
+        private void NavFinanzItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string item)
+            {
+                switch (item)
+                {
+                    case "Zahlungsabgleich":
+                        contentMain.Content = new ZahlungsabgleichView();
+                        break;
+                    case "Mahnungslauf":
+                        contentMain.Content = new MahnungslaufPage();
+                        break;
+                    case "OpListe":
+                        contentMain.Content = new OpListePage();
+                        break;
+                    case "DatevExport":
+                        contentMain.Content = new DatevExportPage();
+                        break;
+                }
+            }
+        }
+
         private void NavZahlungsabgleich_Click(object sender, RoutedEventArgs e)
         {
             AlleStatusMenusEinklappen();
@@ -370,6 +421,37 @@ namespace NovviaERP.WPF.Views
         {
             AlleStatusMenusEinklappen();
             ShowView<AmeiseView>();
+        }
+
+        // Tools - Hauptbutton klappt Menü auf
+        private void NavTools_Click(object sender, RoutedEventArgs e)
+        {
+            StatusMenuAufklappen("Tools");
+            // Standardmäßig Textmeldungen anzeigen
+            contentMain.Content = new TextmeldungenPage();
+        }
+
+        // Tools - Untermenü
+        private void NavToolItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string item)
+            {
+                switch (item)
+                {
+                    case "Textmeldungen":
+                        contentMain.Content = new TextmeldungenPage();
+                        break;
+                    case "Ameise":
+                        ShowView<AmeiseView>();
+                        break;
+                    case "FormularDesigner":
+                        var frame = new System.Windows.Controls.Frame();
+                        var db = new NovviaERP.Core.Data.JtlDbContext(App.ConnectionString!);
+                        frame.Navigate(new FormularDesignerPage(db));
+                        contentMain.Content = frame;
+                        break;
+                }
+            }
         }
 
         private void NavEinstellungen_Click(object sender, RoutedEventArgs e)
