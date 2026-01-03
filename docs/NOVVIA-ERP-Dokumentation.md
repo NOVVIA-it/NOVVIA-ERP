@@ -1,6 +1,6 @@
 # NOVVIA ERP - Systemdokumentation
 
-> **Version:** 1.0.3
+> **Version:** 1.0.4
 > **Letzte Aktualisierung:** 2026-01-03
 > **Autor:** NOVVIA IT / Claude AI
 
@@ -323,16 +323,31 @@ Services werden in `App.xaml.cs` registriert:
 ### 3.8 Einstellungen
 
 **Views:** `EinstellungenView.xaml`, `BenutzerPage.xaml`
-**Service:** `AuthService.cs`, `AppDataService.cs`
+**Service:** `AuthService.cs`, `AppDataService.cs`, `CoreService.cs`
 
 | Funktion | Beschreibung |
 |----------|-------------|
 | Firmendaten | Name, Adresse, Logo |
 | Benutzer | Anlegen, Rollen, Rechte |
-| Nummernkreise | RE-, AU-, LS-Nummern |
+| Nummernkreise | JTL tLaufendeNummern (RE-, AU-, LS-Nummern) |
+| Vorgangsfarben | Status-Farben fuer Vorgaenge (NOVVIA.Vorgangsfarbe) |
 | Drucker | Standard-Drucker pro Dokument |
 | Email | SMTP-Konfiguration |
 | Plattformen | Shop-Verbindungen |
+
+#### 3.8.1 Nummernkreise
+
+Verwaltet die laufenden Nummern aus JTL `tLaufendeNummern`:
+- Rechnungsnummer, Auftragsnummer, Lieferscheinnummer
+- Kundennummer, Artikelnummer, etc.
+- Praefix/Suffix und naechste Nummer einstellbar
+
+#### 3.8.2 Vorgangsfarben
+
+Definiert Farben fuer Vorgangsstatus (NOVVIA.Vorgangsfarbe):
+- Auftrag, Rechnung, Lieferschein, etc.
+- RGB-Farbwerte mit Vorschau
+- Standard-Farben werden automatisch angelegt
 
 ---
 
@@ -627,6 +642,8 @@ Kunde
 | NOVVIA.ChargenAusgang | Chargen-Tracking |
 | NOVVIA.ArtikelShopBeschreibung | Shop-Texte |
 | NOVVIA.LieferantAttribut | Lieferanten-Felder |
+| NOVVIA.Vorgangsfarbe | Status-Farben fuer Vorgaenge |
+| NOVVIA.BenutzerEinstellungen | Benutzer-spezifische Einstellungen |
 
 ---
 
@@ -905,6 +922,34 @@ curl -X PATCH "https://server:5001/api/bestellungen/456/status" \
 ---
 
 ## 10. Aenderungsprotokoll
+
+### Version 1.0.4 (2026-01-03)
+
+**Neue Tabs in Einstellungen:**
+- **Nummernkreise**: Zeigt JTL `tLaufendeNummern` an (RE-, AU-, LS-Nummern etc.)
+- **Vorgangsfarben**: NOVVIA.Vorgangsfarbe-Tabelle fuer Status-Farben
+
+**FormularDesigner Fix:**
+- Drag & Drop funktioniert jetzt korrekt (PreviewMouseDown vor Item-Selektion)
+
+**Navigation-Stack:**
+- System-weite Zurueck-Navigation implementiert
+- Alle DetailViews nutzen Navigation-Stack statt hardcodierte Listen
+- Sidebar-Navigation leert den Stack
+
+**Sidebar-Splitter:**
+- Position wird jetzt korrekt beim Ziehen gespeichert (DragCompleted-Event)
+
+**Rechnungskorrektur:**
+- Zeigt jetzt externe Rechnungsnummer statt interne ID
+
+**Dateien geaendert:**
+- `~` CoreService.cs (Nummernkreise, Vorgangsfarben Methoden)
+- `~` EinstellungenView.xaml/cs (2 neue Tabs)
+- `~` FormularDesignerPage.xaml.cs (Drag&Drop Fix)
+- `~` MainWindow.xaml/cs (Navigation-Stack, Splitter-Fix)
+- `~` RechnungskorrekturDetailView (externe Rechnungsnr)
+- `~` Alle DetailViews (NavigateBack statt hardcoded)
 
 ### Version 1.0.3 (2026-01-03)
 
