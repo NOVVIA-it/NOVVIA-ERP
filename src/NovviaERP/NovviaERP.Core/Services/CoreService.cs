@@ -11129,7 +11129,7 @@ namespace NovviaERP.Core.Services
         {
             var conn = await GetConnectionAsync();
 
-            // Debitoren (offene Rechnungen) - nutze vOffenerPostenRechnung View
+            // Debitoren (offene Rechnungen) - nutze Zahlungsabgleich.vOffenerPostenRechnung View
             var debitoren = await conn.QueryAsync<OffenerPosten>(@"
                 SELECT
                     'D' AS Art,
@@ -11140,14 +11140,14 @@ namespace NovviaERP.Core.Services
                     DATEADD(day, ISNULL(r.nZahlungszielTage, 14), op.dErstellt) AS FaelligAm,
                     op.fWert AS Betrag,
                     op.fZahlung AS Bezahlt
-                FROM dbo.vOffenerPostenRechnung op
+                FROM Zahlungsabgleich.vOffenerPostenRechnung op
                 LEFT JOIN dbo.tRechnung r ON op.kRechnung = r.kRechnung
                 WHERE op.dErstellt <= @stichtag
                   AND op.fWertOffen > 0
                   AND op.nStorno = 0",
                 new { stichtag });
 
-            // Kreditoren (offene Eingangsrechnungen) - nutze vOffenerPostenEingangsrechnung View
+            // Kreditoren (offene Eingangsrechnungen) - nutze Zahlungsabgleich.vOffenerPostenEingangsrechnung View
             var kreditoren = await conn.QueryAsync<OffenerPosten>(@"
                 SELECT
                     'K' AS Art,
@@ -11158,7 +11158,7 @@ namespace NovviaERP.Core.Services
                     DATEADD(day, 14, op.dBelegdatum) AS FaelligAm,
                     op.fWert AS Betrag,
                     op.fZahlung AS Bezahlt
-                FROM dbo.vOffenerPostenEingangsrechnung op
+                FROM Zahlungsabgleich.vOffenerPostenEingangsrechnung op
                 LEFT JOIN dbo.tEingangsrechnung e ON op.kEingangsrechnung = e.kEingangsrechnung
                 LEFT JOIN dbo.tLieferant l ON e.kLieferant = l.kLieferant
                 WHERE op.dBelegdatum <= @stichtag
@@ -11192,7 +11192,7 @@ namespace NovviaERP.Core.Services
                         lv.fRechnungswert AS Betrag,
                         '9' AS UstSchluessel
                     FROM dbo.tRechnung r
-                    INNER JOIN dbo.lvRechnungen lv ON r.kRechnung = lv.kRechnung
+                    INNER JOIN Kunde.lvRechnungen lv ON r.kRechnung = lv.kRechnung
                     WHERE r.dErstellt BETWEEN @von AND @bis
                       AND r.nStorno = 0",
                     new { von, bis });
@@ -11212,7 +11212,7 @@ namespace NovviaERP.Core.Services
                         ISNULL(lv.fKorrekturwert, 0) AS Betrag,
                         '9' AS UstSchluessel
                     FROM dbo.tRechnungskorrektur rk
-                    LEFT JOIN dbo.lvRechnungskorrekturen lv ON rk.kRechnungskorrektur = lv.kRechnungskorrektur
+                    LEFT JOIN Kunde.lvRechnungskorrekturen lv ON rk.kRechnungskorrektur = lv.kRechnungskorrektur
                     WHERE rk.dErstellt BETWEEN @von AND @bis",
                     new { von, bis });
                 buchungen.AddRange(gs);
@@ -11257,6 +11257,248 @@ namespace NovviaERP.Core.Services
             }
 
             return buchungen.OrderBy(b => b.Datum);
+        }
+
+        #endregion
+
+        #region Steuerverwaltung (EU VAT, Reverse Charge, Drittland)
+
+        /// <summary>
+        /// Alle Steuerzonen laden (Inland, EU, Nicht-EU)
+        /// </summary>
+        public async Task<List<SteuerZone>> GetSteuerzoneAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<SteuerZone>(@"
+                SELECT kSteuerzone AS KSteuerzone, cName AS CName, cLandISO AS CLandISO,
+                       nUstIdB2B AS NUstIdPflichtB2B, nUstIdB2C AS NUstIdPflichtB2C
+                FROM dbo.tSteuerzone
+                ORDER BY kSteuerzone")).ToList();
+        }
+
+        /// <summary>
+        /// Alle Steuerklassen laden mit Details (Normal, Ermäßigt)
+        /// </summary>
+        public async Task<List<SteuerKlasse>> GetSteuerklassenListAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<SteuerKlasse>(@"
+                SELECT kSteuerklasse AS KSteuerklasse, cName AS CName, nStandard AS NStandard, nTyp AS NTyp
+                FROM dbo.tSteuerklasse
+                ORDER BY kSteuerklasse")).ToList();
+        }
+
+        /// <summary>
+        /// Alle Steuerschlüssel laden (für DATEV-Export, Kontenrahmen)
+        /// </summary>
+        public async Task<List<SteuerSchluessel>> GetSteuerschluesselAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<SteuerSchluessel>(@"
+                SELECT kSteuerschluessel AS KSteuerschluessel, cName AS CName, nSchluesselnummer AS NSchluesselnummer,
+                       cSteuerkonto AS CSteuerkonto, cSkontokonto AS CSkontokonto, cErloeskonto AS CErloeskonto,
+                       nAutomatik AS NAutomatik
+                FROM dbo.tSteuerschluessel
+                ORDER BY nSchluesselnummer")).ToList();
+        }
+
+        /// <summary>
+        /// Alle Steuersätze laden (Zone + Klasse -> Satz + Schlüssel für EU/Drittland/Reverse Charge)
+        /// </summary>
+        public async Task<List<SteuerSatz>> GetSteuersaetzeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<SteuerSatz>(@"
+                SELECT s.kSteuersatz AS KSteuersatz, s.kSteuerzone AS KSteuerzone, s.kSteuerklasse AS KSteuerklasse,
+                       s.fSteuersatz AS FSteuersatz, s.nPrio AS NPrio,
+                       s.kStSchl AS KStSchl, s.kStSchlIGL AS KStSchlIGL, s.kStSchlUStIGL AS KStSchlUStIGL, s.kStSchlReverse AS KStSchlReverse,
+                       z.cName AS CZoneName, k.cName AS CKlasseName,
+                       sc.cName AS CSchluesselName,
+                       sIGL.cName AS CSchluesselIGLName,
+                       sUStIGL.cName AS CSchluesselUStIGLName,
+                       sRev.cName AS CSchluesselReverseName
+                FROM dbo.tSteuersatz s
+                LEFT JOIN dbo.tSteuerzone z ON s.kSteuerzone = z.kSteuerzone
+                LEFT JOIN dbo.tSteuerklasse k ON s.kSteuerklasse = k.kSteuerklasse
+                LEFT JOIN dbo.tSteuerschluessel sc ON s.kStSchl = sc.kSteuerschluessel
+                LEFT JOIN dbo.tSteuerschluessel sIGL ON s.kStSchlIGL = sIGL.kSteuerschluessel
+                LEFT JOIN dbo.tSteuerschluessel sUStIGL ON s.kStSchlUStIGL = sUStIGL.kSteuerschluessel
+                LEFT JOIN dbo.tSteuerschluessel sRev ON s.kStSchlReverse = sRev.kSteuerschluessel
+                ORDER BY s.kSteuerzone, s.kSteuerklasse")).ToList();
+        }
+
+        /// <summary>
+        /// Länder einer Steuerzone laden
+        /// </summary>
+        public async Task<List<SteuerZoneLand>> GetSteuerzoneLaenderAsync(int kSteuerzone)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<SteuerZoneLand>(@"
+                SELECT szl.kSteuerzone AS KSteuerzone, szl.cISO AS CISO, l.cName AS CLandName
+                FROM dbo.tSteuerzoneLand szl
+                LEFT JOIN dbo.tLand l ON szl.cISO = l.cISO
+                WHERE szl.kSteuerzone = @kSteuerzone
+                ORDER BY l.cName", new { kSteuerzone })).ToList();
+        }
+
+        /// <summary>
+        /// Steuersatz aktualisieren
+        /// </summary>
+        public async Task UpdateSteuersatzAsync(SteuerSatz s)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tSteuersatz SET
+                    fSteuersatz = @FSteuersatz, kStSchl = @KStSchl, kStSchlIGL = @KStSchlIGL,
+                    kStSchlUStIGL = @KStSchlUStIGL, kStSchlReverse = @KStSchlReverse
+                WHERE kSteuersatz = @KSteuersatz", s);
+        }
+
+        /// <summary>
+        /// Steuerschlüssel aktualisieren (Konten)
+        /// </summary>
+        public async Task UpdateSteuerschluesselAsync(SteuerSchluessel s)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE dbo.tSteuerschluessel SET
+                    cName = @CName, cSteuerkonto = @CSteuerkonto, cSkontokonto = @CSkontokonto, cErloeskonto = @CErloeskonto
+                WHERE kSteuerschluessel = @KSteuerschluessel", s);
+        }
+
+        #endregion
+
+        #region Eigene Felder (Kunden, Artikel, Firma)
+
+        /// <summary>
+        /// Eigene Felder eines Kunden laden als Liste (Schema: Kunde.tKundeEigenesFeld)
+        /// </summary>
+        public async Task<List<EigenesFeldWert>> GetKundeEigeneFelderListAsync(int kKunde)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<EigenesFeldWert>(@"
+                SELECT ef.kKundeEigenesFeld AS KId, ef.kKunde AS KEntity, ef.kAttribut AS KAttribut,
+                       a.cGruppeName AS CGruppenname, ats.cName AS CAttributName,
+                       ef.cWertVarchar AS CWertVarchar, ef.nWertInt AS NWertInt,
+                       ef.fWertDecimal AS FWertDecimal, ef.dWertDateTime AS DWertDateTime,
+                       a.kFeldTyp AS KFeldTyp
+                FROM Kunde.tKundeEigenesFeld ef
+                LEFT JOIN dbo.tAttribut a ON ef.kAttribut = a.kAttribut
+                LEFT JOIN dbo.tAttributSprache ats ON a.kAttribut = ats.kAttribut AND ats.kSprache IN (0, 1)
+                WHERE ef.kKunde = @kKunde
+                ORDER BY a.nSortierung", new { kKunde })).ToList();
+        }
+
+        /// <summary>
+        /// Eigenes Feld für Kunden speichern
+        /// </summary>
+        public async Task SaveKundeEigenesFeldAsync(int kKunde, int kAttribut, string? wertVarchar, int? wertInt, decimal? wertDecimal, DateTime? wertDateTime)
+        {
+            var conn = await GetConnectionAsync();
+            // Prüfen ob bereits vorhanden
+            var existing = await conn.QuerySingleOrDefaultAsync<int?>(
+                "SELECT kKundeEigenesFeld FROM Kunde.tKundeEigenesFeld WHERE kKunde = @kKunde AND kAttribut = @kAttribut",
+                new { kKunde, kAttribut });
+
+            if (existing.HasValue)
+            {
+                await conn.ExecuteAsync(@"
+                    UPDATE Kunde.tKundeEigenesFeld SET
+                        cWertVarchar = @wertVarchar, nWertInt = @wertInt, fWertDecimal = @wertDecimal, dWertDateTime = @wertDateTime
+                    WHERE kKundeEigenesFeld = @existing",
+                    new { wertVarchar, wertInt, wertDecimal, wertDateTime, existing });
+            }
+            else
+            {
+                await conn.ExecuteAsync(@"
+                    INSERT INTO Kunde.tKundeEigenesFeld (kKunde, kAttribut, cWertVarchar, nWertInt, fWertDecimal, dWertDateTime)
+                    VALUES (@kKunde, @kAttribut, @wertVarchar, @wertInt, @wertDecimal, @wertDateTime)",
+                    new { kKunde, kAttribut, wertVarchar, wertInt, wertDecimal, wertDateTime });
+            }
+        }
+
+        /// <summary>
+        /// Eigenes Feld für Kunden löschen
+        /// </summary>
+        public async Task DeleteKundeEigenesFeldAsync(int kKundeEigenesFeld)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync("DELETE FROM Kunde.tKundeEigenesFeld WHERE kKundeEigenesFeld = @kKundeEigenesFeld", new { kKundeEigenesFeld });
+        }
+
+        /// <summary>
+        /// Eigene Felder eines Artikels laden als Liste (tArtikelAttribut + tArtikelAttributSprache)
+        /// </summary>
+        public async Task<List<ArtikelEigenesFeld>> GetArtikelEigeneFelderListAsync(int kArtikel)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<ArtikelEigenesFeld>(@"
+                SELECT aa.kArtikelAttribut AS KArtikelAttribut, aa.kArtikel AS KArtikel, aa.kAttribut AS KAttribut,
+                       a.cGruppeName AS CGruppenname, ats.cName AS CAttributName,
+                       aas.cWertVarchar AS CWertVarchar, aas.nWertInt AS NWertInt,
+                       aas.fWertDecimal AS FWertDecimal, aas.dWertDateTime AS DWertDateTime
+                FROM dbo.tArtikelAttribut aa
+                LEFT JOIN dbo.tArtikelAttributSprache aas ON aa.kArtikelAttribut = aas.kArtikelAttribut AND aas.kSprache IN (0, 1)
+                LEFT JOIN dbo.tAttribut a ON aa.kAttribut = a.kAttribut
+                LEFT JOIN dbo.tAttributSprache ats ON a.kAttribut = ats.kAttribut AND ats.kSprache IN (0, 1)
+                WHERE aa.kArtikel = @kArtikel
+                ORDER BY a.nSortierung", new { kArtikel })).ToList();
+        }
+
+        /// <summary>
+        /// Eigene Felder eines Auftrags laden als strukturierte Liste (Verkauf.tAuftragAttribut)
+        /// </summary>
+        public async Task<List<AuftragEigenesFeld>> GetAuftragEigeneFelderListAsync(int kAuftrag)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<AuftragEigenesFeld>(@"
+                SELECT va.kAuftragAttribut AS KAuftragAttribut, va.kAuftrag AS KAuftrag, va.kAttribut AS KAttribut,
+                       a.cGruppeName AS CGruppenname, ats.cName AS CAttributName,
+                       vas.cWertVarchar AS CWertVarchar, vas.nWertInt AS NWertInt,
+                       vas.fWertDecimal AS FWertDecimal, vas.dWertDateTime AS DWertDateTime
+                FROM Verkauf.tAuftragAttribut va
+                LEFT JOIN Verkauf.tAuftragAttributSprache vas ON va.kAuftragAttribut = vas.kAuftragAttribut AND vas.kSprache IN (0, 1)
+                LEFT JOIN dbo.tAttribut a ON va.kAttribut = a.kAttribut
+                LEFT JOIN dbo.tAttributSprache ats ON a.kAttribut = ats.kAttribut AND ats.kSprache IN (0, 1)
+                WHERE va.kAuftrag = @kAuftrag
+                ORDER BY a.nSortierung", new { kAuftrag })).ToList();
+        }
+
+        /// <summary>
+        /// Verfügbare Attribute für Entity-Typ laden (für Auswahl in Eigene Felder)
+        /// nBezugstyp: 1=Artikel, 2=Kunde, 3=Lieferant, etc.
+        /// </summary>
+        public async Task<List<AttributAuswahl>> GetVerfuegbareAttributeAsync(int nBezugstyp)
+        {
+            var conn = await GetConnectionAsync();
+            return (await conn.QueryAsync<AttributAuswahl>(@"
+                SELECT a.kAttribut AS KAttribut, ISNULL(ats.cName, a.cGruppeName) AS CName, a.cGruppeName AS CGruppeName,
+                       a.nIstFreifeld AS NIstFreifeld, a.kFeldTyp AS KFeldTyp
+                FROM dbo.tAttribut a
+                LEFT JOIN dbo.tAttributSprache ats ON a.kAttribut = ats.kAttribut AND ats.kSprache = 1
+                WHERE a.nBezugstyp = @nBezugstyp
+                ORDER BY a.nSortierung, ats.cName", new { nBezugstyp })).ToList();
+        }
+
+        #endregion
+
+        #region Briefpapier-Verwaltung
+
+        /// <summary>
+        /// Briefpapier-Bild löschen
+        /// </summary>
+        public async Task DeleteBriefpapierBildAsync(int kVorlage)
+        {
+            var conn = await GetConnectionAsync();
+            // Prüfen ob in Verwendung
+            var inUse = await conn.QuerySingleOrDefaultAsync<int?>(
+                "SELECT TOP 1 1 FROM NOVVIA.BriefpapierEinstellung WHERE kVorlageRechnung = @kVorlage OR kVorlageLieferschein = @kVorlage OR kVorlageMahnung = @kVorlage OR kVorlageAngebot = @kVorlage OR kVorlageAuftrag = @kVorlage OR kVorlageGutschrift = @kVorlage",
+                new { kVorlage });
+
+            if (inUse.HasValue)
+                throw new InvalidOperationException("Das Bild wird noch in den Briefpapier-Einstellungen verwendet und kann nicht gelöscht werden.");
+
+            await conn.ExecuteAsync("DELETE FROM Report.tVorlage WHERE kVorlage = @kVorlage", new { kVorlage });
         }
 
         #endregion
@@ -11362,6 +11604,130 @@ namespace NovviaERP.Core.Services
         public string? CBeschreibung { get; set; }
         public bool NAdmin { get; set; }
         public bool NAktiv { get; set; }
+    }
+
+    #endregion
+
+    #region Steuern DTOs
+
+    public class SteuerZone
+    {
+        public int KSteuerzone { get; set; }
+        public string CName { get; set; } = "";
+        public string? CLandISO { get; set; }
+        public bool NUstIdPflichtB2B { get; set; }
+        public bool NUstIdPflichtB2C { get; set; }
+    }
+
+    public class SteuerKlasse
+    {
+        public int KSteuerklasse { get; set; }
+        public string CName { get; set; } = "";
+        public bool NStandard { get; set; }
+        public int NTyp { get; set; }
+    }
+
+    public class SteuerSchluessel
+    {
+        public int KSteuerschluessel { get; set; }
+        public string CName { get; set; } = "";
+        public int NSchluesselnummer { get; set; }
+        public string? CSteuerkonto { get; set; }
+        public string? CSkontokonto { get; set; }
+        public string? CErloeskonto { get; set; }
+        public bool NAutomatik { get; set; }
+    }
+
+    public class SteuerSatz
+    {
+        public int KSteuersatz { get; set; }
+        public int KSteuerzone { get; set; }
+        public int KSteuerklasse { get; set; }
+        public decimal FSteuersatz { get; set; }
+        public int NPrio { get; set; }
+        public int? KStSchl { get; set; }
+        public int? KStSchlIGL { get; set; }
+        public int? KStSchlUStIGL { get; set; }
+        public int? KStSchlReverse { get; set; }
+        public string? CZoneName { get; set; }
+        public string? CKlasseName { get; set; }
+        public string? CSchluesselName { get; set; }
+        public string? CSchluesselIGLName { get; set; }
+        public string? CSchluesselUStIGLName { get; set; }
+        public string? CSchluesselReverseName { get; set; }
+    }
+
+    public class SteuerZoneLand
+    {
+        public int KSteuerzoneLand { get; set; }
+        public int KSteuerzone { get; set; }
+        public string CISO { get; set; } = "";
+        public string? CLandName { get; set; }
+    }
+
+    #endregion
+
+    #region Eigene Felder DTOs
+
+    public class JtlAttributDefinition
+    {
+        public int KAttribut { get; set; }
+        public string CAttributId { get; set; } = "";
+        public string CName { get; set; } = "";
+        public string? CGruppenname { get; set; }
+        public int NSort { get; set; }
+        public int KFeldTyp { get; set; }
+        public string FeldTypName { get; set; } = "";
+        public bool NReadOnly { get; set; }
+        public bool NIstUnsichtbar { get; set; }
+    }
+
+    public class EigenesFeldWert
+    {
+        public int KId { get; set; }
+        public int KEntity { get; set; }
+        public int KAttribut { get; set; }
+        public string? CGruppenname { get; set; }
+        public string? CAttributName { get; set; }
+        public string? CWertVarchar { get; set; }
+        public int? NWertInt { get; set; }
+        public decimal? FWertDecimal { get; set; }
+        public DateTime? DWertDateTime { get; set; }
+        public int KFeldTyp { get; set; }
+    }
+
+    public class ArtikelEigenesFeld
+    {
+        public int KArtikelAttribut { get; set; }
+        public int KArtikel { get; set; }
+        public int KAttribut { get; set; }
+        public string? CAttributName { get; set; }
+        public string? CGruppenname { get; set; }
+        public string? CWertVarchar { get; set; }
+        public int? NWertInt { get; set; }
+        public decimal? FWertDecimal { get; set; }
+        public DateTime? DWertDateTime { get; set; }
+    }
+
+    public class AuftragEigenesFeld
+    {
+        public int KAuftragAttribut { get; set; }
+        public int KAuftrag { get; set; }
+        public int KAttribut { get; set; }
+        public string? CAttributName { get; set; }
+        public string? CGruppenname { get; set; }
+        public string? CWertVarchar { get; set; }
+        public int? NWertInt { get; set; }
+        public decimal? FWertDecimal { get; set; }
+        public DateTime? DWertDateTime { get; set; }
+    }
+
+    public class AttributAuswahl
+    {
+        public int KAttributAuswahl { get; set; }
+        public int KAttribut { get; set; }
+        public string CWert { get; set; } = "";
+        public int NSort { get; set; }
     }
 
     #endregion
