@@ -1055,7 +1055,11 @@ namespace NovviaERP.WPF.Views
         {
             if (Window.GetWindow(this) is MainWindow main)
             {
-                main.ShowContent(App.Services.GetRequiredService<ArtikelView>());
+                // Versuche Zurueck-Navigation, sonst zur Liste
+                if (!main.NavigateBack())
+                {
+                    main.ShowContent(App.Services.GetRequiredService<ArtikelView>(), pushToStack: false);
+                }
             }
         }
     }

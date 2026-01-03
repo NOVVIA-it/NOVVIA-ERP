@@ -930,16 +930,11 @@ namespace NovviaERP.WPF.Views
         {
             if (Window.GetWindow(this) is MainWindow main)
             {
-                // Wenn wir von einer Bestellung kommen, zurück zur Bestellung
-                if (_returnToBestellungId.HasValue)
+                // Versuche Zurueck-Navigation ueber Stack
+                if (!main.NavigateBack())
                 {
-                    var bestellungView = new BestellungDetailView();
-                    bestellungView.LadeBestellung(_returnToBestellungId.Value);
-                    main.ShowContent(bestellungView);
-                }
-                else
-                {
-                    main.ShowContent(App.Services.GetRequiredService<KundenView>());
+                    // Fallback zur Kundenliste
+                    main.ShowContent(App.Services.GetRequiredService<KundenView>(), pushToStack: false);
                 }
             }
         }

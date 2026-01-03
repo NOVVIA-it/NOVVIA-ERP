@@ -45,7 +45,9 @@ namespace NovviaERP.WPF.Views
                 // Korrekturdaten
                 txtKorrekturNr.Text = _korrektur.CGutschriftNr;
                 txtDatum.Text = _korrektur.DErstellt.ToString("dd.MM.yyyy");
-                txtRechnungNr.Text = _korrektur.KRechnung > 0 ? _korrektur.KRechnung.ToString() : "-";
+                txtRechnungNr.Text = _korrektur.KRechnung > 0
+                    ? (!string.IsNullOrEmpty(_korrektur.CRechnungsnummer) ? _korrektur.CRechnungsnummer : _korrektur.KRechnung.ToString())
+                    : "-";
                 txtTypInfo.Text = _korrektur.StornoTypName;
                 txtKurztext.Text = string.IsNullOrEmpty(_korrektur.CKurzText) ? "-" : _korrektur.CKurzText;
 
@@ -146,7 +148,11 @@ namespace NovviaERP.WPF.Views
         {
             if (Window.GetWindow(this) is MainWindow main)
             {
-                main.ShowContent(App.Services.GetRequiredService<RechnungskorrekturenView>());
+                // Versuche Zurueck-Navigation, sonst zur Liste
+                if (!main.NavigateBack())
+                {
+                    main.ShowContent(App.Services.GetRequiredService<RechnungskorrekturenView>(), pushToStack: false);
+                }
             }
         }
 

@@ -141,19 +141,60 @@
                     </WrapPanel>
                 </Border>
 
-                <!-- Details -->
+                <!-- Positionen -->
                 <Grid Grid.Row="1">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="Details / Text" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,5"/>
+                    <TextBlock Text="Korrekturpositionen" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,5"/>
 
-                    <Border Grid.Row="1" Background="White" BorderBrush="#ddd" BorderThickness="1" Padding="10">
-                        <TextBox x:Name="txtDetails" IsReadOnly="True" TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto" BorderThickness="0"/>
-                    </Border>
+                    <DataGrid x:Name="dgPositionen" Grid.Row="1"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              SelectionMode="Single" SelectionUnit="FullRow"
+                              HeadersVisibility="Column" BorderThickness="1" BorderBrush="#ddd">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Artikelnr." Binding="{Binding CArtNr}" Width="100"/>
+                            <DataGridTextColumn Header="Positionsname" Binding="{Binding CName}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="Menge" Binding="{Binding FAnzahl, StringFormat=N0}" Width="70">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Netto-VK" Binding="{Binding FVKNetto, StringFormat=N2}" Width="90">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Rabatt %" Binding="{Binding FRabatt, StringFormat=N1}" Width="70">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="MwSt. %" Binding="{Binding FMwSt, StringFormat=N0}" Width="60">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Brutto-VK" Binding="{Binding FVKBrutto, StringFormat=N2}" Width="90">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </Grid>
             </Grid>
         </Grid>

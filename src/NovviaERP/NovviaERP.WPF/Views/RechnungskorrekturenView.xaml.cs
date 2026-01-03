@@ -125,7 +125,7 @@ namespace NovviaERP.WPF.Views
             if (e.Key == Key.Enter) await LadeKorrekturenAsync();
         }
 
-        private void DG_SelectionChanged(object? sender, object? e)
+        private async void DG_SelectionChanged(object? sender, object? e)
         {
             var selected = dgKorrekturen.Grid.SelectedItem as CoreService.RechnungskorrekturUebersicht;
             var hasSelection = selected != null;
@@ -136,14 +136,28 @@ namespace NovviaERP.WPF.Views
             btnDrucken.IsEnabled = hasSelection;
             btnStorno.IsEnabled = hasSelection && !selected!.NStorno;
 
-            // Details anzeigen
+            // Positionen laden
             if (selected != null)
             {
-                txtDetails.Text = $"Kurztext: {selected.CKurztext}\n\nText:\n{selected.CText}\n\nAnmerkung:\n{selected.CAnmerkung}";
+                await LadePositionenAsync(selected.KGutschrift);
             }
             else
             {
-                txtDetails.Text = "";
+                dgPositionen.ItemsSource = null;
+            }
+        }
+
+        private async Task LadePositionenAsync(int kGutschrift)
+        {
+            try
+            {
+                var korrektur = await _core.GetRechnungskorrekturMitPositionenAsync(kGutschrift);
+                dgPositionen.ItemsSource = korrektur?.Positionen;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der Positionen: {ex.Message}");
+                dgPositionen.ItemsSource = null;
             }
         }
 

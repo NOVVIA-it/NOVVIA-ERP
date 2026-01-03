@@ -184,7 +184,7 @@ BEGIN
         k.cKundenNr, ISNULL(k.cFirma, LTRIM(RTRIM(ISNULL(k.cVorname, '') + ' ' + ISNULL(k.cName, '')))) AS cKundeName,
         gs.dStorniert, gsg.cStornogrund
     FROM dbo.tgutschrift g
-    LEFT JOIN Kunde.tKunde k ON g.kKunde = k.kKunde
+    LEFT JOIN dbo.tkunde k ON g.kKunde = k.kKunde
     LEFT JOIN dbo.tGutschriftStorno gs ON g.kGutschrift = gs.kGutschrift
     LEFT JOIN dbo.tGutschriftStornogrund gsg ON gs.kGutschriftStornogrund = gsg.kGutschriftStornogrund
     WHERE (@cSuche IS NULL OR g.cGutschriftNr LIKE '%' + @cSuche + '%' OR k.cKundenNr LIKE '%' + @cSuche + '%'
@@ -210,18 +210,20 @@ CREATE PROCEDURE NOVVIA.spRechnungskorrekturLesen
 AS
 BEGIN
     SET NOCOUNT ON;
-    -- Kopf
+    -- Kopf mit Rechnungsadresse und externer Rechnungsnummer
     SELECT g.kGutschrift, g.kRechnung, g.kKunde, g.cGutschriftNr, g.cKurzText, g.cText,
         g.fPreis AS fPreisNetto, g.fPreis * (1 + g.fMwSt/100) AS fPreisBrutto,
         g.fMwSt, g.dErstellt, g.cWaehrung, g.fFaktor, g.kFirma, g.kSprache, g.kBenutzer,
         g.cStatus, g.kRechnungsAdresse, g.kPlattform, g.dDruckdatum, g.dMaildatum,
         g.nStorno, g.nStornoTyp, g.nIstExtern, g.cKundeUstId, g.nGutschriftStatus,
-        k.cKundenNr, ISNULL(k.cFirma, LTRIM(RTRIM(ISNULL(k.cVorname, '') + ' ' + ISNULL(k.cName, '')))) AS cKundeName,
-        gs.dStorniert, gs.cKommentar AS cStornoKommentar, gsg.cStornogrund
+        ra.cKundenNr, ISNULL(ra.cFirma, LTRIM(RTRIM(ISNULL(ra.cVorname, '') + ' ' + ISNULL(ra.cName, '')))) AS cKundeName,
+        gs.dStorniert, gs.cKommentar AS cStornoKommentar, gsg.cStornogrund,
+        r.cRechnungsnr AS cRechnungsnummer
     FROM dbo.tgutschrift g
-    LEFT JOIN Kunde.tKunde k ON g.kKunde = k.kKunde
+    LEFT JOIN dbo.tRechnungsadresse ra ON g.kRechnungsAdresse = ra.kRechnungsAdresse
     LEFT JOIN dbo.tGutschriftStorno gs ON g.kGutschrift = gs.kGutschrift
     LEFT JOIN dbo.tGutschriftStornogrund gsg ON gs.kGutschriftStornogrund = gsg.kGutschriftStornogrund
+    LEFT JOIN dbo.tRechnung r ON g.kRechnung = r.kRechnung
     WHERE g.kGutschrift = @kGutschrift;
     -- Positionen
     SELECT p.kGutschriftPos, p.tGutschrift_kGutschrift AS kGutschrift, p.tArtikel_kArtikel AS kArtikel,

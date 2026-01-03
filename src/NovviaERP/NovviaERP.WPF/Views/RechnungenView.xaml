@@ -192,38 +192,37 @@
                               SelectionMode="Single" SelectionUnit="FullRow"
                               HeadersVisibility="Column" BorderThickness="1" BorderBrush="#ddd">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Artikelnr." Binding="{Binding CArtNr}" Width="100"/>
-                            <DataGridTextColumn Header="Positionsname" Binding="{Binding CName}" Width="*" MinWidth="200"/>
-                            <DataGridTextColumn Header="Menge" Binding="{Binding FAnzahl, StringFormat=N0}" Width="70">
+                            <DataGridTextColumn Header="Artikelnr." Binding="{Binding ArtNr}" Width="100"/>
+                            <DataGridTextColumn Header="Positionsname" Binding="{Binding Name}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="Menge" Binding="{Binding Menge, StringFormat=N0}" Width="70">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Einheit" Binding="{Binding CEinheit}" Width="60"/>
-                            <DataGridTextColumn Header="Netto-VK" Binding="{Binding FVKNetto, StringFormat=N2}" Width="80">
+                            <DataGridTextColumn Header="Netto-VK" Binding="{Binding PreisNetto, StringFormat=N2}" Width="90">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Brutto-VK" Binding="{Binding FVKBrutto, StringFormat=N2}" Width="80">
+                            <DataGridTextColumn Header="Rabatt %" Binding="{Binding Rabatt, StringFormat=N1}" Width="70">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="MwSt. %" Binding="{Binding FMwSt, StringFormat=N0}" Width="55">
+                            <DataGridTextColumn Header="MwSt. %" Binding="{Binding MwStSatz, StringFormat=N0}" Width="60">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Summe" Binding="{Binding Summe, StringFormat=N2}" Width="90">
+                            <DataGridTextColumn Header="Brutto-VK" Binding="{Binding PreisBrutto, StringFormat=N2}" Width="90">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="HorizontalAlignment" Value="Right"/>

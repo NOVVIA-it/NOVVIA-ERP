@@ -77,17 +77,18 @@ namespace NovviaERP.WPF.Views
 
                 var suche = txtSuche.Text.Trim();
 
-                // Status in int? umwandeln für die API
+                // Status in int? umwandeln für die API (laut SP-Dokumentation)
+                // 0=Offen, 1=Bezahlt, 2=Storniert, 3=Teilbezahlt, 4=Angemahnt
                 int? statusInt = null;
                 if (!string.IsNullOrEmpty(_selectedStatus))
                 {
                     statusInt = _selectedStatus switch
                     {
                         "Offen" => 0,
-                        "Teilbezahlt" => 1,
-                        "Bezahlt" => 2,
-                        "Ueberfaellig" => 3,
-                        "Storniert" => 4,
+                        "Bezahlt" => 1,
+                        "Storniert" => 2,
+                        "Teilbezahlt" => 3,
+                        "Ueberfaellig" => 0,  // Offen + wird client-seitig gefiltert
                         _ => null
                     };
                 }

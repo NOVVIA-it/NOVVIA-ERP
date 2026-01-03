@@ -1141,7 +1141,7 @@
                                     </Grid.RowDefinitions>
 
                                     <TextBlock Text="Zeilenhoehe:" VerticalAlignment="Center"/>
-                                    <TextBox x:Name="txtGridZeilenhoehe" Grid.Column="1" Text="28"/>
+                                    <TextBox x:Name="txtGridZeilenhoehe" Grid.Column="1" Text="18"/>
 
                                     <TextBlock Text="Schriftart:" VerticalAlignment="Center" Grid.Column="3"/>
                                     <ComboBox x:Name="cmbGridSchriftart" Grid.Column="4">

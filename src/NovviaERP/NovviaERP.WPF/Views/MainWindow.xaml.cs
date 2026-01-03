@@ -10,6 +10,8 @@ namespace NovviaERP.WPF.Views
         private readonly CoreService _core;
         private bool _isLoading = true;
         private string _currentSection = ""; // Aktueller Abschnitt (Auftraege, Rechnungen, etc.)
+        private readonly Stack<UserControl> _navigationStack = new();
+        private const int MaxStackSize = 20;
 
         public MainWindow()
         {
@@ -36,6 +38,9 @@ namespace NovviaERP.WPF.Views
 
         private void AlleStatusMenusEinklappen()
         {
+            // Navigation-Stack leeren bei Sidebar-Navigation
+            _navigationStack.Clear();
+
             // Verkauf
             pnlAuftraegeStatus.Visibility = Visibility.Collapsed;
             pnlRechnungenStatus.Visibility = Visibility.Collapsed;
@@ -324,10 +329,58 @@ namespace NovviaERP.WPF.Views
             contentMain.Content = new TestView();
         }
 
-        public void ShowContent(UserControl view)
+        /// <summary>
+        /// Zeigt eine View im Hauptbereich an.
+        /// Bei pushToStack=true wird die vorherige View auf den Stack gelegt (fuer Zurueck-Navigation).
+        /// </summary>
+        public void ShowContent(UserControl view, bool pushToStack = true)
         {
+            // Aktuelle View auf Stack legen wenn gewuenscht
+            if (pushToStack && contentMain.Content is UserControl currentView)
+            {
+                // Stack-Groesse begrenzen
+                while (_navigationStack.Count >= MaxStackSize)
+                {
+                    // Aeltesten Eintrag entfernen (am Ende des Stacks)
+                    var tempStack = new Stack<UserControl>();
+                    while (_navigationStack.Count > 1)
+                        tempStack.Push(_navigationStack.Pop());
+                    _navigationStack.Clear();
+                    while (tempStack.Count > 0)
+                        _navigationStack.Push(tempStack.Pop());
+                }
+                _navigationStack.Push(currentView);
+            }
             contentMain.Content = view;
         }
+
+        /// <summary>
+        /// Navigiert zurueck zur vorherigen View.
+        /// Gibt true zurueck wenn erfolgreich, false wenn der Stack leer war.
+        /// </summary>
+        public bool NavigateBack()
+        {
+            if (_navigationStack.Count > 0)
+            {
+                var previousView = _navigationStack.Pop();
+                contentMain.Content = previousView;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Leert den Navigation-Stack (z.B. bei Navigation ueber Sidebar)
+        /// </summary>
+        public void ClearNavigationStack()
+        {
+            _navigationStack.Clear();
+        }
+
+        /// <summary>
+        /// Prueft ob eine Zurueck-Navigation moeglich ist
+        /// </summary>
+        public bool CanNavigateBack => _navigationStack.Count > 0;
 
         private void BtnAbmelden_Click(object sender, RoutedEventArgs e)
         {

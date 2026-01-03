@@ -7977,6 +7977,7 @@ namespace NovviaERP.Core.Services
             public DateTime? DStorniert { get; set; }
             public string CStornoKommentar { get; set; } = "";
             public string CStornogrund { get; set; } = "";
+            public string CRechnungsnummer { get; set; } = "";
 
             // Berechnete Eigenschaften
             public string StornoTypName => NStornoTyp switch

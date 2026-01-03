@@ -2423,7 +2423,7 @@ namespace NovviaERP.WPF.Views
             if (result == MessageBoxResult.Yes)
             {
                 // Allgemeine Standardwerte
-                txtGridZeilenhoehe.Text = "28";
+                txtGridZeilenhoehe.Text = "18";
                 txtGridSchriftgroesse.Text = "12";
                 cmbGridSchriftart.SelectedIndex = 0; // Segoe UI
                 cmbGridLinien.SelectedIndex = 0; // All
