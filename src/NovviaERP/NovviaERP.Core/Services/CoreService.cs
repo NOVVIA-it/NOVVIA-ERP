@@ -108,6 +108,9 @@ namespace NovviaERP.Core.Services
             public DateTime DErstellt { get; set; }
             public string CStatus { get; set; } = "";
             public decimal GesamtBrutto { get; set; }
+            public decimal OffenerBetrag { get; set; }
+            public string CZahlungsart { get; set; } = "";
+            public string CVersandart { get; set; } = "";
         }
 
         public class KundeRechnungKurz
@@ -1190,9 +1193,14 @@ namespace NovviaERP.Core.Services
                     ISNULL(a.cAuftragsnr, CAST(a.kAuftrag AS VARCHAR)) AS CBestellNr,
                     a.dErstellt AS DErstellt,
                     CASE a.nAuftragStatus WHEN 0 THEN 'Neu' WHEN 1 THEN 'In Bearbeitung' WHEN 2 THEN 'Versandbereit' WHEN 3 THEN 'Versendet' WHEN 4 THEN 'Abgeschlossen' ELSE 'Offen' END AS CStatus,
-                    ISNULL(ae.fWertBrutto, 0) AS GesamtBrutto
+                    ISNULL(ae.fWertBrutto, 0) AS GesamtBrutto,
+                    ISNULL(ae.fOffenerBetrag, 0) AS OffenerBetrag,
+                    ISNULL(z.cName, '') AS CZahlungsart,
+                    ISNULL(v.cName, '') AS CVersandart
                 FROM Verkauf.tAuftrag a
                 LEFT JOIN Verkauf.tAuftragEckdaten ae ON a.kAuftrag = ae.kAuftrag
+                LEFT JOIN dbo.tZahlungsart z ON a.kZahlungsart = z.kZahlungsart
+                LEFT JOIN dbo.tVersandart v ON a.kVersandart = v.kVersandart
                 WHERE a.kKunde = @kundeId AND a.nStorno = 0
                 ORDER BY a.dErstellt DESC", new { kundeId });
         }

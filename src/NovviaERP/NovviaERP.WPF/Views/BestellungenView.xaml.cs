@@ -11,6 +11,9 @@ namespace NovviaERP.WPF.Views
     public partial class BestellungenView : UserControl
     {
         private readonly CoreService _core;
+        private List<CoreService.BestellungUebersicht> _alleBestellungen = new();
+        private string _selectedStatus = "";
+        private bool _isInitializing = true;
 
         public BestellungenView()
         {
@@ -18,10 +21,82 @@ namespace NovviaERP.WPF.Views
             _core = App.Services.GetRequiredService<CoreService>();
             Loaded += async (s, e) =>
             {
-                // GridStyleHelper initialisieren (inkl. Spalten-Konfiguration)
-                await GridStyleHelper.InitializeGridAsync(dgBestellungen, "BestellungenView", _core, App.BenutzerId);
+                await LadeEinstellungenAsync();
                 await LadeBestellungenAsync();
+                dgBestellungen.DateFilterChanged += DgBestellungen_DateFilterChanged;
+                _isInitializing = false;
             };
+
+            // Einstellungen speichern wenn View entladen wird
+            Unloaded += async (s, e) =>
+            {
+                await SpeichereSplitterEinstellungenAsync();
+            };
+        }
+
+        private async Task LadeEinstellungenAsync()
+        {
+            try
+            {
+                // Gespeicherten Status laden
+                var savedStatus = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.Status");
+                if (!string.IsNullOrEmpty(savedStatus))
+                {
+                    _selectedStatus = savedStatus;
+                    // ListBox-Auswahl setzen
+                    foreach (ListBoxItem item in lstStatus.Items)
+                    {
+                        if (item.Tag?.ToString() == savedStatus)
+                        {
+                            lstStatus.SelectedItem = item;
+                            break;
+                        }
+                    }
+                }
+
+                // Splitter-Positionen laden
+                var sidebarBreite = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.SidebarBreite");
+                if (!string.IsNullOrEmpty(sidebarBreite) && double.TryParse(sidebarBreite, out double sbWidth) && sbWidth >= 120)
+                {
+                    sidebarColumn.Width = new GridLength(sbWidth);
+                }
+
+                var auftraegeHoehe = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.AuftraegeHoehe");
+                if (!string.IsNullOrEmpty(auftraegeHoehe) && double.TryParse(auftraegeHoehe, out double ahHeight))
+                {
+                    auftraegeRow.Height = new GridLength(ahHeight, GridUnitType.Star);
+                }
+
+                var positionenHoehe = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.PositionenHoehe");
+                if (!string.IsNullOrEmpty(positionenHoehe) && double.TryParse(positionenHoehe, out double phHeight))
+                {
+                    positionenRow.Height = new GridLength(phHeight, GridUnitType.Star);
+                }
+            }
+            catch { /* Ignorieren - Standardwerte verwenden */ }
+        }
+
+        private async Task SpeichereEinstellungenAsync()
+        {
+            try
+            {
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.Status", _selectedStatus);
+            }
+            catch { /* Ignorieren */ }
+        }
+
+        private async Task SpeichereSplitterEinstellungenAsync()
+        {
+            try
+            {
+                // Sidebar-Breite speichern
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.SidebarBreite", sidebarColumn.Width.Value.ToString());
+
+                // Aufträge/Positionen Höhen speichern (als Star-Werte)
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.AuftraegeHoehe", auftraegeRow.Height.Value.ToString());
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "BestellungenView.PositionenHoehe", positionenRow.Height.Value.ToString());
+            }
+            catch { /* Ignorieren */ }
         }
 
         private async Task LadeBestellungenAsync()
@@ -30,24 +105,27 @@ namespace NovviaERP.WPF.Views
             {
                 txtStatus.Text = "Lade Bestellungen...";
 
-                var status = (cmbStatus.SelectedItem as ComboBoxItem)?.Tag?.ToString();
                 var suche = txtSuche.Text.Trim();
+                var status = string.IsNullOrEmpty(_selectedStatus) ? null : _selectedStatus;
+
+                // WICHTIG: Bei "Alle anzeigen" kein Limit verwenden!
+                var limit = 100000; // Praktisch unbegrenzt
 
                 var bestellungen = await _core.GetBestellungenAsync(
                     suche: string.IsNullOrEmpty(suche) ? null : suche,
-                    status: string.IsNullOrEmpty(status) ? null : status);
+                    status: status,
+                    limit: limit);
 
-                var liste = bestellungen.ToList();
-                dgBestellungen.ItemsSource = liste;
-                txtAnzahl.Text = $"({liste.Count} Bestellungen)";
-                txtStatus.Text = $"{liste.Count} Bestellungen geladen";
+                _alleBestellungen = bestellungen.ToList();
+                dgBestellungen.ItemsSource = _alleBestellungen;
+                txtAnzahl.Text = $"({_alleBestellungen.Count} Auftraege)";
+                txtStatus.Text = $"{_alleBestellungen.Count} Bestellungen geladen";
 
-                // Summen berechnen
-                var summeNetto = liste.Sum(b => b.GesamtNetto);
-                var summeBrutto = liste.Sum(b => b.GesamtBrutto);
-                txtSummeAnzahl.Text = $"{liste.Count} Bestellungen";
-                txtSummeNetto.Text = summeNetto.ToString("N2");
-                txtSummeBrutto.Text = summeBrutto.ToString("N2");
+                // Status-Counts aktualisieren
+                UpdateStatusCounts();
+
+                // Summen basierend auf gefilterten Daten aktualisieren
+                UpdateSummen();
             }
             catch (Exception ex)
             {
@@ -56,37 +134,113 @@ namespace NovviaERP.WPF.Views
             }
         }
 
-        private async void Suchen_Click(object sender, RoutedEventArgs e) => await LadeBestellungenAsync();
-        private async void Aktualisieren_Click(object sender, RoutedEventArgs e) => await LadeBestellungenAsync();
-        private async void Status_Changed(object sender, SelectionChangedEventArgs e)
+        private void DgBestellungen_DateFilterChanged(object? sender, EventArgs e)
         {
-            // Nicht laden während InitializeComponent
-            if (!IsLoaded) return;
+            // Summen neu berechnen basierend auf den gefilterten Daten
+            UpdateSummen();
+        }
+
+        private void UpdateSummen()
+        {
+            // Gefilterte Daten aus dem Grid holen
+            var gefiltert = dgBestellungen.FilteredItemsSource?.Cast<CoreService.BestellungUebersicht>().ToList()
+                ?? new List<CoreService.BestellungUebersicht>();
+
+            var summeNetto = gefiltert.Sum(b => b.GesamtNetto);
+            var summeBrutto = gefiltert.Sum(b => b.GesamtBrutto);
+
+            txtSummeAnzahl.Text = $"{gefiltert.Count} Auftraege";
+            txtSummeBrutto.Text = $"{summeBrutto:N2} EUR";
+        }
+
+        private void UpdateStatusCounts()
+        {
+            // Counts fuer jeden Status berechnen
+            var countAlle = _alleBestellungen.Count;
+            var countOffen = _alleBestellungen.Count(b => b.CStatus == "Offen");
+            var countInBearbeitung = _alleBestellungen.Count(b => b.CStatus == "In Bearbeitung");
+            var countBezahlt = _alleBestellungen.Count(b => b.CStatus == "Bezahlt" || b.CStatus == "Versandbereit");
+            var countVersendet = _alleBestellungen.Count(b => b.CStatus == "Versendet" || b.CStatus == "Abgeschlossen");
+            var countStorniert = _alleBestellungen.Count(b => b.CStatus == "Storniert");
+
+            txtCountAlle.Text = $"({countAlle})";
+            txtCountOffen.Text = $"({countOffen})";
+            txtCountInBearbeitung.Text = $"({countInBearbeitung})";
+            txtCountBezahlt.Text = $"({countBezahlt})";
+            txtCountVersendet.Text = $"({countVersendet})";
+            txtCountStorniert.Text = $"({countStorniert})";
+        }
+
+        private async void LstStatus_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isInitializing) return;
+
+            var selected = lstStatus.SelectedItem as ListBoxItem;
+            _selectedStatus = selected?.Tag?.ToString() ?? "";
+
+            // Einstellung speichern
+            await SpeichereEinstellungenAsync();
+
+            // Automatisch neu laden
             await LadeBestellungenAsync();
         }
+
+        private async void Suchen_Click(object sender, RoutedEventArgs e) => await LadeBestellungenAsync();
 
         private async void TxtSuche_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter) await LadeBestellungenAsync();
         }
 
-        private void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void DG_SelectionChanged(object? sender, object? e)
         {
-            var selected = dgBestellungen.SelectedItem != null;
-            btnBearbeiten.IsEnabled = selected;
-            btnRechnung.IsEnabled = selected;
-            btnLieferschein.IsEnabled = selected;
+            var selected = dgBestellungen.Grid.SelectedItem as CoreService.BestellungUebersicht;
+            var hasSelection = selected != null;
+
+            // Buttons aktivieren/deaktivieren
+            btnAuftrag.IsEnabled = hasSelection;
+            btnAusgabe.IsEnabled = hasSelection;
+            btnKunde.IsEnabled = hasSelection;
+            btnRechnungErstellen.IsEnabled = hasSelection;
+            btnZusammenfassen.IsEnabled = hasSelection;
+            btnZahlung.IsEnabled = hasSelection;
+            btnAusliefern.IsEnabled = hasSelection;
+            btnVersandinfo.IsEnabled = hasSelection;
+
+            // Positionen laden
+            if (selected != null)
+            {
+                await LadePositionenAsync(selected.KBestellung);
+            }
+            else
+            {
+                dgPositionen.ItemsSource = null;
+            }
         }
 
-        private void DG_DoubleClick(object sender, MouseButtonEventArgs e)
+        private async Task LadePositionenAsync(int kBestellung)
         {
-            if (dgBestellungen.SelectedItem is CoreService.BestellungUebersicht best)
+            try
+            {
+                var bestellung = await _core.GetBestellungByIdAsync(kBestellung);
+                dgPositionen.ItemsSource = bestellung?.Positionen;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Fehler beim Laden der Positionen: {ex.Message}");
+                dgPositionen.ItemsSource = null;
+            }
+        }
+
+        private void DG_DoubleClick(object? sender, object? e)
+        {
+            if (e is CoreService.BestellungUebersicht best)
                 NavigateToDetail(best.KBestellung);
         }
 
         private void Bearbeiten_Click(object sender, RoutedEventArgs e)
         {
-            if (dgBestellungen.SelectedItem is CoreService.BestellungUebersicht best)
+            if (dgBestellungen.Grid.SelectedItem is CoreService.BestellungUebersicht best)
                 NavigateToDetail(best.KBestellung);
         }
 
@@ -108,7 +262,6 @@ namespace NovviaERP.WPF.Views
 
         private void Neu_Click(object sender, RoutedEventArgs e)
         {
-            // Neue Auftragsansicht öffnen (wie Auftragsdarstellung)
             if (Window.GetWindow(this) is MainWindow main)
             {
                 var detailView = new BestellungDetailView();
@@ -128,7 +281,7 @@ namespace NovviaERP.WPF.Views
 
         private async void Rechnung_Click(object sender, RoutedEventArgs e)
         {
-            if (dgBestellungen.SelectedItem is not CoreService.BestellungUebersicht best) return;
+            if (dgBestellungen.Grid.SelectedItem is not CoreService.BestellungUebersicht best) return;
 
             var result = MessageBox.Show(
                 $"Rechnung für Auftrag {best.CBestellNr} erstellen?\n\nHinweis: Ein Lieferschein muss bereits existieren.",
@@ -162,7 +315,7 @@ namespace NovviaERP.WPF.Views
 
         private async void Lieferschein_Click(object sender, RoutedEventArgs e)
         {
-            if (dgBestellungen.SelectedItem is not CoreService.BestellungUebersicht best) return;
+            if (dgBestellungen.Grid.SelectedItem is not CoreService.BestellungUebersicht best) return;
 
             var result = MessageBox.Show(
                 $"Lieferschein für Auftrag {best.CBestellNr} erstellen?\n\nAlle offenen Positionen werden übernommen.",

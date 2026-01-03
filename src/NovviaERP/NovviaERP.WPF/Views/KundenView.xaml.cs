@@ -15,13 +15,14 @@ namespace NovviaERP.WPF.Views
         private List<CoreService.KundeUebersicht> _kunden = new();
         private CoreService.KundeUebersicht? _selectedKunde;
         private int _currentPage = 0;
-        private const int PageSize = 100;
+        private const int PageSize = 1000;
 
         public KundenView()
         {
             InitializeComponent();
             _core = App.Services.GetRequiredService<CoreService>();
             Loaded += async (s, e) => await InitAsync();
+            Unloaded += async (s, e) => await SpeichereSplitterEinstellungenAsync();
         }
 
         private async Task InitAsync()
@@ -35,7 +36,6 @@ namespace NovviaERP.WPF.Views
                 GridStyleHelper.InitializeGrid(dgKundeRechnungen, "KundenView.Rechnungen");
                 GridStyleHelper.InitializeGrid(dgKundeAdressen, "KundenView.Adressen");
                 GridStyleHelper.InitializeGrid(dgAnsprechpartner, "KundenView.Ansprechpartner");
-                GridStyleHelper.InitializeGrid(dgTickets, "KundenView.Tickets");
 
                 // Kundengruppen laden
                 var gruppen = (await _core.GetKundengruppenAsync()).ToList();
@@ -53,11 +53,49 @@ namespace NovviaERP.WPF.Views
 
                 // Kunden laden
                 await LadeKundenAsync();
+
+                // Splitter-Positionen laden
+                await LadeSplitterEinstellungenAsync();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Fehler beim Laden: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private async Task LadeSplitterEinstellungenAsync()
+        {
+            try
+            {
+                var hauptSplitter = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "KundenView.KundenlisteHoehe");
+                if (!string.IsNullOrEmpty(hauptSplitter) && double.TryParse(hauptSplitter, out double h1))
+                    kundenlisteRow.Height = new GridLength(h1, GridUnitType.Star);
+
+                var detailSplitter = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "KundenView.DetailsHoehe");
+                if (!string.IsNullOrEmpty(detailSplitter) && double.TryParse(detailSplitter, out double h2))
+                    detailsRow.Height = new GridLength(h2, GridUnitType.Star);
+
+                var sichtSplitter = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "KundenView.SichtHoehe");
+                if (!string.IsNullOrEmpty(sichtSplitter) && double.TryParse(sichtSplitter, out double h3))
+                    sichtRow.Height = new GridLength(h3, GridUnitType.Star);
+
+                var tabsSplitter = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "KundenView.TabsHoehe");
+                if (!string.IsNullOrEmpty(tabsSplitter) && double.TryParse(tabsSplitter, out double h4))
+                    tabsRow.Height = new GridLength(h4, GridUnitType.Star);
+            }
+            catch { /* Ignorieren */ }
+        }
+
+        private async Task SpeichereSplitterEinstellungenAsync()
+        {
+            try
+            {
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "KundenView.KundenlisteHoehe", kundenlisteRow.Height.Value.ToString());
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "KundenView.DetailsHoehe", detailsRow.Height.Value.ToString());
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "KundenView.SichtHoehe", sichtRow.Height.Value.ToString());
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "KundenView.TabsHoehe", tabsRow.Height.Value.ToString());
+            }
+            catch { /* Ignorieren */ }
         }
 
         private void NavigateTo(UserControl view)

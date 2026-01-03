@@ -1,20 +1,58 @@
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using NovviaERP.Core.Services;
 
 namespace NovviaERP.WPF.Views
 {
     public partial class MainWindow : Window
     {
+        private readonly CoreService _core;
+        private bool _isLoading = true;
+
         public MainWindow()
         {
             InitializeComponent();
+            _core = App.Services.GetRequiredService<CoreService>();
             Title = $"NOVVIA ERP - {App.MandantName}";
             txtMandant.Text = App.MandantName;
             txtBenutzer.Text = App.Benutzername;
 
-            // Dashboard beim Start laden
-            Loaded += (s, e) => contentMain.Content = new DashboardPage();
+            // Dashboard beim Start laden und Einstellungen laden
+            Loaded += async (s, e) =>
+            {
+                await LadeSidebarBreiteAsync();
+                contentMain.Content = new DashboardPage();
+                _isLoading = false;
+            };
+
+            // Sidebar-Breite bei Änderung speichern (wenn Fenster geschlossen wird)
+            Closing += async (s, e) =>
+            {
+                await SpeichereSidebarBreiteAsync();
+            };
+        }
+
+        private async Task LadeSidebarBreiteAsync()
+        {
+            try
+            {
+                var breite = await _core.GetBenutzerEinstellungAsync(App.BenutzerId, "MainWindow.SidebarBreite");
+                if (!string.IsNullOrEmpty(breite) && double.TryParse(breite, out double width) && width >= 100)
+                {
+                    sidebarColumn.Width = new GridLength(width);
+                }
+            }
+            catch { /* Ignorieren - Standardwerte verwenden */ }
+        }
+
+        private async Task SpeichereSidebarBreiteAsync()
+        {
+            try
+            {
+                await _core.SaveBenutzerEinstellungAsync(App.BenutzerId, "MainWindow.SidebarBreite", sidebarColumn.Width.Value.ToString());
+            }
+            catch { /* Ignorieren */ }
         }
 
         private void ShowView<T>() where T : UserControl

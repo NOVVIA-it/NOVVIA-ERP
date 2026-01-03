@@ -1,0 +1,63 @@
+<UserControl x:Class="NovviaERP.WPF.Controls.NovviaGrid"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:base="clr-namespace:NovviaERP.WPF.Controls.Base"
+             x:Name="Root">
+    <!-- Universelles NOVVIA Grid mit JTL-Datumslogik -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- JTL Datumsfilter - oben rechts (beide Varianten) -->
+        <Border x:Name="DateFilterPanel" Grid.Row="0" Visibility="Collapsed"
+                Background="#f8f9fa" BorderBrush="#e0e0e0" BorderThickness="0,0,0,1"
+                Padding="10,8" Margin="0,0,0,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Anzahl-Anzeige links -->
+                <TextBlock x:Name="txtAnzahl" VerticalAlignment="Center" Foreground="#666" FontSize="12"/>
+
+                <!-- Datum-Navigation rechts -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <!-- JTL Monats-Navigator (< 07.2022 >) mit Zeitraum-Dropdown -->
+                    <base:MonthYearNavigator x:Name="monthNavigator" Visibility="Collapsed"
+                                             MonthChanged="MonthNavigator_Changed"
+                                             AllClicked="MonthNavigator_AllClicked"
+                                             SettingsKey="{Binding ViewName, ElementName=Root}"/>
+
+                    <!-- Klassischer DatePicker (Von/Bis) -->
+                    <StackPanel x:Name="datePickerPanel" Orientation="Horizontal" Visibility="Collapsed">
+                        <TextBlock Text="Von:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="#555"/>
+                        <DatePicker x:Name="dpVon" Width="110" Height="28" SelectedDateChanged="DateFilter_Changed"/>
+                        <TextBlock Text="Bis:" VerticalAlignment="Center" Margin="15,0,5,0" Foreground="#555"/>
+                        <DatePicker x:Name="dpBis" Width="110" Height="28" SelectedDateChanged="DateFilter_Changed"/>
+                        <Button x:Name="btnReset" Content="Zuruecksetzen" Padding="10,4" Margin="15,0,0,0"
+                                Background="White" BorderBrush="#ccc" Click="ResetDateFilter_Click"
+                                ToolTip="Datumsfilter entfernen"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- DataGrid -->
+        <DataGrid x:Name="InnerGrid" Grid.Row="1"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  SelectionUnit="FullRow"
+                  CanUserAddRows="False"
+                  CanUserSortColumns="True"
+                  CanUserReorderColumns="True"
+                  CanUserResizeColumns="True"
+                  HeadersVisibility="Column"
+                  ItemsSource="{Binding ItemsSource, ElementName=Root}"
+                  MouseDoubleClick="InnerGrid_MouseDoubleClick"
+                  SelectionChanged="InnerGrid_SelectionChanged"/>
+    </Grid>
+</UserControl>

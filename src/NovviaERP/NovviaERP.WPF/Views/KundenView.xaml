@@ -35,13 +35,13 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="2*" MinHeight="200"/>
-            <RowDefinition Height="5"/>
-            <RowDefinition Height="*" MinHeight="150"/>
+            <RowDefinition x:Name="kundenlisteRow" Height="2*" MinHeight="100"/>
+            <RowDefinition Height="8"/>
+            <RowDefinition x:Name="detailsRow" Height="*" MinHeight="100"/>
         </Grid.RowDefinitions>
 
         <!-- OBERER BEREICH: Kundenliste -->
-        <Border Grid.Row="0" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5">
+        <Border Grid.Row="0" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5,5,5,0">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -150,9 +150,10 @@
             </Grid>
         </Border>
 
-        <!-- BEWEGLICHER TRENNBALKEN -->
-        <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="#d0d0d0"
-                      ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS"/>
+        <!-- BEWEGLICHER TRENNBALKEN (Haupt) -->
+        <GridSplitter Grid.Row="1" Height="8" HorizontalAlignment="Stretch" Background="#a0a0a0"
+                      ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS"
+                      ShowsPreview="True" Focusable="False" Panel.ZIndex="100"/>
 
         <!-- UNTERER BEREICH: Details + Historie -->
         <Grid Grid.Row="2">
@@ -162,15 +163,15 @@
             </Grid.ColumnDefinitions>
 
             <!-- LINKE SEITE: Kundendetails + Tabs -->
-            <Grid Grid.Column="0">
+            <Grid x:Name="detailGrid" Grid.Column="0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="2*" MinHeight="100"/>
-                    <RowDefinition Height="5"/>
-                    <RowDefinition Height="*" MinHeight="100"/>
+                    <RowDefinition x:Name="sichtRow" Height="2*" MinHeight="80"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition x:Name="tabsRow" Height="*" MinHeight="80"/>
                 </Grid.RowDefinitions>
 
                 <!-- 360-Grad Sicht -->
-                <Border Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5,0,2,5">
+                <Border Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5,5,2,0">
                     <Grid>
                         <!-- Placeholder wenn kein Kunde ausgewaehlt -->
                         <StackPanel x:Name="pnlNoSelection" VerticalAlignment="Center" HorizontalAlignment="Center">
@@ -409,11 +410,12 @@
                 </Border>
 
                 <!-- Splitter zwischen 360-Sicht und Tabs -->
-                <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="#d0d0d0"
-                              ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS"/>
+                <GridSplitter Grid.Row="1" Height="8" HorizontalAlignment="Stretch" Background="#a0a0a0"
+                              ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" Cursor="SizeNS"
+                              ShowsPreview="True" Focusable="False" Panel.ZIndex="100"/>
 
                 <!-- Tabs unten links: Auftraege, Rechnungen etc -->
-                <Border Grid.Row="2" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5,0,2,5">
+                <Border Grid.Row="2" Background="White" BorderBrush="#ccc" BorderThickness="1" Margin="5,0,2,5" ClipToBounds="True">
                     <TabControl x:Name="pnlTabs" Margin="0" BorderThickness="0" Padding="0" Visibility="Collapsed">
                         <TabControl.Resources>
                             <Style TargetType="TabItem">
@@ -422,7 +424,7 @@
                             </Style>
                         </TabControl.Resources>
 
-                        <TabItem Header="📦 Aufträge">
+                        <TabItem Header="Auftraege">
                             <DataGrid x:Name="dgKundeAuftraege" AutoGenerateColumns="False" IsReadOnly="True"
                                       HeadersVisibility="Column" BorderThickness="0">
                                 <DataGrid.Columns>
@@ -435,21 +437,33 @@
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
                                     <DataGridTextColumn Header="Erstellt am" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="85"/>
-                                    <DataGridCheckBoxColumn Header="Ist bezahlt" Binding="{Binding IstBezahlt}" Width="70"/>
-                                    <DataGridTextColumn Header="Versendet am" Binding="{Binding DVersendet, StringFormat=dd.MM.yyyy}" Width="90"/>
-                                    <DataGridTextColumn Header="Lieferstatus" Binding="{Binding CLieferstatus}" Width="80"/>
-                                    <DataGridTextColumn Header="Plattform" Binding="{Binding CPlattform}" Width="80"/>
-                                    <DataGridTextColumn Header="Zahlungsart" Binding="{Binding CZahlungsart}" Width="90"/>
-                                    <DataGridTextColumn Header="Versandart" Binding="{Binding CVersandart}" Width="90"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding CStatus}" Width="90"/>
+                                    <DataGridTextColumn Header="Brutto" Binding="{Binding GesamtBrutto, StringFormat=N2}" Width="80">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Offen" Binding="{Binding OffenerBetrag, StringFormat=N2}" Width="80">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                <Setter Property="Foreground" Value="#dc3545"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Zahlungsart" Binding="{Binding CZahlungsart}" Width="110"/>
+                                    <DataGridTextColumn Header="Versandart" Binding="{Binding CVersandart}" Width="110"/>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </TabItem>
 
-                        <TabItem Header="🧾 Rechnungen">
+                        <TabItem Header="Rechnungen">
                             <DataGrid x:Name="dgKundeRechnungen" AutoGenerateColumns="False" IsReadOnly="True"
                                       HeadersVisibility="Column" BorderThickness="0">
                                 <DataGrid.Columns>
-                                    <DataGridTemplateColumn Header="Rechnungsnummer" Width="120">
+                                    <DataGridTemplateColumn Header="Rechnungsnummer" Width="130">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding CRechnungsNr}" Foreground="#0066CC" Cursor="Hand"
@@ -457,10 +471,29 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Datum" Binding="{Binding DRechnungsdatum, StringFormat=dd.MM.yyyy}" Width="85"/>
-                                    <DataGridTextColumn Header="Betrag" Binding="{Binding FBetragBrutto, StringFormat=N2}" Width="90"/>
-                                    <DataGridTextColumn Header="Bezahlt" Binding="{Binding FBezahlt, StringFormat=N2}" Width="90"/>
-                                    <DataGridTextColumn Header="Offen" Binding="{Binding FRestbetrag, StringFormat=N2}" Width="90"/>
+                                    <DataGridTextColumn Header="Datum" Binding="{Binding DRechnungsdatum, StringFormat=dd.MM.yyyy}" Width="90"/>
+                                    <DataGridTextColumn Header="Brutto" Binding="{Binding FBetragBrutto, StringFormat=N2}" Width="90">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Bezahlt" Binding="{Binding FBezahlt, StringFormat=N2}" Width="90">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="Offen" Binding="{Binding Offen, StringFormat=N2}" Width="90">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                <Setter Property="Foreground" Value="#dc3545"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </TabItem>
@@ -492,17 +525,6 @@
                             </DataGrid>
                         </TabItem>
 
-                        <TabItem Header="🎫 Tickets">
-                            <DataGrid x:Name="dgTickets" AutoGenerateColumns="False" IsReadOnly="True"
-                                      HeadersVisibility="Column" BorderThickness="0">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Nr" Binding="{Binding KTicket}" Width="60"/>
-                                    <DataGridTextColumn Header="Betreff" Binding="{Binding CBetreff}" Width="*"/>
-                                    <DataGridTextColumn Header="Status" Binding="{Binding CStatus}" Width="100"/>
-                                    <DataGridTextColumn Header="Erstellt" Binding="{Binding DErstellt, StringFormat=dd.MM.yyyy}" Width="85"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </TabItem>
                     </TabControl>
                 </Border>
             </Grid>

@@ -1,0 +1,43 @@
+<UserControl x:Class="NovviaERP.WPF.Controls.Base.MonthYearNavigator"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <!-- JTL-Style Monats/Jahr Navigator: < 07.2022 > mit Zeitraum-Dropdown -->
+    <Border Background="#f8f9fa" BorderBrush="#e0e0e0" BorderThickness="1" CornerRadius="3" Padding="4,2">
+        <StackPanel Orientation="Horizontal">
+            <!-- Vorheriger Monat -->
+            <Button x:Name="btnPrev" Content="&lt;" Width="24" Height="24"
+                    Background="Transparent" BorderThickness="0" Cursor="Hand"
+                    FontWeight="Bold" Foreground="#666" Click="BtnPrev_Click"
+                    ToolTip="Vorheriger Zeitraum"/>
+
+            <!-- Monat.Jahr Anzeige (klickbar fuer Kalender) -->
+            <Button x:Name="btnMonthYear" MinWidth="80" Height="24" Padding="8,0"
+                    Background="Transparent" BorderThickness="0" Cursor="Hand"
+                    FontWeight="SemiBold" Click="BtnMonthYear_Click"
+                    ToolTip="Klicken fuer Kalender-Auswahl">
+                <TextBlock x:Name="txtMonthYear" Text="01.2026"/>
+            </Button>
+
+            <!-- Naechster Monat -->
+            <Button x:Name="btnNext" Content="&gt;" Width="24" Height="24"
+                    Background="Transparent" BorderThickness="0" Cursor="Hand"
+                    FontWeight="Bold" Foreground="#666" Click="BtnNext_Click"
+                    ToolTip="Naechster Zeitraum"/>
+
+            <!-- Separator -->
+            <Rectangle Width="1" Fill="#ccc" Margin="6,4"/>
+
+            <!-- Zeitraum-Dropdown -->
+            <ComboBox x:Name="cmbZeitraum" Width="120" Height="24" FontSize="11"
+                      SelectionChanged="CmbZeitraum_Changed" VerticalContentAlignment="Center">
+                <ComboBoxItem Content="Monat" Tag="Monat" IsSelected="True"/>
+                <ComboBoxItem Content="Letzte 30 Tage" Tag="30"/>
+                <ComboBoxItem Content="Letzte 90 Tage" Tag="90"/>
+                <ComboBoxItem Content="Letzte 360 Tage" Tag="360"/>
+                <ComboBoxItem Content="Jahr" Tag="Jahr"/>
+                <ComboBoxItem Content="Alle anzeigen" Tag="Alle"/>
+            </ComboBox>
+        </StackPanel>
+    </Border>
+</UserControl>

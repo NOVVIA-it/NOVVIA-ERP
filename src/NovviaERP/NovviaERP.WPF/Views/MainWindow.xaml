@@ -10,9 +10,10 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#CCC"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="15,12"/>
+            <Setter Property="Padding" Value="12,6"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -38,12 +39,13 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="220"/>
+            <ColumnDefinition x:Name="sidebarColumn" Width="220" MinWidth="100"/>
+            <ColumnDefinition Width="8"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         <!-- Top Bar -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#0078D4" Padding="15,10">
+        <Border Grid.Row="0" Grid.ColumnSpan="3" Background="#0078D4" Padding="15,10">
             <Grid>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="NOVVIA ERP" FontSize="20" FontWeight="Light" Foreground="White"/>
@@ -65,51 +67,57 @@
         <!-- Sidebar Navigation -->
         <Border Grid.Row="1" Grid.Column="0" Background="#2D2D30">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="0,10">
+                <StackPanel Margin="0,5">
                     <Button Style="{StaticResource NavButton}" Content="Dashboard" FontWeight="Bold"
                             Foreground="#4FC3F7" Click="NavDashboard_Click"/>
 
-                    <TextBlock Text="STAMMDATEN" Foreground="#888" FontSize="10" Margin="15,15,0,5"/>
+                    <TextBlock Text="STAMMDATEN" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Kunden" Click="NavKunden_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Artikel" Click="NavArtikel_Click"/>
 
-                    <TextBlock Text="VERKAUF" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <TextBlock Text="VERKAUF" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Auftraege" Click="NavBestellungen_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Rechnungen" Click="NavRechnungen_Click"/>
 
-                    <TextBlock Text="EINKAUF" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <TextBlock Text="EINKAUF" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Lieferanten" Click="NavLieferanten_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Bestellungen (Einkauf)" Click="NavLieferantenBestellungen_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Eingangsrechnungen" Click="NavEingangsrechnungen_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="EDIFACT (EDI)" Click="NavEdifact_Click"/>
 
-                    <TextBlock Text="LOGISTIK" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <TextBlock Text="LOGISTIK" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Lager" Click="NavLager_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Chargen" Click="NavChargen_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Versand" Click="NavVersand_Click"/>
 
-                    <TextBlock Text="FINANZEN" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <TextBlock Text="FINANZEN" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Zahlungsabgleich" Click="NavZahlungsabgleich_Click"/>
 
-                    <TextBlock Text="AUTOMATISIERUNG" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <TextBlock Text="AUTOMATISIERUNG" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Workflows" Click="NavWorkflow_Click"/>
 
-                    <TextBlock Text="TOOLS" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <TextBlock Text="TOOLS" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Formular-Designer" Click="NavFormularDesigner_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Textmeldungen" Click="NavTextmeldungen_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="Ameise (Import/Export)" Click="NavAmeise_Click"/>
 
-                    <TextBlock Text="SYSTEM" Foreground="#888" FontSize="10" Margin="15,20,0,5"/>
+                    <TextBlock Text="SYSTEM" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Einstellungen" Click="NavEinstellungen_Click"/>
                 </StackPanel>
             </ScrollViewer>
         </Border>
 
+        <!-- Vertikaler Splitter fuer Sidebar -->
+        <GridSplitter Grid.Row="1" Grid.Column="1" Width="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      Background="#1E1E1E" Cursor="SizeWE"
+                      ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                      ShowsPreview="True" Focusable="False" Panel.ZIndex="100"/>
+
         <!-- Main Content -->
-        <ContentControl Grid.Row="1" Grid.Column="1" x:Name="contentMain"/>
+        <ContentControl Grid.Row="1" Grid.Column="2" x:Name="contentMain"/>
 
         <!-- Status Bar -->
-        <Border Grid.Row="2" Grid.ColumnSpan="2" Background="#1E1E1E" Padding="15,8">
+        <Border Grid.Row="2" Grid.ColumnSpan="3" Background="#1E1E1E" Padding="15,8">
             <StackPanel Orientation="Horizontal">
                 <Ellipse Width="8" Height="8" Fill="LimeGreen" VerticalAlignment="Center"/>
                 <TextBlock Text="Verbunden" Foreground="#888" Margin="8,0,0,0" FontSize="11"/>
