@@ -9974,7 +9974,418 @@ namespace NovviaERP.Core.Services
         }
 
         #endregion
+
+        #region Briefpapier
+
+        /// <summary>
+        /// Holt alle verfuegbaren Briefpapier-Bilder aus Report.tVorlage
+        /// </summary>
+        public async Task<IEnumerable<BriefpapierInfo>> GetBriefpapierListeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<BriefpapierInfo>(@"
+                SELECT kVorlage AS KVorlage, cName AS CName,
+                       DATALENGTH(bDaten) AS Groesse,
+                       dLastModification AS GeaendertAm
+                FROM Report.tVorlage
+                WHERE cTyp = 'resource/image'
+                  AND (cName LIKE '%papier%' OR cName LIKE '%hintergrund%' OR cName LIKE '%briefkopf%' OR cName LIKE '%letter%')
+                ORDER BY cName");
+        }
+
+        /// <summary>
+        /// Holt alle Bilder aus Report.tVorlage (fuer Auswahl)
+        /// </summary>
+        public async Task<IEnumerable<BriefpapierInfo>> GetAlleBilderAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<BriefpapierInfo>(@"
+                SELECT kVorlage AS KVorlage, cName AS CName,
+                       DATALENGTH(bDaten) AS Groesse,
+                       dLastModification AS GeaendertAm
+                FROM Report.tVorlage
+                WHERE cTyp = 'resource/image'
+                ORDER BY cName");
+        }
+
+        /// <summary>
+        /// Laedt das Briefpapier-Bild als Byte-Array
+        /// </summary>
+        public async Task<byte[]?> GetBriefpapierBildAsync(int kVorlage)
+        {
+            if (kVorlage <= 0) return null;
+            var conn = await GetConnectionAsync();
+            return await conn.QuerySingleOrDefaultAsync<byte[]>(
+                "SELECT bDaten FROM Report.tVorlage WHERE kVorlage = @kVorlage",
+                new { kVorlage });
+        }
+
+        /// <summary>
+        /// Holt die Briefpapier-Einstellung (welches Bild fuer welchen Belegtyp)
+        /// </summary>
+        public async Task<BriefpapierEinstellung> GetBriefpapierEinstellungAsync()
+        {
+            var conn = await GetConnectionAsync();
+
+            // Tabelle erstellen falls nicht vorhanden
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'NOVVIA.BriefpapierEinstellung') AND type = 'U')
+                BEGIN
+                    CREATE TABLE NOVVIA.BriefpapierEinstellung (
+                        kBriefpapierEinstellung INT IDENTITY(1,1) PRIMARY KEY,
+                        kVorlageRechnung INT NULL,
+                        kVorlageLieferschein INT NULL,
+                        kVorlageMahnung INT NULL,
+                        kVorlageAngebot INT NULL,
+                        kVorlageAuftrag INT NULL,
+                        kVorlageGutschrift INT NULL,
+                        nAktiv BIT DEFAULT 1,
+                        dErstellt DATETIME DEFAULT GETDATE()
+                    );
+                    INSERT INTO NOVVIA.BriefpapierEinstellung DEFAULT VALUES;
+                END");
+
+            var result = await conn.QuerySingleOrDefaultAsync<BriefpapierEinstellung>(
+                @"SELECT TOP 1 kBriefpapierEinstellung AS KBriefpapierEinstellung,
+                         kVorlageRechnung AS KVorlageRechnung,
+                         kVorlageLieferschein AS KVorlageLieferschein,
+                         kVorlageMahnung AS KVorlageMahnung,
+                         kVorlageAngebot AS KVorlageAngebot,
+                         kVorlageAuftrag AS KVorlageAuftrag,
+                         kVorlageGutschrift AS KVorlageGutschrift,
+                         nAktiv AS NAktiv
+                  FROM NOVVIA.BriefpapierEinstellung");
+
+            return result ?? new BriefpapierEinstellung();
+        }
+
+        /// <summary>
+        /// Speichert die Briefpapier-Einstellung
+        /// </summary>
+        public async Task SaveBriefpapierEinstellungAsync(BriefpapierEinstellung einstellung)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE NOVVIA.BriefpapierEinstellung SET
+                    kVorlageRechnung = @KVorlageRechnung,
+                    kVorlageLieferschein = @KVorlageLieferschein,
+                    kVorlageMahnung = @KVorlageMahnung,
+                    kVorlageAngebot = @KVorlageAngebot,
+                    kVorlageAuftrag = @KVorlageAuftrag,
+                    kVorlageGutschrift = @KVorlageGutschrift,
+                    nAktiv = @NAktiv
+                WHERE kBriefpapierEinstellung = @KBriefpapierEinstellung",
+                einstellung);
+        }
+
+        #endregion
+
+        #region Mahnstufen
+
+        /// <summary>
+        /// Holt alle Mahnstufen-Konfigurationen
+        /// </summary>
+        public async Task<IEnumerable<Mahnstufe>> GetMahnstufeAsync()
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<Mahnstufe>(@"
+                SELECT kMahnstufe AS KMahnstufe, kFirma AS KFirma, kKundengruppe AS KKundengruppe,
+                       nStufe AS NStufe, nKarenzzeit AS NKarenzzeit, nZahlungsfristInTagen AS NZahlungsfristInTagen,
+                       fGebuehrPauschal AS FGebuehrPauschal, fGebuehrZinssatz AS FGebuehrZinssatz,
+                       cName AS CName
+                FROM tMahnstufe
+                ORDER BY nStufe");
+        }
+
+        /// <summary>
+        /// Speichert eine Mahnstufe
+        /// </summary>
+        public async Task SaveMahnstufeAsync(Mahnstufe stufe)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE tMahnstufe SET
+                    cName = @CName,
+                    nKarenzzeit = @NKarenzzeit,
+                    nZahlungsfristInTagen = @NZahlungsfristInTagen,
+                    fGebuehrPauschal = @FGebuehrPauschal,
+                    fGebuehrZinssatz = @FGebuehrZinssatz
+                WHERE kMahnstufe = @KMahnstufe",
+                stufe);
+        }
+
+        #endregion
+
+        #region Finanzen - Mahnungslauf, OP-Liste, DATEV
+
+        /// <summary>
+        /// Holt alle Rechnungen die gemahnt werden koennten
+        /// </summary>
+        public async Task<IEnumerable<MahnKandidat>> GetMahnKandidatenAsync(int faelligSeitTagen = 14, decimal mindestbetrag = 10m)
+        {
+            var conn = await GetConnectionAsync();
+            return await conn.QueryAsync<MahnKandidat>(@"
+                SELECT
+                    r.kRechnung AS RechnungId,
+                    ISNULL(k.cFirma, k.cVorname + ' ' + k.cName) AS KundeName,
+                    k.cKundenNr AS KundenNr,
+                    r.cRechnungsnr AS RechnungsNr,
+                    r.dErstellt AS RechnungsDatum,
+                    r.dFaellig AS FaelligAm,
+                    DATEDIFF(DAY, r.dFaellig, GETDATE()) AS TageUeberfaellig,
+                    r.fOffen AS OffenerBetrag,
+                    ISNULL(r.nMahnstufe, 0) AS AktuelleMahnstufe,
+                    r.dLetzteMahnung AS LetzteMahnung
+                FROM tRechnung r
+                INNER JOIN tKunde k ON r.kKunde = k.kKunde
+                WHERE r.fOffen >= @mindestbetrag
+                  AND r.dFaellig <= DATEADD(DAY, -@faelligSeitTagen, GETDATE())
+                  AND r.nStorno = 0
+                ORDER BY r.dFaellig",
+                new { faelligSeitTagen, mindestbetrag });
+        }
+
+        /// <summary>
+        /// Erstellt eine Mahnung fuer eine Rechnung
+        /// </summary>
+        public async Task ErstelleMahnungAsync(int kRechnung, int mahnstufe)
+        {
+            var conn = await GetConnectionAsync();
+            await conn.ExecuteAsync(@"
+                UPDATE tRechnung SET
+                    nMahnstufe = @mahnstufe,
+                    dLetzteMahnung = GETDATE()
+                WHERE kRechnung = @kRechnung",
+                new { kRechnung, mahnstufe });
+        }
+
+        /// <summary>
+        /// Holt alle offenen Posten zum Stichtag
+        /// </summary>
+        public async Task<IEnumerable<OffenerPosten>> GetOffenePostenAsync(DateTime stichtag)
+        {
+            var conn = await GetConnectionAsync();
+
+            // Debitoren (offene Rechnungen)
+            var debitoren = await conn.QueryAsync<OffenerPosten>(@"
+                SELECT
+                    'D' AS Art,
+                    ISNULL(k.cFirma, k.cVorname + ' ' + k.cName) AS PartnerName,
+                    k.cKundenNr AS PartnerNr,
+                    r.cRechnungsnr AS BelegNr,
+                    r.dErstellt AS BelegDatum,
+                    r.dFaellig AS FaelligAm,
+                    r.fBrutto AS Betrag,
+                    r.fBrutto - r.fOffen AS Bezahlt
+                FROM tRechnung r
+                INNER JOIN tKunde k ON r.kKunde = k.kKunde
+                WHERE r.dErstellt <= @stichtag
+                  AND r.fOffen > 0
+                  AND r.nStorno = 0",
+                new { stichtag });
+
+            // Kreditoren (offene Eingangsrechnungen)
+            var kreditoren = await conn.QueryAsync<OffenerPosten>(@"
+                SELECT
+                    'K' AS Art,
+                    ISNULL(l.cFirma, l.cName) AS PartnerName,
+                    l.cLiefNr AS PartnerNr,
+                    e.cRechnungsnr AS BelegNr,
+                    e.dRechnungsdatum AS BelegDatum,
+                    e.dFaellig AS FaelligAm,
+                    e.fBrutto AS Betrag,
+                    e.fBezahlt AS Bezahlt
+                FROM tEingangsrechnung e
+                INNER JOIN tLieferant l ON e.kLieferant = l.kLieferant
+                WHERE e.dRechnungsdatum <= @stichtag
+                  AND (e.fBrutto - ISNULL(e.fBezahlt, 0)) > 0",
+                new { stichtag });
+
+            return debitoren.Concat(kreditoren).OrderBy(p => p.FaelligAm);
+        }
+
+        /// <summary>
+        /// Holt Buchungen fuer DATEV-Export
+        /// </summary>
+        public async Task<IEnumerable<DatevBuchung>> GetDatevBuchungenAsync(
+            DateTime von, DateTime bis,
+            bool rechnungen, bool gutschriften, bool eingangsrechnungen, bool zahlungen)
+        {
+            var conn = await GetConnectionAsync();
+            var buchungen = new List<DatevBuchung>();
+
+            if (rechnungen)
+            {
+                var re = await conn.QueryAsync<DatevBuchung>(@"
+                    SELECT
+                        'R' AS Typ,
+                        r.dErstellt AS Datum,
+                        r.cRechnungsnr AS BelegNr,
+                        'Rechnung ' + r.cRechnungsnr + ' - ' + ISNULL(k.cFirma, k.cName) AS Buchungstext,
+                        '10000' AS SollKonto,
+                        '4400' AS HabenKonto,
+                        r.fBrutto AS Betrag,
+                        '9' AS UstSchluessel
+                    FROM tRechnung r
+                    INNER JOIN tKunde k ON r.kKunde = k.kKunde
+                    WHERE r.dErstellt BETWEEN @von AND @bis
+                      AND r.nStorno = 0",
+                    new { von, bis });
+                buchungen.AddRange(re);
+            }
+
+            if (gutschriften)
+            {
+                var gs = await conn.QueryAsync<DatevBuchung>(@"
+                    SELECT
+                        'G' AS Typ,
+                        rk.dErstellt AS Datum,
+                        rk.cKorrekturNr AS BelegNr,
+                        'Gutschrift ' + rk.cKorrekturNr AS Buchungstext,
+                        '8400' AS SollKonto,
+                        '10000' AS HabenKonto,
+                        rk.fBrutto AS Betrag,
+                        '9' AS UstSchluessel
+                    FROM tRechnungskorrektur rk
+                    WHERE rk.dErstellt BETWEEN @von AND @bis",
+                    new { von, bis });
+                buchungen.AddRange(gs);
+            }
+
+            if (eingangsrechnungen)
+            {
+                var er = await conn.QueryAsync<DatevBuchung>(@"
+                    SELECT
+                        'E' AS Typ,
+                        e.dRechnungsdatum AS Datum,
+                        e.cRechnungsnr AS BelegNr,
+                        'Eingangsrechnung ' + e.cRechnungsnr + ' - ' + ISNULL(l.cFirma, l.cName) AS Buchungstext,
+                        '3400' AS SollKonto,
+                        '70000' AS HabenKonto,
+                        e.fBrutto AS Betrag,
+                        '9' AS UstSchluessel
+                    FROM tEingangsrechnung e
+                    INNER JOIN tLieferant l ON e.kLieferant = l.kLieferant
+                    WHERE e.dRechnungsdatum BETWEEN @von AND @bis",
+                    new { von, bis });
+                buchungen.AddRange(er);
+            }
+
+            if (zahlungen)
+            {
+                var za = await conn.QueryAsync<DatevBuchung>(@"
+                    SELECT
+                        'Z' AS Typ,
+                        z.dZahlungsdatum AS Datum,
+                        'ZA-' + CAST(z.kZahlung AS VARCHAR) AS BelegNr,
+                        'Zahlung zu Rechnung ' + r.cRechnungsnr AS Buchungstext,
+                        '1200' AS SollKonto,
+                        '10000' AS HabenKonto,
+                        z.fBetrag AS Betrag,
+                        '' AS UstSchluessel
+                    FROM tZahlung z
+                    INNER JOIN tRechnung r ON z.kRechnung = r.kRechnung
+                    WHERE z.dZahlungsdatum BETWEEN @von AND @bis",
+                    new { von, bis });
+                buchungen.AddRange(za);
+            }
+
+            return buchungen.OrderBy(b => b.Datum);
+        }
+
+        #endregion
     }
+
+    #region Mahnstufe DTO
+
+    public class Mahnstufe
+    {
+        public int KMahnstufe { get; set; }
+        public int KFirma { get; set; }
+        public int KKundengruppe { get; set; }
+        public byte NStufe { get; set; }
+        public int NKarenzzeit { get; set; }
+        public int NZahlungsfristInTagen { get; set; }
+        public decimal FGebuehrPauschal { get; set; }
+        public decimal FGebuehrZinssatz { get; set; }
+        public string CName { get; set; } = "";
+    }
+
+    #endregion
+
+    #region Finanzen DTOs
+
+    public class MahnKandidat
+    {
+        public int RechnungId { get; set; }
+        public string KundeName { get; set; } = "";
+        public string KundenNr { get; set; } = "";
+        public string RechnungsNr { get; set; } = "";
+        public DateTime RechnungsDatum { get; set; }
+        public DateTime FaelligAm { get; set; }
+        public int TageUeberfaellig { get; set; }
+        public decimal OffenerBetrag { get; set; }
+        public int AktuelleMahnstufe { get; set; }
+        public DateTime? LetzteMahnung { get; set; }
+        public bool IsSelected { get; set; }
+    }
+
+    public class OffenerPosten
+    {
+        public string Art { get; set; } = "D";
+        public string ArtText => Art == "D" ? "Forderung" : "Verbindl.";
+        public string PartnerName { get; set; } = "";
+        public string PartnerNr { get; set; } = "";
+        public string BelegNr { get; set; } = "";
+        public DateTime BelegDatum { get; set; }
+        public DateTime FaelligAm { get; set; }
+        public decimal Betrag { get; set; }
+        public decimal Bezahlt { get; set; }
+        public decimal Offen => Betrag - Bezahlt;
+        public int TageOffen => (int)(DateTime.Today - FaelligAm).TotalDays;
+    }
+
+    public class DatevBuchung
+    {
+        public string Typ { get; set; } = "R";
+        public DateTime Datum { get; set; }
+        public string BelegNr { get; set; } = "";
+        public string Buchungstext { get; set; } = "";
+        public string SollKonto { get; set; } = "";
+        public string HabenKonto { get; set; } = "";
+        public decimal Betrag { get; set; }
+        public string UstSchluessel { get; set; } = "";
+    }
+
+    #endregion
+
+    #region Briefpapier DTOs
+
+    public class BriefpapierInfo
+    {
+        public int KVorlage { get; set; }
+        public string CName { get; set; } = "";
+        public long Groesse { get; set; }
+        public DateTime? GeaendertAm { get; set; }
+
+        public string GroesseFormatiert => Groesse < 1024 ? $"{Groesse} B"
+            : Groesse < 1024 * 1024 ? $"{Groesse / 1024.0:F1} KB"
+            : $"{Groesse / (1024.0 * 1024.0):F1} MB";
+    }
+
+    public class BriefpapierEinstellung
+    {
+        public int KBriefpapierEinstellung { get; set; } = 1;
+        public int? KVorlageRechnung { get; set; }
+        public int? KVorlageLieferschein { get; set; }
+        public int? KVorlageMahnung { get; set; }
+        public int? KVorlageAngebot { get; set; }
+        public int? KVorlageAuftrag { get; set; }
+        public int? KVorlageGutschrift { get; set; }
+        public bool NAktiv { get; set; } = true;
+    }
+
+    #endregion
 
     #region Benutzerrechte DTOs
 

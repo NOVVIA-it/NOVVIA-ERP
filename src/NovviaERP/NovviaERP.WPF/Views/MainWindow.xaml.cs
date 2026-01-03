@@ -298,6 +298,24 @@ namespace NovviaERP.WPF.Views
             contentMain.Content = new ZahlungsabgleichView();
         }
 
+        private void NavMahnungslauf_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new MahnungslaufPage();
+        }
+
+        private void NavOpListe_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new OpListePage();
+        }
+
+        private void NavDatevExport_Click(object sender, RoutedEventArgs e)
+        {
+            AlleStatusMenusEinklappen();
+            contentMain.Content = new DatevExportPage();
+        }
+
         private void NavImport_Click(object sender, RoutedEventArgs e)
         {
             AlleStatusMenusEinklappen();

@@ -1,0 +1,139 @@
+<UserControl x:Class="NovviaERP.WPF.Views.DatevExportPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="White">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel>
+            <TextBlock Text="DATEV-Export" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <TextBlock Text="Buchungsdaten fuer DATEV exportieren" Foreground="Gray"/>
+        </StackPanel>
+
+        <!-- Einstellungen -->
+        <Border Grid.Row="1" Background="#f8f9fa" CornerRadius="5" Padding="20" Margin="0,20,0,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Zeitraum -->
+                <StackPanel>
+                    <TextBlock Text="Zeitraum" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="60"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="35"/>
+                            <RowDefinition Height="35"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Text="Von:" VerticalAlignment="Center"/>
+                        <DatePicker Grid.Column="1" x:Name="dpVon" Width="150" HorizontalAlignment="Left"/>
+
+                        <TextBlock Grid.Row="1" Text="Bis:" VerticalAlignment="Center"/>
+                        <DatePicker Grid.Row="1" Grid.Column="1" x:Name="dpBis" Width="150" HorizontalAlignment="Left"/>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Aktueller Monat" Padding="8,4" Margin="0,0,5,0" Click="BtnAktuellerMonat_Click"/>
+                        <Button Content="Vormonat" Padding="8,4" Margin="0,0,5,0" Click="BtnVormonat_Click"/>
+                        <Button Content="Aktuelles Jahr" Padding="8,4" Click="BtnAktuellesJahr_Click"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Export-Optionen -->
+                <StackPanel Grid.Column="1" Margin="30,0,0,0">
+                    <TextBlock Text="Export-Optionen" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <CheckBox x:Name="chkRechnungen" Content="Ausgangsrechnungen" IsChecked="True" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="chkGutschriften" Content="Gutschriften/Korrekturen" IsChecked="True" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="chkEingangsrechnungen" Content="Eingangsrechnungen" IsChecked="True" Margin="0,0,0,5"/>
+                    <CheckBox x:Name="chkZahlungen" Content="Zahlungseingaenge" IsChecked="True" Margin="0,0,0,5"/>
+                </StackPanel>
+
+                <!-- DATEV-Format -->
+                <StackPanel Grid.Column="2" Margin="30,0,0,0">
+                    <TextBlock Text="DATEV-Format" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <RadioButton x:Name="rbAscii" Content="ASCII (Standard)" IsChecked="True" Margin="0,0,0,5"/>
+                    <RadioButton x:Name="rbKne" Content="KNE-Format" Margin="0,0,0,5"/>
+                    <RadioButton x:Name="rbXml" Content="XML-Format" Margin="0,0,0,15"/>
+
+                    <TextBlock Text="Berater-Nr:" Margin="0,0,0,3"/>
+                    <TextBox x:Name="txtBeraterNr" Width="100" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+
+                    <TextBlock Text="Mandanten-Nr:" Margin="0,0,0,3"/>
+                    <TextBox x:Name="txtMandantenNr" Width="100" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Vorschau -->
+        <GroupBox Grid.Row="2" Header="Vorschau der Exportdaten">
+            <Grid Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <Button Content="Vorschau laden" Padding="10,5" Click="BtnVorschau_Click"/>
+                    <TextBlock x:Name="txtVorschauInfo" Text="" VerticalAlignment="Center" Margin="15,0,0,0" Foreground="Gray"/>
+                </StackPanel>
+
+                <DataGrid Grid.Row="1" x:Name="dgVorschau" AutoGenerateColumns="False" IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Datum" Binding="{Binding Datum, StringFormat=dd.MM.yyyy}" Width="100"/>
+                        <DataGridTextColumn Header="Beleg-Nr" Binding="{Binding BelegNr}" Width="120"/>
+                        <DataGridTextColumn Header="Buchungstext" Binding="{Binding Buchungstext}" Width="*"/>
+                        <DataGridTextColumn Header="Soll" Binding="{Binding SollKonto}" Width="80"/>
+                        <DataGridTextColumn Header="Haben" Binding="{Binding HabenKonto}" Width="80"/>
+                        <DataGridTextColumn Header="Betrag" Binding="{Binding Betrag, StringFormat=N2}" Width="100">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="USt" Binding="{Binding UstSchluessel}" Width="50"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </GroupBox>
+
+        <!-- Footer -->
+        <Border Grid.Row="3" Background="#f8f9fa" CornerRadius="5" Padding="15" Margin="0,15,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <Border Background="#e3f2fd" CornerRadius="3" Padding="10,5" Margin="0,0,15,0">
+                        <TextBlock x:Name="txtSummeRechnungen" Text="Rechnungen: 0,00 EUR"/>
+                    </Border>
+                    <Border Background="#fff3e0" CornerRadius="3" Padding="10,5" Margin="0,0,15,0">
+                        <TextBlock x:Name="txtSummeGutschriften" Text="Gutschriften: 0,00 EUR"/>
+                    </Border>
+                    <Border Background="#e8f5e9" CornerRadius="3" Padding="10,5">
+                        <TextBlock x:Name="txtSummeZahlungen" Text="Zahlungen: 0,00 EUR"/>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Export starten" Padding="20,10" Background="#28a745" Foreground="White" BorderThickness="0" FontWeight="SemiBold" Click="BtnExport_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

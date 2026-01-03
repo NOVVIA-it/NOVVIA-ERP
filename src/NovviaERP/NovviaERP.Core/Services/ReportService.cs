@@ -17,7 +17,50 @@ namespace NovviaERP.Core.Services
         private readonly Firma _firma;
         private static readonly ILogger _log = Log.ForContext<ReportService>();
 
+        // Briefpapier-Bilder (werden einmal geladen und gecached)
+        private byte[]? _briefpapierRechnung;
+        private byte[]? _briefpapierLieferschein;
+        private byte[]? _briefpapierMahnung;
+        private byte[]? _briefpapierAngebot;
+        private byte[]? _briefpapierAuftrag;
+        private byte[]? _briefpapierGutschrift;
+        private bool _briefpapierAktiv = false;
+
         public ReportService(Firma firma) { _firma = firma; QuestPDF.Settings.License = LicenseType.Community; }
+
+        /// <summary>
+        /// Setzt die Briefpapier-Bilder fuer alle Belegtypen
+        /// </summary>
+        public void SetBriefpapier(
+            byte[]? rechnung = null,
+            byte[]? lieferschein = null,
+            byte[]? mahnung = null,
+            byte[]? angebot = null,
+            byte[]? auftrag = null,
+            byte[]? gutschrift = null,
+            bool aktiv = true)
+        {
+            _briefpapierRechnung = rechnung;
+            _briefpapierLieferschein = lieferschein;
+            _briefpapierMahnung = mahnung;
+            _briefpapierAngebot = angebot;
+            _briefpapierAuftrag = auftrag;
+            _briefpapierGutschrift = gutschrift;
+            _briefpapierAktiv = aktiv;
+            _log.Information("Briefpapier gesetzt: Aktiv={Aktiv}, Rechnung={R}, LS={L}, Mahnung={M}",
+                aktiv, rechnung?.Length > 0, lieferschein?.Length > 0, mahnung?.Length > 0);
+        }
+
+        /// <summary>
+        /// Fuegt Briefpapier als Hintergrund auf der Seite ein
+        /// </summary>
+        private void ApplyBriefpapier(PageDescriptor page, byte[]? briefpapier)
+        {
+            if (_briefpapierAktiv && briefpapier != null && briefpapier.Length > 0)
+            {
+                page.Background().Image(briefpapier, ImageScaling.Resize);
+            }
+        }
 
         #region Rechnung
         public byte[] GenerateRechnungPdf(Rechnung rechnung, Kunde kunde, List<RechnungsPosition> positionen)
@@ -29,6 +72,9 @@ namespace NovviaERP.Core.Services
                     page.Size(PageSizes.A4);
                     page.Margin(1.5f, Unit.Centimetre);
                     page.DefaultTextStyle(x => x.FontSize(10));
+
+                    // Briefpapier als Hintergrund
+                    ApplyBriefpapier(page, _briefpapierRechnung);
 
                     page.Header().Column(col =>
                     {
@@ -117,6 +163,10 @@ namespace NovviaERP.Core.Services
                 {
                     page.Size(PageSizes.A4);
                     page.Margin(1.5f, Unit.Centimetre);
+
+                    // Briefpapier als Hintergrund
+                    ApplyBriefpapier(page, _briefpapierLieferschein);
+
                     page.Header().Column(col =>
                     {
                         col.Item().Row(row =>
@@ -171,6 +221,10 @@ namespace NovviaERP.Core.Services
                 {
                     page.Size(PageSizes.A4);
                     page.Margin(1.5f, Unit.Centimetre);
+
+                    // Briefpapier als Hintergrund
+                    ApplyBriefpapier(page, _briefpapierMahnung);
+
                     page.Header().Column(col =>
                     {
                         col.Item().Text(_firma.Name).Bold().FontSize(14);

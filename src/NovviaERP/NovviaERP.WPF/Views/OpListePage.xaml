@@ -1,0 +1,124 @@
+<UserControl x:Class="NovviaERP.WPF.Views.OpListePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="White">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel>
+            <TextBlock Text="OP-Liste (Offene Posten)" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <TextBlock Text="Uebersicht aller offenen Forderungen und Verbindlichkeiten" Foreground="Gray"/>
+        </StackPanel>
+
+        <!-- Filter -->
+        <Border Grid.Row="1" Background="#f8f9fa" CornerRadius="5" Padding="15" Margin="0,20,0,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
+                    <TextBlock Text="Art:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="cmbArt" Width="150" SelectedIndex="0" SelectionChanged="Filter_Changed">
+                        <ComboBoxItem Content="Alle" Tag=""/>
+                        <ComboBoxItem Content="Forderungen (Debitoren)" Tag="D"/>
+                        <ComboBoxItem Content="Verbindlichkeiten (Kreditoren)" Tag="K"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,20,0">
+                    <TextBlock Text="Stichtag:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <DatePicker x:Name="dpStichtag" Width="120" SelectedDateChanged="Filter_Changed"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,20,0">
+                    <TextBlock Text="Kunde/Lieferant:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="txtSuche" Width="150" VerticalContentAlignment="Center" TextChanged="Filter_Changed"/>
+                </StackPanel>
+
+                <CheckBox Grid.Column="3" x:Name="chkNurUeberfaellig" Content="Nur ueberfaellige" VerticalAlignment="Center"
+                          Checked="Filter_Changed" Unchecked="Filter_Changed"/>
+
+                <Button Grid.Column="5" Content="Aktualisieren" Padding="15,8" Background="#0078D4" Foreground="White" BorderThickness="0" Click="BtnAktualisieren_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- DataGrid -->
+        <DataGrid Grid.Row="2" x:Name="dgOpListe" AutoGenerateColumns="False" IsReadOnly="True"
+                  SelectionMode="Single" CanUserSortColumns="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Art" Binding="{Binding ArtText}" Width="80"/>
+                <DataGridTextColumn Header="Kunde/Lieferant" Binding="{Binding PartnerName}" Width="200"/>
+                <DataGridTextColumn Header="Partner-Nr" Binding="{Binding PartnerNr}" Width="100"/>
+                <DataGridTextColumn Header="Beleg-Nr" Binding="{Binding BelegNr}" Width="120"/>
+                <DataGridTextColumn Header="Belegdatum" Binding="{Binding BelegDatum, StringFormat=dd.MM.yyyy}" Width="100"/>
+                <DataGridTextColumn Header="Faellig am" Binding="{Binding FaelligAm, StringFormat=dd.MM.yyyy}" Width="100"/>
+                <DataGridTextColumn Header="Betrag" Binding="{Binding Betrag, StringFormat=N2}" Width="100">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Bezahlt" Binding="{Binding Bezahlt, StringFormat=N2}" Width="100">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Offen" Binding="{Binding Offen, StringFormat=N2}" Width="100">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Tage" Binding="{Binding TageOffen}" Width="60"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Footer mit Summen -->
+        <Border Grid.Row="3" Background="#f8f9fa" CornerRadius="5" Padding="15" Margin="0,15,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="txtAnzahl" Text="0 Belege" VerticalAlignment="Center" Margin="0,0,30,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Margin="0,0,30,0">
+                    <TextBlock Text="Forderungen:" FontSize="11" Foreground="Gray"/>
+                    <TextBlock x:Name="txtForderungen" Text="0,00 EUR" FontSize="16" FontWeight="SemiBold" Foreground="#28a745"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Margin="0,0,30,0">
+                    <TextBlock Text="Verbindlichkeiten:" FontSize="11" Foreground="Gray"/>
+                    <TextBlock x:Name="txtVerbindlichkeiten" Text="0,00 EUR" FontSize="16" FontWeight="SemiBold" Foreground="#dc3545"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                    <Button Content="Excel-Export" Padding="15,8" Margin="0,0,10,0" Click="BtnExcelExport_Click"/>
+                    <Button Content="PDF-Export" Padding="15,8" Click="BtnPdfExport_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

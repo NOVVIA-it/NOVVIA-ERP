@@ -1,0 +1,110 @@
+<UserControl x:Class="NovviaERP.WPF.Views.MahnungslaufPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="White">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel>
+            <TextBlock Text="Mahnungslauf" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,5"/>
+            <TextBlock Text="Ueberfaellige Rechnungen mahnen" Foreground="Gray"/>
+        </StackPanel>
+
+        <!-- Filter/Optionen -->
+        <Border Grid.Row="1" Background="#f8f9fa" CornerRadius="5" Padding="15" Margin="0,20,0,15">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,0">
+                    <TextBlock Text="Mahnstufe:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="cmbMahnstufe" Width="120" SelectedIndex="0">
+                        <ComboBoxItem Content="Alle"/>
+                        <ComboBoxItem Content="1. Mahnung"/>
+                        <ComboBoxItem Content="2. Mahnung"/>
+                        <ComboBoxItem Content="3. Mahnung"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,20,0">
+                    <TextBlock Text="Faellig seit (Tagen):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="txtFaelligTage" Width="60" Text="14" VerticalContentAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,20,0">
+                    <TextBlock Text="Mindestbetrag:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox x:Name="txtMindestbetrag" Width="80" Text="10,00" VerticalContentAlignment="Center"/>
+                    <TextBlock Text="EUR" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                </StackPanel>
+
+                <CheckBox Grid.Column="3" x:Name="chkNurAktive" Content="Nur aktive Kunden" IsChecked="True" VerticalAlignment="Center"/>
+
+                <Button Grid.Column="5" Content="Mahnkandidaten laden" Padding="15,8" Background="#0078D4" Foreground="White" BorderThickness="0" Click="BtnLaden_Click"/>
+            </Grid>
+        </Border>
+
+        <!-- DataGrid mit Mahnkandidaten -->
+        <DataGrid Grid.Row="2" x:Name="dgMahnungen" AutoGenerateColumns="False" IsReadOnly="True"
+                  SelectionMode="Extended" CanUserSortColumns="True">
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="" Binding="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="30"/>
+                <DataGridTextColumn Header="Kunde" Binding="{Binding KundeName}" Width="200"/>
+                <DataGridTextColumn Header="Kunden-Nr" Binding="{Binding KundenNr}" Width="100"/>
+                <DataGridTextColumn Header="Rechnung" Binding="{Binding RechnungsNr}" Width="120"/>
+                <DataGridTextColumn Header="Rechnungsdatum" Binding="{Binding RechnungsDatum, StringFormat=dd.MM.yyyy}" Width="110"/>
+                <DataGridTextColumn Header="Faellig" Binding="{Binding FaelligAm, StringFormat=dd.MM.yyyy}" Width="100"/>
+                <DataGridTextColumn Header="Tage ueberfaellig" Binding="{Binding TageUeberfaellig}" Width="110">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#dc3545"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Offener Betrag" Binding="{Binding OffenerBetrag, StringFormat=N2}" Width="120">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Aktuelle Mahnstufe" Binding="{Binding AktuelleMahnstufe}" Width="120"/>
+                <DataGridTextColumn Header="Letzte Mahnung" Binding="{Binding LetzteMahnung, StringFormat=dd.MM.yyyy}" Width="110"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Footer mit Aktionen -->
+        <Border Grid.Row="3" Background="#f8f9fa" CornerRadius="5" Padding="15" Margin="0,15,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="txtZusammenfassung" Text="0 Rechnungen ausgewaehlt | Summe: 0,00 EUR" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button Content="Alle auswaehlen" Padding="10,6" Margin="0,0,10,0" Click="BtnAlleAuswaehlen_Click"/>
+                    <Button Content="Auswahl aufheben" Padding="10,6" Margin="0,0,20,0" Click="BtnAuswahlAufheben_Click"/>
+                    <Button Content="Mahnungen erstellen" Padding="15,8" Background="#dc3545" Foreground="White" BorderThickness="0" Click="BtnMahnungenErstellen_Click"/>
+                    <Button Content="Mahnungen drucken" Padding="15,8" Margin="10,0,0,0" Background="#28a745" Foreground="White" BorderThickness="0" Click="BtnMahnungenDrucken_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

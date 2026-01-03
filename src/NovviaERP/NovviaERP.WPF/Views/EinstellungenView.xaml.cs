@@ -78,6 +78,10 @@ namespace NovviaERP.WPF.Views
                 await LadeBenutzerAsync();
                 await LadeRollenAsync();
                 await LadeVorlagenAsync();
+                await LadeNummernkreiseAsync();
+                await LadeVorgangsfarbenAsync();
+                await LadeBriefpapierAsync();
+                await LadeMahnstufeAsync();
             }
             catch (Exception ex)
             {
@@ -2764,6 +2768,180 @@ namespace NovviaERP.WPF.Views
                     await _core.SaveVorgangsfarbeAsync(farbe);
                 }
                 MessageBox.Show("Vorgangsfarben wurden gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
+
+        #region Briefpapier
+
+        private BriefpapierEinstellung? _briefpapierEinstellung;
+        private List<BriefpapierInfo> _alleBilder = new();
+
+        private async Task LadeBriefpapierAsync()
+        {
+            try
+            {
+                // Einstellungen laden
+                _briefpapierEinstellung = await _core.GetBriefpapierEinstellungAsync();
+                chkBriefpapierAktiv.IsChecked = _briefpapierEinstellung.NAktiv;
+
+                // Alle Bilder laden
+                _alleBilder = (await _core.GetAlleBilderAsync()).ToList();
+
+                // Leere Option hinzufuegen
+                var bilderMitLeer = new List<BriefpapierInfo> { new BriefpapierInfo { KVorlage = 0, CName = "(kein Briefpapier)" } };
+                bilderMitLeer.AddRange(_alleBilder);
+
+                // ComboBoxen befuellen
+                cmbBriefpapierRechnung.ItemsSource = bilderMitLeer;
+                cmbBriefpapierLieferschein.ItemsSource = bilderMitLeer;
+                cmbBriefpapierMahnung.ItemsSource = bilderMitLeer;
+                cmbBriefpapierAngebot.ItemsSource = bilderMitLeer;
+                cmbBriefpapierAuftrag.ItemsSource = bilderMitLeer;
+                cmbBriefpapierGutschrift.ItemsSource = bilderMitLeer;
+
+                // Werte setzen
+                cmbBriefpapierRechnung.SelectedValue = _briefpapierEinstellung.KVorlageRechnung ?? 0;
+                cmbBriefpapierLieferschein.SelectedValue = _briefpapierEinstellung.KVorlageLieferschein ?? 0;
+                cmbBriefpapierMahnung.SelectedValue = _briefpapierEinstellung.KVorlageMahnung ?? 0;
+                cmbBriefpapierAngebot.SelectedValue = _briefpapierEinstellung.KVorlageAngebot ?? 0;
+                cmbBriefpapierAuftrag.SelectedValue = _briefpapierEinstellung.KVorlageAuftrag ?? 0;
+                cmbBriefpapierGutschrift.SelectedValue = _briefpapierEinstellung.KVorlageGutschrift ?? 0;
+
+                // DataGrid mit Briefpapier-Bildern
+                var briefpapier = (await _core.GetBriefpapierListeAsync()).ToList();
+                dgBriefpapierBilder.ItemsSource = briefpapier.Any() ? briefpapier : _alleBilder;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Laden der Briefpapier-Einstellungen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnBriefpapierAktualisieren_Click(object sender, RoutedEventArgs e)
+        {
+            await LadeBriefpapierAsync();
+        }
+
+        private async void BtnBriefpapierSpeichern_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_briefpapierEinstellung == null)
+                    _briefpapierEinstellung = new BriefpapierEinstellung();
+
+                _briefpapierEinstellung.NAktiv = chkBriefpapierAktiv.IsChecked ?? false;
+                _briefpapierEinstellung.KVorlageRechnung = (int?)cmbBriefpapierRechnung.SelectedValue;
+                _briefpapierEinstellung.KVorlageLieferschein = (int?)cmbBriefpapierLieferschein.SelectedValue;
+                _briefpapierEinstellung.KVorlageMahnung = (int?)cmbBriefpapierMahnung.SelectedValue;
+                _briefpapierEinstellung.KVorlageAngebot = (int?)cmbBriefpapierAngebot.SelectedValue;
+                _briefpapierEinstellung.KVorlageAuftrag = (int?)cmbBriefpapierAuftrag.SelectedValue;
+                _briefpapierEinstellung.KVorlageGutschrift = (int?)cmbBriefpapierGutschrift.SelectedValue;
+
+                // 0 -> null konvertieren
+                if (_briefpapierEinstellung.KVorlageRechnung == 0) _briefpapierEinstellung.KVorlageRechnung = null;
+                if (_briefpapierEinstellung.KVorlageLieferschein == 0) _briefpapierEinstellung.KVorlageLieferschein = null;
+                if (_briefpapierEinstellung.KVorlageMahnung == 0) _briefpapierEinstellung.KVorlageMahnung = null;
+                if (_briefpapierEinstellung.KVorlageAngebot == 0) _briefpapierEinstellung.KVorlageAngebot = null;
+                if (_briefpapierEinstellung.KVorlageAuftrag == 0) _briefpapierEinstellung.KVorlageAuftrag = null;
+                if (_briefpapierEinstellung.KVorlageGutschrift == 0) _briefpapierEinstellung.KVorlageGutschrift = null;
+
+                await _core.SaveBriefpapierEinstellungAsync(_briefpapierEinstellung);
+                MessageBox.Show("Briefpapier-Einstellungen wurden gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Speichern:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnAlleBilderAnzeigen_Click(object sender, RoutedEventArgs e)
+        {
+            dgBriefpapierBilder.ItemsSource = _alleBilder;
+        }
+
+        private async void BtnNurBriefpapierAnzeigen_Click(object sender, RoutedEventArgs e)
+        {
+            var briefpapier = (await _core.GetBriefpapierListeAsync()).ToList();
+            dgBriefpapierBilder.ItemsSource = briefpapier.Any() ? briefpapier : _alleBilder;
+        }
+
+        private async void BtnBriefpapierVorschau_Click(object sender, RoutedEventArgs e)
+        {
+            if (dgBriefpapierBilder.SelectedItem is not BriefpapierInfo bild)
+            {
+                MessageBox.Show("Bitte waehlen Sie ein Bild aus.", "Hinweis", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var bildDaten = await _core.GetBriefpapierBildAsync(bild.KVorlage);
+                if (bildDaten == null || bildDaten.Length == 0)
+                {
+                    MessageBox.Show("Bild konnte nicht geladen werden.", "Fehler", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Temporaere Datei erstellen und oeffnen
+                var tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"briefpapier_{bild.KVorlage}.png");
+                System.IO.File.WriteAllBytes(tempPath, bildDaten);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tempPath) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Anzeigen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BriefpapierBilder_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            // Optional: Vorschau-Logik
+        }
+
+        private void BriefpapierAktiv_Changed(object sender, RoutedEventArgs e)
+        {
+            // Optional: UI-Elemente aktivieren/deaktivieren
+        }
+
+        #endregion
+
+        #region Mahnstufen
+
+        private List<NovviaERP.Core.Services.Mahnstufe> _mahnstufen = new();
+
+        private async Task LadeMahnstufeAsync()
+        {
+            try
+            {
+                _mahnstufen = (await _core.GetMahnstufeAsync()).ToList();
+                dgMahnstufen.ItemsSource = _mahnstufen;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Fehler beim Laden der Mahnstufen:\n{ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void BtnMahnstufen_Aktualisieren(object sender, RoutedEventArgs e)
+        {
+            await LadeMahnstufeAsync();
+        }
+
+        private async void BtnMahnstufen_Speichern(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                foreach (var stufe in _mahnstufen)
+                {
+                    await _core.SaveMahnstufeAsync(stufe);
+                }
+                MessageBox.Show("Mahnstufen wurden gespeichert.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {

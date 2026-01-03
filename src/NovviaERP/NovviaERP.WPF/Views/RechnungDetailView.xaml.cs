@@ -143,6 +143,15 @@ namespace NovviaERP.WPF.Views
             {
                 var firma = new Firma { Name = "NOVVIA GmbH" };
                 var svc = new ReportService(firma);
+
+                // Briefpapier laden und setzen
+                var briefpapierEinstellung = await _core.GetBriefpapierEinstellungAsync();
+                if (briefpapierEinstellung.NAktiv && briefpapierEinstellung.KVorlageRechnung.HasValue)
+                {
+                    var bildDaten = await _core.GetBriefpapierBildAsync(briefpapierEinstellung.KVorlageRechnung.Value);
+                    svc.SetBriefpapier(rechnung: bildDaten, aktiv: true);
+                }
+
                 var pdf = svc.GenerateRechnungPdf(_rechnung, _rechnung.Kunde!, _rechnung.Positionen ?? new List<RechnungsPosition>());
                 var filename = $"Rechnung_{_rechnung.RechnungsNr}.pdf";
                 System.IO.File.WriteAllBytes(filename, pdf);

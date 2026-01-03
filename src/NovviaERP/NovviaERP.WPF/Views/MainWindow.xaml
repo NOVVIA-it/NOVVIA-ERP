@@ -308,6 +308,9 @@
 
                     <TextBlock Text="FINANZEN" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Zahlungsabgleich" Click="NavZahlungsabgleich_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="Mahnungslauf" Click="NavMahnungslauf_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="OP-Liste" Click="NavOpListe_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="DATEV-Export" Click="NavDatevExport_Click"/>
 
                     <TextBlock Text="AUTOMATISIERUNG" Foreground="#888" FontSize="9" Margin="12,10,0,3"/>
                     <Button Style="{StaticResource NavButton}" Content="Workflows" Click="NavWorkflow_Click"/>
