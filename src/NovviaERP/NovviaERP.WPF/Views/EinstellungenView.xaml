@@ -5,16 +5,226 @@
              Background="#f0f2f5">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+
+        <!-- Sidebar TabControl Style - Tabs versteckt -->
+        <Style x:Key="SidebarTabControl" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <ContentPresenter ContentSource="SelectedContent"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Sidebar TabItem Style -->
+        <Style x:Key="SidebarTabItem" TargetType="TabItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#333"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="MinWidth" Value="180"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderThickness="0,0,3,0" BorderBrush="Transparent"
+                                Padding="{TemplateBinding Padding}" CornerRadius="5,0,0,5">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Left"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#e3f2fd"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#f5f5f5"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Border" Property="Background" Value="#e3f2fd"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Kategorie-Header Style -->
+        <Style x:Key="KategorieHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#888"/>
+            <Setter Property="Margin" Value="15,15,15,5"/>
+        </Style>
+
+        <!-- Sidebar ListBox Style -->
+        <Style x:Key="SidebarListBox" TargetType="ListBox">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <!-- Sidebar ListBoxItem Style -->
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0,0,3,0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#e3f2fd"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#f5f5f5"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="True"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Border" Property="Background" Value="#e3f2fd"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
 
-        <TextBlock Text="Einstellungen" FontSize="28" FontWeight="Bold"/>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <TabControl x:Name="mainTabs" Grid.Row="1" Margin="0,15,0,0" SelectionChanged="MainTabs_SelectionChanged">
+        <!-- Sidebar -->
+        <Border Background="White" BorderBrush="#e0e0e0" BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Header -->
+                <StackPanel Margin="15,20,15,10">
+                    <TextBlock Text="Einstellungen" FontSize="24" FontWeight="Bold" Foreground="#333"/>
+                    <TextBlock Text="Systemkonfiguration" FontSize="12" Foreground="#888" Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <!-- Navigation -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <!-- FIRMA -->
+                        <TextBlock Text="FIRMA" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navFirma" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Firmendaten" Padding="15,8" Cursor="Hand">Firmendaten</ListBoxItem>
+                            <ListBoxItem Tag="NOVVIA" Padding="15,8" Cursor="Hand">NOVVIA Einstellungen</ListBoxItem>
+                        </ListBox>
+
+                        <!-- STAMMDATEN -->
+                        <TextBlock Text="STAMMDATEN" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navStammdaten" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Kundengruppen" Padding="15,8" Cursor="Hand">Kundengruppen</ListBoxItem>
+                            <ListBoxItem Tag="Kundenkategorien" Padding="15,8" Cursor="Hand">Kundenkategorien</ListBoxItem>
+                            <ListBoxItem Tag="Hersteller" Padding="15,8" Cursor="Hand">Hersteller</ListBoxItem>
+                            <ListBoxItem Tag="Attribute" Padding="15,8" Cursor="Hand">Attribute</ListBoxItem>
+                            <ListBoxItem Tag="Merkmale" Padding="15,8" Cursor="Hand">Merkmale</ListBoxItem>
+                        </ListBox>
+
+                        <!-- ARTIKEL -->
+                        <TextBlock Text="ARTIKEL" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navArtikel" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Artikelzustaende" Padding="15,8" Cursor="Hand">Artikelzustaende</ListBoxItem>
+                            <ListBoxItem Tag="Masseinheiten" Padding="15,8" Cursor="Hand">Masseinheiten</ListBoxItem>
+                            <ListBoxItem Tag="Rueckgabegruende" Padding="15,8" Cursor="Hand">Rueckgabegruende</ListBoxItem>
+                        </ListBox>
+
+                        <!-- FINANZEN -->
+                        <TextBlock Text="FINANZEN" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navFinanzen" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Zahlungsarten" Padding="15,8" Cursor="Hand">Zahlungsarten</ListBoxItem>
+                            <ListBoxItem Tag="Zahlungsanbieter" Padding="15,8" Cursor="Hand">Zahlungsanbieter</ListBoxItem>
+                            <ListBoxItem Tag="Steuern" Padding="15,8" Cursor="Hand">Steuern</ListBoxItem>
+                            <ListBoxItem Tag="Konten" Padding="15,8" Cursor="Hand">Konten</ListBoxItem>
+                            <ListBoxItem Tag="Mahnstufen" Padding="15,8" Cursor="Hand">Mahnstufen</ListBoxItem>
+                        </ListBox>
+
+                        <!-- VERSAND & LAGER -->
+                        <TextBlock Text="VERSAND &amp; LAGER" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navVersand" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Versandarten" Padding="15,8" Cursor="Hand">Versandarten</ListBoxItem>
+                            <ListBoxItem Tag="Lager" Padding="15,8" Cursor="Hand">Lager</ListBoxItem>
+                        </ListBox>
+
+                        <!-- SCHNITTSTELLEN -->
+                        <TextBlock Text="SCHNITTSTELLEN" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navSchnittstellen" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="WooCommerce Shops" Padding="15,8" Cursor="Hand">WooCommerce</ListBoxItem>
+                        </ListBox>
+
+                        <!-- EIGENE FELDER -->
+                        <TextBlock Text="EIGENE FELDER" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navEigeneFelder" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Eigene Felder" Padding="15,8" Cursor="Hand">Alle Eigene Felder</ListBoxItem>
+                        </ListBox>
+
+                        <!-- DOKUMENTE -->
+                        <TextBlock Text="DOKUMENTE" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navDokumente" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Nummernkreise" Padding="15,8" Cursor="Hand">Nummernkreise</ListBoxItem>
+                            <ListBoxItem Tag="Briefpapier" Padding="15,8" Cursor="Hand">Briefpapier</ListBoxItem>
+                            <ListBoxItem Tag="Vorlagen-Import" Padding="15,8" Cursor="Hand">Vorlagen-Import</ListBoxItem>
+                            <ListBoxItem Tag="Formular-Designer" Padding="15,8" Cursor="Hand">Formular-Designer</ListBoxItem>
+                            <ListBoxItem Tag="Vorgangsfarben" Padding="15,8" Cursor="Hand">Vorgangsfarben</ListBoxItem>
+                        </ListBox>
+
+                        <!-- BENUTZER -->
+                        <TextBlock Text="BENUTZER" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navBenutzerRollen" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Benutzer &amp; Rollen" Padding="15,8" Cursor="Hand">Benutzer &amp; Rollen</ListBoxItem>
+                        </ListBox>
+
+                        <!-- SYSTEM -->
+                        <TextBlock Text="SYSTEM" Style="{StaticResource KategorieHeader}"/>
+                        <ListBox x:Name="navSystem" BorderThickness="0" Background="Transparent" SelectionChanged="Sidebar_SelectionChanged">
+                            <ListBoxItem Tag="Design" Padding="15,8" Cursor="Hand">Design</ListBoxItem>
+                            <ListBoxItem Tag="Protokoll" Padding="15,8" Cursor="Hand">Protokoll</ListBoxItem>
+                            <ListBoxItem Tag="Textmeldungen" Padding="15,8" Cursor="Hand">Textmeldungen</ListBoxItem>
+                            <ListBoxItem Tag="Sprache" Padding="15,8" Cursor="Hand">Sprache</ListBoxItem>
+                        </ListBox>
+
+                        <Border Height="20"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Content Area -->
+        <Border Grid.Column="1" Background="#f0f2f5" Padding="20">
+            <TabControl x:Name="mainTabs" Style="{StaticResource SidebarTabControl}" SelectionChanged="MainTabs_SelectionChanged">
             <!-- Firmendaten Tab -->
             <TabItem Header="Firmendaten">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -2676,5 +2886,6 @@
             </TabItem>
 
         </TabControl>
+        </Border>
     </Grid>
 </UserControl>

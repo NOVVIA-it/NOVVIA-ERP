@@ -37,6 +37,38 @@ namespace NovviaERP.WPF.Views
             _core = App.Services.GetRequiredService<CoreService>();
             _payment = App.Services.GetService<PaymentService>();
             Loaded += async (s, e) => await LoadAsync();
+
+            // Erstes Element in Sidebar selektieren
+            navFirma.SelectedIndex = 0;
+        }
+
+        /// <summary>
+        /// Sidebar Navigation - wechselt zum entsprechenden Tab
+        /// </summary>
+        private void Sidebar_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (sender is ListBox listBox && listBox.SelectedItem is ListBoxItem item)
+            {
+                var tag = item.Tag?.ToString();
+                if (string.IsNullOrEmpty(tag)) return;
+
+                // Alle anderen ListBoxen deselektieren
+                var allListBoxes = new[] { navFirma, navStammdaten, navArtikel, navFinanzen, navVersand, navSchnittstellen, navEigeneFelder, navDokumente, navBenutzerRollen, navSystem };
+                foreach (var lb in allListBoxes)
+                {
+                    if (lb != listBox) lb.SelectedItem = null;
+                }
+
+                // Tab finden und auswählen
+                foreach (TabItem tabItem in mainTabs.Items)
+                {
+                    if (tabItem.Header?.ToString() == tag)
+                    {
+                        mainTabs.SelectedItem = tabItem;
+                        break;
+                    }
+                }
+            }
         }
 
         private async System.Threading.Tasks.Task LoadAsync()
