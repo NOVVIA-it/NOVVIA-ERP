@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using NovviaERP.Core.Services;
@@ -42,8 +43,10 @@ namespace NovviaERP.WPF.Views
             if (_initialized) return;
             _initialized = true;
 
-            // Grid-Formatierung und Spalten-Konfiguration
-            await GridStyleHelper.InitializeGridAsync(dgArtikel, "ArtikelViewJTL", _coreService, App.BenutzerId);
+            // NovviaGrid formatiert sich selbst (ViewName="ArtikelView")
+
+            // Splitter-Position laden
+            await LadeSplitterPositionAsync();
 
             try
             {
@@ -361,9 +364,9 @@ namespace NovviaERP.WPF.Views
 
         #region Artikel Details (bei Auswahl)
 
-        private async void DG_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void DG_SelectionChanged(object? sender, object? e)
         {
-            if (dgArtikel.SelectedItem is ArtikelListItem artikel)
+            if (e is ArtikelListItem artikel)
             {
                 _selectedArtikelId = artikel.KArtikel;
                 await LadeArtikelDetailsAsync(artikel.KArtikel);
@@ -465,9 +468,9 @@ namespace NovviaERP.WPF.Views
             NavigateTo(new ArtikelDetailView(null));
         }
 
-        private void DG_DoubleClick(object sender, MouseButtonEventArgs e)
+        private void DG_DoubleClick(object? sender, object? e)
         {
-            if (dgArtikel.SelectedItem is ArtikelListItem artikel)
+            if (e is ArtikelListItem artikel)
             {
                 NavigateTo(new ArtikelDetailView(artikel.KArtikel));
             }
@@ -585,6 +588,68 @@ namespace NovviaERP.WPF.Views
                 btn.ContextMenu.PlacementTarget = btn;
                 btn.ContextMenu.IsOpen = true;
             }
+        }
+
+        #endregion
+
+        #region Splitter-Speicherung
+
+        private async Task LadeSplitterPositionAsync()
+        {
+            try
+            {
+                // Kategorien-Breite (oben links)
+                var breite = await _coreService.GetBenutzerEinstellungAsync(App.BenutzerId, "ArtikelView.KategorienBreite");
+                if (!string.IsNullOrEmpty(breite) && double.TryParse(breite, out var width) && width >= 180)
+                {
+                    colKategorien.Width = new GridLength(width);
+                }
+
+                // Detail-Hoehe (unten)
+                var hoehe = await _coreService.GetBenutzerEinstellungAsync(App.BenutzerId, "ArtikelView.DetailHoehe");
+                if (!string.IsNullOrEmpty(hoehe) && double.TryParse(hoehe, out var height) && height >= 120)
+                {
+                    rowUnten.Height = new GridLength(height);
+                }
+
+                // Detail-Links Breite (unten links)
+                var detailBreite = await _coreService.GetBenutzerEinstellungAsync(App.BenutzerId, "ArtikelView.DetailLinksBreite");
+                if (!string.IsNullOrEmpty(detailBreite) && double.TryParse(detailBreite, out var dw) && dw >= 200)
+                {
+                    colDetailLinks.Width = new GridLength(dw);
+                }
+            }
+            catch { }
+        }
+
+        private async void SplitterKategorien_DragCompleted(object sender, DragCompletedEventArgs e)
+        {
+            try
+            {
+                var width = colKategorien.ActualWidth;
+                await _coreService.SaveBenutzerEinstellungAsync(App.BenutzerId, "ArtikelView.KategorienBreite", width.ToString("F0"));
+            }
+            catch { }
+        }
+
+        private async void SplitterHorizontal_DragCompleted(object sender, DragCompletedEventArgs e)
+        {
+            try
+            {
+                var height = rowUnten.ActualHeight;
+                await _coreService.SaveBenutzerEinstellungAsync(App.BenutzerId, "ArtikelView.DetailHoehe", height.ToString("F0"));
+            }
+            catch { }
+        }
+
+        private async void SplitterDetailUnten_DragCompleted(object sender, DragCompletedEventArgs e)
+        {
+            try
+            {
+                var width = colDetailLinks.ActualWidth;
+                await _coreService.SaveBenutzerEinstellungAsync(App.BenutzerId, "ArtikelView.DetailLinksBreite", width.ToString("F0"));
+            }
+            catch { }
         }
 
         #endregion

@@ -1,6 +1,6 @@
 # NOVVIA ERP - Systemdokumentation
 
-> **Version:** 1.0.4
+> **Version:** 1.0.6
 > **Letzte Aktualisierung:** 2026-01-03
 > **Autor:** NOVVIA IT / Claude AI
 
@@ -922,6 +922,49 @@ curl -X PATCH "https://server:5001/api/bestellungen/456/status" \
 ---
 
 ## 10. Aenderungsprotokoll
+
+### Version 1.0.6 (2026-01-03)
+
+**ArtikelView auf NovviaGrid umgestellt:**
+- Standard-DataGrid durch NovviaGrid ersetzt
+- Automatische Spalteneinstellungen pro Benutzer
+- Rechtsklick-Menue fuer Spaltenauswahl
+
+**Splitter-Positionen speichern:**
+- Alle 3 Splitter in ArtikelView werden jetzt pro Benutzer gespeichert:
+  - Kategorien-Breite (oben links)
+  - Detail-Hoehe (horizontal, oben/unten)
+  - Detail-Links Breite (unten links/rechts)
+- Sichtbarer Splitter-Hintergrund (#e0e0e0) fuer bessere Bedienbarkeit
+
+**Dateien geaendert:**
+- `~` ArtikelView.xaml (NovviaGrid, benannte Splitter)
+- `~` ArtikelView.xaml.cs (Event-Handler, Splitter-Speicherung)
+
+### Version 1.0.5 (2026-01-03)
+
+**Neues Finanzen-Modul:**
+- **Mahnungslauf**: Zeigt ueberfaellige Rechnungen, erlaubt Mahnungserstellung
+- **OP-Liste**: Offene Posten (Debitoren/Kreditoren) mit Stichtag und Filtern
+- **DATEV-Export**: CSV-Export fuer Buchhaltung mit Vorschau
+
+**Mahnstufen-Einstellungen:**
+- Neuer Tab in Einstellungen fuer Mahnstufen (aus JTL tMahnstufe)
+- Karenzzeit, Zahlungsfrist, Gebuehren pro Stufe konfigurierbar
+
+**Briefpapier-Vorbereitung:**
+- CoreService-Methoden fuer Briefpapier aus Report.tVorlage
+- Tab in Einstellungen (noch ohne Upload-Dialog)
+
+**Dateien hinzugefuegt:**
+- `+` MahnungslaufPage.xaml/cs
+- `+` OpListePage.xaml/cs
+- `+` DatevExportPage.xaml/cs
+
+**Dateien geaendert:**
+- `~` MainWindow.xaml/cs (Finanzen-Menue)
+- `~` CoreService.cs (Finanzen-Methoden, DTOs)
+- `~` EinstellungenView.xaml/cs (Mahnstufen, Briefpapier Tabs)
 
 ### Version 1.0.4 (2026-01-03)
 
