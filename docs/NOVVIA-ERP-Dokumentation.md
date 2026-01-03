@@ -1,6 +1,6 @@
 # NOVVIA ERP - Systemdokumentation
 
-> **Version:** 1.0.6
+> **Version:** 1.0.7
 > **Letzte Aktualisierung:** 2026-01-03
 > **Autor:** NOVVIA IT / Claude AI
 
@@ -922,6 +922,36 @@ curl -X PATCH "https://server:5001/api/bestellungen/456/status" \
 ---
 
 ## 10. Aenderungsprotokoll
+
+### Version 1.0.7 (2026-01-03)
+
+**OP-Liste Datenbankfehler behoben:**
+- Schema korrigiert: `Zahlungsabgleich.vOffenerPostenRechnung` statt `dbo.vOffenerPostenRechnung`
+- Schema korrigiert: `Zahlungsabgleich.vOffenerPostenEingangsrechnung` statt `dbo.vOffenerPostenEingangsrechnung`
+
+**Steuerverwaltung erweitert (EU VAT, Drittland, Reverse Charge):**
+- Neue DTOs: SteuerZone, SteuerKlasse, SteuerSchluessel, SteuerSatz, SteuerZoneLand
+- Neue Methoden: GetSteuerzoneAsync, GetSteuerklassenListAsync, GetSteuerschluesselAsync
+- Neue Methoden: GetSteuersaetzeAsync, GetSteuerzoneLaenderAsync
+- Update-Methoden: UpdateSteuersatzAsync, UpdateSteuerschluesselAsync
+- Unterstuetzt: IGL (Innergemeinschaftliche Lieferung), USt-IGL, Reverse-Charge
+
+**Eigene Felder DTOs hinzugefuegt:**
+- JtlAttributDefinition: Attribut-Definitionen aus JTL tAttribut
+- EigenesFeldWert: Werte fuer Kunden-Eigene-Felder
+- ArtikelEigenesFeld: Artikel-Attribute mit Werten
+- AuftragEigenesFeld: Auftrags-Attribute mit Werten
+- AttributAuswahl: Auswahllisten fuer Attribute
+- Methoden umbenannt um Konflikte zu vermeiden (XxxListAsync)
+
+**Grid-Selektion verbessert:**
+- NovviaGrid: Selektion bleibt jetzt auch ohne Fokus sichtbar
+- Farbe bei fehlendem Fokus: hellblau (#B3D9FF) statt grau
+- Benutzer sieht immer welche Zeile selektiert ist
+
+**Dateien geaendert:**
+- `~` CoreService.cs (OP-Liste Schema, Steuern DTOs, Eigene Felder DTOs)
+- `~` NovviaGrid.xaml (PersistentSelectionRowStyle)
 
 ### Version 1.0.6 (2026-01-03)
 
