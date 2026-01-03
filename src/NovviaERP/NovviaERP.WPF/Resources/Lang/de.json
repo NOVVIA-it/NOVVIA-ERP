@@ -1,0 +1,157 @@
+{
+  "App": {
+    "Name": "NOVVIA ERP",
+    "Version": "1.0"
+  },
+  "Buttons": {
+    "Speichern": "Speichern",
+    "Abbrechen": "Abbrechen",
+    "Bearbeiten": "Bearbeiten",
+    "Loeschen": "Loeschen",
+    "Neu": "Neu",
+    "Suchen": "Suchen",
+    "Aktualisieren": "Aktualisieren",
+    "Schliessen": "Schliessen",
+    "Ja": "Ja",
+    "Nein": "Nein",
+    "OK": "OK",
+    "Zurueck": "Zurueck",
+    "Weiter": "Weiter",
+    "Exportieren": "Exportieren",
+    "Importieren": "Importieren",
+    "Drucken": "Drucken"
+  },
+  "Labels": {
+    "Datum": "Datum",
+    "Von": "Von",
+    "Bis": "Bis",
+    "Status": "Status",
+    "Bemerkung": "Bemerkung",
+    "Beschreibung": "Beschreibung",
+    "Anzahl": "Anzahl",
+    "Menge": "Menge",
+    "Preis": "Preis",
+    "Summe": "Summe",
+    "Gesamt": "Gesamt",
+    "Netto": "Netto",
+    "Brutto": "Brutto",
+    "MwSt": "MwSt"
+  },
+  "Navigation": {
+    "Dashboard": "Dashboard",
+    "Auftraege": "Auftraege",
+    "Kunden": "Kunden",
+    "Artikel": "Artikel",
+    "Lieferanten": "Lieferanten",
+    "Einkauf": "Einkauf",
+    "Rechnungen": "Rechnungen",
+    "Lager": "Lager",
+    "Einstellungen": "Einstellungen"
+  },
+  "Lieferanten": {
+    "Titel": "Lieferanten",
+    "Stammdaten": "Stammdaten",
+    "Bestellungen": "Bestellungen",
+    "EigeneFelder": "Eigene Felder",
+    "PharmaValidierung": "Pharma-Validierung",
+    "MSV3": "MSV3",
+    "ABdata": "ABdata"
+  },
+  "Pharma": {
+    "Titel": "Lieferanten-Qualifizierung (GDP)",
+    "Produktkategorien": "Produktkategorien",
+    "Ambient": "Ambient (15-25 Grad)",
+    "Cool": "Cool (2-8 Grad)",
+    "Medcan": "Medizin. Cannabis",
+    "Tierarznei": "Tierarzneimittel",
+    "Zertifizierungen": "Zertifizierungen",
+    "GDP": "GDP",
+    "GMP": "GMP",
+    "Qualifizierung": "Qualifizierung",
+    "QualifiziertAm": "Qualifiziert am",
+    "QualifiziertVon": "Qualifiziert von",
+    "Dokumente": "Dokumente",
+    "NurRPBerechtigt": "Nur RP-Berechtigte koennen aendern",
+    "PharmaDatenSpeichern": "Pharma-Daten speichern"
+  },
+  "Kunden": {
+    "Titel": "Kunden",
+    "Kundennummer": "Kundennummer",
+    "Firma": "Firma",
+    "Ansprechpartner": "Ansprechpartner",
+    "Strasse": "Strasse",
+    "PLZ": "PLZ",
+    "Ort": "Ort",
+    "Land": "Land",
+    "Telefon": "Telefon",
+    "EMail": "E-Mail"
+  },
+  "Artikel": {
+    "Titel": "Artikel",
+    "Artikelnummer": "Artikelnummer",
+    "Bezeichnung": "Bezeichnung",
+    "EAN": "EAN",
+    "PZN": "PZN",
+    "Lagerbestand": "Lagerbestand",
+    "Mindestbestand": "Mindestbestand",
+    "EKPreis": "EK-Preis",
+    "VKPreis": "VK-Preis"
+  },
+  "Auftraege": {
+    "Titel": "Auftraege",
+    "Auftragsnummer": "Auftragsnummer",
+    "Bestelldatum": "Bestelldatum",
+    "Lieferdatum": "Lieferdatum",
+    "Positionen": "Positionen"
+  },
+  "Rechnungen": {
+    "Titel": "Rechnungen",
+    "Rechnungsnummer": "Rechnungsnummer",
+    "Rechnungsdatum": "Rechnungsdatum",
+    "Faellig": "Faellig",
+    "Bezahlt": "Bezahlt",
+    "Offen": "Offen",
+    "Storniert": "Storniert"
+  },
+  "Meldungen": {
+    "Erfolg": {
+      "Gespeichert": "Erfolgreich gespeichert!",
+      "Geloescht": "Erfolgreich geloescht!",
+      "Aktualisiert": "Erfolgreich aktualisiert!"
+    },
+    "Fehler": {
+      "Allgemein": "Ein Fehler ist aufgetreten",
+      "Laden": "Fehler beim Laden",
+      "Speichern": "Fehler beim Speichern",
+      "Loeschen": "Fehler beim Loeschen",
+      "Verbindung": "Verbindungsfehler",
+      "Berechtigung": "Keine Berechtigung"
+    },
+    "Warnung": {
+      "NichtGespeichert": "Aenderungen wurden nicht gespeichert",
+      "WirklichLoeschen": "Wirklich loeschen?",
+      "NichtRueckgaengig": "Diese Aktion kann nicht rueckgaengig gemacht werden"
+    },
+    "Info": {
+      "BittaAuswaehlen": "Bitte zuerst einen Eintrag auswaehlen",
+      "KeineErgebnisse": "Keine Ergebnisse gefunden",
+      "LadeVorgang": "Lade..."
+    }
+  },
+  "Status": {
+    "Offen": "Offen",
+    "InBearbeitung": "In Bearbeitung",
+    "Abgeschlossen": "Abgeschlossen",
+    "Storniert": "Storniert",
+    "Aktiv": "Aktiv",
+    "Inaktiv": "Inaktiv"
+  },
+  "Zeit": {
+    "Heute": "Heute",
+    "Gestern": "Gestern",
+    "DieseWoche": "Diese Woche",
+    "DieserMonat": "Dieser Monat",
+    "DiesesJahr": "Dieses Jahr",
+    "Alle": "Alle"
+  }
+}
